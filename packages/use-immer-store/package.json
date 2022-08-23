@@ -1,0 +1,23 @@
+{
+  "name": "use-immer-store",
+  "version": "1.0.0",
+  "description": "",
+  "main": "useImmerStore.js",
+  "scripts": {
+    "prepare": "npx -p typescript tsc useImmerStore.js --declaration --allowJs --emitDeclarationOnly",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "deep-weak-map": "^1.0.2",
+    "immer": "^9.0.6",
+    "mem": "^9.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^4.4.3"
+  },
+  "peerDependencies": {
+    "react": "^17.0.2"
+  }
+}

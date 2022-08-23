@@ -1,0 +1,19 @@
+{
+  "name": "run-javascript",
+  "version": "1.0.0",
+  "description": "",
+  "main": "run-javascript.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/parser": "^7.18.11",
+    "@babel/traverse": "^7.18.11",
+    "ast-types": "^0.14.2",
+    "lodash-es": "^4.17.21",
+    "recast": "^0.21.2"
+  }
+}

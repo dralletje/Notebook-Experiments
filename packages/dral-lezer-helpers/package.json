@@ -1,0 +1,14 @@
+{
+  "name": "dral-lezer-helpers",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dral-lezer-helpers.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@lezer/common": "^1.0.0"
+  }
+}

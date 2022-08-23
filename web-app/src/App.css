@@ -1,0 +1,34 @@
+.App {
+  margin-top: 100px;
+  margin-left: 100px;
+}
+
+:root {
+  /* code highlighting */
+  --cm-editor-text-color: #ffe9fc;
+  --cm-comment-color: #e96ba8;
+  --cm-atom-color: hsl(8deg 72% 62%);
+  --cm-number-color: hsl(271deg 45% 64%);
+  --cm-property-color: #f99b15;
+  --cm-keyword-color: #ff7a6f;
+  --cm-string-color: hsl(20deg 69% 59%);
+  --cm-var-color: #afb7d3;
+  --cm-var2-color: #06b6ef;
+  --cm-macro-color: #82b38b;
+  --cm-builtin-color: #5ed37f;
+  --cm-function-color: #f99b15;
+  --cm-type-color: hsl(51deg 32% 44%);
+  --cm-bracket-color: #a2a273;
+  --cm-tag-color: #ef6155;
+  --cm-link-color: #815ba4;
+  --cm-error-bg-color: #ef6155;
+  --cm-error-color: #f7f7f7;
+  --cm-matchingBracket-color: white;
+  --cm-matchingBracket-bg-color: #c58c237a;
+  --cm-placeholder-text-color: rgb(255 255 255 / 20%);
+
+  --cm-selection-background: hsl(215deg 64% 59% / 48%);
+  --cm-selection-background-blurred: hsl(215deg 0% 59% / 48%);
+
+  color-scheme: light dark;
+}

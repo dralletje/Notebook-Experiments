@@ -1,0 +1,16 @@
+{
+  "name": "inspector-x-react",
+  "version": "1.0.0",
+  "description": "",
+  "main": "inspector-x-react.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@observablehq/inspector": "^3.2.4",
+    "react": "^18.2.0"
+  }
+}

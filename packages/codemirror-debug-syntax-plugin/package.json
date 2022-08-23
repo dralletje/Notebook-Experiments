@@ -1,0 +1,15 @@
+{
+  "name": "codemirror-debug-syntax-plugin",
+  "version": "1.0.0",
+  "description": "",
+  "main": "codemirror-debug-syntax-plugin.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "peerDependencies": {
+    "@codemirror/language": "^6.2.1",
+    "@codemirror/view": "^6.2.0"
+  }
+}
