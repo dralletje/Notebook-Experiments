@@ -21,8 +21,9 @@ import { iterate_with_cursor } from "dral-lezer-helpers";
 import { EditorState, Facet, Prec } from "@codemirror/state";
 import { isEqual } from "lodash";
 
-let CssEditorStyled = styled.div`
-  display: contents;
+export let CssEditorStyled = styled.div`
+  /* display: contents; */
+
   --code-background: rgba(0, 0, 0, 0.4);
   height: 100%;
 
@@ -181,13 +182,22 @@ export let CellEditor = ({ value, onChange, input_variables, children }) => {
   return (
     <CssEditorStyled>
       <CodeMirror editor_state={editor_state}>
-        <Extension extension={javascript()} />
+        <Extension extension={javascript()} deps={[]} />
 
-        <Extension extension={InputVariablesFacet.of(input_variables)} />
-        <Extension extension={Prec.highest(input_variables_extension)} />
+        <Extension
+          extension={InputVariablesFacet.of(input_variables)}
+          deps={[input_variables]}
+        />
+        <Extension
+          extension={Prec.highest(input_variables_extension)}
+          deps={[input_variables_extension]}
+        />
 
-        <Extension extension={syntaxHighlighting(syntax_colors)} />
-        <Extension extension={placeholder("Enter event code...")} />
+        <Extension
+          extension={syntaxHighlighting(syntax_colors)}
+          deps={[syntax_colors]}
+        />
+        <Extension extension={placeholder("Enter event code...")} deps={[]} />
         <Extension
           extension={EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -195,6 +205,7 @@ export let CellEditor = ({ value, onChange, input_variables, children }) => {
               onChange?.(update.state.doc.toString());
             }
           })}
+          deps={[onChange]}
         />
         {/* <Extension extension={debug_syntax_plugin} /> */}
         {children}

@@ -20,6 +20,11 @@ let get_scope = (ast) => {
   return scope;
 };
 
+let btoa = (string) => {
+  let buff = Buffer.from(string);
+  return buff.toString("base64");
+};
+
 /**
  * @param {string} code
  * @param {{ filename: string }} options

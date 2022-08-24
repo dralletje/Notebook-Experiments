@@ -34,6 +34,7 @@ let codemirror_editorview_context = React.createContext(
 
 let Container = styled.div`
   height: 100%;
+  display: contents;
 
   & .cm-editor .cm-content,
   & .cm-editor .cm-scroller,
@@ -163,7 +164,7 @@ export let CodeMirror = ({
   );
 };
 
-export let Extension = ({ extension }) => {
+export let Extension = ({ extension, deps = [extension] }) => {
   let dispatch_ref = React.useContext(codemirror_editorview_context);
 
   let compartment = useRef(new Compartment()).current;
@@ -185,7 +186,7 @@ export let Extension = ({ extension }) => {
     dispatch_ref.current?.({
       effects: compartment.reconfigure(extension),
     });
-  }, [extension]);
+  }, deps);
 
   return null;
 };

@@ -1,13 +1,13 @@
 import React from "react";
 import "./App.css";
 import { CellEditor } from "./Cell";
-import { mutate, readonly } from "use-immer-store";
+import { mutate, readonly, useImmerStore } from "use-immer-store";
 import { enablePatches, produceWithPatches } from "immer";
 import styled from "styled-components/macro";
 import { useMutateable } from "use-immer-store";
 import { Extension } from "codemirror-x-react";
 import { EditorState, Prec } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import { Inspector } from "./Inspector.js";
 import { compact, without } from "lodash";
 import { v4 as uuidv4 } from "uuid";
@@ -19,7 +19,7 @@ import { indentUnit } from "@codemirror/language";
 enablePatches();
 
 let CellStyle = styled.div`
-  width: min(700px, 100vw - 200px);
+  width: min(700px, 100vw - 200px, 100%);
 
   background-color: rgba(0, 0, 0, 0.4);
 
@@ -54,7 +54,7 @@ let CellStyle = styled.div`
   &::after {
     content: "";
     position: absolute;
-    inset: -3px;
+    inset: 0px;
     top: calc(100% - 1rem);
     background-color: #121212;
   }
@@ -83,6 +83,7 @@ let engine_cell_from_notebook_cell = (cell) => {
  * @type {string}
  *
  * @typedef Notebook
+ * @property {string} id
  * @property {{ [key: CellId]: Cell }} cells
  * @property {CellId[]} cell_order
  *
@@ -101,6 +102,7 @@ let error = (message) => {
 function App() {
   let [_notebook, _set_notebook] = React.useState(
     /** @type {Notebook} */ ({
+      id: "1",
       cell_order: ["1", "2"],
       cells: {
         1: {
@@ -126,7 +128,7 @@ function App() {
           old_notebook,
           update_fn
         );
-        console.log(`patches:`, patches);
+        // console.log(`patches:`, patches);
         return new_notebook;
       });
     },
@@ -143,7 +145,6 @@ function App() {
     let socket = io("http://localhost:3099");
 
     socket.on("engine", (engine) => {
-      console.log(`engine:`, engine);
       set_engine(engine);
     });
     socketio_ref.current = socket;
@@ -169,8 +170,8 @@ function App() {
     socket.emit("notebook", notebook);
   }, [notebook]);
 
-  console.log(`notebook:`, readonly(notebook));
-  console.log(`engine:`, engine);
+  // console.log(`notebook:`, readonly(notebook));
+  // console.log(`engine:`, engine);
   return (
     <div className="App">
       {notebook.cell_order
@@ -190,12 +191,6 @@ function App() {
                     cell.last_run = now;
                   }
                 }
-              });
-            }}
-            onRemove={() => {
-              mutate(notebook, (notebook) => {
-                delete notebook.cells[cell.id];
-                notebook.cell_order = without(notebook.cell_order, cell.id);
               });
             }}
           />
@@ -267,13 +262,12 @@ let InspectorContainer = styled.div`
 `;
 
 /**
- * @param {{ cell: Cell, cylinder: CylinderShadow, onSave: () => void, onRemove: () => void, notebook: Notebook }} props
+ * @param {{ cell: Cell, cylinder: CylinderShadow, onSave: () => void, notebook: Notebook }} props
  */
-let Cell = ({
+export let Cell = ({
   cell,
   cylinder = engine_cell_from_notebook_cell(cell),
   onSave,
-  onRemove,
   notebook,
 }) => {
   let result_deserialized = React.useMemo(() => {
@@ -317,10 +311,6 @@ let Cell = ({
         )}
         <Inspector value={result_deserialized} />
       </InspectorContainer>
-      {/* {(result_deserialized.type === "return" ||
-        result_deserialized.type === "throw") && (
-        <div style={{ minHeight: 8 }} />
-      )} */}
 
       <CellEditor
         value={cell.unsaved_code}
@@ -331,9 +321,23 @@ let Cell = ({
           });
         }}
       >
+        <Extension
+          extension={EditorView.baseTheme({
+            ".cm-editor > * > .cm-cursorLayer": {
+              display: "none !important",
+            },
+            ".cm-editor.cm-focused > * > .cm-cursorLayer": {
+              display: "block !important",
+            },
+          })}
+        />
+
+        {/* <Extension extension={debug_syntax_plugin} /> */}
+        {/* <Extension extension={inline_notebooks_extension} /> */}
+
         <Extension extension={awesome_line_wrapping} />
-        <Extension extension={EditorState.tabSize.of(4)} />
-        <Extension extension={indentUnit.of("\t")} />
+        <Extension extension={EditorState.tabSize.of(4)} deps={[]} />
+        <Extension extension={indentUnit.of("\t")} deps={[]} />
         <Extension
           extension={Prec.high(
             keymap.of([
@@ -352,7 +356,14 @@ let Cell = ({
                 key: "Backspace",
                 run: (view) => {
                   if (view.state.doc.length === 0) {
-                    onRemove();
+                    mutate(notebook, (notebook) => {
+                      notebook.cell_order = without(
+                        notebook.cell_order,
+                        cell.id
+                      );
+                      delete notebook.cells[cell.id];
+                    });
+                    // TODO when master state: Focus on previous
                     return true;
                   } else {
                     return false;
@@ -360,7 +371,7 @@ let Cell = ({
                 },
               },
               {
-                key: "Cmd-s",
+                key: "Mod-s",
                 run: () => {
                   onSave();
                   return true;
@@ -373,7 +384,9 @@ let Cell = ({
 
       <AddButton
         onClick={() => {
+          console.log(`notebook:`, notebook);
           mutate(notebook, (notebook) => {
+            console.log("Letsgooo");
             let id = uuidv4();
             notebook.cells[id] = {
               id: id,
