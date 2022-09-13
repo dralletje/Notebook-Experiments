@@ -12,10 +12,6 @@
     "@codemirror/search": "^6.1.0",
     "@codemirror/state": "^6.1.1",
     "@codemirror/view": "^6.2.0",
-    "@observablehq/lezer": "observablehq/lezer",
-    "@testing-library/jest-dom": "^5.16.5",
-    "@testing-library/react": "^13.3.0",
-    "@testing-library/user-event": "^13.5.0",
     "assert": "^2.0.0",
     "ast-types": "^0.14.2",
     "buffer": "^6.0.3",
@@ -25,7 +21,6 @@
     "process": "^0.11.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1",
     "recast": "^0.21.2",
     "socket.io-client": "^4.5.1",
     "styled-components": "^5.3.5",
@@ -33,10 +28,8 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "vite",
+    "build": "vite build"
   },
   "eslintConfig": {
     "extends": [
@@ -55,5 +48,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "vite": "^3.1.0"
   }
 }

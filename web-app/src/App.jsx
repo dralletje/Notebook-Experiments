@@ -3,12 +3,12 @@ import "./App.css";
 import { CellEditor } from "./Cell";
 import { mutate, readonly, useImmerStore } from "use-immer-store";
 import { enablePatches, produceWithPatches } from "immer";
-import styled from "styled-components/macro";
+import styled from "styled-components";
 import { useMutateable } from "use-immer-store";
 import { Extension } from "codemirror-x-react";
 import { EditorState, Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { Inspector } from "./Inspector.js";
+import { Inspector } from "./Inspector";
 import { compact, without } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
