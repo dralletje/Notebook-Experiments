@@ -5,6 +5,7 @@
   "type": "module",
   "main": "node-engine.js",
   "scripts": {
+    "start": "nodemon --enable-source-maps --watch ../packages/run-javascript --watch . node-engine",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

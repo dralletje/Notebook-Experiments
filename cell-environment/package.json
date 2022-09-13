@@ -1,0 +1,11 @@
+{
+  "name": "cell-environment",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "markdown-it": "^13.0.1",
+    "mustache": "^4.2.0"
+  }
+}

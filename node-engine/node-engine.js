@@ -7,13 +7,16 @@ import chalk from "chalk";
 
 import { mapValues, omit, dropRightWhile } from "lodash-es";
 
-import { run_code, transform_code } from "run-javascript";
+import { transform_code } from "run-javascript";
 import serialize from "./serialize.js";
 import domain from "domain";
 
 import * as stacktraceparser from "stacktrace-parser";
 import { SourceMapConsumer } from "source-map";
 import { cells_to_dag, get_next_cell_to_run } from "./dag-things.js";
+
+import { run_in_environment } from "../cell-environment/cell-environment.js";
+import { fileURLToPath } from "url";
 
 const app = express();
 app.use(cors());
@@ -208,6 +211,7 @@ let notebook_step = async (engine, notebook, onChange) => {
 
     inputs.__meta__ = {
       is_in_notebook: true,
+      url: new URL("../cell-environment/cell-environment.js", import.meta.url),
     };
 
     // DOMAINS ARE JUST A HACK
@@ -226,7 +230,27 @@ let notebook_step = async (engine, notebook, onChange) => {
       });
     });
     let result = await cell_domain.run(async () => {
-      return await run_code(code, inputs);
+      try {
+        let inputs_array = Object.entries(inputs);
+        let fn = run_in_environment(
+          inputs_array.map((x) => x[0]),
+          code
+        );
+
+        console.log(fn);
+
+        let result = await fn(...inputs_array.map((x) => x[1]));
+
+        return {
+          type: "return",
+          value: result,
+        };
+      } catch (error) {
+        return {
+          type: "throw",
+          value: error,
+        };
+      }
     });
 
     onChange((engine) => {
