@@ -2,7 +2,7 @@ import { parse, print, types } from "recast";
 import { builders, Type } from "ast-types";
 import { parse as parseBabel } from "@babel/parser";
 import traverse1, { NodePath } from "@babel/traverse";
-import { compact } from "lodash-es";
+import { compact, without } from "lodash-es";
 
 let t = builders;
 /** @type {typeof traverse1} */
@@ -33,6 +33,7 @@ export function transform_code(code, { filename }) {
   // /** @type {ReturnType<parseBabel>} */
   const unmodified_ast = parse(code, {
     parser: { parse: parseBabel },
+    tabWidth: 0,
     sourceFileName: filename,
   });
 
@@ -40,6 +41,7 @@ export function transform_code(code, { filename }) {
     transform(unmodified_ast);
 
   let result = print(ast, {
+    tabWidth: 0,
     sourceMapName: "map.json",
   });
 
@@ -68,7 +70,8 @@ export function transform(ast) {
       t.expressionStatement(t.stringLiteral(directive.value.value))
     );
   }
-  ast.program.directives = [];
+  // Add "use strict" directive
+  ast.program.directives = [t.directive(t.directiveLiteral("use strict"))];
 
   ast.program.body = ast.program.body.map((statement) => {
     if (statement.type === "ImportDeclaration") {
@@ -122,9 +125,12 @@ export function transform(ast) {
 
   let scope = get_scope(ast);
   // TODO scope.getAllBindings?
-  let created_names = Object.keys(scope.bindings);
-  // @ts-ignore
-  let consumed_names = Object.keys(scope.globals);
+  let created_names = [...Object.keys(scope.bindings), ...accidental_globals];
+  let consumed_names = without(
+    // @ts-ignore
+    Object.keys(scope.globals),
+    ...accidental_globals
+  );
 
   let properties_to_return = created_names.map((name) => {
     return t.objectProperty(t.identifier(name), t.identifier(name));
@@ -193,22 +199,3 @@ export function transform(ast) {
     last_created_name: result_name,
   };
 }
-
-export let run_code = async (/** @type {string} */ code, inputs) => {
-  try {
-    let inputs_array = Object.entries(inputs);
-    let fn = new Function(...inputs_array.map((x) => x[0]), code);
-
-    let result = await fn(...inputs_array.map((x) => x[1]));
-
-    return {
-      type: "return",
-      value: result,
-    };
-  } catch (error) {
-    return {
-      type: "throw",
-      value: error,
-    };
-  }
-};
