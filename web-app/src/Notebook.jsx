@@ -333,7 +333,7 @@ export let Cell = ({
                   if (view.state.doc.length === 0) {
                     // Focus on previous cell
                     view.dispatch({
-                      effects: [MoveUpEffect.of({ start: null })],
+                      effects: [MoveUpEffect.of({ start: "end" })],
                     });
                     // Remove cell
                     mutate(notebook, (notebook) => {
