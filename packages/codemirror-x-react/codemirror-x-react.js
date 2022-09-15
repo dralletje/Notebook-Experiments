@@ -103,11 +103,38 @@ let Container = styled.div`
   }
 `;
 
+// /**
+//  * @param {(tr: import("@codemirror/state").Transaction) => void} dispatch
+//  * @param {import("@codemirror/state").Extension} extension
+//  */
+// let useCodemirrorExtension = (dispatch, extension) => {
+//   let compartment = useRef(new Compartment()).current;
+//   let initial_value = useRef(compartment.of(extension)); // TODO? Can move this inside the useLayoutEffect?
+
+//   useLayoutEffect(() => {
+//     dispatch_ref.current({
+//       effects: StateEffect.appendConfig.of(initial_value.current),
+//     });
+//     return () => {
+//       dispatch_ref.current({
+//         // @ts-ignore
+//         effects: compartment.reconfigure(null),
+//       });
+//     };
+//   }, []);
+
+//   useLayoutEffect(() => {
+//     dispatch_ref.current?.({
+//       effects: compartment.reconfigure(extension),
+//     });
+//   }, deps);
+// };
+
 /**
  * @typedef {{
  *  editor_state: EditorState,
  *  children: React.ReactNode,
- *  as: string,
+ *  as: string | void,
  * } & import("react").HtmlHTMLAttributes<"div">} EditorProps
  */
 export let CodeMirror = ({
@@ -121,29 +148,53 @@ export let CodeMirror = ({
   /** @type {React.MutableRefObject<EditorView>} */
   let editorview_ref = React.useRef(/** @type {any} */ (null));
 
-  /** @type {React.MutableRefObject<Array<any>>} */
+  /**
+   * Batching events, as the first round of "adding extension" and "updating extensions" will run before "our" useLayout can run.
+   * (Children's useLayout will run before ours)
+   * @type {React.MutableRefObject<Array<any>>}
+   */
   let batched_effects_ref = React.useRef([]);
-  let dispatch_ref = React.useRef((...spec) => {
-    // console.log(`spec:`, spec);
+  // prettier-ignore
+  let dispatch_ref = React.useRef((/** @type {import("@codemirror/state").TransactionSpec[]} */ ...spec) => {
     batched_effects_ref.current.push(spec);
   });
 
   React.useLayoutEffect(() => {
-    // console.log("AAAA", editor_state);
     let editorview = new EditorView({
       state: editor_state,
       parent: dom_node_ref.current,
     });
+    editorview_ref.current = editorview;
+
+    // Apply effects we have collected before this mount (dispatches from child <Extension /> components)
     for (let batched_effect of batched_effects_ref.current) {
-      // console.log(`batched_effect:`, batched_effect);
       editorview.dispatch(...batched_effect);
     }
+
+    // Clear batched effects and bind dispatch to the editorview
+    batched_effects_ref.current = [];
     dispatch_ref.current = editorview.dispatch.bind(editorview);
-    editorview_ref.current = editorview;
+
     return () => {
+      // In the very very peculiar case that I actually want to change the `editor_state` without completely unmounting the component,
+      // I again make `dispatch` go to `batched_effects`
+      batched_effects_ref.current = [];
+      dispatch_ref.current = (
+        /** @type {import("@codemirror/state").TransactionSpec[]} */ ...spec
+      ) => {
+        batched_effects_ref.current.push(spec);
+      };
+      editorview_ref.current = /** @type {any} */ (null);
       editorview.destroy();
     };
   }, [dom_node_ref, editor_state]);
+
+  // I have a very specific use-case where I want to not render the editor
+  // ... and instead of being smart, and explicitly using a different component or a obvious prop,
+  // ... I'm just going to use the `as = null` prop as a hack for this.
+  if (as == null) {
+    return null;
+  }
 
   // return (
   //   <Container {...props} ref={dom_node_ref}>
@@ -168,7 +219,7 @@ export let Extension = ({ extension, deps = [extension] }) => {
   let dispatch_ref = React.useContext(codemirror_editorview_context);
 
   let compartment = useRef(new Compartment()).current;
-  let initial_value = useRef(compartment.of(extension));
+  let initial_value = useRef(compartment.of(extension)); // TODO? Can move this inside the useLayoutEffect?
 
   useLayoutEffect(() => {
     dispatch_ref.current({

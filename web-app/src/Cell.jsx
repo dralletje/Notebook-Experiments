@@ -197,7 +197,10 @@ export let CellEditor = ({ value, onChange, input_variables, children }) => {
           extension={syntaxHighlighting(syntax_colors)}
           deps={[syntax_colors]}
         />
-        <Extension extension={placeholder("Enter event code...")} deps={[]} />
+        <Extension
+          extension={placeholder("The rest is still unwritten...")}
+          deps={[]}
+        />
         <Extension
           extension={EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -207,7 +210,6 @@ export let CellEditor = ({ value, onChange, input_variables, children }) => {
           })}
           deps={[onChange]}
         />
-        {/* <Extension extension={debug_syntax_plugin} /> */}
         {children}
       </CodeMirror>
     </CssEditorStyled>

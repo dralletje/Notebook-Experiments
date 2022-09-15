@@ -33,7 +33,7 @@ export function transform_code(code, { filename }) {
   // /** @type {ReturnType<parseBabel>} */
   const unmodified_ast = parse(code, {
     parser: { parse: parseBabel },
-    tabWidth: 0,
+    // tabWidth: 0,
     sourceFileName: filename,
   });
 
@@ -41,7 +41,7 @@ export function transform_code(code, { filename }) {
     transform(unmodified_ast);
 
   let result = print(ast, {
-    tabWidth: 0,
+    // tabWidth: 0,
     sourceMapName: "map.json",
   });
 

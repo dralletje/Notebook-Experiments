@@ -310,4 +310,16 @@ let decorations = StateField.define({
     EditorView.decorations.from(field, (x) => Decoration.set(x)),
 });
 
-export let inline_notebooks_extension = [decorations];
+let only_show_actually_selected_cursor = EditorView.baseTheme({
+  ".cm-editor > * > .cm-cursorLayer": {
+    display: "none !important",
+  },
+  ".cm-editor.cm-focused > * > .cm-cursorLayer": {
+    display: "block !important",
+  },
+});
+
+export let inline_notebooks_extension = [
+  decorations,
+  only_show_actually_selected_cursor,
+];

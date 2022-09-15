@@ -74,6 +74,7 @@ let assimilate_into = (cmd) => {
   }
 };
 
+// If we are using npm, we can "just" pass the command on to npm
 if (has_package_lock) {
   console.error(chalk.green.bold(`Using npm as package manager`));
   assimilate_into(`npm ${process.argv.join(" ")}`);
