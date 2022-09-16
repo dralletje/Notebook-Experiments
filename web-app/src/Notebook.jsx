@@ -4,7 +4,7 @@ import { mutate } from "use-immer-store";
 import styled from "styled-components";
 import { Extension } from "codemirror-x-react";
 import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import { Inspector } from "./Inspector";
 import { compact, without } from "lodash";
 import { v4 as uuidv4 } from "uuid";
@@ -16,12 +16,17 @@ import {
   CellIdOrder,
   child_extension,
   codemirror_nexus,
-} from "./packages/codemirror-bus/codemirror-nexus";
+  nexus_extension,
+} from "./packages/codemirror-nexus/codemirror-nexus";
 import {
   cell_movement_extension,
   MoveUpEffect,
-} from "./packages/codemirror-bus/codemirror-cell-movement";
-import { blur_when_other_cell_focus } from "./packages/codemirror-bus/codemirror-blur-when-other-cell-focus";
+} from "./packages/codemirror-nexus/codemirror-cell-movement";
+import { blur_when_other_cell_focus } from "./packages/codemirror-nexus/codemirror-blur-when-other-cell-focus";
+import {
+  history,
+  historyKeymap,
+} from "./packages/codemirror-nexus/codemirror-shared-history";
 
 let CellStyle = styled.div`
   width: min(700px, 100vw - 200px, 100%);
@@ -238,6 +243,17 @@ let InspectorContainer = styled.div`
 `;
 
 /**
+ * Tiny extension that will put the editor in focus whenever any transaction comes with `scrollIntoView` effect.
+ * For example, history uses this. Normally, this doesn't focus the editor, because it is assumed the editor is already in focus.
+ * Well guess what, on notebooks it ain't!
+ */
+let focus_on_scrollIntoView = EditorView.updateListener.of((update) => {
+  if (update.transactions.some((tx) => tx.scrollIntoView)) {
+    update.view.focus();
+  }
+});
+
+/**
  * @param {{
  *  cell: import("./App").Cell,
  *  cylinder: import("./App").CylinderShadow,
@@ -308,6 +324,12 @@ export let Cell = ({
         <Extension extension={maestro_plugin} />
 
         <Extension extension={blur_when_other_cell_focus} />
+        <Extension extension={focus_on_scrollIntoView} />
+        <Extension extension={nexus_extension(history())} deps={[history]} />
+        <Extension
+          extension={nexus_extension(keymap.of(historyKeymap))}
+          deps={[historyKeymap]}
+        />
 
         <Extension extension={cell_movement_extension} />
         <Extension extension={awesome_line_wrapping} />

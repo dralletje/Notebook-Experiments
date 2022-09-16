@@ -1,118 +1,21 @@
-import { Extension, CodeMirror } from "codemirror-x-react";
-import styled from "styled-components";
-import React from "react";
 import EventEmitter from "events";
-
-import { indentLess, indentMore } from "@codemirror/commands";
 import {
   ChangeSet,
   Compartment,
-  EditorSelection,
   EditorState,
   Facet,
   Prec,
-  SelectionRange,
   StateEffect,
   StateEffectType,
-  StateField,
-  Text,
   Transaction,
 } from "@codemirror/state";
 import {
   EditorView,
-  keymap,
   runScopeHandlers,
   ViewPlugin,
   ViewUpdate,
 } from "@codemirror/view";
-// import { history, historyKeymap, invertedEffects } from "@codemirror/history";
 import { groupBy } from "lodash";
-
-// let CellTextStateField = StateField.define({
-//   create: () => new Map(),
-//   update: (map, tr) => {
-//     let copied_map = null;
-//     for (let effect of tr.effects) {
-//       if (effect.is(FromCellEffect)) {
-//         if (copied_map == null) {
-//           copied_map = new Map(map);
-//         }
-//         let { cell_id, transaction } = effect.value;
-//         copied_map.set(cell_id, transaction.state);
-//       }
-//     }
-//     return copied_map ?? map;
-//   },
-// });
-// let shared_history_plugins = [
-//   CellTextStateField,
-//   invertedEffects.of((transaction) => {
-//     let reverse = /** @type {import("@codemirror/state").StateEffect[]} */ ([]);
-
-//     for (let effect of transaction.effects) {
-//       if (!effect.is(FromCellEffect)) continue;
-
-//       let { transaction: cell_transaction, cell_id } = effect.value;
-
-//       let actual_inverted_effects = [];
-//       for (let invert of cell_transaction.startState.facet(invertedEffects)) {
-//         let result = invert(cell_transaction);
-//         if (result.length)
-//           actual_inverted_effects = actual_inverted_effects.concat(result);
-//       }
-
-//       if (!actual_inverted_effects.length && cell_transaction.changes.empty)
-//         continue;
-
-//       reverse.push(
-//         ToCellEffect.of({
-//           cell_id: cell_id,
-//           transaction_spec: {
-//             annotations: [Transaction.addToHistory.of(false)],
-//             changes: effect.value.transaction.changes.invert(
-//               cell_transaction.startState.doc
-//             ),
-//             selection: cell_transaction.startState.selection,
-//           },
-//         })
-//       );
-//     }
-
-//     // console.log("!!!");
-//     for (let effect of transaction.effects) {
-//       if (!effect.is(ToCellEffect)) continue;
-//       let effect_on_cell = effect.value;
-
-//       console.log("Effect");
-
-//       let current_doc = transaction.state
-//         .field(CellTextStateField)
-//         .get(effect_on_cell.cell_id);
-
-//       console.log(
-//         `effect_on_cell.transaction_spec:`,
-//         effect_on_cell.transaction_spec
-//       );
-
-//       reverse.push(
-//         ToCellEffect.of({
-//           cell_id: effect_on_cell.cell_id,
-//           transaction_spec: {
-//             annotations: [Transaction.addToHistory.of(false)],
-//             // changes: effect_on_cell.transaction_spec.changes,
-//             changes: effect_on_cell.transaction_spec.changes.invert(
-//               current_doc.doc
-//             ),
-//           },
-//         })
-//       );
-//     }
-
-//     return reverse;
-//   }),
-//   history({}),
-//   keymap.of(historyKeymap),
-// ];
 
 /**
  * @typedef CellId

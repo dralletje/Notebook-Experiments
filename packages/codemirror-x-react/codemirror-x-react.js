@@ -261,10 +261,7 @@ export let useEditorView = ({ code }) => {
           (event) => event.altKey && !event.shiftKey
         ),
         indentOnInput(),
-        history(),
-        // syntaxHighlighting(defaultHighlightStyle),
-        // Experimental: Also add closing brackets for tripple string
-        // TODO also add closing string when typing a string macro
+        // history(),
         EditorState.languageData.of((state, pos, side) => {
           return [{ closeBrackets: { brackets: ["(", "[", "{"] } }];
         }),
@@ -279,7 +276,11 @@ export let useEditorView = ({ code }) => {
           },
         ]),
 
-        keymap.of([...defaultKeymap, ...historyKeymap, ...foldKeymap]),
+        keymap.of([
+          ...defaultKeymap,
+          // ...historyKeymap,
+          ...foldKeymap,
+        ]),
         EditorView.lineWrapping,
       ],
     });
