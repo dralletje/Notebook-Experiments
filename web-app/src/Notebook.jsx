@@ -18,12 +18,16 @@ import {
   codemirror_nexus,
   NexusFacet,
   nexus_extension,
+  ToCellEffect,
 } from "./packages/codemirror-nexus/codemirror-nexus";
 import {
   cell_movement_extension,
   MoveUpEffect,
 } from "./packages/codemirror-nexus/codemirror-cell-movement";
-import { blur_when_other_cell_focus } from "./packages/codemirror-nexus/codemirror-blur-when-other-cell-focus";
+import {
+  BlurEffect,
+  blur_when_other_cell_focus,
+} from "./packages/codemirror-nexus/codemirror-blur-when-other-cell-focus";
 import {
   history,
   historyKeymap,
@@ -56,7 +60,7 @@ let CellStyle = styled.div`
     left: -10px;
     right: 100%;
     top: 0;
-    bottom: 1rem;
+    bottom: 0;
   }
 
   &.pending::before {
@@ -126,6 +130,7 @@ export let CellList = ({ notebook, engine }) => {
   let [_selected_cells, set_selected_cells] = React.useState(
     /** @type {import("./App").CellId[]} */ ([])
   );
+  // Just making sure the rest of the app only sees existing cells in `selected_cells`
   let selected_cells = intersection(_selected_cells, notebook.cell_order);
 
   // I'm adding `cell_id_order_compartment` here manually (and at construction time) vs. using `useCodemirrorExtension`
@@ -181,9 +186,9 @@ export let CellList = ({ notebook, engine }) => {
       return keymap.of([
         {
           key: "Backspace",
-          run: (view) => {
+          run: ({ state, dispatch }) => {
             // Remove cell
-            view.dispatch({
+            dispatch({
               effects: selected_cells.map((cell_id) =>
                 RemoveCellEffect.of({ cell_id: cell_id })
               ),
@@ -191,9 +196,32 @@ export let CellList = ({ notebook, engine }) => {
             return true;
           },
         },
+        {
+          key: "Mod-a",
+          run: ({ state, dispatch }) => {
+            // Select all cells
+            set_selected_cells(notebook.cell_order);
+            return true;
+          },
+        },
       ]);
     }, [selected_cells])
   );
+
+  React.useLayoutEffect(() => {
+    if (selected_cells.length > 0) {
+      nexus_editorview.dispatch?.({
+        effects: notebook.cell_order.map((cell_id) =>
+          ToCellEffect.of({
+            cell_id: cell_id,
+            transaction_spec: {
+              effects: BlurEffect.of(),
+            },
+          })
+        ),
+      });
+    }
+  }, [selected_cells, notebook.cell_order]);
 
   useCodemirrorExtension(nexus_editorview, notebook_in_nexus);
 

@@ -1,3 +1,5 @@
+import { HTML_MIME_SYMBOL } from "./html.js";
+
 const typedArrTypes = [
   "Int8Array",
   "Uint8Array",
@@ -330,6 +332,21 @@ export default (entry, context) => {
           heap.push({ type: "null", value: "" });
 
           return heap.length - 1;
+        }
+
+        // DRAL ADDITION
+        if (HTML_MIME_SYMBOL in obj) {
+          let id = heap.length;
+          let html_root = {
+            type: "@observablehq/htl",
+            value: 0,
+          };
+          // Push it so it will be at `id` in the array
+          // (which is important because if it is 0 it will be the first)
+          heap.push(html_root);
+          let arguments_array = encounterArr(obj[HTML_MIME_SYMBOL]);
+          html_root.value = arguments_array;
+          return id;
         }
 
         if (obj instanceof context.Map) {

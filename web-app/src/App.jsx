@@ -63,8 +63,6 @@ function App() {
         //   update_fn
         // );
         let new_notebook = produce(old_notebook, update_fn);
-
-        // console.log(`patches:`, patches);
         return new_notebook;
       });
     },

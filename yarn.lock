@@ -1292,6 +1292,11 @@ hoist-non-react-statics@^3.0.0:
   dependencies:
     react-is "^16.7.0"
 
+htl@^0.3.1:
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/htl/-/htl-0.3.1.tgz#13c5a32fa46434f33b84d4553dd37e58a80e8d8a"
+  integrity sha512-1LBtd+XhSc+++jpOOt0lCcEycXs/zTQSupOISnVAUmvGBpV7DH+C2M6hwV7zWYfpTMMg9ch4NO0lHiOTAMHdVA==
+
 http-errors@2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/http-errors/-/http-errors-2.0.0.tgz#b7774a1486ef73cf7667ac9ae0858c012c57b9d3"

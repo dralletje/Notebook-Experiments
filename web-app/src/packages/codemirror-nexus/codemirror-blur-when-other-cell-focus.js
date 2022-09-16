@@ -14,7 +14,7 @@ import {
 } from "./codemirror-nexus";
 
 /** @type {StateEffectType<void>} */
-let BlurEffect = StateEffect.define({});
+export let BlurEffect = StateEffect.define({});
 
 /** @type {StateEffectType<void>} */
 let DidFocusEffect = StateEffect.define({});

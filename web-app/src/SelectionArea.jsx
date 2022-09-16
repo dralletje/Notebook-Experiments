@@ -1,5 +1,7 @@
+// Basically copied from https://github.com/fonsp/Pluto.jl/blob/ab85efca962d009c741d4ec66508d687806e9579/frontend/components/SelectionArea.js
+// Couple of tweaks
+
 import React from "react";
-// import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 
 const get_element_position_in_document = (element) => {
   let top = 0;
@@ -66,12 +68,7 @@ export const SelectionArea = ({ on_selection, cell_order }) => {
     };
 
     const onmousedown = (/** @type {MouseEvent} */ e) => {
-      // @ts-ignore
-      const t = e.target?.tagName;
-
       let target = /** @type {HTMLElement} */ (e.target);
-
-      console.log(`e.target:`);
 
       // TODO: also allow starting the selection in one codemirror and stretching it to another cell
       if (target.dataset.canStartCellSelection === "true") {
