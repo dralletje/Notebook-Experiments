@@ -1,6 +1,8 @@
 .App {
-  margin-top: 100px;
-  margin-left: 100px;
+  padding-top: 100px;
+  padding-left: 100px;
+  min-height: 100vh;
+  padding-bottom: 100px;
 }
 
 :root {

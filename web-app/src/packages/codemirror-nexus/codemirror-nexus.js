@@ -59,6 +59,7 @@ export let ToCellEffect = StateEffect.define({});
 class SingleEventEmitter {
   constructor() {
     this.emitter = new EventEmitter();
+    this.emitter.setMaxListeners(Infinity);
   }
   /**
    * @param {(value: T) => void} listener
@@ -172,14 +173,16 @@ export let child_extension = (_nexus) => {
   return [
     NexusFacet.of(_nexus),
 
-    // Changes from the nexus are emitted to the cell specific editorview
+    // Transactions from the nexus are emitted to the cell specific editorview.
+    // These will be dispatched verbatim, so you will mostly only use specific Effects,
+    // as there isn't really a way to dispatch text changes as the nexus doesn't know all the texts. (or does it???)
     ViewPlugin.define((cell_editor_view) => {
       let nexus = cell_editor_view.state.facet(NexusFacet);
       let bus_emitter = nexus.state.facet(NexusToCellEmitterFacet);
       let off = bus_emitter.on((event) => {
         let cell_id = cell_editor_view.state.facet(CellIdFacet);
         if (cell_id === event.cell_id) {
-          console.log(`Dispatching transaction to cell:`, event);
+          // console.log(`Dispatching transaction to cell:`, event);
           cell_editor_view.dispatch(...event.transaction_specs);
         }
       });
@@ -190,7 +193,11 @@ export let child_extension = (_nexus) => {
       };
     }),
 
-    // On update, send transactions as an effect to the nexus state
+    // This sends every single transaction that happens on cell views to the nexus view.
+    // The transactions will be wrapped in a new transaction that has a FromCellEffect.
+    // Not sure if this is necessary, but it makes the shared history work, for example.
+    // Most of the time you'll want to create explicit "to nexus" effects anyway.
+    // TODO? Not use updateListener but something more "state based"? Feels like updateListener is too coarse..
     EditorView.updateListener.of((update) => {
       let nexus = update.state.facet(NexusFacet);
       let cell_id = update.state.facet(CellIdFacet);
@@ -202,21 +209,14 @@ export let child_extension = (_nexus) => {
 
       nexus.dispatch(
         ...update.transactions.map((transaction) => {
-          return /** @type {import("@codemirror/state").TransactionSpec} */ ({
-            // @ts-ignore
-            annotations: transaction.annotations,
-            // This fixes isAdjacent (https://github.com/codemirror/history/blob/3c41743067bc405faa0b9cbe0c81ef1e6f7cd627/src/history.ts#L320)
-            // but I should just clone history into here and actually change the code
-            changes: transaction.changes.empty
-              ? ChangeSet.empty
-              : { from: 0, to: 0, insert: "a" },
+          return {
             effects: [
               FromCellEffect.of({
                 cell_id: cell_id,
                 transaction: transaction,
               }),
             ],
-          });
+          };
         })
       );
     }),

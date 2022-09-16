@@ -21,6 +21,8 @@ import {
   EditorSelection,
 } from "@codemirror/state";
 import { KeyBinding, EditorView } from "@codemirror/view";
+
+import { invertedEffects, isolateHistory } from "@codemirror/commands";
 import { FromCellEffect, ToCellEffect } from "./codemirror-nexus";
 
 const enum BranchName {
@@ -35,15 +37,17 @@ const fromHistory = Annotation.define<{ side: BranchName; rest: Branch }>();
 /// `"before"`, it'll prevent merging with previous transactions. With
 /// `"after"`, subsequent transactions won't be combined with this
 /// one. With `"full"`, the transaction is isolated on both sides.
-export const isolateHistory = Annotation.define<"before" | "after" | "full">();
+export { isolateHistory };
+// export const isolateHistory = Annotation.define<"before" | "after" | "full">();
 
 /// This facet provides a way to register functions that, given a
 /// transaction, provide a set of effects that the history should
 /// store when inverting the transaction. This can be used to
 /// integrate some kinds of effects in the history, so that they can
 /// be undone (and redone again).
-export const invertedEffects =
-  Facet.define<(tr: Transaction) => readonly StateEffect<any>[]>();
+export { invertedEffects };
+// export const invertedEffects =
+//   Facet.define<(tr: Transaction) => readonly StateEffect<any>[]>();
 
 interface HistoryConfig {
   /// The minimum depth (amount of events) to store. Defaults to 100.
@@ -72,65 +76,88 @@ function changeEnd(changes: ChangeDesc) {
   return end;
 }
 
+type HistoryCellId = string | null;
+
+let update_from_transaction_with_cell_id = (
+  state: HistoryState,
+  tr: Transaction,
+  cell_id: HistoryCellId
+): HistoryState => {
+  let config = tr.state.facet(historyConfig);
+
+  let fromHist = tr.annotation(fromHistory);
+  if (fromHist) {
+    let selection = tr.docChanged
+      ? EditorSelection.single(changeEnd(tr.changes))
+      : undefined;
+    let item = HistEvent.fromTransaction(tr, cell_id, selection),
+      from = fromHist.side;
+    let other = from == BranchName.Done ? state.undone : state.done;
+    if (item) other = updateBranch(other, other.length, config.minDepth, item);
+    else other = addSelection(other, tr.startState.selection, cell_id);
+    let mystate = new HistoryState(
+      from == BranchName.Done ? fromHist.rest : other,
+      from == BranchName.Done ? other : fromHist.rest
+    );
+    // console.log(`AFTER:`, { done: mystate.done, undone: mystate.undone });
+    return mystate;
+  }
+
+  let isolate = tr.annotation(isolateHistory);
+  if (isolate == "full" || isolate == "before") state = state.isolate();
+
+  if (tr.annotation(Transaction.addToHistory) === false)
+    return !tr.changes.empty
+      ? state.addMapping(tr.changes.desc, cell_id)
+      : state;
+
+  let event = HistEvent.fromTransaction(tr, cell_id);
+  if (cell_id == null && event != null) {
+    console.log(`event:`, event);
+  }
+  let time = tr.annotation(Transaction.time)!,
+    userEvent = tr.annotation(Transaction.userEvent);
+  if (event) {
+    state = state.addChanges(
+      event,
+      time,
+      userEvent,
+      config.newGroupDelay,
+      config.minDepth,
+      cell_id
+    );
+  } else if (tr.selection) {
+    state = state.addSelection(
+      tr.startState.selection,
+      time,
+      userEvent,
+      config.newGroupDelay,
+      cell_id
+    );
+  }
+
+  if (isolate == "full" || isolate == "after") state = state.isolate();
+
+  return state;
+};
+
 const historyField_ = StateField.define({
   create() {
     return HistoryState.empty;
   },
 
   update(state: HistoryState, combined_transaction: Transaction): HistoryState {
+    state = update_from_transaction_with_cell_id(
+      state,
+      combined_transaction,
+      null
+    );
+
+    // Check if there is any FromCellEffects to save
     for (let effect of combined_transaction.effects) {
       if (!effect.is(FromCellEffect)) continue;
       let { cell_id, transaction: tr } = effect.value;
-      let config = tr.state.facet(historyConfig);
-
-      let fromHist = tr.annotation(fromHistory);
-      if (fromHist) {
-        let selection = tr.docChanged
-          ? EditorSelection.single(changeEnd(tr.changes))
-          : undefined;
-        let item = HistEvent.fromTransaction(tr, cell_id, selection),
-          from = fromHist.side;
-        let other = from == BranchName.Done ? state.undone : state.done;
-        if (item)
-          other = updateBranch(other, other.length, config.minDepth, item);
-        else other = addSelection(other, tr.startState.selection, cell_id);
-        return new HistoryState(
-          from == BranchName.Done ? fromHist.rest : other,
-          from == BranchName.Done ? other : fromHist.rest
-        );
-      }
-
-      let isolate = tr.annotation(isolateHistory);
-      if (isolate == "full" || isolate == "before") state = state.isolate();
-
-      if (tr.annotation(Transaction.addToHistory) === false)
-        return !tr.changes.empty
-          ? state.addMapping(tr.changes.desc, cell_id)
-          : state;
-
-      let event = HistEvent.fromTransaction(tr, cell_id);
-      let time = tr.annotation(Transaction.time)!,
-        userEvent = tr.annotation(Transaction.userEvent);
-      if (event) {
-        state = state.addChanges(
-          event,
-          time,
-          userEvent,
-          config.newGroupDelay,
-          config.minDepth,
-          cell_id
-        );
-      } else if (tr.selection) {
-        state = state.addSelection(
-          tr.startState.selection,
-          time,
-          userEvent,
-          config.newGroupDelay,
-          cell_id
-        );
-      }
-
-      if (isolate == "full" || isolate == "after") state = state.isolate();
+      state = update_from_transaction_with_cell_id(state, tr, cell_id);
     }
 
     return state;
@@ -190,9 +217,11 @@ function cmd(side: BranchName, selection: boolean): StateCommand {
     if (!selection && state.readOnly) return false;
     let historyState = state.field(historyField_, false);
     if (!historyState) return false;
-    console.log(`historyState:`, historyState);
+    // console.trace(`BEFORE:`, {
+    //   done: historyState.done,
+    //   undone: historyState.undone,
+    // });
     let tr = historyState.pop(side, state, selection);
-    console.log(`tr:`, tr);
     if (!tr) return false;
     dispatch(tr);
     return true;
@@ -247,7 +276,7 @@ class HistEvent {
     // selection undo/redo.
     readonly selectionsAfter: readonly EditorSelection[],
 
-    readonly cell_id: string
+    readonly cell_id: HistoryCellId
   ) {}
 
   setSelAfter(after: readonly EditorSelection[]) {
@@ -286,7 +315,7 @@ class HistEvent {
   // there are no changes or effects in the transaction.
   static fromTransaction(
     tr: Transaction,
-    cell_id: string,
+    cell_id: HistoryCellId,
     selection?: EditorSelection
   ) {
     let effects: readonly StateEffect<any>[] = none;
@@ -305,7 +334,10 @@ class HistEvent {
     );
   }
 
-  static selection(selections: readonly EditorSelection[], cell_id: string) {
+  static selection(
+    selections: readonly EditorSelection[],
+    cell_id: HistoryCellId
+  ) {
     return new HistEvent(
       undefined,
       none,
@@ -363,7 +395,7 @@ const MaxSelectionsPerEvent = 200;
 function addSelection(
   branch: Branch,
   selection: EditorSelection,
-  cell_id: string
+  cell_id: HistoryCellId
 ) {
   if (!branch.length) {
     return [HistEvent.selection([selection], cell_id)];
@@ -404,7 +436,7 @@ function popSelection(branch: Branch): Branch {
 function addMappingToBranch(
   branch: Branch,
   mapping: ChangeDesc,
-  cell_id: string
+  cell_id: HistoryCellId
 ) {
   if (!branch.length) return branch;
   let length = branch.length,
@@ -430,7 +462,7 @@ function mapEvent(
   event: HistEvent,
   mapping: ChangeDesc,
   extraSelections: readonly EditorSelection[],
-  cell_id: string
+  cell_id: HistoryCellId
 ) {
   let selections = conc(
     event.selectionsAfter.length
@@ -474,7 +506,7 @@ class HistoryState {
     userEvent: string | undefined,
     newGroupDelay: number,
     maxLen: number,
-    cell_id: string
+    cell_id: HistoryCellId
   ): HistoryState {
     let done = this.done,
       lastEvent = done[done.length - 1];
@@ -515,7 +547,7 @@ class HistoryState {
     time: number,
     userEvent: string | undefined,
     newGroupDelay: number,
-    cell_id: string
+    cell_id: HistoryCellId
   ) {
     let last = this.done.length
       ? this.done[this.done.length - 1].selectionsAfter
@@ -537,7 +569,7 @@ class HistoryState {
     );
   }
 
-  addMapping(mapping: ChangeDesc, cell_id: string): HistoryState {
+  addMapping(mapping: ChangeDesc, cell_id: HistoryCellId): HistoryState {
     return new HistoryState(
       addMappingToBranch(this.done, mapping, cell_id),
       addMappingToBranch(this.undone, mapping, cell_id),
@@ -554,42 +586,50 @@ class HistoryState {
     let branch = side == BranchName.Done ? this.done : this.undone;
     if (branch.length == 0) return null;
     let event = branch[branch.length - 1];
-    console.log(`event:`, event);
     if (selection && event.selectionsAfter.length) {
-      return state.update({
-        effects: [
-          ToCellEffect.of({
-            cell_id: event.cell_id,
-            transaction_spec: {
-              selection:
-                event.selectionsAfter[event.selectionsAfter.length - 1],
-              annotations: fromHistory.of({ side, rest: popSelection(branch) }),
-              userEvent:
-                side == BranchName.Done ? "select.undo" : "select.redo",
-              scrollIntoView: true,
-            },
-          }),
-        ],
-      });
+      // Screw selection stuff for now!
+      return null;
+      // return state.update({
+      //   effects: [
+      //     ToCellEffect.of({
+      //       cell_id: event.cell_id,
+      //       transaction_spec: {
+      //         selection:
+      //           event.selectionsAfter[event.selectionsAfter.length - 1],
+      //         annotations: fromHistory.of({ side, rest: popSelection(branch) }),
+      //         userEvent:
+      //           side == BranchName.Done ? "select.undo" : "select.redo",
+      //         scrollIntoView: true,
+      //       },
+      //     }),
+      //   ],
+      // });
     } else if (!event.changes) {
       return null;
     } else {
       let rest = branch.length == 1 ? none : branch.slice(0, branch.length - 1);
       if (event.mapped)
         rest = addMappingToBranch(rest, event.mapped!, event.cell_id);
+
+      let transaction_spec = {
+        changes: event.changes,
+        selection: event.startSelection,
+        effects: event.effects,
+        annotations: fromHistory.of({ side, rest }),
+        filter: false,
+        userEvent: side == BranchName.Done ? "undo" : "redo",
+        scrollIntoView: true,
+      };
+
+      if (event.cell_id == null) {
+        return state.update(transaction_spec);
+      }
+
       return state.update({
         effects: [
           ToCellEffect.of({
             cell_id: event.cell_id,
-            transaction_spec: {
-              changes: event.changes,
-              selection: event.startSelection,
-              effects: event.effects,
-              annotations: fromHistory.of({ side, rest }),
-              filter: false,
-              userEvent: side == BranchName.Done ? "undo" : "redo",
-              scrollIntoView: true,
-            },
+            transaction_spec: transaction_spec,
           }),
         ],
       });

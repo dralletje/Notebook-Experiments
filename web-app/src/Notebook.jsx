@@ -4,9 +4,9 @@ import { mutate } from "use-immer-store";
 import styled from "styled-components";
 import { Extension } from "codemirror-x-react";
 import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
 import { Inspector } from "./Inspector";
-import { compact, without } from "lodash";
+import { compact, intersection, without } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
@@ -16,6 +16,7 @@ import {
   CellIdOrder,
   child_extension,
   codemirror_nexus,
+  NexusFacet,
   nexus_extension,
 } from "./packages/codemirror-nexus/codemirror-nexus";
 import {
@@ -27,6 +28,14 @@ import {
   history,
   historyKeymap,
 } from "./packages/codemirror-nexus/codemirror-shared-history";
+import { SelectionArea } from "./SelectionArea";
+import {
+  AddCellEffect,
+  NotebookFacet,
+  notebook_in_nexus,
+  RemoveCellEffect,
+} from "./notebook-in-nexus";
+import { deserialize } from "./deserialize-value-to-show";
 
 let CellStyle = styled.div`
   width: min(700px, 100vw - 200px, 100%);
@@ -60,13 +69,18 @@ let CellStyle = styled.div`
     background-color: white;
   }
 
-  padding-bottom: 1rem;
-  &::after {
+  /*
+  &.selected {
+    outline: #20a5ba 1px solid;
+  }
+  */
+
+  &.selected::after {
     content: "";
     position: absolute;
-    inset: 0px;
-    top: calc(100% - 1rem);
-    background-color: #121212;
+    inset: -8px;
+    background-color: #20a5ba24;
+    pointer-events: none;
   }
 `;
 
@@ -76,10 +90,6 @@ let engine_cell_from_notebook_cell = (cell) => {
     result: null,
     running: false,
   };
-};
-
-let error = (message) => {
-  throw new Error(message);
 };
 
 let useCodemirrorExtension = (editorview, extension) => {
@@ -102,6 +112,10 @@ let useCodemirrorExtension = (editorview, extension) => {
   }, [extension]);
 };
 
+let CellListStyle = styled.div`
+  width: min(700px, 100vw - 200px, 100%);
+`;
+
 /**
  * @param {{
  *  notebook: import("./App").Notebook,
@@ -109,25 +123,32 @@ let useCodemirrorExtension = (editorview, extension) => {
  * }} props
  */
 export let CellList = ({ notebook, engine }) => {
+  let [_selected_cells, set_selected_cells] = React.useState(
+    /** @type {import("./App").CellId[]} */ ([])
+  );
+  let selected_cells = intersection(_selected_cells, notebook.cell_order);
+
   // I'm adding `cell_id_order_compartment` here manually (and at construction time) vs. using `useCodemirrorExtension`
   // because else the compartment will only be added after all the extensions from children are added,
   // and they won't have CellIdOrder yet, making things harder...
-  // TODO Maybe I need to add the compartment based on the render? idk, need componentWillMount 🥲
-  let cell_id_order_compartment = React.useRef(new Compartment()).current;
+  // TODO Maybe I need to add the compartment at render time? idk, need componentWillMount 🥲
+  let notebook_compartment = React.useRef(new Compartment()).current;
   let nexus_editorview = React.useMemo(
     () =>
       codemirror_nexus([
-        cell_id_order_compartment.of(CellIdOrder.of(notebook.cell_order)),
+        notebook_compartment.of(NotebookFacet.of(notebook)),
+        CellIdOrder.compute(
+          [NotebookFacet],
+          (state) => state.facet(NotebookFacet).cell_order
+        ),
       ]),
-    [codemirror_nexus, cell_id_order_compartment]
+    [codemirror_nexus, notebook_compartment]
   );
   React.useLayoutEffect(() => {
     nexus_editorview.dispatch?.({
-      effects: cell_id_order_compartment.reconfigure(
-        CellIdOrder.of(notebook.cell_order)
-      ),
+      effects: notebook_compartment.reconfigure(NotebookFacet.of(notebook)),
     });
-  }, [nexus_editorview, notebook.cell_order]);
+  }, [nexus_editorview, notebook]);
 
   useCodemirrorExtension(
     nexus_editorview,
@@ -135,8 +156,9 @@ export let CellList = ({ notebook, engine }) => {
       return keymap.of([
         {
           key: "Mod-s",
-          run: () => {
+          run: ({ state, dispatch }) => {
             console.log("SAVE");
+            let notebook = state.facet(NotebookFacet);
             mutate(notebook.cells, (cells) => {
               let now = Date.now(); // Just in case immer takes a lot of time
               for (let cell of Object.values(cells)) {
@@ -150,82 +172,105 @@ export let CellList = ({ notebook, engine }) => {
           },
         },
       ]);
-    }, [notebook])
+    }, [])
   );
+
+  useCodemirrorExtension(
+    nexus_editorview,
+    React.useMemo(() => {
+      return keymap.of([
+        {
+          key: "Backspace",
+          run: (view) => {
+            // Remove cell
+            view.dispatch({
+              effects: selected_cells.map((cell_id) =>
+                RemoveCellEffect.of({ cell_id: cell_id })
+              ),
+            });
+            return true;
+          },
+        },
+      ]);
+    }, [selected_cells])
+  );
+
+  useCodemirrorExtension(nexus_editorview, notebook_in_nexus);
+
+  // Use the nexus' keymaps as shortcuts!
+  // This passes on keydown events from the document to the nexus for handling.
+  React.useEffect(() => {
+    let fn = (event) => {
+      if (event.defaultPrevented) return;
+      let should_cancel = runScopeHandlers(nexus_editorview, event, "editor");
+      if (should_cancel) {
+        event.preventDefault();
+      }
+    };
+    document.addEventListener("keydown", fn);
+    return () => {
+      document.removeEventListener("keydown", fn);
+    };
+  }, [nexus_editorview]);
 
   let child_plugin = React.useMemo(
     () => child_extension(nexus_editorview),
     [nexus_editorview, child_extension]
   );
+
   return (
-    <div className="App">
-      {notebook.cell_order
-        .map((cell_id) => notebook.cells[cell_id])
-        .map((cell) => (
-          <Cell
-            key={cell.id}
-            cell={cell}
-            cylinder={engine.cylinders[cell.id]}
-            notebook={notebook}
-            maestro_plugin={child_plugin}
-          />
-        ))}
-    </div>
+    <React.Fragment>
+      <CellListStyle>
+        {notebook.cell_order
+          .map((cell_id) => notebook.cells[cell_id])
+          .map((cell) => (
+            <React.Fragment key={cell.id}>
+              <Cell
+                cell={cell}
+                cylinder={engine.cylinders[cell.id]}
+                notebook={notebook}
+                maestro_plugin={child_plugin}
+                is_selected={selected_cells.includes(cell.id)}
+              />
+              <div
+                style={{
+                  height: "1rem",
+                  position: "relative",
+                }}
+                data-can-start-cell-selection
+              >
+                <AddButton
+                  onClick={() => {
+                    let id = uuidv4();
+                    let my_index = notebook.cell_order.indexOf(cell.id);
+
+                    nexus_editorview.dispatch({
+                      effects: AddCellEffect.of({
+                        index: my_index + 1,
+                        cell: {
+                          id: id,
+                          code: "",
+                          unsaved_code: "",
+                          last_run: -Infinity,
+                        },
+                      }),
+                    });
+                  }}
+                >
+                  + <span className="show-me-later">add cell</span>
+                </AddButton>
+              </div>
+            </React.Fragment>
+          ))}
+      </CellListStyle>
+      <SelectionArea
+        cell_order={notebook.cell_order}
+        on_selection={(selected_cells) => {
+          set_selected_cells(selected_cells);
+        }}
+      />
+    </React.Fragment>
   );
-};
-
-let create_function_with_name_and_body = (name, body) => {
-  var func = new Function(`return function ${name}(){ ${body} }`)();
-  return func;
-};
-
-let deserialize = (index, heap, result_heap = {}) => {
-  if (result_heap[index] != null) return result_heap[index];
-
-  let result = heap[index];
-  if (result.type === "object") {
-    let x = {};
-    result_heap[index] = x;
-    for (let { key, value } of result.value) {
-      x[deserialize(key, heap)] = deserialize(value, heap, result_heap);
-    }
-    return x;
-  } else if (result.type === "array") {
-    let xs = [];
-    result_heap[index] = xs;
-    for (let value of result.value) {
-      xs.push(deserialize(value, heap, result_heap));
-    }
-    return xs;
-  } else if (result.type === "string") {
-    return result.value;
-  } else if (result.type === "number") {
-    return result.value;
-  } else if (result.type === "boolean") {
-    return result.value;
-  } else if (result.type === "null") {
-    return null;
-  } else if (result.type === "undefined") {
-    return undefined;
-  } else if (result.type === "function") {
-    return create_function_with_name_and_body(result.name, result.body);
-  } else if (result.type === "symbol") {
-    return Symbol(result.value);
-  } else if (result.type === "date") {
-    return new Date(result.value);
-  } else if (result.type === "regexp") {
-    return new RegExp(result.value.src, result.value.flags);
-  } else if (result.type === "error") {
-    let error = new Error(result.value.message);
-    error.name = result.value.name;
-    error.stack = result.value.stack;
-    console.log(`error:`, error);
-    return error;
-  } else if (result.type === "nan") {
-    return NaN;
-  } else {
-    return { $cant_deserialize: result };
-  }
 };
 
 let InspectorContainer = styled.div`
@@ -259,6 +304,7 @@ let focus_on_scrollIntoView = EditorView.updateListener.of((update) => {
  *  cylinder: import("./App").CylinderShadow,
  *  notebook: import("./App").Notebook,
  *  maestro_plugin: any,
+ *  is_selected: boolean,
  * }} props
  */
 export let Cell = ({
@@ -266,6 +312,7 @@ export let Cell = ({
   cylinder = engine_cell_from_notebook_cell(cell),
   notebook,
   maestro_plugin,
+  is_selected,
 }) => {
   let result_deserialized = React.useMemo(() => {
     if (
@@ -284,6 +331,7 @@ export let Cell = ({
 
   return (
     <CellStyle
+      data-cell-id={cell.id}
       className={compact([
         cylinder.running && "running",
         (cylinder.last_run ?? -Infinity) < (cell.last_run ?? -Infinity) &&
@@ -291,6 +339,7 @@ export let Cell = ({
         cylinder.result?.type === "throw" && "error",
         cylinder.result?.type === "return" && "success",
         cell.unsaved_code !== cell.code && "modified",
+        is_selected && "selected",
       ]).join(" ")}
     >
       {(result_deserialized.type === "return" ||
@@ -352,18 +401,15 @@ export let Cell = ({
               {
                 key: "Backspace",
                 run: (view) => {
+                  let nexus = view.state.facet(NexusFacet);
                   if (view.state.doc.length === 0) {
                     // Focus on previous cell
                     view.dispatch({
                       effects: [MoveUpEffect.of({ start: "end" })],
                     });
                     // Remove cell
-                    mutate(notebook, (notebook) => {
-                      notebook.cell_order = without(
-                        notebook.cell_order,
-                        cell.id
-                      );
-                      delete notebook.cells[cell.id];
+                    nexus.dispatch({
+                      effects: [RemoveCellEffect.of({ cell_id: cell.id })],
                     });
                     return true;
                   } else {
@@ -375,24 +421,6 @@ export let Cell = ({
           )}
         />
       </CellEditor>
-
-      <AddButton
-        onClick={() => {
-          mutate(notebook, (notebook) => {
-            let id = uuidv4();
-            notebook.cells[id] = {
-              id: id,
-              code: "",
-              unsaved_code: "",
-              last_run: -Infinity,
-            };
-            let my_index = notebook.cell_order.indexOf(cell.id);
-            notebook.cell_order.splice(my_index + 1, 0, id);
-          });
-        }}
-      >
-        + <span className="show-me-later">add cell</span>
-      </AddButton>
     </CellStyle>
   );
 };
@@ -411,9 +439,12 @@ let AddButton = styled.button`
   flex-direction: row;
   align-items: center;
 
-  display: none;
-  ${CellStyle}:hover & {
-    display: block;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  ${CellStyle}:hover + div > &,
+  div:hover > &,
+  div:has(+ ${CellStyle}:hover) & {
+    opacity: 1;
   }
 
   & .show-me-later {

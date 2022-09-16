@@ -106,7 +106,11 @@ function App() {
     socket.emit("notebook", notebook);
   }, [notebook]);
 
-  return <CellList notebook={notebook} engine={engine} />;
+  return (
+    <div className="App" data-can-start-cell-selection>
+      <CellList notebook={notebook} engine={engine} />
+    </div>
+  );
 }
 
 export default App;

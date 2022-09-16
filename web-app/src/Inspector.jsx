@@ -24,8 +24,6 @@ let InspectorStyle = styled.div`
     margin-right: 4px;
     vertical-align: baseline;
   }
-  .observablehq--inspect {
-  }
 
   & .observablehq--inspect {
     /* Makes the whole inspector flow like text */
