@@ -35,16 +35,24 @@ import {
 import { SelectionArea } from "./SelectionArea";
 import {
   AddCellEffect,
+  MoveCellEffect,
   NotebookFacet,
   notebook_in_nexus,
   RemoveCellEffect,
 } from "./notebook-in-nexus";
 import { deserialize } from "./deserialize-value-to-show";
 
+import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
+import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
+import { codemirror_interactive } from "./packages/codemirror-interactive/codemirror-interactive";
+
 let CellStyle = styled.div`
   width: min(700px, 100vw - 200px, 100%);
 
-  background-color: rgba(0, 0, 0, 0.4);
+  /* background-color: rgba(0, 0, 0, 0.4); */
+  /* I like transparency better for when the backdrop color changes
+     but it isn't great when dragging */
+  background-color: #0b0b0b;
 
   font-family: Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro",
     monospace;
@@ -56,6 +64,7 @@ let CellStyle = styled.div`
   position: relative;
   &::before {
     content: "";
+    pointer-events: none;
     position: absolute;
     left: -10px;
     right: 100%;
@@ -85,6 +94,18 @@ let CellStyle = styled.div`
     inset: -8px;
     background-color: #20a5ba24;
     pointer-events: none;
+  }
+
+  border-radius: 3px;
+  box-shadow: rgba(255, 255, 255, 0) 0px 0px 20px;
+  transform: scale(1);
+  transform-origin: center left;
+
+  transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+
+  .dragging & {
+    box-shadow: rgba(255, 255, 255, 0.1) 0px 0px 20px;
+    transform: scale(1.05);
   }
 `;
 
@@ -118,6 +139,9 @@ let useCodemirrorExtension = (editorview, extension) => {
 
 let CellListStyle = styled.div`
   width: min(700px, 100vw - 200px, 100%);
+  display: flex;
+  flex-direction: column;
+  /* gap: 1rem; */
 `;
 
 /**
@@ -248,49 +272,95 @@ export let CellList = ({ notebook, engine }) => {
 
   return (
     <React.Fragment>
-      <CellListStyle>
-        {notebook.cell_order
-          .map((cell_id) => notebook.cells[cell_id])
-          .map((cell) => (
-            <React.Fragment key={cell.id}>
-              <Cell
-                cell={cell}
-                cylinder={engine.cylinders[cell.id]}
-                notebook={notebook}
-                maestro_plugin={child_plugin}
-                is_selected={selected_cells.includes(cell.id)}
-              />
-              <div
-                style={{
-                  height: "1rem",
-                  position: "relative",
-                }}
-                data-can-start-cell-selection
-              >
-                <AddButton
-                  onClick={() => {
-                    let id = uuidv4();
-                    let my_index = notebook.cell_order.indexOf(cell.id);
+      <DragDropContext
+        onDragEnd={({ draggableId, destination, source }) => {
+          if (destination) {
+            nexus_editorview.dispatch({
+              effects: MoveCellEffect.of({
+                cell_id: draggableId,
+                from: source.index,
+                to: destination.index,
+              }),
+            });
+          }
+        }}
+      >
+        <Droppable droppableId="cells">
+          {(provided) => (
+            <CellListStyle {...provided.droppableProps} ref={provided.innerRef}>
+              {notebook.cell_order
+                .map((cell_id) => notebook.cells[cell_id])
+                .map((cell, index) => (
+                  <React.Fragment key={cell.id}>
+                    <Draggable draggableId={cell.id} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={snapshot.isDragging ? "dragging" : ""}
+                          style={{
+                            display: "flex",
+                            flexDirection: "row",
+                            alignItems: "stretch",
+                            marginBottom: "1rem",
+                            // overflow: "hidden",
+                            // maxHeight: snapshot.isDragging
+                            //   ? "400px"
+                            //   : undefined,
+                            ...provided.draggableProps.style,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 50,
+                            }}
+                            {...provided.dragHandleProps}
+                          ></div>
+                          <Cell
+                            cell={cell}
+                            cylinder={engine.cylinders[cell.id]}
+                            notebook={notebook}
+                            maestro_plugin={child_plugin}
+                            is_selected={selected_cells.includes(cell.id)}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                    <div
+                      style={{
+                        height: 0,
+                        position: "relative",
+                      }}
+                      data-can-start-cell-selection
+                    >
+                      <AddButton
+                        onClick={() => {
+                          let id = uuidv4();
+                          let my_index = notebook.cell_order.indexOf(cell.id);
 
-                    nexus_editorview.dispatch({
-                      effects: AddCellEffect.of({
-                        index: my_index + 1,
-                        cell: {
-                          id: id,
-                          code: "",
-                          unsaved_code: "",
-                          last_run: -Infinity,
-                        },
-                      }),
-                    });
-                  }}
-                >
-                  + <span className="show-me-later">add cell</span>
-                </AddButton>
-              </div>
-            </React.Fragment>
-          ))}
-      </CellListStyle>
+                          nexus_editorview.dispatch({
+                            effects: AddCellEffect.of({
+                              index: my_index + 1,
+                              cell: {
+                                id: id,
+                                code: "",
+                                unsaved_code: "",
+                                last_run: -Infinity,
+                              },
+                            }),
+                          });
+                        }}
+                      >
+                        + <span className="show-me-later">add cell</span>
+                      </AddButton>
+                    </div>
+                  </React.Fragment>
+                ))}
+              {provided.placeholder}
+            </CellListStyle>
+          )}
+        </Droppable>
+      </DragDropContext>
       <SelectionArea
         cell_order={notebook.cell_order}
         on_selection={(selected_cells) => {
@@ -395,6 +465,7 @@ export let Cell = ({
           });
         }}
       >
+        {/* <Extension extension={codemirror_interactive} /> */}
         {/* <Extension extension={debug_syntax_plugin} /> */}
         {/* <Extension extension={inline_notebooks_extension} /> */}
         <Extension extension={CellIdFacet.of(cell.id)} />
@@ -469,9 +540,9 @@ let AddButton = styled.button`
 
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
-  ${CellStyle}:hover + div > &,
+  *:hover + div > &,
   div:hover > &,
-  div:has(+ ${CellStyle}:hover) & {
+  div:has(+ *:hover) & {
     opacity: 1;
   }
 

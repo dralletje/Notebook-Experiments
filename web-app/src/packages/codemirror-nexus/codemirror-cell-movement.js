@@ -251,9 +251,8 @@ export let cell_movement_extension = [
         // Eventually I should copy a modified version of moveVertically into here, but for now this will do.
 
         if (effect.is(MoveFromBelowEffect)) {
-          console.log("Move Below from");
-
           let { start } = effect.value;
+          console.log("Move Below from", start);
 
           if (start === "end") {
             view.dispatch({
@@ -268,14 +267,29 @@ export let cell_movement_extension = [
               selection: EditorSelection.cursor(state.doc.length),
             });
           } else {
+            console.log("Tryinna get goal column");
             let rect = view.contentDOM.getBoundingClientRect();
-            let new_selection = view.posAtCoords(
+            console.log(`rect:`, rect);
+            console.log(
+              `{
+                x: rect.left + (start.goalColumn ?? rect.width),
+                y: rect.bottom - view.defaultLineHeight,
+              }:`,
               {
                 x: rect.left + (start.goalColumn ?? rect.width),
                 y: rect.bottom - view.defaultLineHeight,
+              }
+            );
+            let where = view.coordsAtPos(view.state.doc.length);
+            console.log(`where:`, where);
+            let new_selection = view.posAtCoords(
+              {
+                x: rect.left + (start.goalColumn ?? rect.width),
+                y: where?.bottom ?? rect.bottom - 2 * view.defaultLineHeight,
               },
               false
             );
+            console.log(`new_selection:`, new_selection);
             view.dispatch({
               selection: EditorSelection.cursor(new_selection),
             });

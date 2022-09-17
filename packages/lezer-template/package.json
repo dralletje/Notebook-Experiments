@@ -1,0 +1,14 @@
+{
+  "name": "lezer-template",
+  "version": "1.0.0",
+  "main": "lezer-template.js",
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "@codemirror/lang-javascript": "^6.0.2",
+    "@codemirror/state": "^6.1.1",
+    "@lezer/common": "^1.0.1",
+    "lodash": "^4.17.21",
+    "many-keys-weakmap": "^1.0.0"
+  }
+}

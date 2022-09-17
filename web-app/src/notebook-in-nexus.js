@@ -16,6 +16,9 @@ export let AddCellEffect = StateEffect.define();
 /** @type {StateEffectType<{ cell_id: import("./App").CellId }>} */
 export let RemoveCellEffect = StateEffect.define();
 
+/** @type {StateEffectType<{ cell_id: import("./App").CellId, from: number, to: number }>} */
+export let MoveCellEffect = StateEffect.define();
+
 /** @type {Facet<import("./App").Notebook, import("./App").Notebook>} */
 export let NotebookFacet = Facet.define({
   combine: (x) => x[0],
@@ -40,6 +43,20 @@ let mutate_notebook_on_add_or_remove = EditorView.updateListener.of(
           mutate(notebook, (notebook) => {
             delete notebook.cells[cell_id];
             notebook.cell_order = without(notebook.cell_order, cell_id);
+          });
+        }
+
+        if (effect.is(MoveCellEffect)) {
+          let { cell_id, from, to } = effect.value;
+          console.log(`MOVE CELL EFFECT cell_id, from, to:`, cell_id, from, to);
+          mutate(notebook, (notebook) => {
+            let [cell_id_we_removed] = notebook.cell_order.splice(from, 1);
+            if (cell_id_we_removed !== cell_id) {
+              // prettier-ignore
+              throw new Error(`cell_id_we_removed !== cell_id: ${cell_id_we_removed} !== ${cell_id}`);
+            }
+
+            notebook.cell_order.splice(to, 0, cell_id);
           });
         }
       }
@@ -95,6 +112,16 @@ let invert_removing_and_adding_cells = invertedEffects.of((transaction) => {
         AddCellEffect.of({
           index,
           cell,
+        })
+      );
+    }
+    if (effect.is(MoveCellEffect)) {
+      let { cell_id, from, to } = effect.value;
+      inverted_effects.push(
+        MoveCellEffect.of({
+          cell_id,
+          from: to,
+          to: from,
         })
       );
     }
