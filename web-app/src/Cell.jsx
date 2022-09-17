@@ -5,6 +5,7 @@ import { tags } from "@lezer/highlight";
 import { iterate_with_cursor } from "dral-lezer-helpers";
 import { EditorState, Facet, Prec } from "@codemirror/state";
 import { isEqual } from "lodash";
+import { javascriptLanguage } from "@codemirror/lang-javascript";
 
 export const syntax_colors = HighlightStyle.define(
   [
