@@ -1,36 +1,10 @@
-import React from "react";
-import styled from "styled-components";
-
-import { CodeMirror, useEditorView, Extension } from "codemirror-x-react";
-import {
-  Decoration,
-  EditorView,
-  keymap,
-  placeholder,
-  ViewPlugin,
-} from "@codemirror/view";
-import {
-  HighlightStyle,
-  syntaxHighlighting,
-  syntaxTree,
-} from "@codemirror/language";
+import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
+import { HighlightStyle, syntaxTree } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
-import { javascript, javascriptLanguage } from "@codemirror/lang-javascript";
-import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
+
 import { iterate_with_cursor } from "dral-lezer-helpers";
 import { EditorState, Facet, Prec } from "@codemirror/state";
 import { isEqual } from "lodash";
-
-export let CssEditorStyled = styled.div`
-  /* display: contents; */
-
-  --code-background: rgba(0, 0, 0, 0.4);
-  height: 100%;
-
-  & .cm-content {
-    padding: 16px !important;
-  }
-`;
 
 export const syntax_colors = HighlightStyle.define(
   [
@@ -174,44 +148,3 @@ export const input_variables_extension = ViewPlugin.fromClass(
     },
   }
 );
-
-export let CellEditor = ({ value, onChange, input_variables, children }) => {
-  let editor_state = useEditorView({
-    code: value,
-  });
-  return (
-    <CssEditorStyled>
-      <CodeMirror editor_state={editor_state}>
-        <Extension extension={javascript()} deps={[]} />
-
-        <Extension
-          extension={InputVariablesFacet.of(input_variables)}
-          deps={[input_variables]}
-        />
-        <Extension
-          extension={Prec.highest(input_variables_extension)}
-          deps={[input_variables_extension]}
-        />
-
-        <Extension
-          extension={syntaxHighlighting(syntax_colors)}
-          deps={[syntax_colors]}
-        />
-        <Extension
-          extension={placeholder("The rest is still unwritten...")}
-          deps={[]}
-        />
-        <Extension
-          extension={EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
-              // set_unsaved(update.state.doc.toString());
-              onChange?.(update.state.doc.toString());
-            }
-          })}
-          deps={[onChange]}
-        />
-        {children}
-      </CodeMirror>
-    </CssEditorStyled>
-  );
-};

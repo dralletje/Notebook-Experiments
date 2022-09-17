@@ -1,16 +1,21 @@
 import React from "react";
-import { CellEditor } from "./Cell";
+import { syntax_colors } from "./Cell";
 import { mutate } from "use-immer-store";
-import styled from "styled-components";
-import { Extension } from "codemirror-x-react";
+import styled, { keyframes } from "styled-components";
+import { CodeMirror, Extension, useEditorView } from "codemirror-x-react";
 import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
-import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
+import {
+  EditorView,
+  keymap,
+  placeholder,
+  runScopeHandlers,
+} from "@codemirror/view";
 import { Inspector } from "./Inspector";
 import { compact, intersection, without } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
-import { indentUnit } from "@codemirror/language";
+import { indentUnit, syntaxHighlighting } from "@codemirror/language";
 import {
   CellIdFacet,
   CellIdOrder,
@@ -46,8 +51,12 @@ import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
 import { codemirror_interactive } from "./packages/codemirror-interactive/codemirror-interactive";
 
+import { Flipper, Flipped } from "react-flip-toolkit";
+import { javascript } from "@codemirror/lang-javascript";
+
 let CellStyle = styled.div`
-  width: min(700px, 100vw - 200px, 100%);
+  /* width: min(700px, 100vw - 200px, 100%); */
+  flex: 1;
 
   /* background-color: rgba(0, 0, 0, 0.4); */
   /* I like transparency better for when the backdrop color changes
@@ -117,6 +126,48 @@ let engine_cell_from_notebook_cell = (cell) => {
   };
 };
 
+let DragAndDropListStyle = styled.div`
+  width: min(700px, 100vw - 200px, 100%);
+  display: flex;
+  flex-direction: column;
+`;
+
+let DragAndDropList = ({ children, nexus_editorview, cell_order }) => {
+  return (
+    <DragDropContext
+      onDragEnd={({ draggableId, destination, source }) => {
+        if (destination) {
+          nexus_editorview.dispatch({
+            effects: MoveCellEffect.of({
+              cell_id: draggableId,
+              from: source.index,
+              to: destination.index,
+            }),
+          });
+        }
+      }}
+    >
+      <Droppable droppableId="cells">
+        {(provided) => (
+          <DragAndDropListStyle
+            {...provided.droppableProps}
+            ref={provided.innerRef}
+          >
+            <Flipper
+              flipKey={cell_order.join(",")}
+              spring={"stiff"}
+              data-can-start-cell-selection
+            >
+              <div data-can-start-cell-selection>{children}</div>
+            </Flipper>
+            {provided.placeholder}
+          </DragAndDropListStyle>
+        )}
+      </Droppable>
+    </DragDropContext>
+  );
+};
+
 let useCodemirrorExtension = (editorview, extension) => {
   let compartment = React.useRef(new Compartment()).current;
   React.useLayoutEffect(() => {
@@ -136,13 +187,6 @@ let useCodemirrorExtension = (editorview, extension) => {
     });
   }, [extension]);
 };
-
-let CellListStyle = styled.div`
-  width: min(700px, 100vw - 200px, 100%);
-  display: flex;
-  flex-direction: column;
-  /* gap: 1rem; */
-`;
 
 /**
  * @param {{
@@ -270,97 +314,107 @@ export let CellList = ({ notebook, engine }) => {
     [nexus_editorview, child_extension]
   );
 
+  let [last_created_cells, set_last_created_cells] = React.useState(
+    /** @type {any[]} */ ([])
+  );
+  useCodemirrorExtension(
+    nexus_editorview,
+    React.useMemo(
+      () =>
+        EditorView.updateListener.of((update) => {
+          let created_cells = update.transactions.flatMap((transaction) =>
+            transaction.effects
+              .filter((x) => x.is(AddCellEffect))
+              .map((x) => x.value.cell.id)
+          );
+          if (created_cells.length !== 0) {
+            console.log(`created_cells:`, created_cells);
+            set_last_created_cells(created_cells);
+          }
+        }),
+      [set_last_created_cells]
+    )
+  );
+
   return (
     <React.Fragment>
-      <DragDropContext
-        onDragEnd={({ draggableId, destination, source }) => {
-          if (destination) {
-            nexus_editorview.dispatch({
-              effects: MoveCellEffect.of({
-                cell_id: draggableId,
-                from: source.index,
-                to: destination.index,
-              }),
-            });
-          }
-        }}
+      <DragAndDropList
+        cell_order={notebook.cell_order}
+        nexus_editorview={nexus_editorview}
       >
-        <Droppable droppableId="cells">
-          {(provided) => (
-            <CellListStyle {...provided.droppableProps} ref={provided.innerRef}>
-              {notebook.cell_order
-                .map((cell_id) => notebook.cells[cell_id])
-                .map((cell, index) => (
-                  <React.Fragment key={cell.id}>
-                    <Draggable draggableId={cell.id} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          className={snapshot.isDragging ? "dragging" : ""}
-                          style={{
-                            display: "flex",
-                            flexDirection: "row",
-                            alignItems: "stretch",
-                            marginBottom: "1rem",
-                            // overflow: "hidden",
-                            // maxHeight: snapshot.isDragging
-                            //   ? "400px"
-                            //   : undefined,
-                            ...provided.draggableProps.style,
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 50,
-                            }}
-                            {...provided.dragHandleProps}
-                          ></div>
-                          <Cell
-                            cell={cell}
-                            cylinder={engine.cylinders[cell.id]}
-                            notebook={notebook}
-                            maestro_plugin={child_plugin}
-                            is_selected={selected_cells.includes(cell.id)}
-                          />
-                        </div>
-                      )}
-                    </Draggable>
+        {notebook.cell_order
+          .map((cell_id) => notebook.cells[cell_id])
+          .map((cell, index) => (
+            <React.Fragment key={cell.id}>
+              <Draggable draggableId={cell.id} index={index}>
+                {(provided, snapshot) => (
+                  <Flipped flipId={cell.id}>
                     <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      className={
+                        snapshot.isDragging && !snapshot.dropAnimation
+                          ? "dragging"
+                          : ""
+                      }
                       style={{
-                        height: 0,
-                        position: "relative",
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "stretch",
+                        marginBottom: "1rem",
+                        ...provided.draggableProps.style,
                       }}
-                      data-can-start-cell-selection
                     >
-                      <AddButton
-                        onClick={() => {
-                          let id = uuidv4();
-                          let my_index = notebook.cell_order.indexOf(cell.id);
-
-                          nexus_editorview.dispatch({
-                            effects: AddCellEffect.of({
-                              index: my_index + 1,
-                              cell: {
-                                id: id,
-                                code: "",
-                                unsaved_code: "",
-                                last_run: -Infinity,
-                              },
-                            }),
-                          });
+                      <div
+                        style={{
+                          width: 50,
                         }}
-                      >
-                        + <span className="show-me-later">add cell</span>
-                      </AddButton>
+                        {...provided.dragHandleProps}
+                      ></div>
+                      <Cell
+                        cell={cell}
+                        cylinder={engine.cylinders[cell.id]}
+                        notebook={notebook}
+                        maestro_plugin={child_plugin}
+                        is_selected={selected_cells.includes(cell.id)}
+                        did_just_get_created={last_created_cells.includes(
+                          cell.id
+                        )}
+                      />
                     </div>
-                  </React.Fragment>
-                ))}
-              {provided.placeholder}
-            </CellListStyle>
-          )}
-        </Droppable>
-      </DragDropContext>
+                  </Flipped>
+                )}
+              </Draggable>
+              <div
+                style={{
+                  height: 0,
+                  position: "relative",
+                }}
+              >
+                <AddButton
+                  onClick={() => {
+                    let id = uuidv4();
+                    let my_index = notebook.cell_order.indexOf(cell.id);
+
+                    nexus_editorview.dispatch({
+                      effects: AddCellEffect.of({
+                        index: my_index + 1,
+                        cell: {
+                          id: id,
+                          code: "",
+                          unsaved_code: "",
+                          last_run: -Infinity,
+                        },
+                      }),
+                    });
+                  }}
+                >
+                  + <span className="show-me-later">add cell</span>
+                </AddButton>
+              </div>
+            </React.Fragment>
+          ))}
+      </DragAndDropList>
       <SelectionArea
         cell_order={notebook.cell_order}
         on_selection={(selected_cells) => {
@@ -396,6 +450,12 @@ let focus_on_scrollIntoView = EditorView.updateListener.of((update) => {
   }
 });
 
+export let EditorStyled = styled.div`
+  & .cm-content {
+    padding: 16px !important;
+  }
+`;
+
 /**
  * @param {{
  *  cell: import("./App").Cell,
@@ -403,6 +463,7 @@ let focus_on_scrollIntoView = EditorView.updateListener.of((update) => {
  *  notebook: import("./App").Notebook,
  *  maestro_plugin: any,
  *  is_selected: boolean,
+ *  did_just_get_created: boolean,
  * }} props
  */
 export let Cell = ({
@@ -411,7 +472,14 @@ export let Cell = ({
   notebook,
   maestro_plugin,
   is_selected,
+  did_just_get_created,
 }) => {
+  let editor_state = useEditorView({
+    code: cell.unsaved_code,
+  });
+  // prettier-ignore
+  let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
+
   let result_deserialized = React.useMemo(() => {
     if (
       cylinder?.result?.type === "return" ||
@@ -427,8 +495,32 @@ export let Cell = ({
     }
   }, [cylinder?.result]);
 
+  /** @type {import("react").MutableRefObject<HTMLDivElement>} */
+  let cell_wrapper_ref = React.useRef(/** @type {any} */ (null));
+  React.useEffect(() => {
+    if (did_just_get_created) {
+      editorview_ref.current.focus();
+      cell_wrapper_ref.current.animate(
+        [
+          {
+            clipPath: `inset(100% 0 0 0)`,
+            transform: "translateY(-100%)",
+          },
+          {
+            clipPath: `inset(0 0 0 0)`,
+            transform: "translateY(0%)",
+          },
+        ],
+        {
+          duration: 200,
+        }
+      );
+    }
+  }, []);
+
   return (
     <CellStyle
+      ref={cell_wrapper_ref}
       data-cell-id={cell.id}
       className={compact([
         cylinder.running && "running",
@@ -456,70 +548,84 @@ export let Cell = ({
         <Inspector value={result_deserialized} />
       </InspectorContainer>
 
-      <CellEditor
-        value={cell.unsaved_code}
-        input_variables={[]}
-        onChange={(value) => {
-          mutate(cell, (cell) => {
-            cell.unsaved_code = value;
-          });
-        }}
-      >
-        {/* <Extension extension={codemirror_interactive} /> */}
-        {/* <Extension extension={debug_syntax_plugin} /> */}
-        {/* <Extension extension={inline_notebooks_extension} /> */}
-        <Extension extension={CellIdFacet.of(cell.id)} />
-        <Extension extension={maestro_plugin} />
+      <EditorStyled>
+        <CodeMirror editor_state={editor_state} ref={editorview_ref}>
+          <Extension extension={javascript()} deps={[]} />
+          <Extension
+            extension={syntaxHighlighting(syntax_colors)}
+            deps={[syntax_colors]}
+          />
+          <Extension
+            extension={placeholder("The rest is still unwritten...")}
+            deps={[]}
+          />
+          <Extension
+            extension={EditorView.updateListener.of((update) => {
+              if (update.docChanged) {
+                mutate(cell, (cell) => {
+                  cell.unsaved_code = update.state.doc.toString();
+                });
+              }
+            })}
+            deps={[]}
+          />
 
-        <Extension extension={blur_when_other_cell_focus} />
-        <Extension extension={focus_on_scrollIntoView} />
-        <Extension extension={nexus_extension(history())} deps={[history]} />
-        <Extension
-          extension={nexus_extension(keymap.of(historyKeymap))}
-          deps={[historyKeymap]}
-        />
+          {/* <Extension extension={codemirror_interactive} /> */}
+          {/* <Extension extension={debug_syntax_plugin} /> */}
+          {/* <Extension extension={inline_notebooks_extension} /> */}
+          <Extension extension={CellIdFacet.of(cell.id)} />
+          <Extension extension={maestro_plugin} />
 
-        <Extension extension={cell_movement_extension} />
-        <Extension extension={awesome_line_wrapping} />
-        <Extension extension={EditorState.tabSize.of(4)} deps={[]} />
-        <Extension extension={indentUnit.of("\t")} deps={[]} />
-        <Extension
-          extension={Prec.high(
-            keymap.of([
-              {
-                key: "Shift-Enter",
-                run: (view) => {
-                  mutate(cell, (cell) => {
-                    cell.code = cell.unsaved_code;
-                    cell.is_waiting = true;
-                    cell.last_run = Date.now();
-                  });
-                  return true;
-                },
-              },
-              {
-                key: "Backspace",
-                run: (view) => {
-                  let nexus = view.state.facet(NexusFacet);
-                  if (view.state.doc.length === 0) {
-                    // Focus on previous cell
-                    view.dispatch({
-                      effects: [MoveUpEffect.of({ start: "end" })],
-                    });
-                    // Remove cell
-                    nexus.dispatch({
-                      effects: [RemoveCellEffect.of({ cell_id: cell.id })],
+          <Extension extension={blur_when_other_cell_focus} />
+          <Extension extension={focus_on_scrollIntoView} />
+          <Extension extension={nexus_extension(history())} deps={[history]} />
+          <Extension
+            extension={nexus_extension(keymap.of(historyKeymap))}
+            deps={[historyKeymap]}
+          />
+
+          <Extension extension={cell_movement_extension} />
+          <Extension extension={awesome_line_wrapping} />
+          <Extension extension={EditorState.tabSize.of(4)} deps={[]} />
+          <Extension extension={indentUnit.of("\t")} deps={[]} />
+          <Extension
+            extension={Prec.high(
+              keymap.of([
+                {
+                  key: "Shift-Enter",
+                  run: (view) => {
+                    mutate(cell, (cell) => {
+                      cell.code = cell.unsaved_code;
+                      cell.is_waiting = true;
+                      cell.last_run = Date.now();
                     });
                     return true;
-                  } else {
-                    return false;
-                  }
+                  },
                 },
-              },
-            ])
-          )}
-        />
-      </CellEditor>
+                {
+                  key: "Backspace",
+                  run: (view) => {
+                    let nexus = view.state.facet(NexusFacet);
+                    if (view.state.doc.length === 0) {
+                      // Focus on previous cell
+                      view.dispatch({
+                        effects: [MoveUpEffect.of({ start: "end" })],
+                      });
+                      // Remove cell
+                      nexus.dispatch({
+                        effects: [RemoveCellEffect.of({ cell_id: cell.id })],
+                      });
+                      return true;
+                    } else {
+                      return false;
+                    }
+                  },
+                },
+              ])
+            )}
+          />
+        </CodeMirror>
+      </EditorStyled>
     </CellStyle>
   );
 };
