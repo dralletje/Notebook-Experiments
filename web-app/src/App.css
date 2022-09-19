@@ -1,10 +1,3 @@
-.App {
-  padding-top: 100px;
-  padding-left: 100px;
-  min-height: 100vh;
-  padding-bottom: 100px;
-}
-
 :root {
   /* code highlighting */
   --cm-editor-text-color: #ffe9fc;
@@ -33,4 +26,27 @@
   --cm-selection-background-blurred: hsl(215deg 0% 59% / 48%);
 
   color-scheme: light dark;
+}
+
+@keyframes shake {
+  10%,
+  90% {
+    transform: scale(1.05) translate3d(-1px, 0, 0) rotateZ(-1deg);
+  }
+
+  20%,
+  80% {
+    transform: scale(1.05) translate3d(2px, 0, 0) rotateZ(2deg);
+  }
+
+  30%,
+  50%,
+  70% {
+    transform: scale(1.05) translate3d(-4px, 0, 0) rotateZ(0deg);
+  }
+
+  40%,
+  60% {
+    transform: scale(1.05) translate3d(4px, 0, 0) rotateZ(1deg);
+  }
 }

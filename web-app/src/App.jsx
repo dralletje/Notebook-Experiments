@@ -5,6 +5,10 @@ import { mutate, useMutateable } from "use-immer-store";
 
 import { io, Socket } from "socket.io-client";
 import { CellList } from "./Notebook";
+import styled from "styled-components";
+import { deserialize } from "./deserialize-value-to-show";
+
+import dot from "@observablehq/graphviz";
 
 /**
  * @typedef EngineShadow
@@ -33,6 +37,71 @@ import { CellList } from "./Notebook";
  * @property {boolean} [is_waiting]
  */
 
+let AppStyle = styled.div`
+  padding-top: 100px;
+  min-height: 100vh;
+  padding-bottom: 100px;
+  margin-right: 20px;
+`;
+
+let MyButton = styled.button`
+  font-size: 0.6rem;
+  hyphens: auto;
+  text-align: center;
+  border: none;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  &.active {
+    background-color: #e6e6e6;
+    color: black;
+  }
+`;
+
+let DependenciesTab = () => {
+  return (
+    <div style={{ padding: 16 }}>
+      <h1>Dependencies</h1>
+    </div>
+  );
+};
+
+let GraphTab = ({ dag }) => {
+  let ref = React.useRef();
+  React.useEffect(() => {
+    console.log(`engine:`, dag);
+    let element = dot`
+      digraph {
+        ${Object.values(dag)
+          .flatMap((from) => from.out.map((to) => `"${from.id}" -> "${to.id}"`))
+          .join("\n")}
+      }
+    `;
+    console.log(`element:`, element);
+    // Remove children
+    while (ref.current.firstChild) {
+      ref.current.removeChild(ref.current.firstChild);
+    }
+    ref.current.appendChild(element);
+  }, [dag]);
+  return (
+    <div style={{ padding: 16 }}>
+      <h1>Graph</h1>
+      <div ref={ref}></div>
+    </div>
+  );
+};
+
+let ShellTab = () => {
+  return (
+    <div style={{ padding: 16 }}>
+      <h1>Shell</h1>
+    </div>
+  );
+};
+
 function App() {
   let [_notebook, _set_notebook] = React.useState(
     /** @type {Notebook} */ ({
@@ -47,8 +116,8 @@ function App() {
         },
         2: {
           id: "2",
-          code: "xs = [1,2,3,4]",
-          unsaved_code: "xs = [1,2,3,4]",
+          code: "let xs = [1,2,3,4]",
+          unsaved_code: "let xs = [1,2,3,4]",
           last_run: Date.now(),
         },
       },
@@ -104,9 +173,80 @@ function App() {
     socket.emit("notebook", notebook);
   }, [notebook]);
 
+  let [open_tab, set_open_tab] = React.useState(
+    /** @type {null | "graph" | "dependencies" | "shell"} */
+    (null)
+  );
+
+  // @ts-ignore
+  let dag = React.useMemo(
+    // @ts-ignore
+    () => (engine.dag == null ? null : deserialize(0, engine.dag)),
+    // @ts-ignore
+    [engine.dag]
+  );
+
   return (
-    <div className="App" data-can-start-cell-selection>
-      <CellList notebook={notebook} engine={engine} />
+    <div style={{ display: "flex" }}>
+      <AppStyle style={{ flex: 1 }} data-can-start-cell-selection>
+        <CellList notebook={notebook} engine={engine} />
+      </AppStyle>
+      {open_tab != null && (
+        <div
+          style={{
+            width: 400,
+            backgroundColor: "rgba(255,255,255,.05)",
+            height: "100vh",
+            position: "sticky",
+            top: 0,
+          }}
+        >
+          {open_tab === "graph" && <GraphTab dag={dag} />}
+          {open_tab === "dependencies" && <DependenciesTab />}
+          {open_tab === "shell" && <ShellTab />}
+        </div>
+      )}
+      <div
+        style={{
+          width: 50,
+          backgroundColor: "rgba(0,0,0,.4)",
+          height: "100vh",
+          position: "sticky",
+          top: 0,
+
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          alignItems: "stretch",
+          paddingTop: 32,
+          paddingBottom: 32,
+        }}
+      >
+        <MyButton
+          className={open_tab === "graph" ? "active" : ""}
+          onClick={() => {
+            set_open_tab((x) => (x === "graph" ? null : "graph"));
+          }}
+        >
+          graph
+        </MyButton>
+        <MyButton
+          className={open_tab === "dependencies" ? "active" : ""}
+          onClick={() => {
+            set_open_tab((x) => (x === "dependencies" ? null : "dependencies"));
+          }}
+        >
+          dependencies
+        </MyButton>
+        <MyButton
+          className={open_tab === "shell" ? "active" : ""}
+          onClick={() => {
+            set_open_tab((x) => (x === "shell" ? null : "shell"));
+          }}
+        >
+          shell
+        </MyButton>
+      </div>
     </div>
   );
 }

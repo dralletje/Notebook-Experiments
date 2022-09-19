@@ -51,6 +51,7 @@ const io = new Server(server, {
  * @typedef Engine
  * @property {{ [cell_id: CellId]: Cylinder }} cylinders
  * @property {number} internal_run_counter
+ * @property {{ [key: CellId]: DAGElement }} dag
  *
  * @typedef Cylinder
  * @property {string} id
@@ -65,6 +66,10 @@ const io = new Server(server, {
  * @property {{
  *  input: string,
  *  output: { code: string, consumed_names: string[], created_names: string[], last_created_name: string?, map: any },
+ *  error?: null,
+ * } | {
+ *  input: string,
+ *  output?: null,
  *  error: Error,
  * }} __transformed_code_cache__
  */
@@ -357,6 +362,10 @@ let try_with_default = (fn, def) => {
   }
 };
 
+/**
+ * @param {Notebook} notebook
+ * @param {Engine} engine
+ */
 let parse_all_cells = (notebook, engine) => {
   for (let [key, cell] of Object.entries(notebook.cells)) {
     let cylinder = engine.cylinders[key] ?? { id: key };
@@ -400,6 +409,10 @@ let parse_all_cells = (notebook, engine) => {
 
     engine.cylinders[key] = cylinder;
   }
+
+  let dag = cells_to_dag(notebook, engine);
+  engine.dag = dag;
+
   return engine;
 };
 
@@ -424,21 +437,22 @@ io.on("connection", (socket) => {
   let notebook_ref = { current: { cells: {} } };
 
   /** @type {Engine} */
-  let engine = { cylinders: {}, internal_run_counter: 1 };
+  let engine = { cylinders: {}, internal_run_counter: 1, dag: {} };
 
   socket.on("notebook", async (notebook) => {
     notebook_ref.current = notebook;
     if (is_busy) return;
 
     is_busy = true;
-    await run_notebook(notebook_ref, engine, (engine_shadow) => {
+    await run_notebook(notebook_ref, engine, (engine) => {
       socket.emit("engine", {
-        cylinders: mapValues(engine_shadow.cylinders, (cylinder) => ({
+        cylinders: mapValues(engine.cylinders, (cylinder) => ({
           name: cylinder.name,
           result: cylinder.result,
           last_run: cylinder.last_run,
           running: cylinder.running,
         })),
+        dag: serialize(engine.dag, global),
       });
     });
     is_busy = false;

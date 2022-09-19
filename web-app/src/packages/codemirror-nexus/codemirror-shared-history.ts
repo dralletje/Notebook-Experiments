@@ -112,9 +112,6 @@ let update_from_transaction_with_cell_id = (
       : state;
 
   let event = HistEvent.fromTransaction(tr, cell_id);
-  if (cell_id == null && event != null) {
-    console.log(`event:`, event);
-  }
   let time = tr.annotation(Transaction.time)!,
     userEvent = tr.annotation(Transaction.userEvent);
   if (event) {

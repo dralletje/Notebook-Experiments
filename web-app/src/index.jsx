@@ -14,3 +14,16 @@ root.render(
   <App />
   // </React.StrictMode>
 );
+
+try {
+  // let cool = await navigator.serviceWorker.register(
+  //   new URL("./service-worker.js", import.meta.url),
+  //   { scope: "/src/" }
+  // );
+  let cool = await navigator.serviceWorker.register("/service-worker.js", {
+    scope: "/",
+  });
+  console.log(`cool:`, cool);
+} catch (error) {
+  console.log(`error:`, error);
+}

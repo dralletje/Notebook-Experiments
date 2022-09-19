@@ -39,6 +39,9 @@ export let cells_to_dag = (notebook, engine) => {
 
   for (let dag_entry of Object.values(surface_level_dag)) {
     let source_entry = source_of_knowledge[dag_entry.id];
+    if (source_entry == null) {
+      continue;
+    }
     dag_entry.in = uniq([
       ...source_entry.in_ids.map((id) => surface_level_dag[id]),
       ...compact(

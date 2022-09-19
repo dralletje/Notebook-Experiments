@@ -13,6 +13,9 @@
     "@codemirror/state": "^6.1.1",
     "@codemirror/view": "^6.2.0",
     "@lezer/common": "^1.0.1",
+    "@observablehq/graphviz": "^0.2.1",
+    "@types/node": "^18.7.18",
+    "@typescript/vfs": "^1.4.0",
     "assert": "^2.0.0",
     "ast-types": "^0.14.2",
     "buffer": "^6.0.3",
@@ -29,6 +32,7 @@
     "recast": "^0.21.2",
     "socket.io-client": "^4.5.1",
     "styled-components": "^5.3.5",
+    "typescript": "^4.8.3",
     "uuid": "^8.3.2",
     "web-vitals": "^2.1.4"
   },
@@ -56,6 +60,7 @@
   },
   "devDependencies": {
     "@types/react": "^18.0.20",
+    "@types/serviceworker": "^0.0.52",
     "@vitejs/plugin-react": "^2.1.0",
     "vite": "^3.1.0"
   }

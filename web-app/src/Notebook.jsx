@@ -3,7 +3,16 @@ import { syntax_colors } from "./Cell";
 import { mutate } from "use-immer-store";
 import styled, { keyframes } from "styled-components";
 import { CodeMirror, Extension, useEditorView } from "codemirror-x-react";
-import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
+import {
+  Compartment,
+  EditorSelection,
+  EditorState,
+  Facet,
+  Prec,
+  SelectionRange,
+  StateEffect,
+  StateField,
+} from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -11,7 +20,7 @@ import {
   runScopeHandlers,
 } from "@codemirror/view";
 import { Inspector } from "./Inspector";
-import { compact, intersection, without } from "lodash";
+import { compact, debounce, intersection, without } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
@@ -21,6 +30,7 @@ import {
   CellIdOrder,
   child_extension,
   codemirror_nexus,
+  from_cell_effects,
   NexusFacet,
   nexus_extension,
   ToCellEffect,
@@ -53,6 +63,11 @@ import { codemirror_interactive } from "./packages/codemirror-interactive/codemi
 
 import { Flipper, Flipped } from "react-flip-toolkit";
 import { javascript } from "@codemirror/lang-javascript";
+
+import {
+  create_worker,
+  post_message,
+} from "./packages/typescript-server-webworker/typescript-server-webworker";
 
 let CellStyle = styled.div`
   /* width: min(700px, 100vw - 200px, 100%); */
@@ -112,9 +127,13 @@ let CellStyle = styled.div`
 
   transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
 
-  .dragging & {
+  .dragging &,
+  .draghandle:hover + & {
     box-shadow: rgba(255, 255, 255, 0.1) 0px 0px 20px;
     transform: scale(1.05);
+  }
+  .dragging & {
+    animation: shake 0.2s ease-in-out infinite alternate;
   }
 `;
 
@@ -187,6 +206,51 @@ let useCodemirrorExtension = (editorview, extension) => {
     });
   }, [extension]);
 };
+
+let empty_cell = (id) => {
+  return {
+    id: id,
+    code: "",
+    unsaved_code: "",
+    last_run: -Infinity,
+  };
+};
+
+let CellEditorSelection = StateField.define({
+  create() {
+    return /** @type {null | { cell_id: import("./App").CellId, selection: EditorSelection }} */ (
+      null
+    );
+  },
+  update(value, tr) {
+    for (let {
+      value: { cell_id, transaction },
+    } of from_cell_effects(tr)) {
+      if (transaction.selection || transaction.docChanged) {
+        value = { cell_id, selection: transaction.newSelection };
+      }
+    }
+    return value;
+  },
+});
+
+/**
+ * @typedef CellAndCodeMap
+ * @type {{
+ *  code: string,
+ *  cell_map: {
+ *    [cell_id: string]: {
+ *      start: number,
+ *      end: number,
+ *    }
+ *  }
+ * }}
+ */
+
+/** @type {Facet<CellAndCodeMap, CellAndCodeMap>} */
+let CodeAndCellMapFacet = Facet.define({
+  combine: (values) => values[0],
+});
 
 /**
  * @param {{
@@ -336,12 +400,175 @@ export let CellList = ({ notebook, engine }) => {
     )
   );
 
+  let code_and_cell_map = React.useMemo(() => {
+    let code = "";
+    let cursor = 0;
+    /** @type {{ [cell_id: string]: { start: number, end: number } }} */
+    let cell_map = {};
+
+    let type_references = `
+/// <reference lib="es5" />
+/// <reference lib="es2015" />
+/// <reference lib="es2015.collection" />
+/// <reference lib="es2015.core" />
+/// <reference types="node" />
+`;
+    code += type_references;
+    cursor += type_references.length;
+
+    for (let cell_id of notebook.cell_order) {
+      let cell = notebook.cells[cell_id];
+      // Using unsaved code because I want typescript to be very optimistic
+      let code_to_add = cell.unsaved_code;
+      cell_map[cell_id] = {
+        start: cursor,
+        end: cursor + code_to_add.length,
+      };
+      code += code_to_add + "\n";
+      cursor += code_to_add.length + 1;
+    }
+    console.log(`code:`, code);
+    return { code, cell_map };
+  }, [notebook.cell_order, notebook.cells]);
+
+  // useWorker
+  /** @type {import("react").MutableRefObject<Worker>} */
+  let worker_ref = React.useRef(/** @type {any} */ (null));
+
+  React.useEffect(() => {
+    worker_ref.current = create_worker();
+    return () => {
+      worker_ref.current.terminate();
+    };
+  }, [create_worker]);
+
+  let do_linting = React.useRef(
+    debounce(async () => {
+      let x = await post_message(worker_ref.current, {
+        type: "request-linting",
+        data: undefined,
+      });
+      console.log(`x:`, x);
+    }, 1000)
+  ).current;
+  React.useEffect(() => {
+    console.log("!!!");
+    do_linting();
+  }, [code_and_cell_map]);
+
+  React.useEffect(() => {
+    console.log("Posting file");
+    post_message(worker_ref.current, {
+      type: "update-notebook-file",
+      data: {
+        code: code_and_cell_map.code,
+      },
+    }).then((x) => {
+      console.log(`UPDATED:`, x);
+    });
+  }, [code_and_cell_map]);
+
+  useCodemirrorExtension(nexus_editorview, CellEditorSelection);
+  useCodemirrorExtension(
+    nexus_editorview,
+    CodeAndCellMapFacet.of(code_and_cell_map)
+  );
+
+  let request_info_at_position = React.useRef(
+    debounce((current_position_maybe) => {
+      console.log("Hiii");
+      post_message(worker_ref.current, {
+        type: "request-info-at-position",
+        data: {
+          position: current_position_maybe,
+        },
+      }).then((x) => {
+        console.log(`INFO AT POISITION:`, x);
+      });
+    }, 1000)
+  ).current;
+
+  useCodemirrorExtension(
+    nexus_editorview,
+    React.useMemo(
+      () =>
+        EditorView.updateListener.of((update) => {
+          let code_and_cell_map = update.state.facet(CodeAndCellMapFacet);
+          let cell_selection = update.state.field(CellEditorSelection);
+          if (
+            update.startState.field(CellEditorSelection) !== cell_selection &&
+            cell_selection != null
+          ) {
+            let { cell_id, selection } = cell_selection;
+            let cell_position = code_and_cell_map.cell_map[cell_id];
+            let current_position_maybe =
+              cell_position.start + selection.main.to;
+            request_info_at_position(current_position_maybe);
+          }
+        }),
+      []
+    )
+  );
+
+  useCodemirrorExtension(
+    nexus_editorview,
+    React.useMemo(() => {
+      return keymap.of([
+        {
+          key: "Ctrl-Space",
+          run: ({ state, dispatch }) => {
+            let code_and_cell_map = state.facet(CodeAndCellMapFacet);
+            let cell_selection = state.field(CellEditorSelection);
+            if (cell_selection != null) {
+              let { cell_id, selection } = cell_selection;
+              let cell_position = code_and_cell_map.cell_map[cell_id];
+              let current_position_maybe =
+                cell_position.start + selection.main.to;
+
+              post_message(worker_ref.current, {
+                type: "request-completions",
+                data: {
+                  position: current_position_maybe,
+                },
+              }).then((x) => {
+                console.log(`x:`, x);
+              });
+            }
+            return true;
+          },
+        },
+      ]);
+    }, [])
+  );
+
   return (
     <React.Fragment>
       <DragAndDropList
         cell_order={notebook.cell_order}
         nexus_editorview={nexus_editorview}
       >
+        <div
+          style={{
+            height: 0,
+            position: "relative",
+          }}
+        >
+          <AddButton
+            onClick={() => {
+              let id = uuidv4();
+
+              nexus_editorview.dispatch({
+                effects: AddCellEffect.of({
+                  index: 0,
+                  cell: empty_cell(id),
+                }),
+              });
+            }}
+          >
+            + <span className="show-me-later">add cell</span>
+          </AddButton>
+        </div>
+
         {notebook.cell_order
           .map((cell_id) => notebook.cells[cell_id])
           .map((cell, index) => (
@@ -366,8 +593,9 @@ export let CellList = ({ notebook, engine }) => {
                       }}
                     >
                       <div
+                        className="draghandle"
                         style={{
-                          width: 50,
+                          width: 20,
                         }}
                         {...provided.dragHandleProps}
                       ></div>
@@ -399,12 +627,7 @@ export let CellList = ({ notebook, engine }) => {
                     nexus_editorview.dispatch({
                       effects: AddCellEffect.of({
                         index: my_index + 1,
-                        cell: {
-                          id: id,
-                          code: "",
-                          unsaved_code: "",
-                          last_run: -Infinity,
-                        },
+                        cell: empty_cell(id),
                       }),
                     });
                   }}
@@ -598,6 +821,21 @@ export let Cell = ({
                       cell.code = cell.unsaved_code;
                       cell.is_waiting = true;
                       cell.last_run = Date.now();
+                    });
+                    return true;
+                  },
+                },
+                {
+                  key: "Mod-Enter",
+                  run: (view) => {
+                    let nexus = view.state.facet(NexusFacet);
+                    nexus.dispatch({
+                      effects: [
+                        AddCellEffect.of({
+                          index: notebook.cell_order.indexOf(cell.id) + 1,
+                          cell: empty_cell(uuidv4()),
+                        }),
+                      ],
                     });
                     return true;
                   },
