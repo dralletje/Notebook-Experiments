@@ -9,6 +9,12 @@ import styled from "styled-components";
 import { deserialize } from "./deserialize-value-to-show";
 
 import dot from "@observablehq/graphviz";
+import { IonIcon } from "@ionic/react";
+import {
+  gitNetworkOutline,
+  pizzaOutline,
+  terminalOutline,
+} from "ionicons/icons";
 
 /**
  * @typedef EngineShadow
@@ -35,6 +41,7 @@ import dot from "@observablehq/graphviz";
  * @property {string} unsaved_code
  * @property {number} last_run
  * @property {boolean} [is_waiting]
+ * @property {boolean} [folded]
  */
 
 let AppStyle = styled.div`
@@ -42,6 +49,10 @@ let AppStyle = styled.div`
   min-height: 100vh;
   padding-bottom: 100px;
   margin-right: 20px;
+
+  flex: 1;
+  flex-basis: min(700px, 100vw - 200px, 100%);
+  min-width: 0;
 `;
 
 let MyButton = styled.button`
@@ -53,10 +64,17 @@ let MyButton = styled.button`
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 
   &.active {
-    background-color: #e6e6e6;
-    color: black;
+    background-color: rgb(45 21 29);
+    color: white;
+  }
+
+  ion-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
   }
 `;
 
@@ -198,14 +216,15 @@ function App() {
 
   return (
     <div style={{ display: "flex" }}>
-      <AppStyle style={{ flex: 1 }} data-can-start-cell-selection>
+      <AppStyle data-can-start-cell-selection>
         <CellList notebook={notebook} engine={engine} />
       </AppStyle>
+      <div style={{ flex: 1 }} data-can-start-cell-selection />
       {open_tab != null && (
         <div
           style={{
             width: 400,
-            backgroundColor: "rgba(255,255,255,.05)",
+            backgroundColor: "rgb(45 21 29)",
             height: "100vh",
             position: "sticky",
             top: 0,
@@ -218,7 +237,7 @@ function App() {
       )}
       <div
         style={{
-          width: 50,
+          flex: "0 0 50px",
           backgroundColor: "rgba(0,0,0,.4)",
           height: "100vh",
           position: "sticky",
@@ -226,7 +245,6 @@ function App() {
 
           display: "flex",
           flexDirection: "column",
-          gap: 8,
           alignItems: "stretch",
           paddingTop: 32,
           paddingBottom: 32,
@@ -238,6 +256,7 @@ function App() {
             set_open_tab((x) => (x === "graph" ? null : "graph"));
           }}
         >
+          <IonIcon icon={gitNetworkOutline} />
           graph
         </MyButton>
         <MyButton
@@ -246,6 +265,7 @@ function App() {
             set_open_tab((x) => (x === "dependencies" ? null : "dependencies"));
           }}
         >
+          <IonIcon icon={pizzaOutline} />
           dependencies
         </MyButton>
         <MyButton
@@ -254,6 +274,7 @@ function App() {
             set_open_tab((x) => (x === "shell" ? null : "shell"));
           }}
         >
+          <IonIcon icon={terminalOutline} />
           shell
         </MyButton>
       </div>

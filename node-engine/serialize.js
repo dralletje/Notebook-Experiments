@@ -1,4 +1,4 @@
-import { HTML_MIME_SYMBOL } from "./html.js";
+import { HTML_MIME_SYMBOL, MARKDOWN_MIME_SYMBOL } from "./html.js";
 
 const typedArrTypes = [
   "Int8Array",
@@ -345,6 +345,21 @@ export default (entry, context) => {
           // (which is important because if it is 0 it will be the first)
           heap.push(html_root);
           let arguments_array = encounterArr(obj[HTML_MIME_SYMBOL]);
+          html_root.value = arguments_array;
+          return id;
+        }
+
+        // DRAL ADDITION
+        if (MARKDOWN_MIME_SYMBOL in obj) {
+          let id = heap.length;
+          let html_root = {
+            type: "@observablehq/md",
+            value: 0,
+          };
+          // Push it so it will be at `id` in the array
+          // (which is important because if it is 0 it will be the first)
+          heap.push(html_root);
+          let arguments_array = encounterArr(obj[MARKDOWN_MIME_SYMBOL]);
           html_root.value = arguments_array;
           return id;
         }

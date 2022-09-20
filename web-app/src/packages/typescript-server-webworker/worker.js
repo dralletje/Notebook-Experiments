@@ -1,12 +1,9 @@
 import {
-  createDefaultMapFromCDN,
   createSystem,
   createVirtualTypeScriptEnvironment,
 } from "@typescript/vfs";
 import { mapKeys, pickBy } from "lodash";
 import ts from "typescript";
-
-import { setupTypeAcquisition } from "@typescript/ata";
 
 let _load_file_sync_cache = new Map();
 console.log(`_load_file_sync_cache:`, _load_file_sync_cache);
@@ -22,9 +19,13 @@ let match = (virtual_fs, path, params = {}) => {
     return [virtual_fs, params];
   }
 
+  if (virtual_fs == null) {
+    return null;
+  }
+
   let [current_name, ...other_segments] = path;
 
-  if (virtual_fs[current_name]) {
+  if (current_name in virtual_fs) {
     let next_virtual_fs = virtual_fs[current_name];
     return match(next_virtual_fs, other_segments, params);
   } else {
@@ -37,7 +38,7 @@ let match = (virtual_fs, path, params = {}) => {
         ...params,
         [wildcard_name]: current_name,
       });
-    } else if (virtual_fs["**"] != null) {
+    } else if ("**" in virtual_fs) {
       return [
         virtual_fs["**"],
         {
@@ -51,6 +52,7 @@ let match = (virtual_fs, path, params = {}) => {
   }
 };
 
+let wildcard_regex_cache = new Map();
 let find_wildcard = (virtual_fs, path_segment) => {
   let files = Object.keys(virtual_fs);
 
@@ -59,9 +61,16 @@ let find_wildcard = (virtual_fs, path_segment) => {
       let possible_regex_split = filename.split("/");
       if (possible_regex_split.length === 1) {
         return [filename.slice(1), virtual_fs[filename]];
-      } else if (possible_regex_split.length === 3) {
-        let [wildcard, regex_str, flags] = possible_regex_split;
-        let regex = RegExp(regex_str, flags);
+      } else if (possible_regex_split.length >= 3) {
+        if (!wildcard_regex_cache.has(filename)) {
+          let [wildcard, ...regex_str] = possible_regex_split;
+          let regex = RegExp(
+            regex_str.slice(0, -1).join("/"),
+            regex_str.at(-1)
+          );
+          wildcard_regex_cache.set(filename, [wildcard, regex]);
+        }
+        let [wildcard, regex] = wildcard_regex_cache.get(filename);
         if (regex.test(path_segment)) {
           return [wildcard.slice(1), virtual_fs[filename]];
         }
@@ -98,7 +107,7 @@ let load_file_sync = (url) => {
   request.send(null);
 
   if (request.status === 200 && request.responseText != null) {
-    console.log("LOADED FOR THE FIRST TIME", url);
+    // console.log("LOADED FOR THE FIRST TIME", url);
     _load_file_sync_cache.set(url, request.responseText);
     return request.responseText;
   } else if (request.status === 404) {
@@ -110,31 +119,93 @@ let load_file_sync = (url) => {
     _load_file_sync_cache.set(url, error);
     throw error;
   } else {
-    console.log(`request.status:`, request.status);
-    console.log(`url:`, url);
     let error = new Error(`failed to load ${url}`);
     _load_file_sync_cache.set(url, error);
     throw error;
   }
 };
 
+const builtInNodeMods = [
+  "assert",
+  "assert/strict",
+  "async_hooks",
+  "buffer",
+  "child_process",
+  "cluster",
+  "console",
+  "constants",
+  "crypto",
+  "dgram",
+  "diagnostics_channel",
+  "dns",
+  "dns/promises",
+  "domain",
+  "events",
+  "fs",
+  "fs/promises",
+  "http",
+  "http2",
+  "https",
+  "inspector",
+  "module",
+  "net",
+  "os",
+  "path",
+  "path/posix",
+  "path/win32",
+  "perf_hooks",
+  "process",
+  "punycode",
+  "querystring",
+  "readline",
+  "repl",
+  "stream",
+  "stream/promises",
+  "stream/consumers",
+  "stream/web",
+  "string_decoder",
+  "sys",
+  "timers",
+  "timers/promises",
+  "tls",
+  "trace_events",
+  "tty",
+  "url",
+  "util",
+  "util/types",
+  "v8",
+  "vm",
+  "wasi",
+  "worker_threads",
+  "zlib",
+];
+
 let virtual_fs = {
   node_modules: {
     typescript: {
       lib: {
         ":name": ({ name }) => {
-          console.log("WOOOP");
-          return `Name ${name}`;
+          console.log({ name });
+          throw new Error("nope");
         },
       },
     },
     "@types": {
-      ":module": {
+      node_modules: null,
+      ":/typescript__.*/": null,
+      // ":/node:.*/": null,
+      [`:/${builtInNodeMods.join("|")}/`]: null,
+      ":module/[a-z0-9-~][a-z0-9-._~]+/": {
         "**": ({ module, "**": path }) => {
           return load_file_sync(`https://unpkg.com/@types/${module}/${path}`);
         },
       },
     },
+    "@typescript": {
+      ":module/lib-*/": null,
+    },
+    // ":/node:.*/": null,
+    [`:/${builtInNodeMods.join("|")}/`]: null,
     ":namespace/^@(.*)/": {
       ":module": {
         "**": ({ namespace, module, "**": path }) => {
@@ -144,7 +215,7 @@ let virtual_fs = {
         },
       },
     },
-    ":module": {
+    ":module/[a-z0-9-~][a-z0-9-._~]+/": {
       "**": ({ module, "**": path }) => {
         return load_file_sync(`https://unpkg.com/${module}/${path}`);
       },
@@ -264,44 +335,12 @@ let initialize_vfs = async () => {
           console.log({ result });
           throw new Error("Huh");
         }
+      } else {
+        return false;
       }
-
-      throw new Error(`Hmmmm, ${path}`);
-
-      // if (path.startsWith(NODE_MODULES_DIR)) {
-      //   let url_path = path.slice(NODE_MODULES_DIR.length);
-
-      //   if (url_path.startsWith("@")) {
-      //     let name_without_namespace = url_path.slice(
-      //       url_path.indexOf("/") + 1
-      //     );
-
-      //     // If there isn't another folder inside, we know it is wrong (e.g. @types/dom.ts never exists)
-      //     if (!name_without_namespace.includes("/")) {
-      //       return false;
-      //     }
-      //   }
-
-      //   try {
-      //     let url = `https://unpkg.com/${url_path}`;
-      //     let content = load_file_sync(url);
-      //     console.log("DOES EXIST", url);
-      //     return true;
-      //   } catch (error) {
-      //     console.log("DOESNT EXIST", path);
-      //     return false;
-      //   }
-      // }
-
-      // console.log("NOPE", path);
-
-      return false;
     }),
     readDirectory: group("readDirectory", (path) => {
       throw new Error(`readDirectory("${path}")`);
-      let x = system.readDirectory(path);
-      console.log(`readDirectory:`, path, x);
-      return x;
     }),
     directoryExists: group("directoryExists", (path) => {
       let system_directoryExists = system.directoryExists(path);
@@ -323,31 +362,9 @@ let initialize_vfs = async () => {
           console.log({ result });
           throw new Error("Huh");
         }
+      } else {
+        return false;
       }
-
-      // let matches_node_modules_namespace_folder = route(
-      //   `/node_modules/:namespace(@[^/]*)`
-      // )(path);
-      // if (matches_node_modules_namespace_folder) {
-      //   console.log(
-      //     `matches_node_modules_namespace_folder:`,
-      //     matches_node_modules_namespace_folder
-      //   );
-      //   return true;
-      // }
-      // if (path.startsWith("/node_modules/")) {
-      //   let url_path = path.slice(NODE_MODULES_DIR.length);
-      //   try {
-      //     console.log(`url_path:`, url_path);
-      //     let url = `https://unpkg.com/${url_path}/`;
-      //     let content = load_file_sync(url);
-
-      //     return true;
-      //   } catch (error) {
-      //     console.log(`HMMMMM:`, url_path);
-      //     return false;
-      //   }
-      // }
     }),
 
     readFile: group("readFile", (path) => {
@@ -392,28 +409,6 @@ let initialize_vfs = async () => {
 
 let env_promise = initialize_vfs();
 
-let type_aquisition_promise = env_promise.then((env) => {
-  return setupTypeAcquisition({
-    delegate: {
-      errorMessage: (message) => {
-        // console.log(`errorMessage:`, message);
-      },
-      finished: (x) => {
-        // console.log(`finished:`, x);
-      },
-      receivedFile: (code, path) => {
-        console.log(`RECEIVED FILE:`, path);
-        env.createFile(path, code);
-      },
-      started: (x) => {
-        // console.log(`started:`, x);
-      },
-    },
-    projectName: "hey",
-    typescript: ts,
-  });
-});
-
 /**
  * @typedef MyMessages
  * @type {
@@ -426,11 +421,6 @@ let commands = {
   /** @param {{ code: string }} data */
   "update-notebook-file": async ({ code }) => {
     let env = await env_promise;
-
-    // let type_aquisition = await type_aquisition_promise;
-    // console.log(`type_aquisition:`, type_aquisition);
-    // let bbb = type_aquisition(code);
-    // console.log(`bbb:`, bbb);
 
     try {
       env.updateFile(NOTEBOOK_FILE, code);

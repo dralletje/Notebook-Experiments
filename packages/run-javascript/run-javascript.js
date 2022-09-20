@@ -1,4 +1,4 @@
-import { parse, print, types } from "recast";
+import { parse, print, types, prettyPrint } from "recast";
 import { builders, Type } from "ast-types";
 import { parse as parseBabel } from "@babel/parser";
 import traverse1, { NodePath } from "@babel/traverse";
@@ -40,14 +40,23 @@ export function transform_code(code, { filename }) {
   let { ast, consumed_names, created_names, last_created_name } =
     transform(unmodified_ast);
 
-  let result = print(ast, {
-    // tabWidth: 0,
+  // TODO Want to use print() here, but it screws up template strings:
+  // .... `
+  // .... hi
+  // .... `
+  // .... becomes
+  // ....     `
+  // ....     hi
+  // ....     `
+  // .... which is very wrong
+  let result = prettyPrint(ast, {
+    tabWidth: 0,
     sourceMapName: "map.json",
   });
 
-  let source_map = "data:text/plain;base64," + btoa(JSON.stringify(result.map));
-  let full_code = `${result.code}\n//# sourceMappingURL=${source_map}\n//# sourceURL=${filename}`;
-  // let full_code = `${result.code}\n//# sourceURL=${filename}`;
+  // let source_map = "data:text/plain;base64," + btoa(JSON.stringify(result.map));
+  // let full_code = `${result.code}\n//# sourceMappingURL=${source_map}\n//# sourceURL=${filename}`;
+  let full_code = result.code;
   return {
     map: result.map,
     code: full_code,

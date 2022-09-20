@@ -1,4 +1,5 @@
 import { html } from "htl";
+import { md } from "md-literal";
 
 let create_function_with_name_and_body = (name, body) => {
   var func = new Function(`return function ${name}(){ ${body} }`)();
@@ -59,6 +60,16 @@ export let deserialize = (index, heap, result_heap = {}) => {
       result_heap
     );
     return html({ raw: strings }, ...interpolations);
+  } else if (result.type === "@observablehq/md") {
+    // Special type for htl HTML, to not mess around to much I just put the values
+    // in the heap and then use the htl library to deserialize it.
+    // No need for a server-side rendering of the HTML, just use the client-side.
+    let [strings, ...interpolations] = deserialize(
+      result.value,
+      heap,
+      result_heap
+    );
+    return md(strings, ...interpolations);
   } else {
     return { $cant_deserialize: result };
   }

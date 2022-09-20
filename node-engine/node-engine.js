@@ -16,7 +16,7 @@ import { SourceMapConsumer } from "source-map";
 import { cells_to_dag, get_next_cell_to_run } from "./dag-things.js";
 
 import { run_in_environment } from "../cell-environment/cell-environment.js";
-import { html } from "./html.js";
+import { html, md } from "./html.js";
 
 const app = express();
 app.use(cors());
@@ -220,6 +220,7 @@ let notebook_step = async (engine, notebook, onChange) => {
     };
 
     inputs.html = html;
+    inputs.md = md;
 
     // DOMAINS ARE JUST A HACK
     // We need to move the actual code running to a separate process

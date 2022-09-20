@@ -3,10 +3,12 @@ import { Inspector as ObservableInspector } from "@observablehq/inspector";
 
 /**
  * @param {object} props
- * @param {{ type: 'return', value: any } | { type: 'throw', error: any } | { type: 'pending' }} props.value
+ * @param {{ type: 'return', value: any } | { type: 'throw', value: any } | { type: 'pending' }} props.value
  */
 export let Inspector = ({ value }) => {
+  /** @type {import("react").MutableRefObject<HTMLElement>} */
   let dom_ref = React.useRef(/** @type {any} */ (null));
+  /** @type {import("react").MutableRefObject<ObservableInspector>} */
   let inspector_ref = React.useRef(/** @type {any} */ (null));
 
   React.useEffect(() => {

@@ -64,25 +64,74 @@ import { codemirror_interactive } from "./packages/codemirror-interactive/codemi
 import { Flipper, Flipped } from "react-flip-toolkit";
 import { javascript } from "@codemirror/lang-javascript";
 
+import { IonIcon } from "@ionic/react";
+import {
+  ellipsisVertical,
+  ellipsisVerticalOutline,
+  eye,
+  eyeOutline,
+  planetOutline,
+} from "ionicons/icons";
+
 import {
   create_worker,
   post_message,
 } from "./packages/typescript-server-webworker/typescript-server-webworker";
+import {
+  ContextMenuWrapper,
+  ContextMenuContainer,
+} from "./packages/react-contextmenu/react-contextmenu";
+
+let CellContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  margin-bottom: 1rem;
+`;
+
+let InspectorContainer = styled.div`
+  font-size: 16px;
+  min-height: 24px;
+`;
+
+let InspectorInnerContainer = styled.div`
+  padding-left: calc(16px + 4px);
+  padding-right: 16px;
+  overflow-y: auto;
+`;
+
+export let EditorStyled = styled.div`
+  background-color: rgba(0, 0, 0, 0.4);
+  margin-top: 8px;
+
+  & .cm-content {
+    padding: 16px !important;
+  }
+`;
 
 let CellStyle = styled.div`
-  /* width: min(700px, 100vw - 200px, 100%); */
-  flex: 1;
+  flex: 1 1 0px;
+  min-width: 0px;
 
   /* background-color: rgba(0, 0, 0, 0.4); */
   /* I like transparency better for when the backdrop color changes
      but it isn't great when dragging */
-  background-color: #0b0b0b;
+  background-color: #121212;
 
   font-family: Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro",
     monospace;
 
+  & ${InspectorInnerContainer} {
+    transition: all 1s ease-in-out;
+  }
   &.modified {
-    background-color: #744e0021;
+    & ${EditorStyled} {
+      background-color: rgb(33 28 19);
+    }
+    & ${InspectorInnerContainer} {
+      opacity: 0.5;
+      filter: blur(1px);
+    }
   }
 
   position: relative;
@@ -106,33 +155,54 @@ let CellStyle = styled.div`
     background-color: white;
   }
 
-  /*
-  &.selected {
-    outline: #20a5ba 1px solid;
-  }
-  */
-
   &.selected::after {
     content: "";
     position: absolute;
-    inset: -8px;
+    inset: -0.5rem;
+    left: -1rem;
     background-color: #20a5ba24;
     pointer-events: none;
   }
 
   border-radius: 3px;
-  box-shadow: rgba(255, 255, 255, 0) 0px 0px 20px;
-  transform: scale(1);
-  transform-origin: center left;
+  /* box-shadow: rgba(255, 255, 255, 0) 0px 0px 20px; */
+  filter: drop-shadow(0 0px 0px rgba(255, 255, 255, 0));
+  transform: scaleX(1);
+  transform-origin: top left;
 
-  transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+  transition: filter 0.2s ease-in-out, transform 0.2s ease-in-out;
+
+  & ${InspectorContainer} {
+    position: relative;
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: -8px 0 -8px 0;
+      background-color: #001c21;
+      z-index: -1;
+      pointer-events: none;
+
+      transition: opacity 0.2s ease-in-out;
+      opacity: 0;
+    }
+  }
 
   .dragging &,
-  .draghandle:hover + & {
-    box-shadow: rgba(255, 255, 255, 0.1) 0px 0px 20px;
-    transform: scale(1.05);
+  ${CellContainer}:has(.drag-handle:hover) &,
+  ${CellContainer}:has(.menu:focus) & {
+    /* box-shadow: rgba(255, 255, 255, 0.1) 0px 0px 20px; */
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.1));
+    /* transform: scaleX(1.05); */
+    transform: translateX(-2px) translateY(-2px);
+    z-index: 1;
+
+    & ${InspectorContainer}::after {
+      opacity: 1;
+    }
   }
   .dragging & {
+    --prexisting-transform: translateX(-2px) translateY(-2px);
     animation: shake 0.2s ease-in-out infinite alternate;
   }
 `;
@@ -146,7 +216,6 @@ let engine_cell_from_notebook_cell = (cell) => {
 };
 
 let DragAndDropListStyle = styled.div`
-  width: min(700px, 100vw - 200px, 100%);
   display: flex;
   flex-direction: column;
 `;
@@ -427,7 +496,7 @@ export let CellList = ({ notebook, engine }) => {
       code += code_to_add + "\n";
       cursor += code_to_add.length + 1;
     }
-    console.log(`code:`, code);
+    // console.log(`code:`, code);
     return { code, cell_map };
   }, [notebook.cell_order, notebook.cells]);
 
@@ -576,7 +645,7 @@ export let CellList = ({ notebook, engine }) => {
               <Draggable draggableId={cell.id} index={index}>
                 {(provided, snapshot) => (
                   <Flipped flipId={cell.id}>
-                    <div
+                    <CellContainer
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       className={
@@ -584,21 +653,72 @@ export let CellList = ({ notebook, engine }) => {
                           ? "dragging"
                           : ""
                       }
-                      style={{
-                        display: "flex",
-                        flexDirection: "row",
-                        alignItems: "stretch",
-                        marginBottom: "1rem",
-                        ...provided.draggableProps.style,
-                      }}
                     >
-                      <div
-                        className="draghandle"
-                        style={{
-                          width: 20,
-                        }}
-                        {...provided.dragHandleProps}
-                      ></div>
+                      <ContextMenuWrapper
+                        options={[
+                          {
+                            title: (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <IonIcon icon={planetOutline} />
+                                <div style={{ minWidth: 8 }} />
+                                Delete
+                                <div style={{ flex: 1 }} />
+                                <div
+                                  style={{ opacity: 0.5, fontSize: "0.8em" }}
+                                >
+                                  ⌘K
+                                </div>
+                              </div>
+                            ),
+                            onClick: () => {
+                              nexus_editorview.dispatch({
+                                effects: [
+                                  RemoveCellEffect.of({ cell_id: cell.id }),
+                                ],
+                              });
+                            },
+                          },
+                          {
+                            title: (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <IonIcon icon={eyeOutline} />
+                                <div style={{ minWidth: 8 }} />
+                                Fold
+                              </div>
+                            ),
+                            onClick: () => {
+                              mutate(cell, (cell) => {
+                                cell.folded = !cell.folded;
+                              });
+                            },
+                          },
+                        ]}
+                      >
+                        <div
+                          style={{
+                            minWidth: 30,
+                          }}
+                          {...provided.dragHandleProps}
+                          onClick={() => {
+                            mutate(cell, (cell) => {
+                              cell.folded = !cell.folded;
+                            });
+                          }}
+                          className="drag-handle"
+                        />
+                      </ContextMenuWrapper>
                       <Cell
                         cell={cell}
                         cylinder={engine.cylinders[cell.id]}
@@ -609,7 +729,7 @@ export let CellList = ({ notebook, engine }) => {
                           cell.id
                         )}
                       />
-                    </div>
+                    </CellContainer>
                   </Flipped>
                 )}
               </Draggable>
@@ -648,20 +768,6 @@ export let CellList = ({ notebook, engine }) => {
   );
 };
 
-let InspectorContainer = styled.div`
-  font-size: 16px;
-
-  padding-left: calc(16px + 4px);
-  padding-right: 16px;
-  overflow-y: auto;
-  white-space: pre;
-
-  &,
-  & * {
-    font-style: italic;
-  }
-`;
-
 /**
  * Tiny extension that will put the editor in focus whenever any transaction comes with `scrollIntoView` effect.
  * For example, history uses this. Normally, this doesn't focus the editor, because it is assumed the editor is already in focus.
@@ -672,12 +778,6 @@ let focus_on_scrollIntoView = EditorView.updateListener.of((update) => {
     update.view.focus();
   }
 });
-
-export let EditorStyled = styled.div`
-  & .cm-content {
-    padding: 16px !important;
-  }
-`;
 
 /**
  * @param {{
@@ -755,28 +855,35 @@ export let Cell = ({
         is_selected && "selected",
       ]).join(" ")}
     >
-      {(result_deserialized.type === "return" ||
+      {/* {(result_deserialized.type === "return" ||
         result_deserialized.type === "throw") && (
-        <div style={{ minHeight: 16 }} />
-      )}
+        <div style={{ minHeight: cell.folded ? 8 : 16 }} />
+      )} */}
       <InspectorContainer>
-        {result_deserialized.name && (
-          <span>
-            <span style={{ color: "#afb7d3", fontWeight: "700" }}>
-              {result_deserialized.name}
+        <InspectorInnerContainer>
+          {result_deserialized.name && (
+            <span>
+              <span style={{ color: "#afb7d3", fontWeight: "700" }}>
+                {result_deserialized.name}
+              </span>
+              <span>{" = "}</span>
             </span>
-            <span>{" = "}</span>
-          </span>
-        )}
-        <Inspector value={result_deserialized} />
+          )}
+          <Inspector value={result_deserialized} />
+        </InspectorInnerContainer>
       </InspectorContainer>
 
-      <EditorStyled>
+      <EditorStyled
+        style={{
+          height: cell.folded ? 0 : undefined,
+          marginTop: cell.folded ? 0 : undefined,
+        }}
+      >
         <CodeMirror editor_state={editor_state} ref={editorview_ref}>
-          <Extension extension={javascript()} deps={[]} />
+          <Extension extension={javascript()} deps={[javascript]} />
           <Extension
             extension={syntaxHighlighting(syntax_colors)}
-            deps={[syntax_colors]}
+            deps={[syntax_colors, syntaxHighlighting]}
           />
           <Extension
             extension={placeholder("The rest is still unwritten...")}
@@ -886,7 +993,7 @@ let AddButton = styled.button`
   transition: opacity 0.2s ease-in-out;
   *:hover + div > &,
   div:hover > &,
-  div:has(+ *:hover) & {
+  div:has(+ *:hover) > & {
     opacity: 1;
   }
 

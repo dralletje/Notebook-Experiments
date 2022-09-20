@@ -4,7 +4,7 @@ import { Inspector as BasicInspector } from "inspector-x-react";
 import "@observablehq/inspector/src/style.css";
 
 let InspectorStyle = styled.div`
-  --syntax_normal: #fff;
+  --syntax_normal: #848484;
   --syntax_comment: #a9b0bc;
   --syntax_number: #20a5ba;
   --syntax_keyword: #c30771;

@@ -1,6 +1,9 @@
 // Basically copied from https://github.com/fonsp/Pluto.jl/blob/ab85efca962d009c741d4ec66508d687806e9579/frontend/components/SelectionArea.js
 // Couple of tweaks
 
+// TODO Kill me
+/// <reference path="custom-tags.d.ts" />
+
 import React from "react";
 
 const get_element_position_in_document = (element) => {
@@ -71,7 +74,7 @@ export const SelectionArea = ({ on_selection, cell_order }) => {
       let target = /** @type {HTMLElement} */ (e.target);
 
       // TODO: also allow starting the selection in one codemirror and stretching it to another cell
-      if (target.dataset.canStartCellSelection === "true") {
+      if (target.dataset.canStartCellSelection === "true" && e.button === 0) {
         on_selection([]);
         set_selection({
           start: { x: e.pageX, y: e.pageY },
@@ -202,24 +205,34 @@ export const SelectionArea = ({ on_selection, cell_order }) => {
     return <span ref={element_ref}></span>;
   }
   return (
-    <dral-selection-area
-      ref={element_ref}
-      style={{
-        position: "absolute",
-        background: "rgba(40, 78, 189, 0.24)",
-        zIndex: 1000000, // Yes, really
-        top: Math.min(selection.start.y, selection.end.y),
-        left: Math.min(selection.start.x, selection.end.x),
-        width: Math.abs(selection.start.x - selection.end.x),
-        height: Math.abs(selection.start.y - selection.end.y),
-        // Transform could be faster
-        // top: 0,
-        // left: 0,
-        // width: 1,
-        // height: 1,
-        // transformOrigin: "top left",
-        // transform: `${translateX} ${translateY} ${scaleX} ${scaleY}`,
-      }}
-    ></dral-selection-area>
+    <React.Fragment>
+      {selection && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+          }}
+        />
+      )}
+      <dral-selection-area
+        ref={element_ref}
+        style={{
+          position: "absolute",
+          background: "rgba(40, 78, 189, 0.24)",
+          zIndex: 1000000, // Yes, really
+          top: Math.min(selection.start.y, selection.end.y),
+          left: Math.min(selection.start.x, selection.end.x),
+          width: Math.abs(selection.start.x - selection.end.x),
+          height: Math.abs(selection.start.y - selection.end.y),
+          // Transform could be faster
+          // top: 0,
+          // left: 0,
+          // width: 1,
+          // height: 1,
+          // transformOrigin: "top left",
+          // transform: `${translateX} ${translateY} ${scaleX} ${scaleY}`,
+        }}
+      ></dral-selection-area>
+    </React.Fragment>
   );
 };
