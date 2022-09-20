@@ -102,26 +102,35 @@ let ShellTab = () => {
   );
 };
 
+let try_json = (str) => {
+  try {
+    return JSON.parse(str);
+  } catch (error) {
+    return null;
+  }
+};
+
 function App() {
   let [_notebook, _set_notebook] = React.useState(
-    /** @type {Notebook} */ ({
-      id: "1",
-      cell_order: ["1", "2"],
-      cells: {
-        1: {
-          id: "1",
-          code: "1 + 1 + xs.length",
-          unsaved_code: "1 + 1 + xs.length",
-          last_run: Date.now(),
+    try_json(localStorage.getItem("_notebook")) ??
+      /** @type {Notebook} */ ({
+        id: "1",
+        cell_order: ["1", "2"],
+        cells: {
+          1: {
+            id: "1",
+            code: "1 + 1 + xs.length",
+            unsaved_code: "1 + 1 + xs.length",
+            last_run: Date.now(),
+          },
+          2: {
+            id: "2",
+            code: "let xs = [1,2,3,4]",
+            unsaved_code: "let xs = [1,2,3,4]",
+            last_run: Date.now(),
+          },
         },
-        2: {
-          id: "2",
-          code: "let xs = [1,2,3,4]",
-          unsaved_code: "let xs = [1,2,3,4]",
-          last_run: Date.now(),
-        },
-      },
-    })
+      })
   );
 
   let update_state = React.useCallback(
@@ -132,6 +141,7 @@ function App() {
         //   update_fn
         // );
         let new_notebook = produce(old_notebook, update_fn);
+        localStorage.setItem("_notebook", JSON.stringify(new_notebook));
         return new_notebook;
       });
     },

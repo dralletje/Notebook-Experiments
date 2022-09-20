@@ -6,14 +6,90 @@ import {
 import { mapKeys, pickBy } from "lodash";
 import ts from "typescript";
 
+import { setupTypeAcquisition } from "@typescript/ata";
+
 let _load_file_sync_cache = new Map();
 console.log(`_load_file_sync_cache:`, _load_file_sync_cache);
 
 let NOTEBOOK_FILE = "/notebook.ts";
 
+let match = (virtual_fs, path, params = {}) => {
+  if (typeof path === "string") {
+    path = path.replace(/^\//, "").split("/");
+  }
+
+  if (path.length === 0) {
+    return [virtual_fs, params];
+  }
+
+  let [current_name, ...other_segments] = path;
+
+  if (virtual_fs[current_name]) {
+    let next_virtual_fs = virtual_fs[current_name];
+    return match(next_virtual_fs, other_segments, params);
+  } else {
+    let [wildcard_name, next_virtual_fs] = find_wildcard(
+      virtual_fs,
+      current_name
+    );
+    if (wildcard_name) {
+      return match(next_virtual_fs, other_segments, {
+        ...params,
+        [wildcard_name]: current_name,
+      });
+    } else if (virtual_fs["**"] != null) {
+      return [
+        virtual_fs["**"],
+        {
+          ...params,
+          "**": path.join("/"),
+        },
+      ];
+    } else {
+      return null;
+    }
+  }
+};
+
+let find_wildcard = (virtual_fs, path_segment) => {
+  let files = Object.keys(virtual_fs);
+
+  for (let filename of files) {
+    if (filename.startsWith(":")) {
+      let possible_regex_split = filename.split("/");
+      if (possible_regex_split.length === 1) {
+        return [filename.slice(1), virtual_fs[filename]];
+      } else if (possible_regex_split.length === 3) {
+        let [wildcard, regex_str, flags] = possible_regex_split;
+        let regex = RegExp(regex_str, flags);
+        if (regex.test(path_segment)) {
+          return [wildcard.slice(1), virtual_fs[filename]];
+        }
+      } else {
+        throw new Error(`Malformed filename: "${filename}"`);
+      }
+    }
+  }
+  return [null, null];
+};
+
+class NotFoundError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+
 let load_file_sync = (url) => {
   if (_load_file_sync_cache.has(url)) {
-    return _load_file_sync_cache.get(url);
+    let cached = _load_file_sync_cache.get(url);
+    if (cached == null) {
+      throw new NotFoundError("Not found, from cache");
+    } else if (cached instanceof Error) {
+      throw cached;
+    } else {
+      return cached;
+    }
   }
 
   var request = new XMLHttpRequest();
@@ -21,17 +97,71 @@ let load_file_sync = (url) => {
   request.timeout = 10 * 1000;
   request.send(null);
 
-  if (request.status === 200) {
+  if (request.status === 200 && request.responseText != null) {
     console.log("LOADED FOR THE FIRST TIME", url);
     _load_file_sync_cache.set(url, request.responseText);
     return request.responseText;
+  } else if (request.status === 404) {
+    let error = new NotFoundError("Not found");
+    _load_file_sync_cache.set(url, error);
+    throw error;
+  } else if (request.status === 403) {
+    let error = new NotFoundError("Forbidden");
+    _load_file_sync_cache.set(url, error);
+    throw error;
   } else {
-    _load_file_sync_cache.set(url, null);
-    throw new Error(`failed to load ${url}`);
+    console.log(`request.status:`, request.status);
+    console.log(`url:`, url);
+    let error = new Error(`failed to load ${url}`);
+    _load_file_sync_cache.set(url, error);
+    throw error;
   }
 };
 
+let virtual_fs = {
+  node_modules: {
+    typescript: {
+      lib: {
+        ":name": ({ name }) => {
+          console.log("WOOOP");
+          return `Name ${name}`;
+        },
+      },
+    },
+    "@types": {
+      ":module": {
+        "**": ({ module, "**": path }) => {
+          return load_file_sync(`https://unpkg.com/@types/${module}/${path}`);
+        },
+      },
+    },
+    ":namespace/^@(.*)/": {
+      ":module": {
+        "**": ({ namespace, module, "**": path }) => {
+          return load_file_sync(
+            `https://unpkg.com/${namespace}/${module}/${path}`
+          );
+        },
+      },
+    },
+    ":module": {
+      "**": ({ module, "**": path }) => {
+        return load_file_sync(`https://unpkg.com/${module}/${path}`);
+      },
+    },
+  },
+};
+
+let cool_console = console;
+
 let initialize_vfs = async () => {
+  // let console = cool_console;
+  let console = {
+    log: (...args) => {},
+    group: (...args) => {},
+    groupEnd: () => {},
+  };
+
   let directory = "../../../node_modules/typescript/lib/";
   // @ts-ignore
   const modules_not_loaded = import.meta.glob(
@@ -40,6 +170,7 @@ let initialize_vfs = async () => {
       as: "raw",
     }
   );
+  console.log(`modules_not_loaded:`, modules_not_loaded);
 
   let modules = Object.fromEntries(
     await Promise.all(
@@ -80,7 +211,6 @@ let initialize_vfs = async () => {
   for (let [name, text] of Object.entries(modules)) {
     fsMap.set("/" + filename(name), text);
   }
-  // console.log(`fsMap:`, fsMap);
 
   let compilerOptions = {
     allowJs: true,
@@ -91,74 +221,160 @@ let initialize_vfs = async () => {
 
   let system = createSystem(fsMap);
 
+  let group = (name, fn) => {
+    return (...args) => {
+      console.group(name, "(", ...args, ")");
+      try {
+        let result = fn(...args);
+        if (typeof result === "boolean" || result == null) {
+          console.log("result:", result);
+        } else {
+          console.log("typeof result:", typeof result);
+        }
+        return result;
+      } finally {
+        console.groupEnd();
+      }
+    };
+  };
+
   let better_system = {
     ...system,
-    fileExists: (path) => {
+    fileExists: group("fileExists", (path) => {
       if (system.fileExists(path)) {
         return true;
       }
 
-      let NODE_MODULES_DIR = "/node_modules/";
-      if (path.startsWith(NODE_MODULES_DIR)) {
-        let url_path = path.slice(NODE_MODULES_DIR.length);
-        try {
-          load_file_sync(`https://unpkg.com/${url_path}`);
-          return true;
-        } catch (error) {
-          console.log("DOESNT EXIST", path);
+      let tree_match = match(virtual_fs, path);
+      if (tree_match) {
+        let [result, params] = tree_match;
+
+        if (typeof result === "object") {
+          // This means it's a directory, which is, surprise, not a file!
           return false;
+        } else if (typeof result === "function") {
+          // Function means... a file!
+          try {
+            result(params);
+            return true;
+          } catch (e) {
+            return false;
+          }
+        } else {
+          console.log({ result });
+          throw new Error("Huh");
         }
       }
 
-      console.log("NOPE", path);
+      throw new Error(`Hmmmm, ${path}`);
+
+      // if (path.startsWith(NODE_MODULES_DIR)) {
+      //   let url_path = path.slice(NODE_MODULES_DIR.length);
+
+      //   if (url_path.startsWith("@")) {
+      //     let name_without_namespace = url_path.slice(
+      //       url_path.indexOf("/") + 1
+      //     );
+
+      //     // If there isn't another folder inside, we know it is wrong (e.g. @types/dom.ts never exists)
+      //     if (!name_without_namespace.includes("/")) {
+      //       return false;
+      //     }
+      //   }
+
+      //   try {
+      //     let url = `https://unpkg.com/${url_path}`;
+      //     let content = load_file_sync(url);
+      //     console.log("DOES EXIST", url);
+      //     return true;
+      //   } catch (error) {
+      //     console.log("DOESNT EXIST", path);
+      //     return false;
+      //   }
+      // }
+
+      // console.log("NOPE", path);
 
       return false;
-    },
-    readDirectory: (path) => {
+    }),
+    readDirectory: group("readDirectory", (path) => {
+      throw new Error(`readDirectory("${path}")`);
       let x = system.readDirectory(path);
       console.log(`readDirectory:`, path, x);
       return x;
-    },
-    directoryExists: (path) => {
-      if (path.startsWith("/node_modules/@typescript")) {
-        // return false;
-        console.log(`path:`, path);
+    }),
+    directoryExists: group("directoryExists", (path) => {
+      let system_directoryExists = system.directoryExists(path);
+      if (system_directoryExists === true) {
+        return system_directoryExists;
       }
 
-      // if (path === "node_modules/@types") {
+      let tree_match = match(virtual_fs, path);
+      if (tree_match) {
+        let [result, params] = tree_match;
+
+        if (typeof result === "object") {
+          // This means it's a directory, which is great!
+          return true;
+        } else if (typeof result === "function") {
+          // Function means... a file!
+          return false;
+        } else {
+          console.log({ result });
+          throw new Error("Huh");
+        }
+      }
+
+      // let matches_node_modules_namespace_folder = route(
+      //   `/node_modules/:namespace(@[^/]*)`
+      // )(path);
+      // if (matches_node_modules_namespace_folder) {
+      //   console.log(
+      //     `matches_node_modules_namespace_folder:`,
+      //     matches_node_modules_namespace_folder
+      //   );
       //   return true;
       // }
-      if (path === "/node_modules") {
-        return true;
-      }
-      if (path.startsWith("/node_modules/")) {
-        return true;
-      }
-      let x = system.directoryExists(path);
-      console.log(`directoryExists:`, path, x);
-      return x;
-    },
+      // if (path.startsWith("/node_modules/")) {
+      //   let url_path = path.slice(NODE_MODULES_DIR.length);
+      //   try {
+      //     console.log(`url_path:`, url_path);
+      //     let url = `https://unpkg.com/${url_path}/`;
+      //     let content = load_file_sync(url);
 
-    readFile: (fileName) => {
-      let existing_file = system.readFile(fileName);
+      //     return true;
+      //   } catch (error) {
+      //     console.log(`HMMMMM:`, url_path);
+      //     return false;
+      //   }
+      // }
+    }),
+
+    readFile: group("readFile", (path) => {
+      let existing_file = system.readFile(path);
       if (existing_file != null) {
         return existing_file;
       }
 
-      let NODE_MODULES_DIR = "/node_modules/";
-      if (fileName.startsWith(NODE_MODULES_DIR)) {
-        let path = fileName.slice(NODE_MODULES_DIR.length);
-        try {
-          let text = load_file_sync(`https://unpkg.com/${path}`);
-          return text;
-        } catch (error) {
-          console.log("BAD", error, path);
-          return null;
+      let tree_match = match(virtual_fs, path);
+      if (tree_match) {
+        let [result, params] = tree_match;
+
+        if (typeof result === "object") {
+          return undefined;
+        } else if (typeof result === "function") {
+          // Function means... a file!
+          return result(params);
+        } else {
+          console.log({ result });
+          throw new Error("Huh");
         }
       }
 
-      console.log("FILE NOT FOUND", fileName);
-    },
+      if (path === "/lib.d.ts") {
+        console.log(`fsMap:`, fsMap.get("/lib.d.ts"));
+      }
+    }),
   };
 
   // @ts-ignore
@@ -176,6 +392,28 @@ let initialize_vfs = async () => {
 
 let env_promise = initialize_vfs();
 
+let type_aquisition_promise = env_promise.then((env) => {
+  return setupTypeAcquisition({
+    delegate: {
+      errorMessage: (message) => {
+        // console.log(`errorMessage:`, message);
+      },
+      finished: (x) => {
+        // console.log(`finished:`, x);
+      },
+      receivedFile: (code, path) => {
+        console.log(`RECEIVED FILE:`, path);
+        env.createFile(path, code);
+      },
+      started: (x) => {
+        // console.log(`started:`, x);
+      },
+    },
+    projectName: "hey",
+    typescript: ts,
+  });
+});
+
 /**
  * @typedef MyMessages
  * @type {
@@ -188,6 +426,12 @@ let commands = {
   /** @param {{ code: string }} data */
   "update-notebook-file": async ({ code }) => {
     let env = await env_promise;
+
+    // let type_aquisition = await type_aquisition_promise;
+    // console.log(`type_aquisition:`, type_aquisition);
+    // let bbb = type_aquisition(code);
+    // console.log(`bbb:`, bbb);
+
     try {
       env.updateFile(NOTEBOOK_FILE, code);
     } catch (error) {
@@ -199,9 +443,8 @@ let commands = {
     let env = await env_promise;
 
     let notebook_src = env.sys.readFile(NOTEBOOK_FILE) ?? "";
-    console.log(
-      `${notebook_src.slice(0, position)}|${notebook_src.slice(position)}`
-    );
+    // prettier-ignore
+    console.log(`${notebook_src.slice(0, position)}|${notebook_src.slice(position)}`);
 
     let completions = env.languageService.getCompletionsAtPosition(
       NOTEBOOK_FILE,
@@ -247,7 +490,14 @@ let commands = {
           kind,
           code,
           messageText,
-          relatedInformation,
+          relatedInformation: relatedInformation?.map?.((x) => {
+            return {
+              category: x.category,
+              code: x.code,
+              messageText: x.messageText,
+              start: x.start,
+            };
+          }),
           severity: SEVERITY[category],
           start,
           end,
@@ -255,7 +505,6 @@ let commands = {
         };
       }
     );
-    console.log(`result:`, smooth_result);
     return smooth_result;
   },
 };
@@ -270,23 +519,54 @@ let commands = {
  * @type {Exclude<_MessageObject[keyof _MessageObject], undefined>}
  */
 
-/** @param {MessageEvent<{ request_id: unknown, request: Message }>} event */
-self.onmessage = async (event) => {
-  console.group(event.data.request.type);
-  try {
-    console.log("Data from main thread:", event.data.request.data);
-    let result = await commands[event.data.request.type](
-      // @ts-ignore
-      event.data.request.data
-    );
-    console.log("Result:", result);
-    postMessage({
-      request_id: event.data.request_id,
-      result,
-    });
-  } catch (error) {
-    console.log(`error:`, error);
-  } finally {
-    console.groupEnd();
+/** @type {Array<{ id: string | null, job: () => Promise<unknown> }>} */
+let _queue = [];
+let is_running = false;
+let run_next = () => {
+  if (!is_running) {
+    let job = _queue.shift();
+    if (job) {
+      is_running = true;
+      job.job().then(() => {
+        is_running = false;
+        run_next();
+      });
+    }
   }
+};
+/**
+ * @param {string | null} id
+ * @param {() => Promise<unknown>} job
+ */
+let queue = async (id, job) => {
+  // Remove job with the same id
+  if (id != null) {
+    _queue = _queue.filter((x) => x.id !== id);
+  }
+
+  _queue.push({ id, job });
+  run_next();
+};
+
+/** @param {MessageEvent<{ request_id: unknown, job_id: string | null, request: Message }>} event */
+self.onmessage = async (event) => {
+  queue(event.data.job_id, async () => {
+    console.group(event.data.request.type);
+    try {
+      console.log("Data from main thread:", event.data.request.data);
+      let result = await commands[event.data.request.type](
+        // @ts-ignore
+        event.data.request.data
+      );
+      console.log("result:", result);
+      postMessage({
+        request_id: event.data.request_id,
+        result,
+      });
+    } catch (error) {
+      console.log(`error:`, error);
+    } finally {
+      console.groupEnd();
+    }
+  });
 };
