@@ -215,6 +215,12 @@ export let CodeMirror = React.forwardRef(
   }
 );
 
+/**
+ * @param {{
+ *  extension: import("@codemirror/state").Extension,
+ *  deps?: any[],
+ * }} props
+ */
 export let Extension = ({ extension, deps = [extension] }) => {
   let dispatch_ref = React.useContext(codemirror_editorview_context);
 

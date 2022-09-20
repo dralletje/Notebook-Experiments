@@ -1,33 +1,22 @@
 import React from "react";
-import { syntax_colors } from "./Cell";
-import { mutate } from "use-immer-store";
+import { mutate, mutator } from "use-immer-store";
 import styled, { keyframes } from "styled-components";
 import { CodeMirror, Extension, useEditorView } from "codemirror-x-react";
 import {
   Compartment,
   EditorSelection,
-  EditorState,
   Facet,
-  Prec,
-  SelectionRange,
   StateEffect,
   StateField,
 } from "@codemirror/state";
-import {
-  EditorView,
-  keymap,
-  placeholder,
-  runScopeHandlers,
-} from "@codemirror/view";
+import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
 import { Inspector } from "./Inspector";
 import { compact, debounce, intersection, without } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
-import { indentUnit, syntaxHighlighting } from "@codemirror/language";
 import {
   CellIdFacet,
-  CellIdOrder,
   child_extension,
   codemirror_nexus,
   from_cell_effects,
@@ -37,24 +26,27 @@ import {
 } from "./packages/codemirror-nexus/codemirror-nexus";
 import {
   cell_movement_extension,
-  MoveUpEffect,
+  CellIdOrder,
 } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import {
   BlurEffect,
   blur_when_other_cell_focus,
 } from "./packages/codemirror-nexus/codemirror-blur-when-other-cell-focus";
 import {
-  history,
   historyKeymap,
+  shared_history,
 } from "./packages/codemirror-nexus/codemirror-shared-history";
-import { SelectionArea } from "./SelectionArea";
+import { SelectionArea } from "./selection-area/SelectionArea";
 import {
   AddCellEffect,
+  cell_keymap,
+  empty_cell,
   MoveCellEffect,
   NotebookFacet,
   notebook_in_nexus,
   RemoveCellEffect,
-} from "./notebook-in-nexus";
+  RunIfChangedCellEffect,
+} from "./packages/codemirror-nexus/add-move-and-run-cells";
 import { deserialize } from "./deserialize-value-to-show";
 
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
@@ -62,25 +54,16 @@ import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
 import { codemirror_interactive } from "./packages/codemirror-interactive/codemirror-interactive";
 
 import { Flipper, Flipped } from "react-flip-toolkit";
-import { javascript } from "@codemirror/lang-javascript";
 
 import { IonIcon } from "@ionic/react";
-import {
-  ellipsisVertical,
-  ellipsisVerticalOutline,
-  eye,
-  eyeOutline,
-  planetOutline,
-} from "ionicons/icons";
+import { eyeOutline, planetOutline } from "ionicons/icons";
 
 import {
   create_worker,
   post_message,
 } from "./packages/typescript-server-webworker/typescript-server-webworker";
-import {
-  ContextMenuWrapper,
-  ContextMenuContainer,
-} from "./packages/react-contextmenu/react-contextmenu";
+import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
+import { basic_javascript_setup } from "./codemirror-javascript-setup";
 
 let CellContainer = styled.div`
   display: flex;
@@ -276,15 +259,6 @@ let useCodemirrorExtension = (editorview, extension) => {
   }, [extension]);
 };
 
-let empty_cell = (id) => {
-  return {
-    id: id,
-    code: "",
-    unsaved_code: "",
-    last_run: -Infinity,
-  };
-};
-
 let CellEditorSelection = StateField.define({
   create() {
     return /** @type {null | { cell_id: import("./App").CellId, selection: EditorSelection }} */ (
@@ -356,31 +330,8 @@ export let CellList = ({ notebook, engine }) => {
     });
   }, [nexus_editorview, notebook]);
 
-  useCodemirrorExtension(
-    nexus_editorview,
-    React.useMemo(() => {
-      return keymap.of([
-        {
-          key: "Mod-s",
-          run: ({ state, dispatch }) => {
-            console.log("SAVE");
-            let notebook = state.facet(NotebookFacet);
-            mutate(notebook.cells, (cells) => {
-              let now = Date.now(); // Just in case immer takes a lot of time
-              for (let cell of Object.values(cells)) {
-                if (cell.code !== cell.unsaved_code) {
-                  cell.code = cell.unsaved_code;
-                  cell.last_run = now;
-                }
-              }
-            });
-            return true;
-          },
-        },
-      ]);
-    }, [])
-  );
-
+  // Keymap that interacts with the selected cells
+  // TODO Maybe add these to codemirror state too??
   useCodemirrorExtension(
     nexus_editorview,
     React.useMemo(() => {
@@ -408,7 +359,7 @@ export let CellList = ({ notebook, engine }) => {
       ]);
     }, [selected_cells])
   );
-
+  // Remove focus from cell editors when selecting any whole cell
   React.useLayoutEffect(() => {
     if (selected_cells.length > 0) {
       nexus_editorview.dispatch?.({
@@ -447,6 +398,10 @@ export let CellList = ({ notebook, engine }) => {
     [nexus_editorview, child_extension]
   );
 
+  /**
+   * Keep track of what cells are just created by the users,
+   * so we can animate them in 🤩
+   */
   let [last_created_cells, set_last_created_cells] = React.useState(
     /** @type {any[]} */ ([])
   );
@@ -461,7 +416,6 @@ export let CellList = ({ notebook, engine }) => {
               .map((x) => x.value.cell.id)
           );
           if (created_cells.length !== 0) {
-            console.log(`created_cells:`, created_cells);
             set_last_created_cells(created_cells);
           }
         }),
@@ -624,12 +578,10 @@ export let CellList = ({ notebook, engine }) => {
         >
           <AddButton
             onClick={() => {
-              let id = uuidv4();
-
               nexus_editorview.dispatch({
                 effects: AddCellEffect.of({
                   index: 0,
-                  cell: empty_cell(id),
+                  cell: empty_cell(),
                 }),
               });
             }}
@@ -747,7 +699,7 @@ export let CellList = ({ notebook, engine }) => {
                     nexus_editorview.dispatch({
                       effects: AddCellEffect.of({
                         index: my_index + 1,
-                        cell: empty_cell(id),
+                        cell: empty_cell(),
                       }),
                     });
                   }}
@@ -855,10 +807,6 @@ export let Cell = ({
         is_selected && "selected",
       ]).join(" ")}
     >
-      {/* {(result_deserialized.type === "return" ||
-        result_deserialized.type === "throw") && (
-        <div style={{ minHeight: cell.folded ? 8 : 16 }} />
-      )} */}
       <InspectorContainer>
         <InspectorInnerContainer>
           {result_deserialized.name && (
@@ -880,15 +828,8 @@ export let Cell = ({
         }}
       >
         <CodeMirror editor_state={editor_state} ref={editorview_ref}>
-          <Extension extension={javascript()} deps={[javascript]} />
-          <Extension
-            extension={syntaxHighlighting(syntax_colors)}
-            deps={[syntax_colors, syntaxHighlighting]}
-          />
-          <Extension
-            extension={placeholder("The rest is still unwritten...")}
-            deps={[]}
-          />
+          <Extension extension={basic_javascript_setup} />
+
           <Extension
             extension={EditorView.updateListener.of((update) => {
               if (update.docChanged) {
@@ -897,7 +838,7 @@ export let Cell = ({
                 });
               }
             })}
-            deps={[]}
+            deps={[mutator(cell)]}
           />
 
           {/* <Extension extension={codemirror_interactive} /> */}
@@ -908,67 +849,15 @@ export let Cell = ({
 
           <Extension extension={blur_when_other_cell_focus} />
           <Extension extension={focus_on_scrollIntoView} />
-          <Extension extension={nexus_extension(history())} deps={[history]} />
           <Extension
-            extension={nexus_extension(keymap.of(historyKeymap))}
-            deps={[historyKeymap]}
+            extension={nexus_extension(shared_history())}
+            deps={[history]}
           />
+          <Extension extension={nexus_extension()} deps={[historyKeymap]} />
 
           <Extension extension={cell_movement_extension} />
           <Extension extension={awesome_line_wrapping} />
-          <Extension extension={EditorState.tabSize.of(4)} deps={[]} />
-          <Extension extension={indentUnit.of("\t")} deps={[]} />
-          <Extension
-            extension={Prec.high(
-              keymap.of([
-                {
-                  key: "Shift-Enter",
-                  run: (view) => {
-                    mutate(cell, (cell) => {
-                      cell.code = cell.unsaved_code;
-                      cell.is_waiting = true;
-                      cell.last_run = Date.now();
-                    });
-                    return true;
-                  },
-                },
-                {
-                  key: "Mod-Enter",
-                  run: (view) => {
-                    let nexus = view.state.facet(NexusFacet);
-                    nexus.dispatch({
-                      effects: [
-                        AddCellEffect.of({
-                          index: notebook.cell_order.indexOf(cell.id) + 1,
-                          cell: empty_cell(uuidv4()),
-                        }),
-                      ],
-                    });
-                    return true;
-                  },
-                },
-                {
-                  key: "Backspace",
-                  run: (view) => {
-                    let nexus = view.state.facet(NexusFacet);
-                    if (view.state.doc.length === 0) {
-                      // Focus on previous cell
-                      view.dispatch({
-                        effects: [MoveUpEffect.of({ start: "end" })],
-                      });
-                      // Remove cell
-                      nexus.dispatch({
-                        effects: [RemoveCellEffect.of({ cell_id: cell.id })],
-                      });
-                      return true;
-                    } else {
-                      return false;
-                    }
-                  },
-                },
-              ])
-            )}
-          />
+          <Extension extension={cell_keymap} />
         </CodeMirror>
       </EditorStyled>
     </CellStyle>

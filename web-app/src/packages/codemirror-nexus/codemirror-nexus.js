@@ -16,6 +16,7 @@ import {
   ViewUpdate,
 } from "@codemirror/view";
 import { groupBy } from "lodash";
+import React from "react";
 
 /**
  * @typedef CellId
@@ -35,11 +36,6 @@ export let CellIdFacet = Facet.define({
 /**
  * @type {Facet<ToCellEmitter, ToCellEmitter>} */
 export let NexusToCellEmitterFacet = Facet.define({
-  combine: (x) => x[0],
-});
-
-/** @type {Facet<CellId[], CellId[]>} */
-export let CellIdOrder = Facet.define({
   combine: (x) => x[0],
 });
 
@@ -89,13 +85,18 @@ class SingleEventEmitter {
   }
 }
 
+// let useCodemirrorEditorviewWithExtensions = (extensions) => {
+//   let previous_extensions = React.useRef(extensions.map(x=));
+
+//   React.use
+// }
+
 /**
  * Creates a lone editorview that is not bound (and honestly, should not be bound) to the DOM.
  * It can be customized by adding `nexus_extension` to the cell editors.
  * Nexus extensions will have access to a couple more powers
  * - They can listen to `FromCellEffect`s, which are effects that are sent from other cells
  * - They can send `ToCellEffect`s, which are effects that are sent to other cells
- * - They can query the `CellIdOrder` facet, which is a list of all the cell ids in order
  *
  * @param {import("@codemirror/state").Extension} extensions
  */
@@ -105,7 +106,7 @@ export function codemirror_nexus(extensions = []) {
       doc: "",
       extensions: [
         // This is not to be used inside Nexus-extensions,
-        // but to be queried the Cell-extension so it can retrieve transactions/effects from the Nexus.
+        // but to be queried by the Cell-extension so it can retrieve transactions/effects from the Nexus.
         NexusToCellEmitterFacet.of(new SingleEventEmitter()),
 
         // Emit ToCellEffect to the emitter so the Cell-extension can pick it up
@@ -151,6 +152,7 @@ export let nexus_extension = (extension) => {
 };
 
 /**
+ * Utility for iterating through all the "from cell" effects in a transaction.
  * @param {ViewUpdate | Transaction} update_or_transaction
  * @returns {Array<StateEffect<{ cell_id: CellId, transaction: Transaction }>>}
  */

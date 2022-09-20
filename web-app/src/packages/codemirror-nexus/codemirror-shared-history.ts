@@ -176,7 +176,7 @@ const historyField_ = StateField.define({
 });
 
 /// Create a history extension with the given configuration.
-export function history(config: HistoryConfig = {}): Extension {
+export function shared_history(config: HistoryConfig = {}): Extension {
   return [
     historyField_,
     historyConfig.of(config),

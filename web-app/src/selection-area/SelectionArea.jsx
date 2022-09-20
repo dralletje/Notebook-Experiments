@@ -92,6 +92,7 @@ export const SelectionArea = ({ on_selection, cell_order }) => {
         is_selecting_ref.current = false;
       } else {
         // if you didn't click on a UI element...
+        // TODO What is this for? Clicking run button should not deselect?
         if (
           !e.composedPath().some((e) => {
             // @ts-ignore
@@ -207,7 +208,7 @@ export const SelectionArea = ({ on_selection, cell_order }) => {
   return (
     <React.Fragment>
       {selection && (
-        <div
+        <dral-prevent-hover
           style={{
             position: "fixed",
             inset: 0,

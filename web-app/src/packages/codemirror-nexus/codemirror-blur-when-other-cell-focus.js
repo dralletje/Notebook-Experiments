@@ -6,8 +6,8 @@ import {
 } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { without } from "lodash";
+import { CellIdOrder } from "./codemirror-cell-movement";
 import {
-  CellIdOrder,
   from_cell_effects,
   nexus_extension,
   ToCellEffect,

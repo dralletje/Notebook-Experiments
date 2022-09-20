@@ -91,6 +91,7 @@ export let make_store_proxy = ([state, update_state]) => {
     get(target, property, receiver) {
       if (property === mutate_symbol) {
         // Secret property to access the mutator function
+        // TODO Why do I create the wrapper function here? Just because it is easier for me to read?
         return (mutate_fn) => {
           update_state((value) => mutate_fn(value));
         };

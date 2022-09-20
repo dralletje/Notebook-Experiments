@@ -1,5 +1,6 @@
 import {
   EditorSelection,
+  Facet,
   Prec,
   SelectionRange,
   StateEffect,
@@ -8,7 +9,6 @@ import {
 import { EditorView, keymap } from "@codemirror/view";
 import { autocompletion, completionStatus } from "@codemirror/autocomplete";
 import {
-  CellIdOrder,
   from_cell_effects,
   nexus_extension,
   ToCellEffect,
@@ -39,6 +39,14 @@ import {
  * @typedef CellRelativeSelection
  * @type {SelectionRange | "begin" | "end"}
  */
+
+/**
+ * Facet required for the cell movement plugin to work.
+ * @type {Facet<import("./codemirror-nexus").CellId[], import("./codemirror-nexus").CellId[]>}
+ */
+export let CellIdOrder = Facet.define({
+  combine: (x) => x[0],
+});
 
 /** @type {StateEffectType<{ start: CellRelativeSelection }>} */
 export let MoveUpEffect = StateEffect.define({});
@@ -281,7 +289,6 @@ export let cell_movement_extension = [
               }
             );
             let where = view.coordsAtPos(view.state.doc.length);
-            console.log(`where:`, where);
             let new_selection = view.posAtCoords(
               {
                 x: rect.left + (start.goalColumn ?? rect.width),
@@ -289,7 +296,6 @@ export let cell_movement_extension = [
               },
               false
             );
-            console.log(`new_selection:`, new_selection);
             view.dispatch({
               selection: EditorSelection.cursor(new_selection),
             });

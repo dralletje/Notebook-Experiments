@@ -2,28 +2,52 @@ import { mutate, readonly } from "use-immer-store";
 import {
   EditorState,
   Facet,
+  Prec,
   StateEffect,
   StateEffectType,
 } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
-import { invertedEffects } from "./packages/codemirror-nexus/codemirror-shared-history";
+import { EditorView, keymap } from "@codemirror/view";
 import { without } from "lodash";
 import { v4 as uuidv4 } from "uuid";
+import { invertedEffects } from "./codemirror-shared-history";
 
-/** @type {StateEffectType<{ index: number, cell: import("./App").Cell }>} */
+import { CellIdFacet, NexusFacet } from "./codemirror-nexus";
+import { MoveUpEffect, CellIdOrder } from "./codemirror-cell-movement";
+
+/** @type {StateEffectType<{ index: number, cell: import("../../App").Cell }>} */
 export let AddCellEffect = StateEffect.define();
 
-/** @type {StateEffectType<{ cell_id: import("./App").CellId }>} */
+/** @type {StateEffectType<{ cell_id: import("../../App").CellId }>} */
 export let RemoveCellEffect = StateEffect.define();
 
-/** @type {StateEffectType<{ cell_id: import("./App").CellId, from: number, to: number }>} */
+/** @type {StateEffectType<{ cell_id: import("../../App").CellId, from: number, to: number }>} */
 export let MoveCellEffect = StateEffect.define();
 
-/** @type {Facet<import("./App").Notebook, import("./App").Notebook>} */
+/** @type {StateEffectType<{ cell_id: import("../../App").CellId, at: number }>} */
+export let RunCellEffect = StateEffect.define();
+
+/** @type {StateEffectType<{ cell_id: import("../../App").CellId, at: number }>} */
+export let RunIfChangedCellEffect = StateEffect.define();
+
+/** @type {Facet<import("../../App").Notebook, import("../../App").Notebook>} */
 export let NotebookFacet = Facet.define({
   combine: (x) => x[0],
 });
 
+/**
+ * @param {string} id
+ * @returns {import("../../App").Cell}
+ */
+export let empty_cell = (id = uuidv4()) => {
+  return {
+    id: id,
+    code: "",
+    unsaved_code: "",
+    last_run: -Infinity,
+  };
+};
+
+// It's just redux, but with immer.
 let mutate_notebook_on_add_or_remove = EditorView.updateListener.of(
   (update) => {
     let notebook = update.state.facet(NotebookFacet);
@@ -59,6 +83,28 @@ let mutate_notebook_on_add_or_remove = EditorView.updateListener.of(
             notebook.cell_order.splice(to, 0, cell_id);
           });
         }
+
+        if (effect.is(RunCellEffect)) {
+          let { cell_id, at } = effect.value;
+          let cell = notebook.cells[cell_id];
+          mutate(cell, (cell) => {
+            cell.code = cell.unsaved_code;
+            cell.is_waiting = true;
+            cell.last_run = at;
+          });
+        }
+
+        if (effect.is(RunIfChangedCellEffect)) {
+          let { cell_id, at } = effect.value;
+          let cell = notebook.cells[cell_id];
+          if (cell.code !== cell.unsaved_code) {
+            mutate(cell, (cell) => {
+              cell.code = cell.unsaved_code;
+              cell.is_waiting = true;
+              cell.last_run = at;
+            });
+          }
+        }
       }
     }
   }
@@ -82,12 +128,7 @@ let add_single_cell_when_all_cells_are_removed =
       return {
         effects: AddCellEffect.of({
           index: 0,
-          cell: {
-            id: uuidv4(),
-            code: "",
-            unsaved_code: "",
-            last_run: -Infinity,
-          },
+          cell: empty_cell(),
         }),
       };
     } else {
@@ -129,8 +170,79 @@ let invert_removing_and_adding_cells = invertedEffects.of((transaction) => {
   return inverted_effects;
 });
 
+let notebook_keymap = keymap.of([
+  {
+    key: "Mod-s",
+    run: ({ state, dispatch }) => {
+      let cell_ids = state.facet(CellIdOrder);
+      let now = Date.now(); // Just in case map takes a lot of time ??
+      dispatch({
+        effects: cell_ids.map((cell_id) =>
+          RunIfChangedCellEffect.of({ cell_id: cell_id, at: now })
+        ),
+      });
+      return true;
+    },
+  },
+]);
+
 export let notebook_in_nexus = [
   add_single_cell_when_all_cells_are_removed,
   invert_removing_and_adding_cells,
   mutate_notebook_on_add_or_remove,
+  notebook_keymap,
 ];
+
+export let cell_keymap = Prec.high(
+  keymap.of([
+    {
+      key: "Shift-Enter",
+      run: (view) => {
+        let nexus = view.state.facet(NexusFacet);
+        let cell_id = view.state.facet(CellIdFacet);
+        nexus.dispatch({
+          effects: [RunCellEffect.of({ cell_id: cell_id, at: Date.now() })],
+        });
+        return true;
+      },
+    },
+    {
+      key: "Mod-Enter",
+      run: (view) => {
+        let nexus = view.state.facet(NexusFacet);
+        let cell_id = view.state.facet(CellIdFacet);
+        let cell_order = view.state.facet(CellIdOrder);
+        nexus.dispatch({
+          effects: [
+            RunIfChangedCellEffect.of({ cell_id: cell_id, at: Date.now() }),
+            AddCellEffect.of({
+              index: cell_order.indexOf(cell_id) + 1,
+              cell: empty_cell(),
+            }),
+          ],
+        });
+        return true;
+      },
+    },
+    {
+      key: "Backspace",
+      run: (view) => {
+        let nexus = view.state.facet(NexusFacet);
+        let cell_id = view.state.facet(CellIdFacet);
+        if (view.state.doc.length === 0) {
+          // Focus on previous cell
+          view.dispatch({
+            effects: [MoveUpEffect.of({ start: "end" })],
+          });
+          // Remove cell
+          nexus.dispatch({
+            effects: [RemoveCellEffect.of({ cell_id: cell_id })],
+          });
+          return true;
+        } else {
+          return false;
+        }
+      },
+    },
+  ])
+);
