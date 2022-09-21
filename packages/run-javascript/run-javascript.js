@@ -133,6 +133,7 @@ export function transform(ast) {
   }
 
   let scope = get_scope(ast);
+  console.log(`scope:`, scope);
   // TODO scope.getAllBindings?
   let created_names = [...Object.keys(scope.bindings), ...accidental_globals];
   let consumed_names = without(
@@ -145,31 +146,35 @@ export function transform(ast) {
     return t.objectProperty(t.identifier(name), t.identifier(name));
   });
 
+  console.log(`properties_to_return:`, properties_to_return);
+
+  let return_with_default = (_default) => {
+    return t.returnStatement(
+      t.objectExpression([
+        t.objectProperty(t.identifier("default"), _default),
+        ...properties_to_return,
+      ])
+    );
+  };
+
   let result_name = null;
   ast.program.body = ast.program.body.flatMap((statement, index) => {
     if (index === ast.program.body.length - 1) {
-      if (statement.type === "ExpressionStatement") {
-        if (statement.expression.type === "AssignmentExpression") {
+      if (statement.type === "FunctionDeclaration") {
+        result_name = statement.id.name;
+        return [statement, return_with_default(t.identifier(result_name))];
+      } else if (statement.type === "ExpressionStatement") {
+        if (
+          statement.expression.type === "AssignmentExpression" &&
+          statement.expression.left.type === "Identifier"
+        ) {
           result_name = statement.expression.left.name;
           return [
             statement,
-            t.returnStatement(
-              t.objectExpression([
-                t.objectProperty(
-                  t.identifier("default"),
-                  t.identifier(statement.expression.left.name)
-                ),
-                ...properties_to_return,
-              ])
-            ),
+            return_with_default(t.identifier(statement.expression.left.name)),
           ];
         } else {
-          return t.returnStatement(
-            t.objectExpression([
-              t.objectProperty(t.identifier("default"), statement.expression),
-              ...properties_to_return,
-            ])
-          );
+          return return_with_default(statement.expression);
         }
       } else if (
         statement.type === "VariableDeclaration" &&
@@ -178,18 +183,10 @@ export function transform(ast) {
         result_name = statement.declarations[0].id.name;
         return [
           statement,
-          t.returnStatement(
-            t.objectExpression([
-              t.objectProperty(
-                t.identifier("default"),
-                statement.declarations[0].id
-              ),
-              ...properties_to_return,
-            ])
-          ),
+          return_with_default(t.identifier(statement.declarations[0].id.name)),
         ];
       } else {
-        console.log(`Couldn't 'return-ify'`, print(statement).code);
+        throw new Error(`Couldn't 'return-ify' "${print(statement).code}"`);
       }
     }
     return statement;

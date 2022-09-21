@@ -310,7 +310,12 @@ let fix_error_from_sourcemap = (error, sourcemap) => {
     return error;
   }
 
-  console.log(chalk.red.bold`RUNNING ERROR:`, chalk.red(error.stack));
+  console.log(chalk.yellow.bold`RUNNING ERROR:`, chalk.yellow(error.stack));
+
+  // Until I figure out/fix recast
+  if (sourcemap == null) {
+    return error;
+  }
 
   var smc = new SourceMapConsumer(sourcemap);
   let stack = stacktraceparser.parse(error.stack);

@@ -8,6 +8,7 @@ import { EditorView, keymap } from "@codemirror/view";
 import { without } from "lodash";
 import { CellIdOrder } from "./codemirror-cell-movement";
 import {
+  dont_send_to_nexus_annotation,
   from_cell_effects,
   nexus_extension,
   ToCellEffect,
@@ -39,6 +40,7 @@ export let blur_when_other_cell_focus = [
                 ToCellEffect.of({
                   cell_id: cell_to_blur,
                   transaction_spec: {
+                    annotations: dont_send_to_nexus_annotation.of(null),
                     effects: BlurEffect.of(),
                   },
                 })
@@ -50,20 +52,32 @@ export let blur_when_other_cell_focus = [
     })
   ),
 
-  // TODO Make these two into dom listeners?
   EditorView.updateListener.of(
     ({ view, state, transactions, focusChanged }) => {
       for (let transaction of transactions) {
         for (let effect of transaction.effects) {
           if (effect.is(BlurEffect)) {
-            view.dispatch({
-              selection: { anchor: 0, head: 0 },
-            });
+            if (
+              state.selection.ranges.length > 1 ||
+              state.selection.main.from !== state.selection.main.to
+            ) {
+              // HMMMM
+              // TODO Need a better way to hide selection range when another
+              // .... cell has focus....
+              view.dispatch({
+                selection: {
+                  anchor: state.selection.main.to,
+                  head: state.selection.main.to,
+                },
+              });
+              view.dom.blur();
+            }
           }
         }
       }
     }
   ),
+  // TODO Make this into dom listener?
   EditorView.updateListener.of(
     ({ view, state, transactions, focusChanged }) => {
       if (focusChanged) {
@@ -71,6 +85,7 @@ export let blur_when_other_cell_focus = [
           view.dispatch({
             effects: [DidFocusEffect.of()],
           });
+        } else {
         }
       }
     }

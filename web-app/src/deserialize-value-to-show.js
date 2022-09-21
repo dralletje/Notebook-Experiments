@@ -2,8 +2,17 @@ import { html } from "htl";
 import { md } from "md-literal";
 
 let create_function_with_name_and_body = (name, body) => {
-  var func = new Function(`return function ${name}(){ ${body} }`)();
-  return func;
+  try {
+    return new Function(`return function ${name}(){ ${body} }`)();
+  } catch (e) {
+    try {
+      return new Function(
+        `return function ${name}(){ /* Couldn't set function body */ }`
+      )();
+    } catch (e) {
+      return () => {};
+    }
+  }
 };
 
 export let deserialize = (index, heap, result_heap = {}) => {
@@ -46,7 +55,6 @@ export let deserialize = (index, heap, result_heap = {}) => {
     let error = new Error(result.value.message);
     error.name = result.value.name;
     error.stack = result.value.stack;
-    console.log(`error:`, error);
     return error;
   } else if (result.type === "nan") {
     return NaN;

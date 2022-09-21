@@ -1,17 +1,19 @@
 import React from "react";
-import { mutate, mutator } from "use-immer-store";
+import { mutate, mutator, readonly, useImmerStore } from "use-immer-store";
 import styled, { keyframes } from "styled-components";
 import { CodeMirror, Extension, useEditorView } from "codemirror-x-react";
 import {
   Compartment,
   EditorSelection,
+  EditorState,
   Facet,
+  Prec,
   StateEffect,
   StateField,
 } from "@codemirror/state";
 import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
 import { Inspector } from "./Inspector";
-import { compact, debounce, intersection, without } from "lodash";
+import { compact, debounce, intersection, isEqual, without } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
@@ -45,7 +47,6 @@ import {
   NotebookFacet,
   notebook_in_nexus,
   RemoveCellEffect,
-  RunIfChangedCellEffect,
 } from "./packages/codemirror-nexus/add-move-and-run-cells";
 import { deserialize } from "./deserialize-value-to-show";
 
@@ -65,6 +66,7 @@ import {
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
 import { basic_javascript_setup } from "./codemirror-javascript-setup";
 import { useRealMemo } from "use-real-memo";
+import { format_with_prettier } from "./format-javascript-with-prettier";
 
 let CellContainer = styled.div`
   display: flex;
@@ -72,6 +74,8 @@ let CellContainer = styled.div`
   align-items: stretch;
   margin-bottom: 1rem;
 `;
+
+let InspectorHoverBackground = styled.div``;
 
 let InspectorContainer = styled.div`
   padding-left: calc(16px + 4px);
@@ -155,7 +159,7 @@ let CellStyle = styled.div`
 
   transition: filter 0.2s ease-in-out, transform 0.2s ease-in-out;
 
-  & ${InspectorContainer} {
+  & ${InspectorHoverBackground} {
     position: relative;
 
     &::after {
@@ -180,7 +184,7 @@ let CellStyle = styled.div`
     transform: translateX(-2px) translateY(-2px);
     z-index: 1;
 
-    & ${InspectorContainer}::after {
+    & ${InspectorHoverBackground}::after {
       opacity: 1;
     }
   }
@@ -237,7 +241,7 @@ let DragAndDropList = ({ children, nexus_editorview, cell_order }) => {
 
 let CellEditorSelection = StateField.define({
   create() {
-    return /** @type {null | { cell_id: import("./App").CellId, selection: EditorSelection }} */ (
+    return /** @type {null | { cell_id: import("./notebook-types").CellId, selection: EditorSelection }} */ (
       null
     );
   },
@@ -303,44 +307,81 @@ let ContextMenuItem = ({ icon, label, shortcut }) => {
   );
 };
 
+/** @type {Facet<import("./notebook-types").CellId[], import("./notebook-types").CellId[]>} */
+let SelectedCellsFacet = Facet.define({
+  combine: (values) => values[0],
+});
+
+let blur_cells_when_selecting = EditorState.transactionExtender.of(
+  (transaction) => {
+    if (
+      transaction.startState.facet(SelectedCellsFacet) != null &&
+      transaction.state.facet(SelectedCellsFacet) == null
+    ) {
+      // This happens when hot reloading, this extension hasn't reloaded yet, but
+      // the next version of `SelectedCellsFacet` has replaced the old.
+      // Thus, we are looking for the old version of `SelectedCellsFacet` on the new state,
+      // which doesn't exist!!
+      return null;
+    }
+    if (
+      transaction.startState.facet(SelectedCellsFacet) !==
+        transaction.state.facet(SelectedCellsFacet) &&
+      transaction.state.facet(SelectedCellsFacet).length > 0
+    ) {
+      let notebook = transaction.state.facet(NotebookFacet);
+      return {
+        effects: notebook.cell_order.map((cell_id) =>
+          ToCellEffect.of({
+            cell_id: cell_id,
+            transaction_spec: {
+              effects: BlurEffect.of(),
+            },
+          })
+        ),
+      };
+    }
+    return null;
+  }
+);
+
+// Keymap that interacts with the selected cells
+let selected_cells_keymap = keymap.of([
+  {
+    key: "Backspace",
+    run: ({ state, dispatch }) => {
+      // Remove cell
+      let selected_cells = state.facet(SelectedCellsFacet);
+      dispatch({
+        effects: selected_cells.map((cell_id) =>
+          RemoveCellEffect.of({ cell_id: cell_id })
+        ),
+      });
+      return true;
+    },
+  },
+  {
+    key: "Mod-a",
+    run: ({ state, dispatch }) => {
+      // Select all cells
+      let selected_cells = state.facet(SelectedCellsFacet);
+      let notebook = state.facet(NotebookFacet);
+      mutate(selected_cells, () => notebook.cell_order);
+      return true;
+    },
+  },
+]);
+
 /**
  * @param {{
- *  notebook: import("./App").Notebook,
- *  engine: import("./App").EngineShadow,
+ *  notebook: import("./notebook-types").Notebook,
+ *  engine: import("./notebook-types").EngineShadow,
  * }} props
  */
 export let CellList = ({ notebook, engine }) => {
-  let [_selected_cells, set_selected_cells] = React.useState(
-    /** @type {import("./App").CellId[]} */ ([])
+  let selected_cells = useImmerStore(
+    React.useState(/** @type {import("./notebook-types").CellId[]} */ ([]))
   );
-  // Just making sure the rest of the app only sees existing cells in `selected_cells`
-  let selected_cells = intersection(_selected_cells, notebook.cell_order);
-  // Keymap that interacts with the selected cells
-  // TODO Maybe add these to codemirror state too??
-  let selected_cells_keymap = React.useMemo(() => {
-    return keymap.of([
-      {
-        key: "Backspace",
-        run: ({ state, dispatch }) => {
-          // Remove cell
-          dispatch({
-            effects: selected_cells.map((cell_id) =>
-              RemoveCellEffect.of({ cell_id: cell_id })
-            ),
-          });
-          return true;
-        },
-      },
-      {
-        key: "Mod-a",
-        run: ({ state, dispatch }) => {
-          // Select all cells
-          set_selected_cells(notebook.cell_order);
-          return true;
-        },
-      },
-    ]);
-  }, [selected_cells]);
 
   /**
    * Keep track of what cells are just created by the users,
@@ -367,26 +408,15 @@ export let CellList = ({ notebook, engine }) => {
   let nexus_editorview = useCodemirrorNexus([
     React.useMemo(() => NotebookFacet.of(notebook), [notebook]),
     cell_id_order_from_notebook_facet,
+    React.useMemo(
+      () => SelectedCellsFacet.of(selected_cells),
+      [selected_cells]
+    ),
+    blur_cells_when_selecting,
     selected_cells_keymap,
     notebook_in_nexus,
     keep_track_of_last_created_cells_extension,
   ]);
-
-  // Remove focus from cell editors when selecting any whole cell
-  React.useLayoutEffect(() => {
-    if (selected_cells.length > 0) {
-      nexus_editorview.dispatch?.({
-        effects: notebook.cell_order.map((cell_id) =>
-          ToCellEffect.of({
-            cell_id: cell_id,
-            transaction_spec: {
-              effects: BlurEffect.of(),
-            },
-          })
-        ),
-      });
-    }
-  }, [selected_cells, notebook.cell_order]);
 
   // Use the nexus' keymaps as shortcuts!
   // This passes on keydown events from the document to the nexus for handling.
@@ -679,8 +709,14 @@ export let CellList = ({ notebook, engine }) => {
       </DragAndDropList>
       <SelectionArea
         cell_order={notebook.cell_order}
-        on_selection={(selected_cells) => {
-          set_selected_cells(selected_cells);
+        on_selection={(new_selected_cells) => {
+          mutate(selected_cells, (selected_cells) => {
+            if (isEqual(new_selected_cells, selected_cells)) {
+              return selected_cells;
+            } else {
+              return new_selected_cells;
+            }
+          });
         }}
       />
     </React.Fragment>
@@ -689,9 +725,9 @@ export let CellList = ({ notebook, engine }) => {
 
 /**
  * @param {{
- *  cell: import("./App").Cell,
- *  cylinder: import("./App").CylinderShadow,
- *  notebook: import("./App").Notebook,
+ *  cell: import("./notebook-types").Cell,
+ *  cylinder: import("./notebook-types").CylinderShadow,
+ *  notebook: import("./notebook-types").Notebook,
  *  maestro_plugin: any,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
@@ -713,17 +749,21 @@ export let Cell = ({
   let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
 
   let result_deserialized = React.useMemo(() => {
-    if (
-      cylinder?.result?.type === "return" ||
-      cylinder?.result?.type === "throw"
-    ) {
+    if (cylinder?.result?.type === "return") {
       return {
         type: cylinder.result.type,
         name: cylinder.result.name,
         value: deserialize(0, cylinder.result.value),
       };
+    } else if (cylinder?.result?.type === "throw") {
+      return {
+        // Because observable inspector doesn't show the stack trace when it is a thrown value?
+        // But we need to make our own custom error interface anyway (after we fix sourcemaps? Sighh)
+        type: "return",
+        value: deserialize(0, cylinder.result.value),
+      };
     } else {
-      return cylinder?.result ?? { type: "pending" };
+      return { type: "pending" };
     }
   }, [cylinder?.result]);
 
@@ -764,17 +804,19 @@ export let Cell = ({
         is_selected && "selected",
       ]).join(" ")}
     >
-      <InspectorContainer>
-        {result_deserialized.name && (
-          <span>
-            <span style={{ color: "#afb7d3", fontWeight: "700" }}>
-              {result_deserialized.name}
+      <InspectorHoverBackground>
+        <InspectorContainer>
+          {result_deserialized.name && (
+            <span>
+              <span style={{ color: "#afb7d3", fontWeight: "700" }}>
+                {result_deserialized.name}
+              </span>
+              <span>{" = "}</span>
             </span>
-            <span>{" = "}</span>
-          </span>
-        )}
-        <Inspector value={result_deserialized} />
-      </InspectorContainer>
+          )}
+          <Inspector value={result_deserialized} />
+        </InspectorContainer>
+      </InspectorHoverBackground>
 
       <EditorStyled
         style={{
@@ -795,6 +837,32 @@ export let Cell = ({
               }
             })}
             deps={[mutator(cell)]}
+          />
+
+          <Extension
+            extension={keymap.of([
+              {
+                key: "Mod-g",
+                run: (view) => {
+                  try {
+                    let x = format_with_prettier({
+                      code: view.state.doc.toString(),
+                      cursor: view.state.selection.main.head,
+                    });
+                    view.dispatch({
+                      selection: EditorSelection.cursor(x.cursorOffset),
+                      changes: {
+                        from: 0,
+                        to: view.state.doc.length,
+                        insert: x.formatted.trim(),
+                      },
+                    });
+                  } catch (e) {}
+                  return true;
+                },
+              },
+            ])}
+            deps={[]}
           />
 
           {/* <Extension extension={codemirror_interactive} /> */}

@@ -11,32 +11,32 @@ import { without } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 import { invertedEffects } from "./codemirror-shared-history";
 
-import { CellIdFacet, NexusFacet } from "./codemirror-nexus";
-import { MoveUpEffect, CellIdOrder } from "./codemirror-cell-movement";
+import { CellIdFacet, from_cell_effects, NexusFacet } from "./codemirror-nexus";
+import { MoveUpEffect } from "./codemirror-cell-movement";
 
-/** @type {StateEffectType<{ index: number, cell: import("../../App").Cell }>} */
+/** @type {StateEffectType<{ index: number, cell: import("../../notebook-types").Cell }>} */
 export let AddCellEffect = StateEffect.define();
 
-/** @type {StateEffectType<{ cell_id: import("../../App").CellId }>} */
+/** @type {StateEffectType<{ cell_id: import("../../notebook-types").CellId }>} */
 export let RemoveCellEffect = StateEffect.define();
 
-/** @type {StateEffectType<{ cell_id: import("../../App").CellId, from: number, to: number }>} */
+/** @type {StateEffectType<{ cell_id: import("../../notebook-types").CellId, from: number, to: number }>} */
 export let MoveCellEffect = StateEffect.define();
 
-/** @type {StateEffectType<{ cell_id: import("../../App").CellId, at: number }>} */
+/** @type {StateEffectType<{ cell_id: import("../../notebook-types").CellId, at: number }>} */
 export let RunCellEffect = StateEffect.define();
 
-/** @type {StateEffectType<{ cell_id: import("../../App").CellId, at: number }>} */
+/** @type {StateEffectType<{ cell_id: import("../../notebook-types").CellId, at: number }>} */
 export let RunIfChangedCellEffect = StateEffect.define();
 
-/** @type {Facet<import("../../App").Notebook, import("../../App").Notebook>} */
+/** @type {Facet<import("../../notebook-types").Notebook, import("../../notebook-types").Notebook>} */
 export let NotebookFacet = Facet.define({
   combine: (x) => x[0],
 });
 
 /**
  * @param {string} id
- * @returns {import("../../App").Cell}
+ * @returns {import("../../notebook-types").Cell}
  */
 export let empty_cell = (id = uuidv4()) => {
   return {
@@ -86,6 +86,8 @@ let mutate_notebook_on_add_or_remove = EditorView.updateListener.of(
 
         if (effect.is(RunCellEffect)) {
           let { cell_id, at } = effect.value;
+          console.log(`notebook:`, notebook);
+          console.log(`cell_id:`, cell_id);
           let cell = notebook.cells[cell_id];
           mutate(cell, (cell) => {
             cell.code = cell.unsaved_code;
@@ -174,11 +176,11 @@ let notebook_keymap = keymap.of([
   {
     key: "Mod-s",
     run: ({ state, dispatch }) => {
-      let cell_ids = state.facet(CellIdOrder);
-      console.log(`cell_ids:`, cell_ids);
+      let notebook = state.facet(NotebookFacet);
       let now = Date.now(); // Just in case map takes a lot of time ??
+
       dispatch({
-        effects: cell_ids.map((cell_id) =>
+        effects: notebook.cell_order.map((cell_id) =>
           RunIfChangedCellEffect.of({ cell_id: cell_id, at: now })
         ),
       });
@@ -187,11 +189,27 @@ let notebook_keymap = keymap.of([
   },
 ]);
 
+let update_notebook_when_cell_changes = EditorView.updateListener.of(
+  (update) => {
+    let notebook = update.state.facet(NotebookFacet);
+    for (let {
+      value: { cell_id, transaction },
+    } of from_cell_effects(update)) {
+      if (transaction.docChanged) {
+        mutate(notebook.cells[cell_id], (cell) => {
+          cell.unsaved_code = update.state.doc.toString();
+        });
+      }
+    }
+  }
+);
+
 export let notebook_in_nexus = [
   add_single_cell_when_all_cells_are_removed,
   invert_removing_and_adding_cells,
   mutate_notebook_on_add_or_remove,
   notebook_keymap,
+  // update_notebook_when_cell_changes,
 ];
 
 export let cell_keymap = Prec.high(
@@ -212,12 +230,12 @@ export let cell_keymap = Prec.high(
       run: (view) => {
         let nexus = view.state.facet(NexusFacet);
         let cell_id = view.state.facet(CellIdFacet);
-        let cell_order = view.state.facet(CellIdOrder);
+        let notebook = view.state.facet(NotebookFacet);
         nexus.dispatch({
           effects: [
             RunIfChangedCellEffect.of({ cell_id: cell_id, at: Date.now() }),
             AddCellEffect.of({
-              index: cell_order.indexOf(cell_id) + 1,
+              index: notebook.cell_order.indexOf(cell_id) + 1,
               cell: empty_cell(),
             }),
           ],

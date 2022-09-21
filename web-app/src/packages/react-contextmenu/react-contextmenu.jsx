@@ -6,7 +6,8 @@ export let ContextMenuContainer = styled.div`
     user-select: none;
 
     min-width: 170px;
-    background-color: #252525;
+    background: #25252588;
+    backdrop-filter: blur(30px);
     color: white;
 
     border-radius: 4px;

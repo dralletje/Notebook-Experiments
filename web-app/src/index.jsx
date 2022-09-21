@@ -17,10 +17,10 @@ root.render(
   // </React.StrictMode>
 );
 
-try {
-  await navigator.serviceWorker.register("/service-worker.js", {
+navigator.serviceWorker
+  .register("/service-worker.js", {
     scope: "/",
+  })
+  .catch((error) => {
+    console.log(`Error registering service worker:`, error);
   });
-} catch (error) {
-  console.log(`error:`, error);
-}

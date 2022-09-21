@@ -1,5 +1,7 @@
 import EventEmitter from "events";
 import {
+  Annotation,
+  AnnotationType,
   ChangeSet,
   Compartment,
   EditorState,
@@ -107,7 +109,7 @@ export let useCodemirrorEditorviewWithExtensions = ({
     );
   }
 
-  let compartments = React.useMemo(() => {
+  let compartments = useRealMemo(() => {
     return extensions.map((extension) => new Compartment());
   }, []);
 
@@ -132,11 +134,15 @@ export let useCodemirrorEditorviewWithExtensions = ({
   }, [editorstate]);
 
   // Update extensions
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     let reconfigures = compact(
       zip(compartments, extensions, previous_extensions_ref.current).map(
         ([compartment, extension, previous_extension]) => {
           if (extension !== previous_extension) {
+            // console.log(`UPDATING EXTENSION:`, {
+            //   extension,
+            //   previous_extension,
+            // });
             // @ts-ignore
             return compartment.reconfigure(extension);
           } else {
@@ -145,6 +151,7 @@ export let useCodemirrorEditorviewWithExtensions = ({
         }
       )
     );
+    previous_extensions_ref.current = extensions;
     if (reconfigures.length > 0) {
       editorview.dispatch({
         effects: reconfigures,
@@ -154,6 +161,9 @@ export let useCodemirrorEditorviewWithExtensions = ({
 
   return editorview;
 };
+
+/** @type {AnnotationType<null>} */
+export let dont_send_to_nexus_annotation = Annotation.define();
 
 let send_to_cell_effects_to_emitter = EditorView.updateListener.of((update) => {
   let emitter = update.state.facet(NexusToCellEmitterFacet);
@@ -281,16 +291,20 @@ export let child_extension = (_nexus) => {
       }
 
       nexus.dispatch(
-        ...update.transactions.map((transaction) => {
-          return {
-            effects: [
-              FromCellEffect.of({
-                cell_id: cell_id,
-                transaction: transaction,
-              }),
-            ],
-          };
-        })
+        ...update.transactions
+          .filter((transaction) => {
+            return !transaction.annotation(dont_send_to_nexus_annotation);
+          })
+          .map((transaction) => {
+            return {
+              effects: [
+                FromCellEffect.of({
+                  cell_id: cell_id,
+                  transaction: transaction,
+                }),
+              ],
+            };
+          })
       );
     }),
 

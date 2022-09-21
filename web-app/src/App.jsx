@@ -17,34 +17,6 @@ import {
   terminalOutline,
 } from "ionicons/icons";
 
-/**
- * @typedef EngineShadow
- * @property {{ [id: string]: CylinderShadow }} cylinders
- *
- * @typedef CylinderShadow
- * @property {number?} last_run
- * @property {any} result
- * @property {boolean} running
- */
-
-/**
- * @typedef CellId
- * @type {string}
- *
- * @typedef Notebook
- * @property {string} id
- * @property {{ [key: CellId]: Cell }} cells
- * @property {CellId[]} cell_order
- *
- * @typedef Cell
- * @property {CellId} id
- * @property {string} code
- * @property {string} unsaved_code
- * @property {number} last_run
- * @property {boolean} [is_waiting]
- * @property {boolean} [folded]
- */
-
 let AppStyle = styled.div`
   padding-top: 100px;
   min-height: 100vh;
@@ -92,6 +64,7 @@ let DependenciesTab = () => {
 };
 
 let GraphTab = ({ dag }) => {
+  /** @type {any} */
   let ref = React.useRef();
   React.useEffect(() => {
     console.log(`engine:`, dag);
@@ -159,7 +132,7 @@ let try_json = (str) => {
 function App() {
   let [_notebook, _set_notebook] = React.useState(
     try_json(localStorage.getItem("_notebook")) ??
-      /** @type {Notebook} */ ({
+      /** @type {import("./notebook-types").Notebook} */ ({
         id: "1",
         cell_order: ["1", "2"],
         cells: {
@@ -194,7 +167,7 @@ function App() {
     [_set_notebook]
   );
 
-  /** @type {Notebook} */
+  /** @type {import("./notebook-types").Notebook} */
   let notebook = useMutateable(_notebook, update_state);
 
   let [engine, set_engine] = React.useState({ cylinders: {} });

@@ -63,6 +63,12 @@ let readonly_symbol = Symbol("Readonly version this variable");
  * @returns {T}
  */
 export let readonly = (store) => {
+  if (store == null) {
+    throw new Error(`Can't make a null/undefined readonly`);
+  }
+  if (typeof store !== "object") {
+    throw new Error(`Can't make a primitive readonly`);
+  }
   return store[readonly_symbol];
 };
 
