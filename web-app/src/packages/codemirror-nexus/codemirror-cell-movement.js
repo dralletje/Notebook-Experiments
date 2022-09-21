@@ -126,8 +126,7 @@ export let cell_movement_extension = [
       let cell_order = update.state.facet(CellIdOrder);
 
       if (cell_order == null) {
-        console.warn("Cell order is null in update listener");
-        return;
+        throw new Error("Cell order is null in update listener");
       }
 
       for (let effect of from_cell_effects(update)) {
@@ -275,29 +274,23 @@ export let cell_movement_extension = [
               selection: EditorSelection.cursor(state.doc.length),
             });
           } else {
-            console.log("Tryinna get goal column");
+            // Try to move to the goalColumn that came from the previous cell selection
             let rect = view.contentDOM.getBoundingClientRect();
-            console.log(`rect:`, rect);
-            console.log(
-              `{
-                x: rect.left + (start.goalColumn ?? rect.width),
-                y: rect.bottom - view.defaultLineHeight,
-              }:`,
-              {
-                x: rect.left + (start.goalColumn ?? rect.width),
-                y: rect.bottom - view.defaultLineHeight,
-              }
-            );
             let where = view.coordsAtPos(view.state.doc.length);
             let new_selection = view.posAtCoords(
               {
-                x: rect.left + (start.goalColumn ?? rect.width),
+                x: rect.left + start.goalColumn,
                 y: where?.bottom ?? rect.bottom - 2 * view.defaultLineHeight,
               },
               false
             );
             view.dispatch({
-              selection: EditorSelection.cursor(new_selection),
+              selection: EditorSelection.cursor(
+                new_selection,
+                undefined,
+                undefined,
+                start.goalColumn
+              ),
             });
           }
 
@@ -322,13 +315,18 @@ export let cell_movement_extension = [
             let rect = view.contentDOM.getBoundingClientRect();
             let new_selection = view.posAtCoords(
               {
-                x: rect.left + (start.goalColumn ?? rect.width),
+                x: rect.left + start.goalColumn,
                 y: rect.top + view.defaultLineHeight,
               },
               false
             );
             view.dispatch({
-              selection: EditorSelection.cursor(new_selection),
+              selection: EditorSelection.cursor(
+                new_selection,
+                undefined,
+                undefined,
+                start.goalColumn
+              ),
             });
           }
 

@@ -15,8 +15,9 @@ import {
   ViewPlugin,
   ViewUpdate,
 } from "@codemirror/view";
-import { groupBy } from "lodash";
+import { compact, groupBy, zip } from "lodash";
 import React from "react";
+import { useRealMemo } from "use-real-memo";
 
 /**
  * @typedef CellId
@@ -85,11 +86,88 @@ class SingleEventEmitter {
   }
 }
 
-// let useCodemirrorEditorviewWithExtensions = (extensions) => {
-//   let previous_extensions = React.useRef(extensions.map(x=));
+/**
+ * @param {{
+ *  doc: string,
+ *  extensions: Array<import("@codemirror/state").Extension>,
+ *  parent_ref?: React.RefObject<HTMLElement>,
+ * }} props
+ */
+export let useCodemirrorEditorviewWithExtensions = ({
+  doc,
+  extensions,
+  parent_ref,
+}) => {
+  let initial_extensions = React.useRef(extensions).current;
+  let previous_extensions_ref = React.useRef(extensions);
 
-//   React.use
-// }
+  if (previous_extensions_ref.current.length !== extensions.length) {
+    throw new Error(
+      `Can't change the amount of extensions in useCodemirrorEditorviewWithExtensions`
+    );
+  }
+
+  let compartments = React.useMemo(() => {
+    return extensions.map((extension) => new Compartment());
+  }, []);
+
+  // TODO Ideally I split up creating the state (in useMemo/useRef) and creating the view (in useEffect).
+  // .... Because the editorview is a side-effect, and I don't want to do that in a useMemo.
+  let editorstate = useRealMemo(() => {
+    return EditorState.create({
+      doc: doc,
+      extensions: zip(compartments, initial_extensions).map(
+        // @ts-ignore trust me, `compartments` and `extensions` are the same length
+        ([compartment, extension]) => compartment.of(extension)
+      ),
+    });
+  }, []);
+
+  // TODO Stuff in useMemo, will fix later
+  let editorview = useRealMemo(() => {
+    return new EditorView({
+      state: editorstate,
+      parent: parent_ref?.current ?? undefined,
+    });
+  }, [editorstate]);
+
+  // Update extensions
+  React.useEffect(() => {
+    let reconfigures = compact(
+      zip(compartments, extensions, previous_extensions_ref.current).map(
+        ([compartment, extension, previous_extension]) => {
+          if (extension !== previous_extension) {
+            // @ts-ignore
+            return compartment.reconfigure(extension);
+          } else {
+            return null;
+          }
+        }
+      )
+    );
+    if (reconfigures.length > 0) {
+      editorview.dispatch({
+        effects: reconfigures,
+      });
+    }
+  }, [...extensions]);
+
+  return editorview;
+};
+
+let send_to_cell_effects_to_emitter = EditorView.updateListener.of((update) => {
+  let emitter = update.state.facet(NexusToCellEmitterFacet);
+  let effects_to_cells = update.transactions.flatMap((transaction) =>
+    transaction.effects.filter((effect) => effect.is(ToCellEffect))
+  );
+  let x = groupBy(effects_to_cells, (x) => x.value.cell_id);
+  for (let [cell_id, effects] of Object.entries(x)) {
+    emitter.emit({
+      cell_id: cell_id,
+      transaction_specs: effects.map((effect) => effect.value.transaction_spec),
+    });
+  }
+});
 
 /**
  * Creates a lone editorview that is not bound (and honestly, should not be bound) to the DOM.
@@ -98,43 +176,34 @@ class SingleEventEmitter {
  * - They can listen to `FromCellEffect`s, which are effects that are sent from other cells
  * - They can send `ToCellEffect`s, which are effects that are sent to other cells
  *
- * @param {import("@codemirror/state").Extension} extensions
+ * @param {Array<import("@codemirror/state").Extension>} extensions
  */
-export function codemirror_nexus(extensions = []) {
-  return new EditorView({
-    state: EditorState.create({
-      doc: "",
-      extensions: [
-        // This is not to be used inside Nexus-extensions,
-        // but to be queried by the Cell-extension so it can retrieve transactions/effects from the Nexus.
-        NexusToCellEmitterFacet.of(new SingleEventEmitter()),
+export function useCodemirrorNexus(extensions = []) {
+  let emitter_facet = React.useRef(
+    NexusToCellEmitterFacet.of(new SingleEventEmitter())
+  ).current;
+  return useCodemirrorEditorviewWithExtensions({
+    doc: "",
+    extensions: [
+      // This is not to be used inside Nexus-extensions,
+      // but to be queried by the Cell-extension so it can retrieve transactions/effects from the Nexus.
+      emitter_facet,
 
-        // Emit ToCellEffect to the emitter so the Cell-extension can pick it up
-        EditorView.updateListener.of((update) => {
-          let emitter = update.state.facet(NexusToCellEmitterFacet);
-          let effects_to_cells = update.transactions.flatMap((transaction) =>
-            transaction.effects.filter((effect) => effect.is(ToCellEffect))
-          );
-          let x = groupBy(effects_to_cells, (x) => x.value.cell_id);
-          for (let [cell_id, effects] of Object.entries(x)) {
-            emitter.emit({
-              cell_id: cell_id,
-              transaction_specs: effects.map(
-                (effect) => effect.value.transaction_spec
-              ),
-            });
-          }
-        }),
+      // Emit ToCellEffect to the emitter so the Cell-extension can pick it up
+      send_to_cell_effects_to_emitter,
 
-        extensions,
-      ],
-    }),
+      ...extensions,
+    ],
   });
 }
 
 export let nexus_extension = (extension) => {
   return ViewPlugin.define((view) => {
     let nexus = view.state.facet(NexusFacet);
+    if (nexus == null) {
+      throw new Error("Extension requires a Nexus");
+    }
+
     let compartment = new Compartment();
 
     nexus.dispatch({
@@ -204,9 +273,11 @@ export let child_extension = (_nexus) => {
       let nexus = update.state.facet(NexusFacet);
       let cell_id = update.state.facet(CellIdFacet);
 
+      if (nexus == null) {
+        throw new Error("Cell extension requires a Nexus");
+      }
       if (cell_id == null) {
-        console.warn(`Cell id is null in update listener`);
-        return;
+        throw new Error("Cell extension requires a CellIdFacet");
       }
 
       nexus.dispatch(

@@ -49,6 +49,8 @@ export let blur_when_other_cell_focus = [
       }
     })
   ),
+
+  // TODO Make these two into dom listeners?
   EditorView.updateListener.of(
     ({ view, state, transactions, focusChanged }) => {
       for (let transaction of transactions) {

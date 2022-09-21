@@ -12,6 +12,7 @@ import dot from "@observablehq/graphviz";
 import { IonIcon } from "@ionic/react";
 import {
   gitNetworkOutline,
+  iceCreamOutline,
   pizzaOutline,
   terminalOutline,
 } from "ionicons/icons";
@@ -82,6 +83,10 @@ let DependenciesTab = () => {
   return (
     <div style={{ padding: 16 }}>
       <h1>Dependencies</h1>
+      <p>
+        Automatically manage dependencies, but actually nice this time. Possibly
+        having the actual `import X from "..."` cells living here.
+      </p>
     </div>
   );
 };
@@ -107,6 +112,10 @@ let GraphTab = ({ dag }) => {
   return (
     <div style={{ padding: 16 }}>
       <h1>Graph</h1>
+      <p>
+        A graph/visualisation of how the cells are connected... haven't figured
+        out a nice way yet, so here is a ugly graph.
+      </p>
       <div ref={ref}></div>
     </div>
   );
@@ -116,6 +125,25 @@ let ShellTab = () => {
   return (
     <div style={{ padding: 16 }}>
       <h1>Shell</h1>
+      <p>
+        Very ambitious: I want this to be a linear notebook that works kind of
+        like a REPL, having access to the variables created in the main
+        notebook, but not the other way around. And then, ideally, being able to
+        drag cells from here to the main notebook.
+      </p>
+    </div>
+  );
+};
+
+let MetaTab = () => {
+  return (
+    <div style={{ padding: 16 }}>
+      <h1>Meta</h1>
+      <p>
+        I want this page to become a notebook that can access the main process,
+        and influence the notebook web page. This way you can write your own
+        plugins.
+      </p>
     </div>
   );
 };
@@ -202,7 +230,7 @@ function App() {
   }, [notebook]);
 
   let [open_tab, set_open_tab] = React.useState(
-    /** @type {null | "graph" | "dependencies" | "shell"} */
+    /** @type {null | "graph" | "dependencies" | "shell" | "meta"} */
     (null)
   );
 
@@ -233,6 +261,7 @@ function App() {
           {open_tab === "graph" && <GraphTab dag={dag} />}
           {open_tab === "dependencies" && <DependenciesTab />}
           {open_tab === "shell" && <ShellTab />}
+          {open_tab === "meta" && <MetaTab />}
         </div>
       )}
       <div
@@ -276,6 +305,15 @@ function App() {
         >
           <IonIcon icon={terminalOutline} />
           shell
+        </MyButton>
+        <MyButton
+          className={open_tab === "meta" ? "active" : ""}
+          onClick={() => {
+            set_open_tab((x) => (x === "meta" ? null : "meta"));
+          }}
+        >
+          <IonIcon icon={iceCreamOutline} />
+          meta
         </MyButton>
       </div>
     </div>

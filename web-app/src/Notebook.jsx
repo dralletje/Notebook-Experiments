@@ -18,11 +18,11 @@ import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
 import {
   CellIdFacet,
   child_extension,
-  codemirror_nexus,
   from_cell_effects,
   NexusFacet,
   nexus_extension,
   ToCellEffect,
+  useCodemirrorNexus,
 } from "./packages/codemirror-nexus/codemirror-nexus";
 import {
   cell_movement_extension,
@@ -64,6 +64,7 @@ import {
 } from "./packages/typescript-server-webworker/typescript-server-webworker";
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
 import { basic_javascript_setup } from "./codemirror-javascript-setup";
+import { useRealMemo } from "use-real-memo";
 
 let CellContainer = styled.div`
   display: flex;
@@ -73,14 +74,12 @@ let CellContainer = styled.div`
 `;
 
 let InspectorContainer = styled.div`
-  font-size: 16px;
-  min-height: 24px;
-`;
-
-let InspectorInnerContainer = styled.div`
   padding-left: calc(16px + 4px);
   padding-right: 16px;
   overflow-y: auto;
+
+  font-size: 16px;
+  min-height: 24px;
 `;
 
 export let EditorStyled = styled.div`
@@ -104,14 +103,15 @@ let CellStyle = styled.div`
   font-family: Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro",
     monospace;
 
-  & ${InspectorInnerContainer} {
-    transition: all 1s ease-in-out;
+  & ${InspectorContainer} {
+    transition: all 0.2s ease-in-out;
   }
   &.modified {
     & ${EditorStyled} {
       background-color: rgb(33 28 19);
     }
-    & ${InspectorInnerContainer} {
+    & ${InspectorContainer} {
+      transition: all 1s ease-in-out;
       opacity: 0.5;
       filter: blur(1px);
     }
@@ -224,11 +224,7 @@ let DragAndDropList = ({ children, nexus_editorview, cell_order }) => {
             {...provided.droppableProps}
             ref={provided.innerRef}
           >
-            <Flipper
-              flipKey={cell_order.join(",")}
-              spring={"stiff"}
-              data-can-start-cell-selection
-            >
+            <Flipper flipKey={cell_order.join(",")} spring={"stiff"}>
               <div data-can-start-cell-selection>{children}</div>
             </Flipper>
             {provided.placeholder}
@@ -237,26 +233,6 @@ let DragAndDropList = ({ children, nexus_editorview, cell_order }) => {
       </Droppable>
     </DragDropContext>
   );
-};
-
-let useCodemirrorExtension = (editorview, extension) => {
-  let compartment = React.useRef(new Compartment()).current;
-  React.useLayoutEffect(() => {
-    editorview.dispatch({
-      effects: StateEffect.appendConfig.of(compartment.of(extension)),
-    });
-    return () => {
-      editorview.dispatch({
-        // @ts-ignore
-        effects: compartment.reconfigure(null),
-      });
-    };
-  }, []);
-  React.useLayoutEffect(() => {
-    editorview.dispatch?.({
-      effects: compartment.reconfigure(extension),
-    });
-  }, [extension]);
 };
 
 let CellEditorSelection = StateField.define({
@@ -295,6 +271,38 @@ let CodeAndCellMapFacet = Facet.define({
   combine: (values) => values[0],
 });
 
+let cell_id_order_from_notebook_facet = CellIdOrder.compute(
+  [NotebookFacet],
+  (state) => state.facet(NotebookFacet).cell_order
+);
+
+/**
+ * @param {{
+ *  icon: import("react").ReactElement,
+ *  label: string,
+ *  shortcut?: string,
+ * }} props
+ */
+let ContextMenuItem = ({ icon, label, shortcut }) => {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+      }}
+    >
+      {icon}
+      <div style={{ minWidth: 8 }} />
+      {label}
+      <div style={{ flex: 1 }} />
+      {shortcut && (
+        <div style={{ opacity: 0.5, fontSize: "0.8em" }}>{shortcut}</div>
+      )}
+    </div>
+  );
+};
+
 /**
  * @param {{
  *  notebook: import("./App").Notebook,
@@ -307,58 +315,63 @@ export let CellList = ({ notebook, engine }) => {
   );
   // Just making sure the rest of the app only sees existing cells in `selected_cells`
   let selected_cells = intersection(_selected_cells, notebook.cell_order);
-
-  // I'm adding `cell_id_order_compartment` here manually (and at construction time) vs. using `useCodemirrorExtension`
-  // because else the compartment will only be added after all the extensions from children are added,
-  // and they won't have CellIdOrder yet, making things harder...
-  // TODO Maybe I need to add the compartment at render time? idk, need componentWillMount 🥲
-  let notebook_compartment = React.useRef(new Compartment()).current;
-  let nexus_editorview = React.useMemo(
-    () =>
-      codemirror_nexus([
-        notebook_compartment.of(NotebookFacet.of(notebook)),
-        CellIdOrder.compute(
-          [NotebookFacet],
-          (state) => state.facet(NotebookFacet).cell_order
-        ),
-      ]),
-    [codemirror_nexus, notebook_compartment]
-  );
-  React.useLayoutEffect(() => {
-    nexus_editorview.dispatch?.({
-      effects: notebook_compartment.reconfigure(NotebookFacet.of(notebook)),
-    });
-  }, [nexus_editorview, notebook]);
-
   // Keymap that interacts with the selected cells
   // TODO Maybe add these to codemirror state too??
-  useCodemirrorExtension(
-    nexus_editorview,
-    React.useMemo(() => {
-      return keymap.of([
-        {
-          key: "Backspace",
-          run: ({ state, dispatch }) => {
-            // Remove cell
-            dispatch({
-              effects: selected_cells.map((cell_id) =>
-                RemoveCellEffect.of({ cell_id: cell_id })
-              ),
-            });
-            return true;
-          },
+  let selected_cells_keymap = React.useMemo(() => {
+    return keymap.of([
+      {
+        key: "Backspace",
+        run: ({ state, dispatch }) => {
+          // Remove cell
+          dispatch({
+            effects: selected_cells.map((cell_id) =>
+              RemoveCellEffect.of({ cell_id: cell_id })
+            ),
+          });
+          return true;
         },
-        {
-          key: "Mod-a",
-          run: ({ state, dispatch }) => {
-            // Select all cells
-            set_selected_cells(notebook.cell_order);
-            return true;
-          },
+      },
+      {
+        key: "Mod-a",
+        run: ({ state, dispatch }) => {
+          // Select all cells
+          set_selected_cells(notebook.cell_order);
+          return true;
         },
-      ]);
-    }, [selected_cells])
+      },
+    ]);
+  }, [selected_cells]);
+
+  /**
+   * Keep track of what cells are just created by the users,
+   * so we can animate them in 🤩
+   */
+  let [last_created_cells, set_last_created_cells] = React.useState(
+    /** @type {any[]} */ ([])
   );
+  let keep_track_of_last_created_cells_extension = React.useMemo(
+    () =>
+      EditorView.updateListener.of((update) => {
+        let created_cells = update.transactions.flatMap((transaction) =>
+          transaction.effects
+            .filter((x) => x.is(AddCellEffect))
+            .map((x) => x.value.cell.id)
+        );
+        if (created_cells.length !== 0) {
+          set_last_created_cells(created_cells);
+        }
+      }),
+    [set_last_created_cells]
+  );
+
+  let nexus_editorview = useCodemirrorNexus([
+    React.useMemo(() => NotebookFacet.of(notebook), [notebook]),
+    cell_id_order_from_notebook_facet,
+    selected_cells_keymap,
+    notebook_in_nexus,
+    keep_track_of_last_created_cells_extension,
+  ]);
+
   // Remove focus from cell editors when selecting any whole cell
   React.useLayoutEffect(() => {
     if (selected_cells.length > 0) {
@@ -374,8 +387,6 @@ export let CellList = ({ notebook, engine }) => {
       });
     }
   }, [selected_cells, notebook.cell_order]);
-
-  useCodemirrorExtension(nexus_editorview, notebook_in_nexus);
 
   // Use the nexus' keymaps as shortcuts!
   // This passes on keydown events from the document to the nexus for handling.
@@ -393,176 +404,151 @@ export let CellList = ({ notebook, engine }) => {
     };
   }, [nexus_editorview]);
 
-  let child_plugin = React.useMemo(
+  let child_plugin = useRealMemo(
     () => child_extension(nexus_editorview),
-    [nexus_editorview, child_extension]
+    [nexus_editorview]
   );
 
-  /**
-   * Keep track of what cells are just created by the users,
-   * so we can animate them in 🤩
-   */
-  let [last_created_cells, set_last_created_cells] = React.useState(
-    /** @type {any[]} */ ([])
-  );
-  useCodemirrorExtension(
-    nexus_editorview,
-    React.useMemo(
-      () =>
-        EditorView.updateListener.of((update) => {
-          let created_cells = update.transactions.flatMap((transaction) =>
-            transaction.effects
-              .filter((x) => x.is(AddCellEffect))
-              .map((x) => x.value.cell.id)
-          );
-          if (created_cells.length !== 0) {
-            set_last_created_cells(created_cells);
-          }
-        }),
-      [set_last_created_cells]
-    )
-  );
+  //   let code_and_cell_map = React.useMemo(() => {
+  //     let code = "";
+  //     let cursor = 0;
+  //     /** @type {{ [cell_id: string]: { start: number, end: number } }} */
+  //     let cell_map = {};
 
-  let code_and_cell_map = React.useMemo(() => {
-    let code = "";
-    let cursor = 0;
-    /** @type {{ [cell_id: string]: { start: number, end: number } }} */
-    let cell_map = {};
+  //     let type_references = `
+  // /// <reference lib="es5" />
+  // /// <reference lib="es2015" />
+  // /// <reference lib="es2015.collection" />
+  // /// <reference lib="es2015.core" />
+  // /// <reference types="node" />
+  // `;
+  //     code += type_references;
+  //     cursor += type_references.length;
 
-    let type_references = `
-/// <reference lib="es5" />
-/// <reference lib="es2015" />
-/// <reference lib="es2015.collection" />
-/// <reference lib="es2015.core" />
-/// <reference types="node" />
-`;
-    code += type_references;
-    cursor += type_references.length;
+  //     for (let cell_id of notebook.cell_order) {
+  //       let cell = notebook.cells[cell_id];
+  //       // Using unsaved code because I want typescript to be very optimistic
+  //       let code_to_add = cell.unsaved_code;
+  //       cell_map[cell_id] = {
+  //         start: cursor,
+  //         end: cursor + code_to_add.length,
+  //       };
+  //       code += code_to_add + "\n";
+  //       cursor += code_to_add.length + 1;
+  //     }
+  //     // console.log(`code:`, code);
+  //     return { code, cell_map };
+  //   }, [notebook.cell_order, notebook.cells]);
 
-    for (let cell_id of notebook.cell_order) {
-      let cell = notebook.cells[cell_id];
-      // Using unsaved code because I want typescript to be very optimistic
-      let code_to_add = cell.unsaved_code;
-      cell_map[cell_id] = {
-        start: cursor,
-        end: cursor + code_to_add.length,
-      };
-      code += code_to_add + "\n";
-      cursor += code_to_add.length + 1;
-    }
-    // console.log(`code:`, code);
-    return { code, cell_map };
-  }, [notebook.cell_order, notebook.cells]);
+  //   // useWorker
+  //   /** @type {import("react").MutableRefObject<Worker>} */
+  //   let worker_ref = React.useRef(/** @type {any} */ (null));
 
-  // useWorker
-  /** @type {import("react").MutableRefObject<Worker>} */
-  let worker_ref = React.useRef(/** @type {any} */ (null));
+  //   React.useEffect(() => {
+  //     worker_ref.current = create_worker();
+  //     return () => {
+  //       worker_ref.current.terminate();
+  //     };
+  //   }, [create_worker]);
 
-  React.useEffect(() => {
-    worker_ref.current = create_worker();
-    return () => {
-      worker_ref.current.terminate();
-    };
-  }, [create_worker]);
+  //   let do_linting = React.useRef(
+  //     debounce(async () => {
+  //       let x = await post_message(worker_ref.current, {
+  //         type: "request-linting",
+  //         data: undefined,
+  //       });
+  //       console.log(`x:`, x);
+  //     }, 1000)
+  //   ).current;
+  //   React.useEffect(() => {
+  //     console.log("!!!");
+  //     do_linting();
+  //   }, [code_and_cell_map]);
 
-  let do_linting = React.useRef(
-    debounce(async () => {
-      let x = await post_message(worker_ref.current, {
-        type: "request-linting",
-        data: undefined,
-      });
-      console.log(`x:`, x);
-    }, 1000)
-  ).current;
-  React.useEffect(() => {
-    console.log("!!!");
-    do_linting();
-  }, [code_and_cell_map]);
+  //   React.useEffect(() => {
+  //     console.log("Posting file");
+  //     post_message(worker_ref.current, {
+  //       type: "update-notebook-file",
+  //       data: {
+  //         code: code_and_cell_map.code,
+  //       },
+  //     }).then((x) => {
+  //       console.log(`UPDATED:`, x);
+  //     });
+  //   }, [code_and_cell_map]);
 
-  React.useEffect(() => {
-    console.log("Posting file");
-    post_message(worker_ref.current, {
-      type: "update-notebook-file",
-      data: {
-        code: code_and_cell_map.code,
-      },
-    }).then((x) => {
-      console.log(`UPDATED:`, x);
-    });
-  }, [code_and_cell_map]);
+  //   useCodemirrorExtension(nexus_editorview, CellEditorSelection);
+  //   useCodemirrorExtension(
+  //     nexus_editorview,
+  //     CodeAndCellMapFacet.of(code_and_cell_map)
+  //   );
 
-  useCodemirrorExtension(nexus_editorview, CellEditorSelection);
-  useCodemirrorExtension(
-    nexus_editorview,
-    CodeAndCellMapFacet.of(code_and_cell_map)
-  );
+  //   let request_info_at_position = React.useRef(
+  //     debounce((current_position_maybe) => {
+  //       console.log("Hiii");
+  //       post_message(worker_ref.current, {
+  //         type: "request-info-at-position",
+  //         data: {
+  //           position: current_position_maybe,
+  //         },
+  //       }).then((x) => {
+  //         console.log(`INFO AT POISITION:`, x);
+  //       });
+  //     }, 1000)
+  //   ).current;
 
-  let request_info_at_position = React.useRef(
-    debounce((current_position_maybe) => {
-      console.log("Hiii");
-      post_message(worker_ref.current, {
-        type: "request-info-at-position",
-        data: {
-          position: current_position_maybe,
-        },
-      }).then((x) => {
-        console.log(`INFO AT POISITION:`, x);
-      });
-    }, 1000)
-  ).current;
+  //   useCodemirrorExtension(
+  //     nexus_editorview,
+  //     React.useMemo(
+  //       () =>
+  //         EditorView.updateListener.of((update) => {
+  //           let code_and_cell_map = update.state.facet(CodeAndCellMapFacet);
+  //           let cell_selection = update.state.field(CellEditorSelection);
+  //           if (
+  //             update.startState.field(CellEditorSelection) !== cell_selection &&
+  //             cell_selection != null
+  //           ) {
+  //             let { cell_id, selection } = cell_selection;
+  //             let cell_position = code_and_cell_map.cell_map[cell_id];
+  //             let current_position_maybe =
+  //               cell_position.start + selection.main.to;
+  //             request_info_at_position(current_position_maybe);
+  //           }
+  //         }),
+  //       []
+  //     )
+  //   );
 
-  useCodemirrorExtension(
-    nexus_editorview,
-    React.useMemo(
-      () =>
-        EditorView.updateListener.of((update) => {
-          let code_and_cell_map = update.state.facet(CodeAndCellMapFacet);
-          let cell_selection = update.state.field(CellEditorSelection);
-          if (
-            update.startState.field(CellEditorSelection) !== cell_selection &&
-            cell_selection != null
-          ) {
-            let { cell_id, selection } = cell_selection;
-            let cell_position = code_and_cell_map.cell_map[cell_id];
-            let current_position_maybe =
-              cell_position.start + selection.main.to;
-            request_info_at_position(current_position_maybe);
-          }
-        }),
-      []
-    )
-  );
+  //   useCodemirrorExtension(
+  //     nexus_editorview,
+  //     React.useMemo(() => {
+  //       return keymap.of([
+  //         {
+  //           key: "Ctrl-Space",
+  //           run: ({ state, dispatch }) => {
+  //             let code_and_cell_map = state.facet(CodeAndCellMapFacet);
+  //             let cell_selection = state.field(CellEditorSelection);
+  //             if (cell_selection != null) {
+  //               let { cell_id, selection } = cell_selection;
+  //               let cell_position = code_and_cell_map.cell_map[cell_id];
+  //               let current_position_maybe =
+  //                 cell_position.start + selection.main.to;
 
-  useCodemirrorExtension(
-    nexus_editorview,
-    React.useMemo(() => {
-      return keymap.of([
-        {
-          key: "Ctrl-Space",
-          run: ({ state, dispatch }) => {
-            let code_and_cell_map = state.facet(CodeAndCellMapFacet);
-            let cell_selection = state.field(CellEditorSelection);
-            if (cell_selection != null) {
-              let { cell_id, selection } = cell_selection;
-              let cell_position = code_and_cell_map.cell_map[cell_id];
-              let current_position_maybe =
-                cell_position.start + selection.main.to;
-
-              post_message(worker_ref.current, {
-                type: "request-completions",
-                data: {
-                  position: current_position_maybe,
-                },
-              }).then((x) => {
-                console.log(`x:`, x);
-              });
-            }
-            return true;
-          },
-        },
-      ]);
-    }, [])
-  );
+  //               post_message(worker_ref.current, {
+  //                 type: "request-completions",
+  //                 data: {
+  //                   position: current_position_maybe,
+  //                 },
+  //               }).then((x) => {
+  //                 console.log(`x:`, x);
+  //               });
+  //             }
+  //             return true;
+  //           },
+  //         },
+  //       ]);
+  //     }, [])
+  //   );
 
   return (
     <React.Fragment>
@@ -610,23 +596,11 @@ export let CellList = ({ notebook, engine }) => {
                         options={[
                           {
                             title: (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <IonIcon icon={planetOutline} />
-                                <div style={{ minWidth: 8 }} />
-                                Delete
-                                <div style={{ flex: 1 }} />
-                                <div
-                                  style={{ opacity: 0.5, fontSize: "0.8em" }}
-                                >
-                                  ⌘K
-                                </div>
-                              </div>
+                              <ContextMenuItem
+                                icon={<IonIcon icon={planetOutline} />}
+                                label="Delete"
+                                shortcut="⌘K"
+                              />
                             ),
                             onClick: () => {
                               nexus_editorview.dispatch({
@@ -638,17 +612,10 @@ export let CellList = ({ notebook, engine }) => {
                           },
                           {
                             title: (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <IonIcon icon={eyeOutline} />
-                                <div style={{ minWidth: 8 }} />
-                                Fold
-                              </div>
+                              <ContextMenuItem
+                                icon={<IonIcon icon={eyeOutline} />}
+                                label="Fold"
+                              />
                             ),
                             onClick: () => {
                               mutate(cell, (cell) => {
@@ -721,17 +688,6 @@ export let CellList = ({ notebook, engine }) => {
 };
 
 /**
- * Tiny extension that will put the editor in focus whenever any transaction comes with `scrollIntoView` effect.
- * For example, history uses this. Normally, this doesn't focus the editor, because it is assumed the editor is already in focus.
- * Well guess what, on notebooks it ain't!
- */
-let focus_on_scrollIntoView = EditorView.updateListener.of((update) => {
-  if (update.transactions.some((tx) => tx.scrollIntoView)) {
-    update.view.focus();
-  }
-});
-
-/**
  * @param {{
  *  cell: import("./App").Cell,
  *  cylinder: import("./App").CylinderShadow,
@@ -752,6 +708,7 @@ export let Cell = ({
   let editor_state = useEditorView({
     code: cell.unsaved_code,
   });
+
   // prettier-ignore
   let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
 
@@ -808,17 +765,15 @@ export let Cell = ({
       ]).join(" ")}
     >
       <InspectorContainer>
-        <InspectorInnerContainer>
-          {result_deserialized.name && (
-            <span>
-              <span style={{ color: "#afb7d3", fontWeight: "700" }}>
-                {result_deserialized.name}
-              </span>
-              <span>{" = "}</span>
+        {result_deserialized.name && (
+          <span>
+            <span style={{ color: "#afb7d3", fontWeight: "700" }}>
+              {result_deserialized.name}
             </span>
-          )}
-          <Inspector value={result_deserialized} />
-        </InspectorInnerContainer>
+            <span>{" = "}</span>
+          </span>
+        )}
+        <Inspector value={result_deserialized} />
       </InspectorContainer>
 
       <EditorStyled
@@ -831,6 +786,7 @@ export let Cell = ({
           <Extension extension={basic_javascript_setup} />
 
           <Extension
+            key="save-code"
             extension={EditorView.updateListener.of((update) => {
               if (update.docChanged) {
                 mutate(cell, (cell) => {
@@ -844,20 +800,31 @@ export let Cell = ({
           {/* <Extension extension={codemirror_interactive} /> */}
           {/* <Extension extension={debug_syntax_plugin} /> */}
           {/* <Extension extension={inline_notebooks_extension} /> */}
-          <Extension extension={CellIdFacet.of(cell.id)} />
-          <Extension extension={maestro_plugin} />
-
-          <Extension extension={blur_when_other_cell_focus} />
-          <Extension extension={focus_on_scrollIntoView} />
           <Extension
+            key="cell-id"
+            extension={CellIdFacet.of(cell.id)}
+            deps={[cell.id]}
+          />
+          <Extension key="nexus-plugin" extension={maestro_plugin} />
+          <Extension
+            key="shared-history"
             extension={nexus_extension(shared_history())}
             deps={[history]}
           />
-          <Extension extension={nexus_extension()} deps={[historyKeymap]} />
-
-          <Extension extension={cell_movement_extension} />
-          <Extension extension={awesome_line_wrapping} />
-          <Extension extension={cell_keymap} />
+          <Extension
+            key="shared-history-keymap"
+            extension={nexus_extension(keymap.of(historyKeymap))}
+            deps={[historyKeymap]}
+          />
+          <Extension
+            key="blur_when_other_cell_focus"
+            extension={blur_when_other_cell_focus}
+          />
+          <Extension
+            key="cell_movement_extension"
+            extension={cell_movement_extension}
+          />
+          <Extension key="cell_keymap" extension={cell_keymap} />
         </CodeMirror>
       </EditorStyled>
     </CellStyle>

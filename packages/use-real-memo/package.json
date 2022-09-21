@@ -1,14 +1,12 @@
 {
-  "name": "codemirror-x-react",
+  "name": "use-real-memo",
   "version": "1.0.0",
   "description": "",
-  "main": "codemirror-x-react.js",
+  "main": "use-real-memo.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "lodash": "^4.17.21"
-  }
+  "license": "ISC"
 }

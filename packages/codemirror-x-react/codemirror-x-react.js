@@ -26,8 +26,9 @@ import { highlightSelectionMatches } from "@codemirror/search";
 import { closeBrackets } from "@codemirror/autocomplete";
 
 import { collab } from "@codemirror/collab";
+import { useRealMemo } from "use-real-memo";
 
-/** @type {React.Context<React.MutableRefObject<(...spec: any[]) => void>>} */
+/** @type {React.Context<(...spec: any[]) => void>} */
 let codemirror_editorview_context = React.createContext(
   /** @type {any} */ (null)
 );
@@ -152,9 +153,13 @@ export let CodeMirror = React.forwardRef(
      */
     let batched_effects_ref = React.useRef([]);
     // prettier-ignore
-    let dispatch_ref = React.useRef((/** @type {import("@codemirror/state").TransactionSpec[]} */ ...spec) => {
-    batched_effects_ref.current.push(spec);
-  });
+    let preliminairy_dispatch = React.useCallback((/** @type {import("@codemirror/state").TransactionSpec[]} */ ...spec) => {
+      if (editorview_ref.current) {
+        editorview_ref.current.dispatch(...spec);
+      } else {
+        batched_effects_ref.current.push(spec);
+      }
+    }, [editor_state]);
 
     React.useLayoutEffect(() => {
       let editorview = new EditorView({
@@ -170,17 +175,11 @@ export let CodeMirror = React.forwardRef(
 
       // Clear batched effects and bind dispatch to the editorview
       batched_effects_ref.current = [];
-      dispatch_ref.current = editorview.dispatch.bind(editorview);
 
       return () => {
         // In the very very peculiar case that I actually want to change the `editor_state` without completely unmounting the component,
         // I again make `dispatch` go to `batched_effects`
         batched_effects_ref.current = [];
-        dispatch_ref.current = (
-          /** @type {import("@codemirror/state").TransactionSpec[]} */ ...spec
-        ) => {
-          batched_effects_ref.current.push(spec);
-        };
         editorview_ref.current = /** @type {any} */ (null);
         editorview.destroy();
       };
@@ -208,7 +207,7 @@ export let CodeMirror = React.forwardRef(
       { ...props, ref: dom_node_ref },
       React.createElement(
         codemirror_editorview_context.Provider,
-        { value: dispatch_ref },
+        { value: preliminairy_dispatch },
         children
       )
     );
@@ -221,35 +220,51 @@ export let CodeMirror = React.forwardRef(
  *  deps?: any[],
  * }} props
  */
-export let Extension = ({ extension, deps = [extension] }) => {
-  let dispatch_ref = React.useContext(codemirror_editorview_context);
+export let Extension = ({
+  extension: extension_unmemod,
+  deps = [extension_unmemod],
+}) => {
+  let dispatch = React.useContext(codemirror_editorview_context);
 
   let compartment = useRef(new Compartment()).current;
-  let initial_value = useRef(compartment.of(extension)); // TODO? Can move this inside the useLayoutEffect?
+
+  let extension = useMemo(() => extension_unmemod, deps);
 
   useLayoutEffect(() => {
-    dispatch_ref.current({
-      effects: StateEffect.appendConfig.of(initial_value.current),
+    // TODO Maybe make this not use dispatch, but something specifically for
+    // .... adding extensions the first time? So codemirror doesn't get all these StateEffect.appendConfig's?
+    dispatch({
+      effects: StateEffect.appendConfig.of(compartment.of(extension)),
     });
     return () => {
-      dispatch_ref.current({
+      dispatch({
         // @ts-ignore
         effects: compartment.reconfigure(null),
       });
     };
-  }, []);
+  }, [dispatch]);
 
+  // TODO Ideally I'd use the compartment.get(editorstate) to confirm I am not updating the
+  // .... extension unnecessarily, but I don't have access to the editorstate here (yet).
+  // .... So for now I need an extra ref to prevent at least the first reconfigure.
+  let did_mount = React.useMemo(() => ({ current: false }), [dispatch]);
   useLayoutEffect(() => {
-    dispatch_ref.current?.({
+    if (!did_mount.current) {
+      did_mount.current = true;
+      return;
+    }
+
+    console.log("RECONFIGURING", { extension, deps });
+    dispatch({
       effects: compartment.reconfigure(extension),
     });
-  }, deps);
+  }, [extension, dispatch]);
 
   return null;
 };
 
 export let useEditorView = ({ code }) => {
-  let state = React.useMemo(() => {
+  let state = useRealMemo(() => {
     const usesDarkTheme = window.matchMedia(
       "(prefers-color-scheme: dark)"
     ).matches;
@@ -258,36 +273,20 @@ export let useEditorView = ({ code }) => {
       doc: code,
 
       extensions: [
-        EditorView.theme({}, { dark: usesDarkTheme }),
-        highlightSpecialChars(),
-        drawSelection(),
-        EditorState.allowMultipleSelections.of(true),
-        // Multiple cursors with `alt` instead of the default `ctrl` (which we use for go to definition)
-        EditorView.clickAddsSelectionRange.of(
-          (event) => event.altKey && !event.shiftKey
-        ),
-        indentOnInput(),
-        // history(),
-        EditorState.languageData.of((state, pos, side) => {
-          return [{ closeBrackets: { brackets: ["(", "[", "{"] } }];
-        }),
-        closeBrackets(),
-        highlightSelectionMatches(),
-        bracketMatching(),
-        keymap.of([
-          {
-            key: "Tab",
-            run: indentMore,
-            shift: indentLess,
-          },
-        ]),
-
-        keymap.of([
-          ...defaultKeymap,
-          // ...historyKeymap,
-          ...foldKeymap,
-        ]),
-        EditorView.lineWrapping,
+        // EditorView.theme({}, { dark: usesDarkTheme }),
+        // highlightSpecialChars(),
+        // EditorState.allowMultipleSelections.of(true),
+        // // Multiple cursors with `alt` instead of the default `ctrl` (which we use for go to definition)
+        // EditorView.clickAddsSelectionRange.of(
+        //   (event) => event.altKey && !event.shiftKey
+        // ),
+        // indentOnInput(),
+        // EditorState.languageData.of((state, pos, side) => {
+        //   return [{ closeBrackets: { brackets: ["(", "[", "{"] } }];
+        // }),
+        // closeBrackets(),
+        // highlightSelectionMatches(),
+        // bracketMatching(),
       ],
     });
   }, []);

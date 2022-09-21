@@ -175,6 +175,7 @@ let notebook_keymap = keymap.of([
     key: "Mod-s",
     run: ({ state, dispatch }) => {
       let cell_ids = state.facet(CellIdOrder);
+      console.log(`cell_ids:`, cell_ids);
       let now = Date.now(); // Just in case map takes a lot of time ??
       dispatch({
         effects: cell_ids.map((cell_id) =>

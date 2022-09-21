@@ -227,6 +227,7 @@ let base_theme = EditorView.baseTheme({
 });
 
 export let awesome_line_wrapping = [
+  EditorView.lineWrapping,
   base_theme,
   extra_cycle_character_width,
   character_width_listener,

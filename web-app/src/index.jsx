@@ -6,6 +6,8 @@ import "./index.css";
 import App from "./App";
 import { enablePatches } from "immer";
 
+// import { App } from "./experiments/use-memo-after-hot-reload/use-memo-after-hot-reload";
+
 // enablePatches();
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
