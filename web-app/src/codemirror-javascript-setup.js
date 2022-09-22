@@ -101,5 +101,5 @@ export let basic_javascript_setup = [
   // keymap.of(defaultKeymap),
   drawSelection(),
 
-  // awesome_line_wrapping,
+  awesome_line_wrapping,
 ];

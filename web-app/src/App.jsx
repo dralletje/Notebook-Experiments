@@ -42,7 +42,10 @@ import {
   historyKeymap,
 } from "./packages/codemirror-nexus/codemirror-shared-history";
 import { mapValues } from "lodash";
-import { CellIdOrder } from "./packages/codemirror-nexus/codemirror-cell-movement";
+import {
+  CellIdOrder,
+  delegate_moves_to_relative_cells,
+} from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
 
 let AppStyle = styled.div`
@@ -171,7 +174,7 @@ function App() {
           localStorage.getItem("_notebook")
         ) ?? {
           id: "1",
-          cell_order: ["1"],
+          cell_order: ["1", "2"],
           cells: {
             1: {
               id: "1",
@@ -207,17 +210,17 @@ function App() {
       updateCellsFromNexus,
       invert_removing_and_adding_cells,
       add_single_cell_when_all_cells_are_removed,
-      cell_id_order_from_notebook_facet,
       notebook_keymap,
 
       SelectedCellsField,
-      selected_cells_keymap,
-      // // blur_cells_when_selecting,
+      cell_id_order_from_notebook_facet,
+      delegate_moves_to_relative_cells,
       // selected_cells_keymap,
-      // notebook_in_nexus,
-
-      useRealMemo(() => [shared_history(), keymap.of(historyKeymap)], []),
+      // // blur_cells_when_selecting,
       // keep_track_of_last_created_cells_extension,
+
+      // This works so smooth omg
+      useRealMemo(() => [shared_history(), keymap.of(historyKeymap)], []),
     ],
   });
 
@@ -291,6 +294,7 @@ function App() {
 
   React.useEffect(() => {
     let socket = socketio_ref.current;
+    console.log(`notebook:`, notebook);
     socket.emit("notebook", notebook);
   }, [notebook]);
 

@@ -1,5 +1,6 @@
 import {
   EditorSelection,
+  EditorState,
   Facet,
   Prec,
   SelectionRange,
@@ -8,6 +9,11 @@ import {
 } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { autocompletion, completionStatus } from "@codemirror/autocomplete";
+import {
+  CellDispatchEffect,
+  cellTransactionForTransaction,
+  FromCellTransactionEffect,
+} from "../../NotebookEditor";
 // import {
 //   from_cell_effects,
 //   nexus_extension,
@@ -48,14 +54,14 @@ export let CellIdOrder = Facet.define({
   combine: (x) => x[0],
 });
 
-/** @type {StateEffectType<{ start: CellRelativeSelection }>} */
+/** @type {StateEffectType<{ start: CellRelativeSelection, screenGoalColumn?: number }>} */
 export let MoveUpEffect = StateEffect.define({});
-/** @type {StateEffectType<{ start: CellRelativeSelection }>} */
+/** @type {StateEffectType<{ start: CellRelativeSelection, screenGoalColumn?: number }>} */
 export let MoveDownEffect = StateEffect.define({});
 
-/** @type {StateEffectType<{ start: CellRelativeSelection }>} */
+/** @type {StateEffectType<{ start: CellRelativeSelection, screenGoalColumn?: number }>} */
 let MoveFromBelowEffect = StateEffect.define({});
-/** @type {StateEffectType<{ start: CellRelativeSelection }>} */
+/** @type {StateEffectType<{ start: CellRelativeSelection, screenGoalColumn?: number }>} */
 let MoveFromAboveEffect = StateEffect.define({});
 
 // Don't-accidentally-remove-cells-plugin
@@ -119,131 +125,165 @@ export let prevent_holding_a_key_from_doing_things_across_cells =
     },
   });
 
-export let cell_movement_nexus_extension = EditorView.updateListener.of(
-  (update) => {
-    let cell_order = update.state.facet(CellIdOrder);
+// TODO Make this a transaction to cell transaction multiplexer?
+export let delegate_moves_to_relative_cells =
+  EditorState.transactionExtender.of((transaction) => {
+    let moar_effects = [];
 
-    if (cell_order == null) {
-      throw new Error("Cell order is null in update listener");
-    }
+    let cell_order = transaction.startState.facet(CellIdOrder);
+    for (let effect of transaction.effects) {
+      if (effect.is(FromCellTransactionEffect)) {
+        let { cell_id, transaction } = effect.value;
+        for (let effect of transaction.effects) {
+          if (effect.is(MoveUpEffect)) {
+            let { start } = effect.value;
 
-    for (let effect of from_cell_effects(update)) {
-      let { cell_id, transaction } = effect.value;
-      let cell_index = cell_order.indexOf(cell_id);
+            let cell_index = cell_order.indexOf(cell_id);
+            if (cell_order[cell_index - 1] == null) {
+              console.log(`Can't move up`);
+              continue;
+            }
 
-      for (let effect of transaction.effects) {
-        if (effect.is(MoveUpEffect)) {
-          if (cell_order[cell_index - 1] == null) {
-            console.log(`Can't move up`);
-            return;
-          }
-
-          update.view.dispatch({
-            effects: [
-              ToCellEffect.of({
+            moar_effects.push(
+              CellDispatchEffect.of({
                 cell_id: cell_order[cell_index - 1],
-                transaction_spec: {
-                  effects: MoveFromBelowEffect.of(effect.value),
+                transaction: {
+                  effects: [MoveFromBelowEffect.of(effect.value)],
                 },
-              }),
-            ],
-          });
-        }
-        if (effect.is(MoveDownEffect)) {
-          if (cell_order[cell_index + 1] == null) {
-            console.log(`Can't move down`);
-            return;
+              })
+            );
           }
+          if (effect.is(MoveDownEffect)) {
+            let { start } = effect.value;
 
-          update.view.dispatch({
-            effects: [
-              ToCellEffect.of({
+            let cell_index = cell_order.indexOf(cell_id);
+            if (cell_order[cell_index + 1] == null) {
+              console.log(`Can't move down`);
+              continue;
+            }
+
+            moar_effects.push(
+              CellDispatchEffect.of({
                 cell_id: cell_order[cell_index + 1],
-                transaction_spec: {
-                  effects: MoveFromAboveEffect.of(effect.value),
+                transaction: {
+                  effects: [MoveFromAboveEffect.of(effect.value)],
                 },
-              }),
-            ],
-          });
+              })
+            );
+          }
         }
       }
     }
-  }
-);
+    if (moar_effects.length !== 0) {
+      return {
+        effects: moar_effects,
+      };
+    } else {
+      return null;
+    }
+  });
 
 export let cell_movement_extension = [
   Prec.highest(prevent_holding_a_key_from_doing_things_across_cells),
-  keymap.of([
-    {
-      key: "ArrowUp",
-      run: (view) => {
-        let selection = view.state.selection.main;
-        if (!selection.empty) return false;
-        if (!view.moveVertically(selection, false).eq(selection)) return false;
+  Prec.high(
+    keymap.of([
+      {
+        key: "ArrowUp",
+        run: (view) => {
+          let selection = view.state.selection.main;
+          if (!selection.empty) return false;
 
-        view.dispatch({
-          effects: [MoveUpEffect.of({ start: selection })],
-        });
-        return true;
+          // RIP wrapped first lines
+          if (!view.moveVertically(selection, false).eq(selection))
+            return false;
+          // RIP screenGoalColumn
+          // if (view.state.doc.lineAt(selection.from).number !== 1) return false;
+          // view.requestMeasure({
+          //   read: () => {
+          let rect = view.coordsAtPos(selection.from);
+          let screen_goal_column = rect == null ? 0 : rect.left;
+          view.dispatch({
+            effects: [
+              MoveUpEffect.of({
+                start: selection,
+                // screenGoalColumn: screen_goal_column,
+              }),
+            ],
+          });
+          //   },
+          // });
+          return true;
+        },
       },
-    },
-    {
-      key: "ArrowDown",
-      run: (view) => {
-        let selection = view.state.selection.main;
-        if (!selection.empty) return false;
-        if (!view.moveVertically(selection, true).eq(selection)) return false;
-        view.dispatch({
-          effects: [MoveDownEffect.of({ start: selection })],
-        });
-        return true;
+      {
+        key: "ArrowDown",
+        run: (view) => {
+          let selection = view.state.selection.main;
+          if (!selection.empty) return false;
+          if (!view.moveVertically(selection, true).eq(selection)) return false;
+          // view.requestMeasure({
+          //   read: () => {
+          let rect = view.coordsAtPos(selection.from);
+          let screen_goal_column = rect == null ? 0 : rect.left;
+          view.dispatch({
+            effects: [
+              MoveDownEffect.of({
+                start: selection,
+                // screenGoalColumn: screen_goal_column,
+              }),
+            ],
+          });
+          //   },
+          // });
+          return true;
+        },
       },
-    },
-    {
-      key: "ArrowLeft",
-      run: (view) => {
-        let selection = view.state.selection.main;
-        if (!selection.empty) return false;
-        if (!view.moveByChar(selection, false).eq(selection)) return false;
+      {
+        key: "ArrowLeft",
+        run: (view) => {
+          let selection = view.state.selection.main;
+          if (!selection.empty) return false;
+          if (!view.moveByChar(selection, false).eq(selection)) return false;
 
-        view.dispatch({
-          effects: [MoveUpEffect.of({ start: "end" })],
-        });
-        return true;
+          view.dispatch({
+            effects: [MoveUpEffect.of({ start: "end" })],
+          });
+          return true;
+        },
       },
-    },
-    {
-      key: "ArrowRight",
-      run: (view) => {
-        let selection = view.state.selection.main;
-        if (!selection.empty) return false;
-        if (!view.moveByChar(selection, true).eq(selection)) return false;
+      {
+        key: "ArrowRight",
+        run: (view) => {
+          let selection = view.state.selection.main;
+          if (!selection.empty) return false;
+          if (!view.moveByChar(selection, true).eq(selection)) return false;
 
-        view.dispatch({
-          effects: [MoveDownEffect.of({ start: "begin" })],
-        });
-        return true;
+          view.dispatch({
+            effects: [MoveDownEffect.of({ start: "begin" })],
+          });
+          return true;
+        },
       },
-    },
-    {
-      key: "PageUp",
-      run: (view) => {
-        view.dispatch({
-          effects: [MoveUpEffect.of({ start: "begin" })],
-        });
-        return true;
+      {
+        key: "PageUp",
+        run: (view) => {
+          view.dispatch({
+            effects: [MoveUpEffect.of({ start: "begin" })],
+          });
+          return true;
+        },
       },
-    },
-    {
-      key: "PageDown",
-      run: (view) => {
-        view.dispatch({
-          effects: [MoveDownEffect.of({ start: "begin" })],
-        });
-        return true;
+      {
+        key: "PageDown",
+        run: (view) => {
+          view.dispatch({
+            effects: [MoveDownEffect.of({ start: "begin" })],
+          });
+          return true;
+        },
       },
-    },
-  ]),
+    ])
+  ),
   EditorView.updateListener.of(({ view, state, transactions }) => {
     for (let transaction of transactions) {
       for (let effect of transaction.effects) {
@@ -259,9 +299,7 @@ export let cell_movement_extension = [
         // Eventually I should copy a modified version of moveVertically into here, but for now this will do.
 
         if (effect.is(MoveFromBelowEffect)) {
-          let { start } = effect.value;
-          console.log("Move Below from", start);
-
+          let { start, screenGoalColumn } = effect.value;
           if (start === "end") {
             view.dispatch({
               selection: EditorSelection.cursor(state.doc.length),
@@ -270,6 +308,29 @@ export let cell_movement_extension = [
             view.dispatch({
               selection: EditorSelection.cursor(0),
             });
+          } else if (screenGoalColumn != null) {
+            let _screenGoalColumn = screenGoalColumn;
+            // view.requestMeasure({
+            //   read() {
+            let rect = view.contentDOM.getBoundingClientRect();
+            let where = view.coordsAtPos(view.state.doc.length);
+            let new_selection = view.posAtCoords(
+              {
+                x: _screenGoalColumn,
+                y: where?.bottom ?? rect.bottom - 2 * view.defaultLineHeight,
+              },
+              false
+            );
+            view.dispatch({
+              selection: EditorSelection.cursor(
+                new_selection,
+                undefined,
+                undefined,
+                _screenGoalColumn - rect.left
+              ),
+            });
+            //   },
+            // });
           } else if (start?.goalColumn == null) {
             view.dispatch({
               selection: EditorSelection.cursor(state.doc.length),

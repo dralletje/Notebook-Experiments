@@ -39,6 +39,7 @@ import {
   RemoveCellEffect,
   TransactionFromNexusToCellEmitterFacet,
 } from "./NotebookEditor";
+import { cell_movement_extension } from "./packages/codemirror-nexus/codemirror-cell-movement";
 
 let CellContainer = styled.div`
   display: flex;
@@ -503,17 +504,16 @@ export let Cell = ({
   let initial_editor_state = useRealMemo(() => {
     return editor_state;
   }, []);
+  // let initial_editor_state = useRealMemo(() => {
+  //   let _editor_state = /** @type {EditorState} */ (editor_state);
+  //   return EditorState.create({
+  //     doc: _editor_state.doc.toString(),
+  //     extensions: [],
+  //   });
+  // }, []);
 
   // prettier-ignore
   let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
-
-  // let editor_state = React.useMemo(() => {
-  //   return EditorState.create({
-  //     doc: cell.unsaved_code,
-  //     extensions: [basic_javascript_setup],
-  //   });
-  // }, []);
-  // console.log(`editor_state:`, editor_state);
 
   let result_deserialized = React.useMemo(() => {
     if (cylinder?.result?.type === "return") {
@@ -663,10 +663,12 @@ export let Cell = ({
             key="blur_when_other_cell_focus"
             extension={blur_when_other_cell_focus}
           /> */}
-          {/* <Extension
+
+          {/* TODO Bundle this with nexus extension! */}
+          <Extension
             key="cell_movement_extension"
             extension={cell_movement_extension}
-          /> */}
+          />
           <Extension key="cell_keymap" extension={cell_keymap} />
         </CodeMirror>
       </EditorStyled>

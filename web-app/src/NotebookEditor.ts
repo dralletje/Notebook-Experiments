@@ -1,5 +1,4 @@
 import {
-  Annotation,
   Compartment,
   EditorState,
   Facet,
@@ -12,7 +11,7 @@ import { Cell, CellId, Notebook } from "./notebook-types";
 import immer from "immer";
 import { useRealMemo } from "use-real-memo";
 import React from "react";
-import { compact, without, zip } from "lodash";
+import { compact, zip } from "lodash";
 import { SingleEventEmitter } from "single-event-emitter";
 import { ViewPlugin } from "@codemirror/view";
 import { invertedEffects } from "@codemirror/commands";
@@ -90,7 +89,7 @@ export let ForNexusEffect = StateEffect.define<StateEffect<any>>();
 //     return null;
 //   });
 
-let cellTransactionForTransaction =
+export let cellTransactionForTransaction =
   Facet.define<
     (
       transaction: Transaction,
@@ -217,7 +216,7 @@ export let add_single_cell_when_all_cells_are_removed =
       }
     }
 
-    // Add a cell when the last cell is removed, but then the inverse of that
+    // Add a cell when the last cell is removed
     if (cells_left_after_effects.size === 0) {
       return {
         effects: AddCellEffect.of({
@@ -351,30 +350,26 @@ export let CellEditorStatesField = StateField.define<{
           }
         }
       }
-    });
 
-    // Should this facet be pulled from the nexus, or the cell? (OR BOTH??)
-    // TODO re-enable this when you use it!
-    // let cell_transaction_makers = transaction.startState.facet(
-    //   cellTransactionForTransaction
-    // );
-    // if (cell_transaction_makers?.length !== 0) {
-    //   for (let [cell_id, last_cell_transaction] of map) {
-    //     let cell_transaction = last_cell_transaction;
-    //     for (let cell_transaction_maker of cell_transaction_makers) {
-    //       let specs_to_add = cell_transaction_maker(
-    //         transaction,
-    //         cell_transaction.state
-    //       );
-    //       if (specs_to_add) {
-    //         cell_transaction = cell_transaction.state.update(specs_to_add);
-    //       }
-    //     }
-    //     if (cell_transaction !== last_cell_transaction) {
-    //       mutate_map().set(cell_id, cell_transaction);
-    //     }
-    //   }
-    // }
+      // Should this facet be pulled from the nexus, or the cell? (OR BOTH??)
+      let cell_transaction_makers = transaction.startState.facet(
+        cellTransactionForTransaction
+      );
+      if (cell_transaction_makers?.length !== 0) {
+        for (let [cell_id, cell_state] of Object.entries(cells)) {
+          let current_cell_state = cell_state;
+          for (let cell_transaction_maker of cell_transaction_makers) {
+            let specs_to_add = cell_transaction_maker(transaction, cell_state);
+            if (specs_to_add) {
+              let transaction = cell_state.update(specs_to_add);
+              transactions_to_send_to_cells[cell_id].push(transaction);
+              current_cell_state = transaction.state;
+            }
+          }
+          cells[cell_id] = current_cell_state;
+        }
+      }
+    });
   },
 });
 
@@ -489,9 +484,11 @@ export let useNotebookviewWithExtensions = ({
     });
   }, []);
 
-  let [_notebook_state, set_notebook_state] = React.useState(
-    initial_notebook_state
-  );
+  // let [_notebook_state, set_notebook_state] = React.useState(
+  //   initial_notebook_state
+  // );
+  let [_, reload_view] = React.useState(0);
+  let notebook_state_ref = React.useRef(initial_notebook_state);
 
   let reconfigures = compact(
     zip(compartments, extensions, previous_extensions_ref.current).map(
@@ -511,10 +508,16 @@ export let useNotebookviewWithExtensions = ({
   );
   previous_extensions_ref.current = extensions;
   if (reconfigures.length > 0) {
-    _notebook_state = _notebook_state.update({
+    notebook_state_ref.current = notebook_state_ref.current.update({
       effects: reconfigures,
     }).state;
   }
+
+  let _notebook_state = notebook_state_ref.current;
+  let set_notebook_state = (new_notebook_state) => {
+    notebook_state_ref.current = new_notebook_state;
+    reload_view((x) => x + 1);
+  };
 
   let notebook_dispatch = useEvent(
     (...transaction_specs: TransactionSpec[]) => {
@@ -522,25 +525,26 @@ export let useNotebookviewWithExtensions = ({
       if (transaction_specs.length !== 0) {
         // TODO Not sure yet if having this inside the state mapper is the right thing to do
         // .... or we should instead do it with `_notebook_state` here
-        set_notebook_state((state) => {
-          let transaction = state.update(...transaction_specs);
+        // set_notebook_state((state) => {
+        let state = notebook_state_ref.current;
+        let transaction = state.update(...transaction_specs);
 
-          for (let listener of state.facet(updateListener)) {
-            listener({
-              transactions: [transaction],
-              view: {
-                state: transaction.state,
-                dispatch: notebook_dispatch,
-              },
-              startState: state,
+        set_notebook_state(transaction.state);
+
+        for (let listener of state.facet(updateListener)) {
+          listener({
+            transactions: [transaction],
+            view: {
               state: transaction.state,
-            });
-          }
+              dispatch: notebook_dispatch,
+            },
+            startState: state,
+            state: transaction.state,
+          });
+        }
 
-          return transaction.state;
-        });
-
-        // set_notebook_state(transaction.state);
+        // return transaction.state;
+        // });
       }
     }
   );
