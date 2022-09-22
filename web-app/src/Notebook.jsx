@@ -31,7 +31,7 @@ import {
   CellDispatchEffect,
   CellEditorStatesField,
   empty_cell,
-  ForNexusEffect,
+  NexusEffect,
   FromCellTransactionEffect,
   MoveCellEffect,
   MutateCellMetaEffect,
@@ -44,6 +44,8 @@ let CellContainer = styled.div`
   flex-direction: row;
   align-items: stretch;
   margin-bottom: 1rem;
+
+  will-change: transform;
 `;
 
 let InspectorHoverBackground = styled.div``;
@@ -597,15 +599,15 @@ export let Cell = ({
           editor_state={initial_editor_state}
           ref={editorview_ref}
           dispatch={(tr, editorview) => {
-            console.group("dispatch_to_nexus");
-            console.log({ tr });
+            // console.group("dispatch_to_nexus");
+            // console.log({ tr });
             try {
-              let moar_effects = [];
-              for (let effect of tr.effects) {
-                if (effect.is(ForNexusEffect)) {
-                  moar_effects.push(effect.value);
-                }
-              }
+              // let moar_effects = [];
+              // for (let effect of tr.effects) {
+              //   if (effect.is(NexusEffect)) {
+              //     moar_effects.push(effect.value);
+              //   }
+              // }
 
               dispatch_to_nexus({
                 effects: [
@@ -613,11 +615,11 @@ export let Cell = ({
                     cell_id: cell.id,
                     transaction: tr,
                   }),
-                  ...moar_effects,
+                  // ...moar_effects,
                 ],
               });
             } finally {
-              console.groupEnd();
+              // console.groupEnd();
             }
             // editorview.update([tr]);
           }}
@@ -662,11 +664,6 @@ export let Cell = ({
             extension={blur_when_other_cell_focus}
           /> */}
 
-          {/* TODO Bundle this with nexus extension! */}
-          <Extension
-            key="cell_movement_extension"
-            extension={cell_movement_extension}
-          />
           <Extension key="cell_keymap" extension={cell_keymap} />
         </CodeMirror>
       </EditorStyled>

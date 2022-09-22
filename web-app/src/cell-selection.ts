@@ -27,12 +27,16 @@ export let selected_cells_keymap = keymap.of([
     run: ({ state, dispatch }) => {
       // Remove cell
       let selected_cells = state.field(SelectedCellsField);
-      dispatch({
-        effects: selected_cells.map((cell_id) =>
-          RemoveCellEffect.of({ cell_id: cell_id })
-        ),
-      });
-      return true;
+      if (selected_cells.length > 0) {
+        dispatch({
+          effects: selected_cells.map((cell_id) =>
+            RemoveCellEffect.of({ cell_id: cell_id })
+          ),
+        });
+        return true;
+      } else {
+        return false;
+      }
     },
   },
   {

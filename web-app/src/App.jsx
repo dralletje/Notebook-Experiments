@@ -18,35 +18,27 @@ import {
 } from "ionicons/icons";
 import { EditorState, Facet, StateField } from "@codemirror/state";
 import {
-  add_single_cell_when_all_cells_are_removed,
   CellEditorStatesField,
   CellIdFacet,
   CellMetaField,
   editor_state_for_cell,
-  invert_removing_and_adding_cells,
-  // expand_cell_effects_that_area_actually_meant_for_the_nexus,
-  updateCellsFromNexus,
+  nested_cell_states_basics,
   useNotebookviewWithExtensions,
 } from "./NotebookEditor";
 import { useRealMemo } from "use-real-memo";
-// import { CellIdOrder } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { SelectedCellsField, selected_cells_keymap } from "./cell-selection";
-// import {
-//   NexusToCellEmitterFacet,
-//   send_to_cell_effects_to_emitter,
-//   SingleEventEmitter,
-// } from "./packages/codemirror-nexus/codemirror-nexus";
 import { keymap, runScopeHandlers } from "@codemirror/view";
 import {
   shared_history,
   historyKeymap,
 } from "./packages/codemirror-nexus/codemirror-shared-history";
-import { mapValues } from "lodash";
+import { mapValues, sortBy } from "lodash";
 import {
   CellIdOrder,
-  delegate_moves_to_relative_cells,
+  cell_movement_extension_default,
 } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
+import { ShowKeysPressed } from "./ShowKeys";
 
 let AppStyle = styled.div`
   padding-top: 100px;
@@ -226,15 +218,16 @@ function App() {
       // expand_cell_effects_that_area_actually_meant_for_the_nexus,
 
       initial_notebook,
-      updateCellsFromNexus,
-      invert_removing_and_adding_cells,
-      add_single_cell_when_all_cells_are_removed,
+      nested_cell_states_basics,
+
       notebook_keymap,
 
       SelectedCellsField,
       cell_id_order_from_notebook_facet,
-      delegate_moves_to_relative_cells,
-      // selected_cells_keymap,
+
+      cell_movement_extension_default,
+      selected_cells_keymap,
+
       // // blur_cells_when_selecting,
       // keep_track_of_last_created_cells_extension,
 
@@ -315,7 +308,6 @@ function App() {
 
   React.useEffect(() => {
     let socket = socketio_ref.current;
-    console.log(`notebook:`, notebook);
     socket.emit("notebook", notebook);
   }, [notebook]);
 
@@ -409,9 +401,10 @@ function App() {
           <IonIcon icon={iceCreamOutline} />
           meta
         </MyButton>
+
+        <ShowKeysPressed />
       </div>
     </div>
   );
 }
-
 export default App;

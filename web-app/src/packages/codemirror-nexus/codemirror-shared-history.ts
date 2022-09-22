@@ -222,8 +222,6 @@ function cmd(side: BranchName, selection: boolean): StateCommand {
     state: EditorState;
     dispatch: (tr: Transaction) => void;
   }) {
-    console.log(`state:`, state);
-
     if (!selection && state.readOnly) return false;
     let historyState = state.field(historyField_, false);
     if (!historyState) return false;
