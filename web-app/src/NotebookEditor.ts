@@ -503,25 +503,23 @@ export let useNotebookviewWithExtensions = ({
     return initial_extensions.map((extension) => new Compartment());
   }, [initial_extensions]);
 
-  let initial_notebook_transaction = useRealMemo(() => {
+  let initial_state = useRealMemo(() => {
     return EditorState.create({
       extensions: zip(compartments, initial_extensions).map(
         // @ts-ignore trust me, `compartments` and `extensions` are the same length
         ([compartment, extension]) => compartment.of(extension)
       ),
-    }).update({});
+    });
   }, [compartments]);
 
-  let [notebook_transaction, set_notebook_transaction] = React.useState(
-    initial_notebook_transaction
-  );
+  let [state, set_state] = React.useState(initial_state);
 
   // prettier-ignore
   { // HOT RELOADING TWEAK - I hate myself but I am too far in now
-    let last_initial_notebook_transaction_ref = React.useRef(initial_notebook_transaction)
-    if (last_initial_notebook_transaction_ref.current !== initial_notebook_transaction) {
-      set_notebook_transaction(initial_notebook_transaction)
-      last_initial_notebook_transaction_ref.current = initial_notebook_transaction
+    let last_initial_state_ref = React.useRef(initial_state)
+    if (last_initial_state_ref.current !== initial_state) {
+      set_state(initial_state)
+      last_initial_state_ref.current = initial_state
     }
   } // END HOT RELOADING TWEAK
 
@@ -559,10 +557,10 @@ You likely want to wrap that extension in a React.useMemo() call.
 
     // Recently learned that it is _OK_ to put a setState in render?
     // It still runs this function, but will discard everything and re-run, which is what I want.
-    set_notebook_transaction(
-      notebook_transaction.state.update({
+    set_state(
+      state.update({
         effects: reconfigures,
-      })
+      }).state
     );
     previous_extensions_ref.current = extensions;
   }
@@ -579,16 +577,14 @@ You likely want to wrap that extension in a React.useMemo() call.
       if (transaction_specs.length !== 0) {
         // Problem with this state mapper is that multiple calls in the same render will cause the other transactions to be swallowed.
         // So I have to use a ref to store them, and then apply them all in the next render.
-        set_notebook_transaction((previous_transaction) => {
-          let next_transaction = previous_transaction.state.update(
-            ...transaction_specs
-          );
-          transactions_to_apply_ref.current.push(next_transaction);
-          return next_transaction;
+        set_state((state) => {
+          let transaction = state.update(...transaction_specs);
+          transactions_to_apply_ref.current.push(transaction);
+          return transaction.state;
         });
       }
     },
-    [set_notebook_transaction]
+    [set_state]
   );
 
   React.useLayoutEffect(() => {
@@ -605,7 +601,7 @@ You likely want to wrap that extension in a React.useMemo() call.
     // Not sure if will happen a bit, but I'm in an overengineering mood.
     let transactions_to_apply_now = takeWhile(
       transactions_to_apply_ref.current,
-      (transaction) => transaction.startState !== notebook_transaction.state
+      (transaction) => transaction.startState !== state
     );
     transactions_to_apply_ref.current = transactions_to_apply_ref.current.slice(
       transactions_to_apply_now.length
@@ -624,7 +620,7 @@ You likely want to wrap that extension in a React.useMemo() call.
         });
       }
     }
-  }, [notebook_transaction]);
+  }, [state]);
 
-  return { state: notebook_transaction.state, dispatch: notebook_dispatch };
+  return { state: state, dispatch: notebook_dispatch };
 };
