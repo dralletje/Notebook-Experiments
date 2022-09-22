@@ -15,7 +15,7 @@ import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
 import { range } from "lodash";
 import { createElement } from "react";
-import { ReactWidget, useEditorView } from "react-codemirror-widget";
+import { ReactWidget } from "react-codemirror-widget";
 
 /** @type {any} */
 const CharacterWidthEffect = StateEffect.define({});

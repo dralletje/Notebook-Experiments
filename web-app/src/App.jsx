@@ -1,7 +1,7 @@
 import React from "react";
 import "./App.css";
 import { produce } from "immer";
-import { mutate, useMutateable } from "use-immer-store";
+import { mutate, readonly, useMutateable } from "use-immer-store";
 
 import { io, Socket } from "socket.io-client";
 import { CellList } from "./Notebook";
@@ -16,6 +16,30 @@ import {
   pizzaOutline,
   terminalOutline,
 } from "ionicons/icons";
+import { EditorState, StateField } from "@codemirror/state";
+import {
+  CellEditorStatesField,
+  expand_cell_effects_that_area_actually_meant_for_the_nexus,
+  MutateNotebookEffect,
+  NotebookFacet,
+  NotebookField,
+  updateCellsFromNexus,
+  useNotebookviewWithExtensions,
+} from "./NotebookEditor";
+import { useRealMemo } from "use-real-memo";
+import { notebook_in_nexus } from "./packages/codemirror-nexus/add-move-and-run-cells";
+// import { CellIdOrder } from "./packages/codemirror-nexus/codemirror-cell-movement";
+import { SelectedCellsField, selected_cells_keymap } from "./cell-selection";
+// import {
+//   NexusToCellEmitterFacet,
+//   send_to_cell_effects_to_emitter,
+//   SingleEventEmitter,
+// } from "./packages/codemirror-nexus/codemirror-nexus";
+import { keymap, runScopeHandlers } from "@codemirror/view";
+import {
+  shared_history,
+  historyKeymap,
+} from "./packages/codemirror-nexus/codemirror-shared-history";
 
 let AppStyle = styled.div`
   padding-top: 100px;
@@ -129,43 +153,100 @@ let try_json = (str) => {
   }
 };
 
+// let cell_id_order_from_notebook_facet = CellIdOrder.compute(
+//   [NotebookFacet],
+//   (state) => state.facet(NotebookFacet).cell_order
+// );
+
 function App() {
-  let [_notebook, _set_notebook] = React.useState(
-    try_json(localStorage.getItem("_notebook")) ??
-      /** @type {import("./notebook-types").Notebook} */ ({
-        id: "1",
-        cell_order: ["1", "2"],
-        cells: {
-          1: {
+  let initial_notebook = React.useMemo(
+    () =>
+      NotebookField.init(
+        () =>
+          try_json(localStorage.getItem("_notebook")) ??
+          /** @type {import("./notebook-types").Notebook} */ ({
             id: "1",
-            code: "1 + 1 + xs.length",
-            unsaved_code: "1 + 1 + xs.length",
-            last_run: Date.now(),
-          },
-          2: {
-            id: "2",
-            code: "let xs = [1,2,3,4]",
-            unsaved_code: "let xs = [1,2,3,4]",
-            last_run: Date.now(),
-          },
-        },
-      })
+            cell_order: ["1"],
+            cells: {
+              1: {
+                id: "1",
+                code: "1 + 1 + xs.length",
+                unsaved_code: "1 + 1 + xs.length",
+                last_run: Date.now(),
+              },
+              // 2: {
+              //   id: "2",
+              //   code: "let xs = [1,2,3,4]",
+              //   unsaved_code: "let xs = [1,2,3,4]",
+              //   last_run: Date.now(),
+              // },
+            },
+          })
+      ),
+    [NotebookField]
   );
 
+  let { state, dispatch } = useNotebookviewWithExtensions({
+    extensions: [
+      expand_cell_effects_that_area_actually_meant_for_the_nexus,
+
+      initial_notebook,
+      CellEditorStatesField,
+      updateCellsFromNexus,
+
+      // React.useMemo(
+      //   () => NotebookFacet.from(NotebookField),
+      //   [NotebookFacet, NotebookField]
+      // ),
+      // cell_id_order_from_notebook_facet,
+      SelectedCellsField,
+      // // blur_cells_when_selecting,
+      // selected_cells_keymap,
+      // notebook_in_nexus,
+
+      useRealMemo(() => [shared_history(), keymap.of(historyKeymap)], []),
+      // keep_track_of_last_created_cells_extension,
+    ],
+  });
+
+  let _notebook = state.field(NotebookField);
+
+  /** @type {import("./NotebookEditor").NotebookView} */
+  let notebook_view = { state: state, dispatch: dispatch };
+
   let update_state = React.useCallback(
-    (update_fn) => {
-      _set_notebook((old_notebook) => {
-        // let [new_notebook, patches, reverse_patches] = produceWithPatches(
-        //   old_notebook,
-        //   update_fn
-        // );
-        let new_notebook = produce(old_notebook, update_fn);
-        localStorage.setItem("_notebook", JSON.stringify(new_notebook));
-        return new_notebook;
+    (
+      /** @type {(notebook: import("./notebook-types").Notebook) => void} */ update_fn
+    ) => {
+      dispatch({
+        effects: MutateNotebookEffect.of({ mutate_fn: update_fn }),
       });
     },
-    [_set_notebook]
+    [dispatch]
   );
+
+  // Use the nexus' keymaps as shortcuts!
+  // This passes on keydown events from the document to the nexus for handling.
+  React.useEffect(() => {
+    let fn = (event) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      let should_cancel = runScopeHandlers(
+        // @ts-ignore
+        { state, dispatch },
+        event,
+        "editor"
+      );
+      if (should_cancel) {
+        event.preventDefault();
+      }
+    };
+    document.addEventListener("keydown", fn);
+    return () => {
+      document.removeEventListener("keydown", fn);
+    };
+  }, [state, dispatch]);
 
   /** @type {import("./notebook-types").Notebook} */
   let notebook = useMutateable(_notebook, update_state);
@@ -199,6 +280,7 @@ function App() {
 
   React.useEffect(() => {
     let socket = socketio_ref.current;
+    console.log(`readonly(notebook):`, readonly(notebook));
     socket.emit("notebook", notebook);
   }, [notebook]);
 
@@ -218,7 +300,11 @@ function App() {
   return (
     <div style={{ display: "flex" }}>
       <AppStyle data-can-start-cell-selection>
-        <CellList notebook={notebook} engine={engine} />
+        <CellList
+          notebook_view={notebook_view}
+          notebook={notebook}
+          engine={engine}
+        />
       </AppStyle>
       <div style={{ flex: 1 }} data-can-start-cell-selection />
       {open_tab != null && (

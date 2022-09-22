@@ -131,16 +131,32 @@ let Container = styled.div`
 //   }, deps);
 // };
 
+function useEvent(handler) {
+  const handlerRef = React.useRef((...args) => {});
+
+  React.useLayoutEffect(() => {
+    handlerRef.current = handler;
+  });
+
+  return React.useCallback((...args) => {
+    return handlerRef.current(...args);
+  }, []);
+}
+
 export let CodeMirror = React.forwardRef(
   /**
    * @param {{
    *  editor_state: EditorState,
    *  children: React.ReactNode,
    *  as?: string | void,
+   *  dispatch?: (tr: import("@codemirror/state").Transaction, view: EditorView) => void,
    * } & import("react").HtmlHTMLAttributes<"div">} editor_props
    * @param {React.Ref<EditorView>} _ref
    */
-  ({ editor_state, children, as = "codemirror-editor", ...props }, _ref) => {
+  (
+    { editor_state, children, as = "codemirror-editor", dispatch, ...props },
+    _ref
+  ) => {
     /** @type {React.MutableRefObject<HTMLDivElement>} */
     let dom_node_ref = React.useRef(/** @type {any} */ (null));
     /** @type {React.MutableRefObject<EditorView>} */
@@ -161,17 +177,34 @@ export let CodeMirror = React.forwardRef(
       }
     }, [editor_state]);
 
+    let dispatch_proxy = useEvent((tr, editorview) => {
+      if (dispatch) {
+        return dispatch(tr, editorview);
+      } else {
+        return editorview.update([tr]);
+      }
+    });
+
     React.useLayoutEffect(() => {
       let editorview = new EditorView({
         state: editor_state,
         parent: dom_node_ref.current,
+        dispatch: (tr) => {
+          return dispatch_proxy(tr, editorview);
+        },
       });
       editorview_ref.current = editorview;
 
       // Apply effects we have collected before this mount (dispatches from child <Extension /> components)
-      for (let batched_effect of batched_effects_ref.current) {
-        editorview.dispatch(...batched_effect);
-      }
+      // console.log(`batched_effect:`, batched_effects_ref.current);
+      // for (let batched_effect of batched_effects_ref.current) {
+      //   console.log("dispatch");
+      //   editorview.dispatch(...batched_effect);
+      // }
+
+      // Important to send them in one dispatch, as they are supposed to be non-sequential
+      // (Also, my nexus setup fails when they are send in multiple dispatches)
+      editorview.dispatch(...batched_effects_ref.current.flat());
 
       // Clear batched effects and bind dispatch to the editorview
       batched_effects_ref.current = [];
@@ -254,42 +287,11 @@ export let Extension = ({
       return;
     }
 
-    console.log("RECONFIGURING", { extension, deps });
+    // console.log("RECONFIGURING", { extension, deps });
     dispatch({
       effects: compartment.reconfigure(extension),
     });
   }, [extension, dispatch]);
 
   return null;
-};
-
-export let useEditorView = ({ code }) => {
-  let state = useRealMemo(() => {
-    const usesDarkTheme = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-
-    return EditorState.create({
-      doc: code,
-
-      extensions: [
-        // EditorView.theme({}, { dark: usesDarkTheme }),
-        // highlightSpecialChars(),
-        // EditorState.allowMultipleSelections.of(true),
-        // // Multiple cursors with `alt` instead of the default `ctrl` (which we use for go to definition)
-        // EditorView.clickAddsSelectionRange.of(
-        //   (event) => event.altKey && !event.shiftKey
-        // ),
-        // indentOnInput(),
-        // EditorState.languageData.of((state, pos, side) => {
-        //   return [{ closeBrackets: { brackets: ["(", "[", "{"] } }];
-        // }),
-        // closeBrackets(),
-        // highlightSelectionMatches(),
-        // bracketMatching(),
-      ],
-    });
-  }, []);
-
-  return state;
 };

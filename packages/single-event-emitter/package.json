@@ -1,0 +1,14 @@
+{
+  "name": "single-event-emitter",
+  "version": "1.0.0",
+  "description": "",
+  "main": "single-event-emitter.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "events": "^3.3.0"
+  }
+}

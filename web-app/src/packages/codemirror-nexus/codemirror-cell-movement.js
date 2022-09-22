@@ -8,11 +8,11 @@ import {
 } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { autocompletion, completionStatus } from "@codemirror/autocomplete";
-import {
-  from_cell_effects,
-  nexus_extension,
-  ToCellEffect,
-} from "./codemirror-nexus";
+// import {
+//   from_cell_effects,
+//   nexus_extension,
+//   ToCellEffect,
+// } from "./codemirror-nexus";
 
 // A lot of this file is an adaptation of https://github.com/fonsp/Pluto.jl/blob/ab85efca962d009c741d4ec66508d687806e9579/frontend/components/CellInput/cell_movement_plugin.js
 // Only this uses my new nexus-style stuff, and it has cooler column-preserving-stuff 🤩
@@ -119,59 +119,60 @@ export let prevent_holding_a_key_from_doing_things_across_cells =
     },
   });
 
-export let cell_movement_extension = [
-  Prec.highest(prevent_holding_a_key_from_doing_things_across_cells),
-  nexus_extension(
-    EditorView.updateListener.of((update) => {
-      let cell_order = update.state.facet(CellIdOrder);
+export let cell_movement_nexus_extension = EditorView.updateListener.of(
+  (update) => {
+    let cell_order = update.state.facet(CellIdOrder);
 
-      if (cell_order == null) {
-        throw new Error("Cell order is null in update listener");
-      }
+    if (cell_order == null) {
+      throw new Error("Cell order is null in update listener");
+    }
 
-      for (let effect of from_cell_effects(update)) {
-        let { cell_id, transaction } = effect.value;
-        let cell_index = cell_order.indexOf(cell_id);
+    for (let effect of from_cell_effects(update)) {
+      let { cell_id, transaction } = effect.value;
+      let cell_index = cell_order.indexOf(cell_id);
 
-        for (let effect of transaction.effects) {
-          if (effect.is(MoveUpEffect)) {
-            if (cell_order[cell_index - 1] == null) {
-              console.log(`Can't move up`);
-              return;
-            }
-
-            update.view.dispatch({
-              effects: [
-                ToCellEffect.of({
-                  cell_id: cell_order[cell_index - 1],
-                  transaction_spec: {
-                    effects: MoveFromBelowEffect.of(effect.value),
-                  },
-                }),
-              ],
-            });
+      for (let effect of transaction.effects) {
+        if (effect.is(MoveUpEffect)) {
+          if (cell_order[cell_index - 1] == null) {
+            console.log(`Can't move up`);
+            return;
           }
-          if (effect.is(MoveDownEffect)) {
-            if (cell_order[cell_index + 1] == null) {
-              console.log(`Can't move down`);
-              return;
-            }
 
-            update.view.dispatch({
-              effects: [
-                ToCellEffect.of({
-                  cell_id: cell_order[cell_index + 1],
-                  transaction_spec: {
-                    effects: MoveFromAboveEffect.of(effect.value),
-                  },
-                }),
-              ],
-            });
+          update.view.dispatch({
+            effects: [
+              ToCellEffect.of({
+                cell_id: cell_order[cell_index - 1],
+                transaction_spec: {
+                  effects: MoveFromBelowEffect.of(effect.value),
+                },
+              }),
+            ],
+          });
+        }
+        if (effect.is(MoveDownEffect)) {
+          if (cell_order[cell_index + 1] == null) {
+            console.log(`Can't move down`);
+            return;
           }
+
+          update.view.dispatch({
+            effects: [
+              ToCellEffect.of({
+                cell_id: cell_order[cell_index + 1],
+                transaction_spec: {
+                  effects: MoveFromAboveEffect.of(effect.value),
+                },
+              }),
+            ],
+          });
         }
       }
-    })
-  ),
+    }
+  }
+);
+
+export let cell_movement_extension = [
+  Prec.highest(prevent_holding_a_key_from_doing_things_across_cells),
   keymap.of([
     {
       key: "ArrowUp",

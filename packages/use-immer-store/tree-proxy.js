@@ -33,10 +33,10 @@ let mutate_symbol = Symbol("Mutate this variable");
  * @param {(value: T) => void} mutate_fn
  * @returns {void}
  */
-export let mutate = (store, mutate_fn) => {
+export let mutateEffect = (store, mutate_fn) => {
   precondition(is_object(store), "Can't mutate primitive value");
   precondition(store[mutate_symbol], "Non-store object passed to mutate()");
-  store[mutate_symbol](mutate_fn);
+  return store[mutate_symbol](mutate_fn);
 };
 
 /**
@@ -64,7 +64,7 @@ let readonly_symbol = Symbol("Readonly version this variable");
  */
 export let readonly = (store) => {
   if (store == null) {
-    throw new Error(`Can't make a null readonly`);
+    throw new Error(`Can't make a null/undefined readonly`);
   }
   if (typeof store !== "object") {
     throw new Error(`Can't make a primitive readonly`);
@@ -99,7 +99,7 @@ export let make_store_proxy = ([state, update_state]) => {
         // Secret property to access the mutator function
         // TODO Why do I create the wrapper function here? Just because it is easier for me to read?
         return (mutate_fn) => {
-          update_state((value) => mutate_fn(value));
+          return update_state((value) => mutate_fn(value));
         };
       } else if (property === readonly_symbol) {
         // Secret property to get the "real" value
@@ -156,7 +156,7 @@ let get_mutator_for_property = (update_state, property) => {
     mutate_map.get(property) != null
       ? mutate_map.get(property)
       : (mutate_fn) => {
-          update_state((value) => {
+          return update_state((value) => {
             value[property] = mutate_immer_like(value[property], mutate_fn);
           });
         }
@@ -186,7 +186,8 @@ let make_store_proxy_cached = mem(make_store_proxy, {
 /**
  * @function
  * @template T
- * @param {[T, (update_fn: (value: T) => T) => void]} useStateResult
+ * @param {T} state
+ * @param {[T, (update_fn: (value: T) => T) => void]} update_state
  * @returns {T}
  */
 export let useMutateable = (state, update_state) => {

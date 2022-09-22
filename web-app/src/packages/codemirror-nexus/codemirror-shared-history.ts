@@ -23,7 +23,11 @@ import {
 import { KeyBinding, EditorView } from "@codemirror/view";
 
 import { invertedEffects, isolateHistory } from "@codemirror/commands";
-import { FromCellEffect, ToCellEffect } from "./codemirror-nexus";
+import {
+  FromCellTransactionEffect,
+  update_cell_state,
+} from "../../NotebookEditor";
+// import { FromCellEffect, ToCellEffect } from "./codemirror-nexus";
 
 const enum BranchName {
   Done,
@@ -81,9 +85,10 @@ type HistoryCellId = string | null;
 let update_from_transaction_with_cell_id = (
   state: HistoryState,
   tr: Transaction,
-  cell_id: HistoryCellId
+  cell_id: HistoryCellId,
+  nexus_editor_state: EditorState
 ): HistoryState => {
-  let config = tr.state.facet(historyConfig);
+  let config = nexus_editor_state.facet(historyConfig);
 
   let fromHist = tr.annotation(fromHistory);
   if (fromHist) {
@@ -147,14 +152,20 @@ const historyField_ = StateField.define({
     state = update_from_transaction_with_cell_id(
       state,
       combined_transaction,
-      null
+      null,
+      combined_transaction.state
     );
 
     // Check if there is any FromCellEffects to save
     for (let effect of combined_transaction.effects) {
-      if (!effect.is(FromCellEffect)) continue;
+      if (!effect.is(FromCellTransactionEffect)) continue;
       let { cell_id, transaction: tr } = effect.value;
-      state = update_from_transaction_with_cell_id(state, tr, cell_id);
+      state = update_from_transaction_with_cell_id(
+        state,
+        tr,
+        cell_id,
+        combined_transaction.state
+      );
     }
 
     return state;
@@ -211,6 +222,8 @@ function cmd(side: BranchName, selection: boolean): StateCommand {
     state: EditorState;
     dispatch: (tr: Transaction) => void;
   }) {
+    console.log(`state:`, state);
+
     if (!selection && state.readOnly) return false;
     let historyState = state.field(historyField_, false);
     if (!historyState) return false;
@@ -622,14 +635,7 @@ class HistoryState {
         return state.update(transaction_spec);
       }
 
-      return state.update({
-        effects: [
-          ToCellEffect.of({
-            cell_id: event.cell_id,
-            transaction_spec: transaction_spec,
-          }),
-        ],
-      });
+      return update_cell_state(state, event.cell_id, transaction_spec);
     }
   }
 
