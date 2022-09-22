@@ -5,6 +5,7 @@
 /// <reference path="custom-tags.d.ts" />
 
 import React from "react";
+import styled from "styled-components";
 
 const get_element_position_in_document = (element) => {
   let top = 0;
@@ -46,46 +47,41 @@ const in_request_animation_frame = (fn) => {
  * @property {number} y
  */
 
-export const SelectionArea = ({ on_selection, cell_order }) => {
+export const SelectionArea = ({ on_selection, children }) => {
   const mouse_position_ref = React.useRef();
   const is_selecting_ref = React.useRef(false);
-  const element_ref = React.useRef(/** @type {HTMLElement?} */ (null));
+  const element_ref = React.useRef(
+    /** @type {HTMLDivElement} */ (/** @type {any} */ (null))
+  );
 
   const [selection, set_selection] = React.useState(
     /** @type {{start: Coordinate2D, end: Coordinate2D}?} */ (null)
   );
 
+  const onmousedown = (/** @type {MouseEvent} */ e) => {
+    let target = /** @type {HTMLElement} */ (e.target);
+
+    // TODO: also allow starting the selection in one codemirror and stretching it to another cell
+    if (
+      !e?.defaultPrevented &&
+      element_ref.current.contains(target) &&
+      e.button === 0 &&
+      target.closest("[data-can-start-selection]")?.dataset
+        ?.canStartSelection !== "false"
+    ) {
+      e.preventDefault();
+      on_selection([]);
+      set_selection({
+        start: { x: e.pageX, y: e.pageY },
+        end: { x: e.pageX, y: e.pageY },
+      });
+      is_selecting_ref.current = true;
+    } else {
+      on_selection([]);
+    }
+  };
+
   React.useEffect(() => {
-    const event_target_inside_this_notebook = (/** @type {MouseEvent} */ e) => {
-      if (e.target == null) {
-        return false;
-      }
-
-      // this should also work for notebooks inside notebooks!
-      let closest_editor = /** @type {HTMLElement} */ (e.target).closest(
-        "pluto-editor"
-      );
-      let my_editor = element_ref.current?.closest("pluto-editor");
-
-      return closest_editor === my_editor;
-    };
-
-    const onmousedown = (/** @type {MouseEvent} */ e) => {
-      let target = /** @type {HTMLElement} */ (e.target);
-
-      // TODO: also allow starting the selection in one codemirror and stretching it to another cell
-      if (target.dataset.canStartCellSelection === "true" && e.button === 0) {
-        on_selection([]);
-        set_selection({
-          start: { x: e.pageX, y: e.pageY },
-          end: { x: e.pageX, y: e.pageY },
-        });
-        is_selecting_ref.current = true;
-      } else {
-        on_selection([]);
-      }
-    };
-
     const onmouseup = (/** @type {MouseEvent} */ e) => {
       if (is_selecting_ref.current) {
         set_selection(null);
@@ -180,14 +176,12 @@ export const SelectionArea = ({ on_selection, cell_order }) => {
     //     }
     // }
 
-    document.addEventListener("mousedown", onmousedown);
     document.addEventListener("mouseup", onmouseup);
     document.addEventListener("mousemove", onmousemove);
     document.addEventListener("selectstart", onselectstart);
     // document.addEventListener("keydown", onkeydown)
     document.addEventListener("scroll", onscroll, { passive: true });
     return () => {
-      document.removeEventListener("mousedown", onmousedown);
       document.removeEventListener("mouseup", onmouseup);
       document.removeEventListener("mousemove", onmousemove);
       document.removeEventListener("selectstart", onselectstart);
@@ -202,38 +196,74 @@ export const SelectionArea = ({ on_selection, cell_order }) => {
   // let scaleX = `scaleX(${Math.abs(selection_start.x - selection_end.x)})`
   // let scaleY = `scaleY(${Math.abs(selection_start.y - selection_end.y)})`
 
-  if (selection == null) {
-    return <span ref={element_ref}></span>;
-  }
   return (
-    <React.Fragment>
-      {selection && (
+    <div
+      style={{ display: "contents" }}
+      ref={element_ref}
+      onMouseDown={onmousedown}
+    >
+      <SimpleDialog open={selection != null}>
         <dral-prevent-hover
           style={{
             position: "fixed",
             inset: 0,
           }}
         />
-      )}
-      <dral-selection-area
-        ref={element_ref}
-        style={{
-          position: "absolute",
-          background: "rgba(40, 78, 189, 0.24)",
-          zIndex: 1000000, // Yes, really
-          top: Math.min(selection.start.y, selection.end.y),
-          left: Math.min(selection.start.x, selection.end.x),
-          width: Math.abs(selection.start.x - selection.end.x),
-          height: Math.abs(selection.start.y - selection.end.y),
-          // Transform could be faster
-          // top: 0,
-          // left: 0,
-          // width: 1,
-          // height: 1,
-          // transformOrigin: "top left",
-          // transform: `${translateX} ${translateY} ${scaleX} ${scaleY}`,
-        }}
-      ></dral-selection-area>
-    </React.Fragment>
+
+        {selection && (
+          <dral-selection-area
+            style={{
+              position: "absolute",
+              background: "rgba(40, 78, 189, 0.24)",
+              outline: "rgba(255, 255, 255, 0.1) solid 1px",
+              zIndex: 1000000, // Yes, really
+              top: Math.min(selection.start.y, selection.end.y),
+              left: Math.min(selection.start.x, selection.end.x),
+              width: Math.abs(selection.start.x - selection.end.x),
+              height: Math.abs(selection.start.y - selection.end.y),
+              // Transform could be faster
+              // top: 0,
+              // left: 0,
+              // width: 1,
+              // height: 1,
+              // transformOrigin: "top left",
+              // transform: `${translateX} ${translateY} ${scaleX} ${scaleY}`,
+            }}
+          />
+        )}
+      </SimpleDialog>
+
+      {children}
+    </div>
   );
+};
+
+let FullscreenDialog = styled.dialog`
+  max-height: unset;
+  max-width: unset;
+  height: 100%;
+  width: 100%;
+  background: none;
+  border: none;
+
+  &::backdrop {
+    background: none;
+  }
+`;
+
+let SimpleDialog = ({ open, children }) => {
+  /** @type {import("react").MutableRefObject<HTMLDialogElement>} */
+  let ref = React.useRef(/** @type {any} */ (null));
+
+  React.useEffect(() => {
+    if (open) {
+      if (!ref.current.open) {
+        ref.current.showModal();
+      }
+    } else {
+      ref.current.close();
+    }
+  }, [open]);
+
+  return <FullscreenDialog ref={ref}>{children}</FullscreenDialog>;
 };

@@ -26,19 +26,25 @@ import {
   useNotebookviewWithExtensions,
 } from "./NotebookEditor";
 import { useRealMemo } from "use-real-memo";
-import { SelectedCellsField, selected_cells_keymap } from "./cell-selection";
+import {
+  SelectCellsEffect,
+  SelectedCellsField,
+  selected_cells_keymap,
+} from "./cell-selection";
 import { keymap, runScopeHandlers } from "@codemirror/view";
 import {
   shared_history,
   historyKeymap,
 } from "./packages/codemirror-nexus/codemirror-shared-history";
-import { mapValues, sortBy } from "lodash";
+import { isEqual, mapValues, sortBy } from "lodash";
 import {
   CellIdOrder,
   cell_movement_extension_default,
 } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
 import { ShowKeysPressed } from "./ShowKeys";
+import { MetaNotebook } from "./MetaNotebook";
+import { SelectionArea } from "./selection-area/SelectionArea";
 
 let AppStyle = styled.div`
   padding-top: 100px;
@@ -126,19 +132,6 @@ let ShellTab = () => {
         like a REPL, having access to the variables created in the main
         notebook, but not the other way around. And then, ideally, being able to
         drag cells from here to the main notebook.
-      </p>
-    </div>
-  );
-};
-
-let MetaTab = () => {
-  return (
-    <div style={{ padding: 16 }}>
-      <h1>Meta</h1>
-      <p>
-        I want this page to become a notebook that can access the main process,
-        and influence the notebook web page. This way you can write your own
-        plugins.
       </p>
     </div>
   );
@@ -324,16 +317,29 @@ function App() {
     [engine.dag]
   );
 
+  let selected_cells = notebook_view.state.field(SelectedCellsField);
+
   return (
     <div style={{ display: "flex" }}>
-      <AppStyle data-can-start-cell-selection>
-        <CellList
-          notebook_view={notebook_view}
-          notebook={notebook}
-          engine={engine}
-        />
-      </AppStyle>
-      <div style={{ flex: 1 }} data-can-start-cell-selection />
+      <SelectionArea
+        on_selection={(new_selected_cells) => {
+          if (!isEqual(new_selected_cells, selected_cells)) {
+            notebook_view.dispatch({
+              effects: SelectCellsEffect.of(new_selected_cells),
+            });
+          }
+        }}
+      >
+        <AppStyle>
+          <CellList
+            notebook_view={notebook_view}
+            notebook={notebook}
+            engine={engine}
+          />
+        </AppStyle>
+        <div style={{ flex: 1 }} />
+      </SelectionArea>
+
       {open_tab != null && (
         <div
           style={{
@@ -342,12 +348,14 @@ function App() {
             height: "100vh",
             position: "sticky",
             top: 0,
+            display: "flex",
+            flexDirection: "column",
           }}
         >
           {open_tab === "graph" && <GraphTab dag={dag} />}
           {open_tab === "dependencies" && <DependenciesTab />}
           {open_tab === "shell" && <ShellTab />}
-          {open_tab === "meta" && <MetaTab />}
+          {open_tab === "meta" && <MetaNotebook />}
         </div>
       )}
       <div

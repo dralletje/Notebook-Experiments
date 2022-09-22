@@ -1,6 +1,5 @@
 import React from "react";
-import { mutate, mutator, readonly, useImmerStore } from "use-immer-store";
-import styled, { keyframes } from "styled-components";
+import styled from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import { EditorSelection, EditorState, StateField } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
@@ -8,7 +7,6 @@ import { Inspector } from "./Inspector";
 import { compact, isEqual } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
-import { SelectionArea } from "./selection-area/SelectionArea";
 import { cell_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
 import { deserialize } from "./deserialize-value-to-show";
 
@@ -31,13 +29,11 @@ import {
   CellDispatchEffect,
   CellEditorStatesField,
   empty_cell,
-  NexusEffect,
   FromCellTransactionEffect,
   MoveCellEffect,
   MutateCellMetaEffect,
   RemoveCellEffect,
 } from "./NotebookEditor";
-import { cell_movement_extension } from "./packages/codemirror-nexus/codemirror-cell-movement";
 
 let CellContainer = styled.div`
   display: flex;
@@ -356,6 +352,7 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                 {(provided, snapshot) => (
                   <Flipped flipId={cell.id}>
                     <CellContainer
+                      data-can-start-selection={false}
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       className={
@@ -467,16 +464,6 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
             </React.Fragment>
           ))}
       </DragAndDropList>
-      <SelectionArea
-        cell_order={notebook.cell_order}
-        on_selection={(new_selected_cells) => {
-          if (!isEqual(new_selected_cells, selected_cells)) {
-            nexus_editorview.dispatch({
-              effects: SelectCellsEffect.of(new_selected_cells),
-            });
-          }
-        }}
-      />
     </React.Fragment>
   );
 };
