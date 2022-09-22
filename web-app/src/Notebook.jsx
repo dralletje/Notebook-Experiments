@@ -596,32 +596,16 @@ export let Cell = ({
         }}
       >
         <CodeMirror
-          editor_state={initial_editor_state}
+          state={initial_editor_state}
           ref={editorview_ref}
           dispatch={(tr, editorview) => {
-            // console.group("dispatch_to_nexus");
-            // console.log({ tr });
-            try {
-              // let moar_effects = [];
-              // for (let effect of tr.effects) {
-              //   if (effect.is(NexusEffect)) {
-              //     moar_effects.push(effect.value);
-              //   }
-              // }
-
-              dispatch_to_nexus({
-                effects: [
-                  FromCellTransactionEffect.of({
-                    cell_id: cell.id,
-                    transaction: tr,
-                  }),
-                  // ...moar_effects,
-                ],
-              });
-            } finally {
-              // console.groupEnd();
-            }
             // editorview.update([tr]);
+            dispatch_to_nexus({
+              effects: FromCellTransactionEffect.of({
+                cell_id: cell.id,
+                transaction: tr,
+              }),
+            });
           }}
         >
           <Extension
