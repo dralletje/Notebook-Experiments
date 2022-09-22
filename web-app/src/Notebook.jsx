@@ -598,7 +598,7 @@ export let Cell = ({
         <CodeMirror
           state={initial_editor_state}
           ref={editorview_ref}
-          dispatch={(tr, editorview) => {
+          dispatch={(tr) => {
             // editorview.update([tr]);
             dispatch_to_nexus({
               effects: FromCellTransactionEffect.of({
