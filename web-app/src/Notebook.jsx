@@ -30,14 +30,12 @@ import {
   AddCellEffect,
   CellDispatchEffect,
   CellEditorStatesField,
-  CellIdFacet,
   empty_cell,
   ForNexusEffect,
   FromCellTransactionEffect,
   MoveCellEffect,
   MutateCellMetaEffect,
   RemoveCellEffect,
-  TransactionFromNexusToCellEmitterFacet,
 } from "./NotebookEditor";
 import { cell_movement_extension } from "./packages/codemirror-nexus/codemirror-cell-movement";
 

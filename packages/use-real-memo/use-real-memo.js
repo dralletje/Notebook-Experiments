@@ -48,4 +48,6 @@ export let useDidJustHotReload = () => {
     did_re_memo.current = false;
     return true;
   }
+
+  return false;
 };

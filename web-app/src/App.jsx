@@ -16,7 +16,7 @@ import {
   pizzaOutline,
   terminalOutline,
 } from "ionicons/icons";
-import { EditorState, StateField } from "@codemirror/state";
+import { EditorState, Facet, StateField } from "@codemirror/state";
 import {
   add_single_cell_when_all_cells_are_removed,
   CellEditorStatesField,
@@ -165,16 +165,18 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
   (state) => state.field(CellEditorStatesField).cell_order
 );
 
+let JustForKicksFacet = Facet.define({});
+
 function App() {
   let initial_notebook = React.useMemo(
     () =>
       CellEditorStatesField.init((editorstate) => {
         /** @type {import("./notebook-types").Notebook} */
         let notebook_from_json = try_json(
-          localStorage.getItem("_notebook")
+          localStorage.getItem("_notebook__")
         ) ?? {
           id: "1",
-          cell_order: ["1", "2"],
+          cell_order: ["1", "2", "3"],
           cells: {
             1: {
               id: "1",
@@ -186,6 +188,12 @@ function App() {
               id: "2",
               code: "let xs = [1,2,3,4]",
               unsaved_code: "let xs = [1,2,3,4]",
+              last_run: Date.now(),
+            },
+            3: {
+              id: "3",
+              code: "xs.map((x) => x * 2)",
+              unsaved_code: "xs.map((x) => x * 2)",
               last_run: Date.now(),
             },
           },
@@ -201,6 +209,17 @@ function App() {
       }),
     [CellEditorStatesField]
   );
+
+  // let [just_for_kicks, set_just_for_kicks] = React.useState(0);
+  // React.useEffect(() => {
+  //   let interval = setInterval(() => {
+  //     set_just_for_kicks((x) => x + 1);
+  //   }, 1000);
+  //   return () => clearInterval(interval);
+  // });
+  // let just_for_kicks_extension = React.useMemo(() => JustForKicksFacet.of(just_for_kicks), [just_for_kicks])
+  // This one will cause a crash because it unstable every render, but the error message should be pretty nice
+  // let just_for_kicks_extension = JustForKicksFacet.of(just_for_kicks)
 
   let { state, dispatch } = useNotebookviewWithExtensions({
     extensions: [
@@ -221,6 +240,8 @@ function App() {
 
       // This works so smooth omg
       useRealMemo(() => [shared_history(), keymap.of(historyKeymap)], []),
+
+      // just_for_kicks_extension
     ],
   });
 
