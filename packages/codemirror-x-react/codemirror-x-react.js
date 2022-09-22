@@ -331,7 +331,7 @@ let useImmediateRerenderCounter = () => {
  *  dispatch: (transaction: GenericUpdate) => void;
  * }} props
  */
-export let useNotebookviewWithExtensions = ({ extensions, dispatch }) => {
+export let useViewWithExtensions = ({ extensions, dispatch }) => {
   let initial_extensions_ref = React.useRef(extensions);
   let previous_extensions_ref = React.useRef(extensions);
 
