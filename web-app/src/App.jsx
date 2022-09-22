@@ -19,7 +19,10 @@ import {
 import { EditorState, StateField } from "@codemirror/state";
 import {
   CellEditorStatesField,
-  expand_cell_effects_that_area_actually_meant_for_the_nexus,
+  CellIdFacet,
+  CellMetaField,
+  editor_state_for_cell,
+  // expand_cell_effects_that_area_actually_meant_for_the_nexus,
   MutateNotebookEffect,
   NotebookFacet,
   NotebookField,
@@ -40,6 +43,7 @@ import {
   shared_history,
   historyKeymap,
 } from "./packages/codemirror-nexus/codemirror-shared-history";
+import { mapValues } from "lodash";
 
 let AppStyle = styled.div`
   padding-top: 100px;
@@ -161,37 +165,44 @@ let try_json = (str) => {
 function App() {
   let initial_notebook = React.useMemo(
     () =>
-      NotebookField.init(
-        () =>
-          try_json(localStorage.getItem("_notebook")) ??
-          /** @type {import("./notebook-types").Notebook} */ ({
-            id: "1",
-            cell_order: ["1"],
-            cells: {
-              1: {
-                id: "1",
-                code: "1 + 1 + xs.length",
-                unsaved_code: "1 + 1 + xs.length",
-                last_run: Date.now(),
-              },
-              // 2: {
-              //   id: "2",
-              //   code: "let xs = [1,2,3,4]",
-              //   unsaved_code: "let xs = [1,2,3,4]",
-              //   last_run: Date.now(),
-              // },
+      CellEditorStatesField.init((editorstate) => {
+        /** @type {import("./notebook-types").Notebook} */
+        let notebook_from_json = try_json(
+          localStorage.getItem("_notebook")
+        ) ?? {
+          id: "1",
+          cell_order: ["1"],
+          cells: {
+            1: {
+              id: "1",
+              code: "1 + 1 + xs.length",
+              unsaved_code: "1 + 1 + xs.length",
+              last_run: Date.now(),
             },
-          })
-      ),
+            // 2: {
+            //   id: "2",
+            //   code: "let xs = [1,2,3,4]",
+            //   unsaved_code: "let xs = [1,2,3,4]",
+            //   last_run: Date.now(),
+            // },
+          },
+        };
+
+        return {
+          cell_order: notebook_from_json.cell_order,
+          cells: mapValues(notebook_from_json.cells, (cell) => {
+            return editor_state_for_cell(cell, editorstate).update({});
+          }),
+        };
+      }),
     [NotebookField]
   );
 
   let { state, dispatch } = useNotebookviewWithExtensions({
     extensions: [
-      expand_cell_effects_that_area_actually_meant_for_the_nexus,
+      // expand_cell_effects_that_area_actually_meant_for_the_nexus,
 
       initial_notebook,
-      CellEditorStatesField,
       updateCellsFromNexus,
 
       // React.useMemo(
@@ -209,7 +220,20 @@ function App() {
     ],
   });
 
-  let _notebook = state.field(NotebookField);
+  let cell_editor_states = state.field(CellEditorStatesField);
+
+  let _notebook = React.useMemo(() => {
+    return /** @type {import("./notebook-types").Notebook} */ ({
+      cell_order: cell_editor_states.cell_order,
+      cells: mapValues(cell_editor_states.cells, ({ state: cell_state }) => {
+        return {
+          id: cell_state.facet(CellIdFacet),
+          unsaved_code: cell_state.doc.toString(),
+          ...cell_state.field(CellMetaField),
+        };
+      }),
+    });
+  }, [cell_editor_states]);
 
   /** @type {import("./NotebookEditor").NotebookView} */
   let notebook_view = { state: state, dispatch: dispatch };

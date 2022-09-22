@@ -71,6 +71,7 @@ import {
   AddCellEffect,
   CellEditorStatesField,
   CellIdFacet,
+  ForNexusEffect,
   FromCellTransactionEffect,
   MoveCellEffect,
   RemoveCellEffect,
@@ -644,9 +645,8 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                           cell.id
                         )}
                         editor_state={
-                          notebook_view.state
-                            .field(CellEditorStatesField)
-                            .get(cell.id)?.state
+                          notebook_view.state.field(CellEditorStatesField)
+                            .cells[cell.id].state
                         }
                         dispatch_to_nexus={notebook_view.dispatch}
                       />
@@ -815,12 +815,20 @@ export let Cell = ({
             console.group("dispatch_to_nexus");
             console.log({ tr });
             try {
+              let moar_effects = [];
+              for (let effect of tr.effects) {
+                if (effect.is(ForNexusEffect)) {
+                  moar_effects.push(effect.value);
+                }
+              }
+
               dispatch_to_nexus({
                 effects: [
                   FromCellTransactionEffect.of({
                     cell_id: cell.id,
                     transaction: tr,
                   }),
+                  ...moar_effects,
                 ],
               });
             } finally {
