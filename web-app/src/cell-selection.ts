@@ -1,11 +1,7 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import { CellId } from "./notebook-types";
-import {
-  MutateNotebookEffect,
-  NotebookField,
-  RemoveCellEffect,
-} from "./NotebookEditor";
+import { CellEditorStatesField, RemoveCellEffect } from "./NotebookEditor";
 
 export let SelectCellsEffect = StateEffect.define<CellId[]>();
 
@@ -43,8 +39,7 @@ export let selected_cells_keymap = keymap.of([
     key: "Mod-a",
     run: ({ state, dispatch }) => {
       // Select all cells
-      let selected_cells = state.field(SelectedCellsField);
-      let notebook = state.field(NotebookField);
+      let notebook = state.field(CellEditorStatesField);
       dispatch({
         effects: [SelectCellsEffect.of(notebook.cell_order)],
       });

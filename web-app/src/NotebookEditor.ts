@@ -15,7 +15,8 @@ import React from "react";
 import { compact, without, zip } from "lodash";
 import { SingleEventEmitter } from "single-event-emitter";
 import { ViewPlugin } from "@codemirror/view";
-import { basic_javascript_setup } from "./codemirror-javascript-setup";
+import { invertedEffects } from "@codemirror/commands";
+import { v4 as uuidv4 } from "uuid";
 
 export type NotebookState = EditorState;
 
@@ -31,21 +32,17 @@ export type NotebookUpdate = {
   state: NotebookState;
 };
 
-function useEvent(handler) {
-  const handlerRef = React.useRef(handler);
-
-  handlerRef.current = handler;
-
-  return React.useCallback((...args) => {
-    return handlerRef.current(...args);
-  }, []);
-}
-
 export let updateListener = Facet.define<(update: NotebookUpdate) => void>({
   combine: (listeners) => listeners,
 });
 
 export let AddCellEffect = StateEffect.define<{ index: number; cell: Cell }>();
+
+export let AddCellEditorStateEffect = StateEffect.define<{
+  index: number;
+  cell_id: CellId;
+  cell_editor_state: EditorState;
+}>();
 
 export let RemoveCellEffect = StateEffect.define<{ cell_id: CellId }>();
 
@@ -65,47 +62,7 @@ export let RunIfChangedCellEffect = StateEffect.define<{
   at: number;
 }>();
 
-export let NotebookFacet: Facet<Notebook, Notebook> = Facet.define({
-  combine: (x) => x[0],
-});
-
-export let MutateNotebookEffect = StateEffect.define<{
-  mutate_fn: (notebook: Notebook) => void;
-}>();
-
-export let NotebookField = StateField.define<Notebook>({
-  create() {
-    let id = "initial-cell-id";
-    return {
-      cell_order: [id],
-      id: "notebook-id",
-      cells: {
-        [id]: {
-          id: id,
-          code: "",
-          last_run: -Infinity,
-          unsaved_code: "",
-        },
-      },
-    };
-  },
-
-  update(notebook, transaction) {
-    return immer(notebook, (notebook) => {
-      for (let effect of transaction.effects) {
-        if (effect.is(MutateNotebookEffect)) {
-          effect.value.mutate_fn(notebook);
-        }
-      }
-    });
-  },
-});
-
 export let CellIdFacet = Facet.define<string, string>({
-  combine: (x) => x[0],
-});
-
-export let NexusFacet = Facet.define<NotebookView, NotebookView>({
   combine: (x) => x[0],
 });
 
@@ -144,6 +101,11 @@ let cellTransactionForTransaction =
 export let FromCellTransactionEffect = StateEffect.define<{
   cell_id: CellId;
   transaction: Transaction;
+}>();
+
+export let CellDispatchEffect = StateEffect.define<{
+  cell_id: CellId;
+  transaction: TransactionSpec;
 }>();
 
 export let TransactionFromNexusToCellEmitterFacet = Facet.define<
@@ -216,53 +178,130 @@ export let editor_state_for_cell = (cell: Cell, nexus_state: EditorState) => {
   });
 };
 
+export let cell_from_editorstate = (editorstate: EditorState): Cell => {
+  return {
+    id: editorstate.facet(CellIdFacet),
+    unsaved_code: editorstate.doc.toString(),
+    ...editorstate.field(CellMetaField),
+  };
+};
+
+/**
+ * @param {string} id
+ * @returns {import("../../notebook-types").Cell}
+ */
+export let empty_cell = (id = uuidv4()) => {
+  return {
+    id: id,
+    code: "",
+    unsaved_code: "",
+    last_run: -Infinity,
+  };
+};
+
+export let add_single_cell_when_all_cells_are_removed =
+  EditorState.transactionExtender.of((transaction) => {
+    let notebook = transaction.startState.field(CellEditorStatesField);
+    let cells_left_after_effects = new Set(notebook.cell_order);
+    for (let effect of transaction.effects) {
+      if (effect.is(AddCellEffect)) {
+        cells_left_after_effects.add(effect.value.cell.id);
+      }
+      if (effect.is(AddCellEditorStateEffect)) {
+        cells_left_after_effects.add(
+          effect.value.cell_editor_state.facet(CellIdFacet)
+        );
+      }
+      if (effect.is(RemoveCellEffect)) {
+        cells_left_after_effects.delete(effect.value.cell_id);
+      }
+    }
+
+    // Add a cell when the last cell is removed, but then the inverse of that
+    if (cells_left_after_effects.size === 0) {
+      return {
+        effects: AddCellEffect.of({
+          index: 0,
+          cell: empty_cell(),
+        }),
+      };
+    } else {
+      return null;
+    }
+  });
+
 export let CellEditorStatesField = StateField.define<{
   cell_order: Array<CellId>;
-  cells: { [key: CellId]: Transaction };
+  cells: { [key: CellId]: EditorState };
+  // Necessary because the cells views need to be updated with the transactions
+  // 🤩 Needs no cell_id because the emitter is on the transaction state 🤩
+  transactions_to_send_to_cells: Array<Transaction>;
 }>({
   create() {
     return {
       cell_order: [],
       cells: {},
+
+      transactions_to_send_to_cells: [],
     };
   },
   update(state, transaction) {
-    console.log(`EFFECTS FOR UPDATE:`, transaction.effects);
+    return immer(state, (state) => {
+      state.transactions_to_send_to_cells = [];
+      let {
+        cells: _cells,
+        cell_order,
+        transactions_to_send_to_cells: _transactions_to_send_to_cells,
+      } = state;
 
-    return immer(state, ({ cells: _cells, cell_order }) => {
-      let cells = _cells as any as { [key: CellId]: Transaction };
+      // Tell typescript it doesn't need to care about WritableDraft >_>
+      let cells = _cells as any as { [key: CellId]: EditorState };
+      let transactions_to_send_to_cells =
+        _transactions_to_send_to_cells as any as Array<Transaction>;
 
       for (let effect of transaction.effects) {
         if (effect.is(FromCellTransactionEffect)) {
           let { cell_id, transaction } = effect.value;
 
-          if (cells[cell_id].state !== transaction.startState) {
+          if (cells[cell_id] !== transaction.startState) {
             console.log(`map.get(cell_id)?.state !== transaction.startState:`, {
               map: cells,
-              state: cells[cell_id].state,
+              state: cells[cell_id],
               startState: transaction.startState,
             });
             // prettier-ignore
             throw new Error(`Updating cell state for Cell(${cell_id}) but the cell state is not the same as the transaction start state`);
           }
-          cells[cell_id] = transaction;
+          transactions_to_send_to_cells.push(transaction);
+          cells[cell_id] = transaction.state;
+        }
+
+        if (effect.is(CellDispatchEffect)) {
+          let { cell_id, transaction: spec } = effect.value;
+          let cell_state = cells[cell_id];
+          let transaction = cell_state.update(spec);
+          transactions_to_send_to_cells.push(transaction);
+          cells[cell_id] = transaction.state;
         }
 
         if (effect.is(AddCellEffect)) {
           let { index, cell } = effect.value;
           console.log(`ADD CELL EFFECT index, cell:`, index, cell);
-          cells[cell.id] = editor_state_for_cell(
-            cell,
-            transaction.state
-          ).update({});
+          cells[cell.id] = editor_state_for_cell(cell, transaction.state);
           cell_order.splice(index, 0, cell.id);
+        }
+        if (effect.is(AddCellEditorStateEffect)) {
+          let { index, cell_id, cell_editor_state } = effect.value;
+
+          cells[cell_id] = cell_editor_state;
+          cell_order.splice(index, 0, cell_id);
         }
 
         if (effect.is(RemoveCellEffect)) {
           let { cell_id } = effect.value;
           console.log(`REMOVE CELL EFFECT cell_id:`, cell_id);
           delete cells[cell_id];
-          cell_order = without(cell_order, cell_id);
+          cell_order.splice(cell_order.indexOf(cell_id), 1);
         }
 
         if (effect.is(MoveCellEffect)) {
@@ -280,8 +319,8 @@ export let CellEditorStatesField = StateField.define<{
         if (effect.is(RunCellEffect)) {
           let { cell_id, at } = effect.value;
 
-          let code = cells[cell_id].state.doc.toString();
-          cells[cell_id] = cells[cell_id].state.update({
+          let code = cells[cell_id].doc.toString();
+          let transaction = cells[cell_id].update({
             effects: [
               MutateCellMetaEffect.of((cell) => {
                 cell.code = code;
@@ -290,14 +329,15 @@ export let CellEditorStatesField = StateField.define<{
               }),
             ],
           });
+          transactions_to_send_to_cells.push(transaction);
+          cells[cell_id] = transaction.state;
         }
 
         if (effect.is(RunIfChangedCellEffect)) {
           let { cell_id, at } = effect.value;
-
-          let code = cells[cell_id].state.doc.toString();
-          if (code !== cells[cell_id].state.field(CellMetaField).code) {
-            cells[cell_id] = cells[cell_id].state.update({
+          let code = cells[cell_id].doc.toString();
+          if (code !== cells[cell_id].field(CellMetaField).code) {
+            let transaction = cells[cell_id].update({
               effects: [
                 MutateCellMetaEffect.of((cell) => {
                   cell.code = code;
@@ -306,6 +346,8 @@ export let CellEditorStatesField = StateField.define<{
                 }),
               ],
             });
+            transactions_to_send_to_cells.push(transaction);
+            cells[cell_id] = transaction.state;
           }
         }
       }
@@ -336,6 +378,41 @@ export let CellEditorStatesField = StateField.define<{
   },
 });
 
+export let invert_removing_and_adding_cells = invertedEffects.of(
+  (transaction) => {
+    let notebook = transaction.startState.field(CellEditorStatesField);
+    let inverted_effects: Array<StateEffect<any>> = [];
+    for (let effect of transaction.effects) {
+      if (effect.is(AddCellEffect)) {
+        inverted_effects.push(
+          RemoveCellEffect.of({ cell_id: effect.value.cell.id })
+        );
+      }
+      if (effect.is(RemoveCellEffect)) {
+        let cell_id = effect.value.cell_id;
+        inverted_effects.push(
+          AddCellEditorStateEffect.of({
+            cell_id: cell_id,
+            index: notebook.cell_order.indexOf(cell_id),
+            cell_editor_state: notebook.cells[cell_id],
+          })
+        );
+      }
+      if (effect.is(MoveCellEffect)) {
+        let { cell_id, from, to } = effect.value;
+        inverted_effects.push(
+          MoveCellEffect.of({
+            cell_id,
+            from: to,
+            to: from,
+          })
+        );
+      }
+    }
+    return inverted_effects;
+  }
+);
+
 export let update_cell_state = (
   nexus_state: NotebookState,
   cell_id: CellId,
@@ -349,26 +426,37 @@ export let update_cell_state = (
     effects: [
       FromCellTransactionEffect.of({
         cell_id,
-        transaction: cell_editor_state.state.update(spec),
+        transaction: cell_editor_state.update(spec),
       }),
     ],
   });
 };
 
 export let updateCellsFromNexus = updateListener.of((viewupdate) => {
-  let start_transactions = viewupdate.startState.field(CellEditorStatesField);
-  let transactions = viewupdate.state.field(CellEditorStatesField).cells;
+  let transactions = viewupdate.state.field(
+    CellEditorStatesField
+  ).transactions_to_send_to_cells;
 
-  for (let [cell_id, transaction] of Object.entries(transactions)) {
-    let start_transaction = start_transactions.cells[cell_id];
-    if (start_transaction && start_transaction !== transaction) {
-      let emitter = transaction.state.facet(
-        TransactionFromNexusToCellEmitterFacet
-      );
-      emitter.emit(transaction);
-    }
+  for (let transaction of transactions) {
+    // Get the emitter, FROM THE TRANSACTION?? WHAAAAAT that's crazy!!
+    let emitter = transaction.startState.facet(
+      TransactionFromNexusToCellEmitterFacet
+    );
+    emitter.emit(transaction);
   }
 });
+
+function useEvent(handler) {
+  const handlerRef = React.useRef(handler);
+
+  // Pretty sure setting this in render does break things,
+  // but it is not like I have another option :/
+  handlerRef.current = handler;
+
+  return React.useCallback((...args) => {
+    return handlerRef.current(...args);
+  }, []);
+}
 
 /**
  * @param {{

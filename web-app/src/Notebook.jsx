@@ -2,51 +2,14 @@ import React from "react";
 import { mutate, mutator, readonly, useImmerStore } from "use-immer-store";
 import styled, { keyframes } from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
-import {
-  Compartment,
-  EditorSelection,
-  EditorState,
-  Facet,
-  Prec,
-  StateEffect,
-  StateField,
-  Transaction,
-} from "@codemirror/state";
-import {
-  EditorView,
-  keymap,
-  runScopeHandlers,
-  ViewPlugin,
-} from "@codemirror/view";
+import { EditorSelection, EditorState, StateField } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
 import { Inspector } from "./Inspector";
-import { compact, debounce, intersection, isEqual, without } from "lodash";
+import { compact, isEqual } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
-import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
-// import {
-//   child_extension,
-//   from_cell_effects,
-//   nexus_extension,
-//   ToCellEffect,
-//   useCodemirrorNexus,
-// } from "./packages/codemirror-nexus/codemirror-nexus";
-// import {
-//   cell_movement_extension,
-//   CellIdOrder,
-// } from "./packages/codemirror-nexus/codemirror-cell-movement";
-// import {
-//   BlurEffect,
-//   blur_when_other_cell_focus,
-// } from "./packages/codemirror-nexus/codemirror-blur-when-other-cell-focus";
-import {
-  historyKeymap,
-  shared_history,
-} from "./packages/codemirror-nexus/codemirror-shared-history";
 import { SelectionArea } from "./selection-area/SelectionArea";
-import {
-  cell_keymap,
-  empty_cell,
-} from "./packages/codemirror-nexus/add-move-and-run-cells";
+import { cell_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
 import { deserialize } from "./deserialize-value-to-show";
 
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
@@ -58,10 +21,6 @@ import { Flipper, Flipped } from "react-flip-toolkit";
 import { IonIcon } from "@ionic/react";
 import { eyeOutline, planetOutline } from "ionicons/icons";
 
-import {
-  create_worker,
-  post_message,
-} from "./packages/typescript-server-webworker/typescript-server-webworker";
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
 import { basic_javascript_setup } from "./codemirror-javascript-setup";
 import { useRealMemo } from "use-real-memo";
@@ -69,11 +28,14 @@ import { format_with_prettier } from "./format-javascript-with-prettier";
 import { SelectCellsEffect, SelectedCellsField } from "./cell-selection";
 import {
   AddCellEffect,
+  CellDispatchEffect,
   CellEditorStatesField,
   CellIdFacet,
+  empty_cell,
   ForNexusEffect,
   FromCellTransactionEffect,
   MoveCellEffect,
+  MutateCellMetaEffect,
   RemoveCellEffect,
   TransactionFromNexusToCellEmitterFacet,
 } from "./NotebookEditor";
@@ -256,33 +218,15 @@ let CellEditorSelection = StateField.define({
     );
   },
   update(value, tr) {
-    for (let {
-      value: { cell_id, transaction },
-    } of from_cell_effects(tr)) {
-      if (transaction.selection || transaction.docChanged) {
-        value = { cell_id, selection: transaction.newSelection };
-      }
-    }
+    // for (let {
+    //   value: { cell_id, transaction },
+    // } of from_cell_effects(tr)) {
+    //   if (transaction.selection || transaction.docChanged) {
+    //     value = { cell_id, selection: transaction.newSelection };
+    //   }
+    // }
     return value;
   },
-});
-
-/**
- * @typedef CellAndCodeMap
- * @type {{
- *  code: string,
- *  cell_map: {
- *    [cell_id: string]: {
- *      start: number,
- *      end: number,
- *    }
- *  }
- * }}
- */
-
-/** @type {Facet<CellAndCodeMap, CellAndCodeMap>} */
-let CodeAndCellMapFacet = Facet.define({
-  combine: (values) => values[0],
 });
 
 /**
@@ -315,8 +259,8 @@ let ContextMenuItem = ({ icon, label, shortcut }) => {
 // let blur_cells_when_selecting = EditorState.transactionExtender.of(
 //   (transaction) => {
 //     if (
-//       transaction.startState.facet(SelectedCellsFacet) != null &&
-//       transaction.state.facet(SelectedCellsFacet) == null
+//       transaction.startState.field(SelectedCellsField) != null &&
+//       transaction.state.field(SelectedCellsField, false) == null
 //     ) {
 //       // This happens when hot reloading, this extension hasn't reloaded yet, but
 //       // the next version of `SelectedCellsFacet` has replaced the old.
@@ -325,18 +269,16 @@ let ContextMenuItem = ({ icon, label, shortcut }) => {
 //       return null;
 //     }
 //     if (
-//       transaction.startState.facet(SelectedCellsFacet) !==
-//         transaction.state.facet(SelectedCellsFacet) &&
-//       transaction.state.facet(SelectedCellsFacet).length > 0
+//       transaction.startState.field(SelectedCellsField) !==
+//         transaction.state.field(SelectedCellsField) &&
+//       transaction.state.field(SelectedCellsField).length > 0
 //     ) {
-//       let notebook = transaction.state.facet(NotebookFacet);
+//       let notebook = transaction.state.field(CellEditorStatesField);
 //       return {
 //         effects: notebook.cell_order.map((cell_id) =>
-//           ToCellEffect.of({
+//           FromCellTransactionEffect.of({
 //             cell_id: cell_id,
-//             transaction_spec: {
-//               effects: BlurEffect.of(),
-//             },
+//             transaction: notebook.cells[cell_id].state.update({ effects: [BlurEffect.of()] }),
 //           })
 //         ),
 //       };
@@ -376,165 +318,6 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
   );
 
   let nexus_editorview = notebook_view;
-
-  // let nexus_editorview = useCodemirrorNexus([
-  //   React.useMemo(() => NotebookFacet.of(notebook), [notebook]),
-  //   cell_id_order_from_notebook_facet,
-  //   React.useMemo(
-  //     () => SelectedCellsFacet.of(selected_cells),
-  //     [selected_cells]
-  //   ),
-  //   blur_cells_when_selecting,
-  //   selected_cells_keymap,
-  //   notebook_in_nexus,
-  //   keep_track_of_last_created_cells_extension,
-  // ]);
-
-  // let child_plugin = useRealMemo(
-  //   () => child_extension(nexus_editorview),
-  //   [nexus_editorview.dispatch]
-  // );
-
-  //   let code_and_cell_map = React.useMemo(() => {
-  //     let code = "";
-  //     let cursor = 0;
-  //     /** @type {{ [cell_id: string]: { start: number, end: number } }} */
-  //     let cell_map = {};
-
-  //     let type_references = `
-  // /// <reference lib="es5" />
-  // /// <reference lib="es2015" />
-  // /// <reference lib="es2015.collection" />
-  // /// <reference lib="es2015.core" />
-  // /// <reference types="node" />
-  // `;
-  //     code += type_references;
-  //     cursor += type_references.length;
-
-  //     for (let cell_id of notebook.cell_order) {
-  //       let cell = notebook.cells[cell_id];
-  //       // Using unsaved code because I want typescript to be very optimistic
-  //       let code_to_add = cell.unsaved_code;
-  //       cell_map[cell_id] = {
-  //         start: cursor,
-  //         end: cursor + code_to_add.length,
-  //       };
-  //       code += code_to_add + "\n";
-  //       cursor += code_to_add.length + 1;
-  //     }
-  //     // console.log(`code:`, code);
-  //     return { code, cell_map };
-  //   }, [notebook.cell_order, notebook.cells]);
-
-  //   // useWorker
-  //   /** @type {import("react").MutableRefObject<Worker>} */
-  //   let worker_ref = React.useRef(/** @type {any} */ (null));
-
-  //   React.useEffect(() => {
-  //     worker_ref.current = create_worker();
-  //     return () => {
-  //       worker_ref.current.terminate();
-  //     };
-  //   }, [create_worker]);
-
-  //   let do_linting = React.useRef(
-  //     debounce(async () => {
-  //       let x = await post_message(worker_ref.current, {
-  //         type: "request-linting",
-  //         data: undefined,
-  //       });
-  //       console.log(`x:`, x);
-  //     }, 1000)
-  //   ).current;
-  //   React.useEffect(() => {
-  //     console.log("!!!");
-  //     do_linting();
-  //   }, [code_and_cell_map]);
-
-  //   React.useEffect(() => {
-  //     console.log("Posting file");
-  //     post_message(worker_ref.current, {
-  //       type: "update-notebook-file",
-  //       data: {
-  //         code: code_and_cell_map.code,
-  //       },
-  //     }).then((x) => {
-  //       console.log(`UPDATED:`, x);
-  //     });
-  //   }, [code_and_cell_map]);
-
-  //   useCodemirrorExtension(nexus_editorview, CellEditorSelection);
-  //   useCodemirrorExtension(
-  //     nexus_editorview,
-  //     CodeAndCellMapFacet.of(code_and_cell_map)
-  //   );
-
-  //   let request_info_at_position = React.useRef(
-  //     debounce((current_position_maybe) => {
-  //       console.log("Hiii");
-  //       post_message(worker_ref.current, {
-  //         type: "request-info-at-position",
-  //         data: {
-  //           position: current_position_maybe,
-  //         },
-  //       }).then((x) => {
-  //         console.log(`INFO AT POISITION:`, x);
-  //       });
-  //     }, 1000)
-  //   ).current;
-
-  //   useCodemirrorExtension(
-  //     nexus_editorview,
-  //     React.useMemo(
-  //       () =>
-  //         EditorView.updateListener.of((update) => {
-  //           let code_and_cell_map = update.state.facet(CodeAndCellMapFacet);
-  //           let cell_selection = update.state.field(CellEditorSelection);
-  //           if (
-  //             update.startState.field(CellEditorSelection) !== cell_selection &&
-  //             cell_selection != null
-  //           ) {
-  //             let { cell_id, selection } = cell_selection;
-  //             let cell_position = code_and_cell_map.cell_map[cell_id];
-  //             let current_position_maybe =
-  //               cell_position.start + selection.main.to;
-  //             request_info_at_position(current_position_maybe);
-  //           }
-  //         }),
-  //       []
-  //     )
-  //   );
-
-  //   useCodemirrorExtension(
-  //     nexus_editorview,
-  //     React.useMemo(() => {
-  //       return keymap.of([
-  //         {
-  //           key: "Ctrl-Space",
-  //           run: ({ state, dispatch }) => {
-  //             let code_and_cell_map = state.facet(CodeAndCellMapFacet);
-  //             let cell_selection = state.field(CellEditorSelection);
-  //             if (cell_selection != null) {
-  //               let { cell_id, selection } = cell_selection;
-  //               let cell_position = code_and_cell_map.cell_map[cell_id];
-  //               let current_position_maybe =
-  //                 cell_position.start + selection.main.to;
-
-  //               post_message(worker_ref.current, {
-  //                 type: "request-completions",
-  //                 data: {
-  //                   position: current_position_maybe,
-  //                 },
-  //               }).then((x) => {
-  //                 console.log(`x:`, x);
-  //               });
-  //             }
-  //             return true;
-  //           },
-  //         },
-  //       ]);
-  //     }, [])
-  //   );
 
   let selected_cells = notebook_view.state.field(SelectedCellsField);
 
@@ -606,18 +389,15 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                               />
                             ),
                             onClick: () => {
-                              // notebook_view.dispatch({
-                              //   effects: [
-                              //     mutate(
-                              //       notebook_prime.cells[cell.id],
-                              //       (cell) => {
-                              //         cell.folded = !cell.folded;
-                              //       }
-                              //     ),
-                              //   ],
-                              // });
-                              mutate(cell, (cell) => {
-                                cell.folded = !cell.folded;
+                              notebook_view.dispatch({
+                                effects: CellDispatchEffect.of({
+                                  cell_id: cell.id,
+                                  transaction: {
+                                    effects: MutateCellMetaEffect.of((cell) => {
+                                      cell.folded = !cell.folded;
+                                    }),
+                                  },
+                                }),
                               });
                             },
                           },
@@ -629,8 +409,15 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                           }}
                           {...provided.dragHandleProps}
                           onClick={() => {
-                            mutate(cell, (cell) => {
-                              cell.folded = !cell.folded;
+                            notebook_view.dispatch({
+                              effects: CellDispatchEffect.of({
+                                cell_id: cell.id,
+                                transaction: {
+                                  effects: MutateCellMetaEffect.of((cell) => {
+                                    cell.folded = !cell.folded;
+                                  }),
+                                },
+                              }),
                             });
                           }}
                           className="drag-handle"
@@ -646,7 +433,7 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                         )}
                         editor_state={
                           notebook_view.state.field(CellEditorStatesField)
-                            .cells[cell.id].state
+                            .cells[cell.id]
                         }
                         dispatch_to_nexus={notebook_view.dispatch}
                       />

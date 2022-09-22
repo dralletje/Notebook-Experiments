@@ -18,19 +18,17 @@ import {
 } from "ionicons/icons";
 import { EditorState, StateField } from "@codemirror/state";
 import {
+  add_single_cell_when_all_cells_are_removed,
   CellEditorStatesField,
   CellIdFacet,
   CellMetaField,
   editor_state_for_cell,
+  invert_removing_and_adding_cells,
   // expand_cell_effects_that_area_actually_meant_for_the_nexus,
-  MutateNotebookEffect,
-  NotebookFacet,
-  NotebookField,
   updateCellsFromNexus,
   useNotebookviewWithExtensions,
 } from "./NotebookEditor";
 import { useRealMemo } from "use-real-memo";
-import { notebook_in_nexus } from "./packages/codemirror-nexus/add-move-and-run-cells";
 // import { CellIdOrder } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { SelectedCellsField, selected_cells_keymap } from "./cell-selection";
 // import {
@@ -44,6 +42,8 @@ import {
   historyKeymap,
 } from "./packages/codemirror-nexus/codemirror-shared-history";
 import { mapValues } from "lodash";
+import { CellIdOrder } from "./packages/codemirror-nexus/codemirror-cell-movement";
+import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
 
 let AppStyle = styled.div`
   padding-top: 100px;
@@ -157,10 +157,10 @@ let try_json = (str) => {
   }
 };
 
-// let cell_id_order_from_notebook_facet = CellIdOrder.compute(
-//   [NotebookFacet],
-//   (state) => state.facet(NotebookFacet).cell_order
-// );
+let cell_id_order_from_notebook_facet = CellIdOrder.compute(
+  [CellEditorStatesField],
+  (state) => state.field(CellEditorStatesField).cell_order
+);
 
 function App() {
   let initial_notebook = React.useMemo(
@@ -179,23 +179,24 @@ function App() {
               unsaved_code: "1 + 1 + xs.length",
               last_run: Date.now(),
             },
-            // 2: {
-            //   id: "2",
-            //   code: "let xs = [1,2,3,4]",
-            //   unsaved_code: "let xs = [1,2,3,4]",
-            //   last_run: Date.now(),
-            // },
+            2: {
+              id: "2",
+              code: "let xs = [1,2,3,4]",
+              unsaved_code: "let xs = [1,2,3,4]",
+              last_run: Date.now(),
+            },
           },
         };
 
         return {
           cell_order: notebook_from_json.cell_order,
           cells: mapValues(notebook_from_json.cells, (cell) => {
-            return editor_state_for_cell(cell, editorstate).update({});
+            return editor_state_for_cell(cell, editorstate);
           }),
+          transactions_to_send_to_cells: [],
         };
       }),
-    [NotebookField]
+    [CellEditorStatesField]
   );
 
   let { state, dispatch } = useNotebookviewWithExtensions({
@@ -204,13 +205,13 @@ function App() {
 
       initial_notebook,
       updateCellsFromNexus,
+      invert_removing_and_adding_cells,
+      add_single_cell_when_all_cells_are_removed,
+      cell_id_order_from_notebook_facet,
+      notebook_keymap,
 
-      // React.useMemo(
-      //   () => NotebookFacet.from(NotebookField),
-      //   [NotebookFacet, NotebookField]
-      // ),
-      // cell_id_order_from_notebook_facet,
       SelectedCellsField,
+      selected_cells_keymap,
       // // blur_cells_when_selecting,
       // selected_cells_keymap,
       // notebook_in_nexus,
@@ -222,10 +223,10 @@ function App() {
 
   let cell_editor_states = state.field(CellEditorStatesField);
 
-  let _notebook = React.useMemo(() => {
+  let notebook = React.useMemo(() => {
     return /** @type {import("./notebook-types").Notebook} */ ({
       cell_order: cell_editor_states.cell_order,
-      cells: mapValues(cell_editor_states.cells, ({ state: cell_state }) => {
+      cells: mapValues(cell_editor_states.cells, (cell_state) => {
         return {
           id: cell_state.facet(CellIdFacet),
           unsaved_code: cell_state.doc.toString(),
@@ -237,17 +238,6 @@ function App() {
 
   /** @type {import("./NotebookEditor").NotebookView} */
   let notebook_view = { state: state, dispatch: dispatch };
-
-  let update_state = React.useCallback(
-    (
-      /** @type {(notebook: import("./notebook-types").Notebook) => void} */ update_fn
-    ) => {
-      dispatch({
-        effects: MutateNotebookEffect.of({ mutate_fn: update_fn }),
-      });
-    },
-    [dispatch]
-  );
 
   // Use the nexus' keymaps as shortcuts!
   // This passes on keydown events from the document to the nexus for handling.
@@ -271,9 +261,6 @@ function App() {
       document.removeEventListener("keydown", fn);
     };
   }, [state, dispatch]);
-
-  /** @type {import("./notebook-types").Notebook} */
-  let notebook = useMutateable(_notebook, update_state);
 
   let [engine, set_engine] = React.useState({ cylinders: {} });
   /** @type {React.MutableRefObject<Socket<any, any>>} */
@@ -304,7 +291,6 @@ function App() {
 
   React.useEffect(() => {
     let socket = socketio_ref.current;
-    console.log(`readonly(notebook):`, readonly(notebook));
     socket.emit("notebook", notebook);
   }, [notebook]);
 
