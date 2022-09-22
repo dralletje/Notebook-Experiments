@@ -453,18 +453,6 @@ export let update_cell_state = (
   });
 };
 
-function useEvent(handler) {
-  const handlerRef = React.useRef(handler);
-
-  // Pretty sure setting this in render does break things,
-  // but it is not like I have another option :/
-  handlerRef.current = handler;
-
-  return React.useCallback((...args) => {
-    return handlerRef.current(...args);
-  }, []);
-}
-
 let useImmediateRerenderCounter = () => {
   let ref = React.useRef(-1);
   // ref.current = ref.current + 1;
