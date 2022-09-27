@@ -32,6 +32,7 @@ export type Notebook = {
 
 export type Cell = {
   id: CellId;
+  type?: "code" | "text";
   code: string;
   unsaved_code: string;
   last_run: number;

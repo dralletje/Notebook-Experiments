@@ -17,7 +17,12 @@ import { codemirror_interactive } from "./packages/codemirror-interactive/codemi
 import { Flipper, Flipped } from "react-flip-toolkit";
 
 import { IonIcon } from "@ionic/react";
-import { eyeOutline, planetOutline } from "ionicons/icons";
+import {
+  codeOutline,
+  eyeOutline,
+  planetOutline,
+  textOutline,
+} from "ionicons/icons";
 
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
 import { basic_javascript_setup } from "./codemirror-javascript-setup";
@@ -28,12 +33,14 @@ import {
   AddCellEffect,
   CellDispatchEffect,
   CellEditorStatesField,
+  CellTypeFacet,
   empty_cell,
   FromCellTransactionEffect,
   MoveCellEffect,
   MutateCellMetaEffect,
   RemoveCellEffect,
 } from "./NotebookEditor";
+import { basic_markdown_setup } from "./basic-markdown-setup";
 
 let CellContainer = styled.div`
   display: flex;
@@ -424,20 +431,33 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                           className="drag-handle"
                         />
                       </ContextMenuWrapper>
-                      <Cell
-                        cell={cell}
-                        cylinder={engine.cylinders[cell.id]}
-                        notebook={notebook}
-                        is_selected={selected_cells.includes(cell.id)}
-                        did_just_get_created={last_created_cells.includes(
-                          cell.id
-                        )}
-                        editor_state={
-                          notebook_view.state.field(CellEditorStatesField)
-                            .cells[cell.id]
-                        }
-                        dispatch_to_nexus={notebook_view.dispatch}
-                      />
+                      {notebook_view.state
+                        .field(CellEditorStatesField)
+                        .cells[cell.id].facet(CellTypeFacet) === "text" ? (
+                        <TextCell
+                          cell={cell}
+                          editor_state={
+                            notebook_view.state.field(CellEditorStatesField)
+                              .cells[cell.id]
+                          }
+                          dispatch_to_nexus={notebook_view.dispatch}
+                        />
+                      ) : (
+                        <Cell
+                          cell={cell}
+                          cylinder={engine.cylinders[cell.id]}
+                          notebook={notebook}
+                          is_selected={selected_cells.includes(cell.id)}
+                          did_just_get_created={last_created_cells.includes(
+                            cell.id
+                          )}
+                          editor_state={
+                            notebook_view.state.field(CellEditorStatesField)
+                              .cells[cell.id]
+                          }
+                          dispatch_to_nexus={notebook_view.dispatch}
+                        />
+                      )}
                     </CellContainer>
                   </Flipped>
                 )}
@@ -453,33 +473,34 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                     {
                       title: (
                         <ContextMenuItem
-                          icon={<IonIcon icon={planetOutline} />}
+                          icon={<IonIcon icon={codeOutline} />}
                           label="Add Code Cell"
                           shortcut="⌘K"
                         />
                       ),
                       onClick: () => {
+                        let my_index = notebook.cell_order.indexOf(cell.id);
                         nexus_editorview.dispatch({
-                          effects: [RemoveCellEffect.of({ cell_id: cell.id })],
+                          effects: AddCellEffect.of({
+                            index: my_index + 1,
+                            cell: empty_cell(),
+                          }),
                         });
                       },
                     },
                     {
                       title: (
                         <ContextMenuItem
-                          icon={<IonIcon icon={eyeOutline} />}
+                          icon={<IonIcon icon={textOutline} />}
                           label="Add Text Cell"
                         />
                       ),
                       onClick: () => {
-                        notebook_view.dispatch({
-                          effects: CellDispatchEffect.of({
-                            cell_id: cell.id,
-                            transaction: {
-                              effects: MutateCellMetaEffect.of((cell) => {
-                                cell.folded = !cell.folded;
-                              }),
-                            },
+                        let my_index = notebook.cell_order.indexOf(cell.id);
+                        nexus_editorview.dispatch({
+                          effects: AddCellEffect.of({
+                            index: my_index + 1,
+                            cell: empty_cell("text"),
                           }),
                         });
                       },
@@ -488,9 +509,8 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                 >
                   <AddButton
                     onClick={() => {
-                      let id = uuidv4();
+                      console.log("Hi");
                       let my_index = notebook.cell_order.indexOf(cell.id);
-
                       nexus_editorview.dispatch({
                         effects: AddCellEffect.of({
                           index: my_index + 1,
@@ -683,6 +703,257 @@ export let Cell = ({
     </CellStyle>
   );
 };
+
+/**
+ * @param {{
+ *  cell: import("./notebook-types").Cell,
+ *  cylinder: import("./notebook-types").CylinderShadow,
+ *  notebook: import("./notebook-types").Notebook,
+ *  is_selected: boolean,
+ *  did_just_get_created: boolean,
+ *  editor_state: EditorState | void,
+ *  dispatch_to_nexus: (tr: import("@codemirror/state").TransactionSpec) => void,
+ * }} props
+ */
+export let TextCell = ({
+  cell,
+  cylinder = engine_cell_from_notebook_cell(cell),
+  notebook,
+  is_selected,
+  did_just_get_created,
+  editor_state,
+  dispatch_to_nexus,
+}) => {
+  let initial_editor_state = useRealMemo(() => {
+    return editor_state;
+  }, []);
+  // let initial_editor_state = useRealMemo(() => {
+  //   let _editor_state = /** @type {EditorState} */ (editor_state);
+  //   return EditorState.create({
+  //     doc: _editor_state.doc.toString(),
+  //     extensions: [],
+  //   });
+  // }, []);
+
+  // prettier-ignore
+  let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
+
+  let result_deserialized = React.useMemo(() => {
+    if (cylinder?.result?.type === "return") {
+      return {
+        type: cylinder.result.type,
+        name: cylinder.result.name,
+        value: deserialize(0, cylinder.result.value),
+      };
+    } else if (cylinder?.result?.type === "throw") {
+      return {
+        // Because observable inspector doesn't show the stack trace when it is a thrown value?
+        // But we need to make our own custom error interface anyway (after we fix sourcemaps? Sighh)
+        type: "return",
+        value: deserialize(0, cylinder.result.value),
+      };
+    } else {
+      return { type: "pending" };
+    }
+  }, [cylinder?.result]);
+
+  /** @type {import("react").MutableRefObject<HTMLDivElement>} */
+  let cell_wrapper_ref = React.useRef(/** @type {any} */ (null));
+  React.useEffect(() => {
+    if (did_just_get_created) {
+      editorview_ref.current.focus();
+      cell_wrapper_ref.current.animate(
+        [
+          {
+            clipPath: `inset(100% 0 0 0)`,
+            transform: "translateY(-100%)",
+          },
+          {
+            clipPath: `inset(0 0 0 0)`,
+            transform: "translateY(0%)",
+          },
+        ],
+        {
+          duration: 200,
+        }
+      );
+    }
+  }, []);
+
+  if (initial_editor_state == null) {
+    throw new Error("HUH");
+  }
+
+  return (
+    <TextCellStyle
+      ref={cell_wrapper_ref}
+      data-cell-id={cell.id}
+      className={compact([
+        cylinder.running && "running",
+        (cylinder.last_run ?? -Infinity) < (cell.last_run ?? -Infinity) &&
+          "pending",
+        cylinder.result?.type === "throw" && "error",
+        cylinder.result?.type === "return" && "success",
+        cell.unsaved_code !== cell.code && "modified",
+        is_selected && "selected",
+      ]).join(" ")}
+    >
+      <CodeMirror
+        state={initial_editor_state}
+        ref={editorview_ref}
+        dispatch={(tr, editorview) => {
+          // editorview.update([tr]);
+          dispatch_to_nexus({
+            effects: FromCellTransactionEffect.of({
+              cell_id: cell.id,
+              transaction: tr,
+            }),
+          });
+        }}
+      >
+        {/* <Extension
+            key="basic-javascript-setup"
+            extension={basic_javascript_setup}
+          /> */}
+
+        <Extension key="markdown-setup" extension={basic_markdown_setup} />
+
+        {/* <Extension extension={codemirror_interactive} /> */}
+        <Extension extension={debug_syntax_plugin} />
+        {/* <Extension extension={inline_notebooks_extension} /> */}
+
+        {/* <Extension
+            key="blur_when_other_cell_focus"
+            extension={blur_when_other_cell_focus}
+          /> */}
+
+        <Extension key="cell_keymap" extension={cell_keymap} />
+      </CodeMirror>
+    </TextCellStyle>
+  );
+};
+
+let TextCellStyle = styled.div`
+  flex: 1 1 0px;
+  min-width: 0px;
+
+  font-family: system-ui;
+  font-size: 1.2em;
+
+  position: relative;
+
+  padding-left: 16px;
+
+  &.selected::after {
+    content: "";
+    position: absolute;
+    inset: -0.5rem;
+    left: -1rem;
+    background-color: #20a5ba24;
+    pointer-events: none;
+  }
+
+  .cm-scroller {
+    overflow: visible;
+  }
+
+  border-radius: 3px;
+  /* box-shadow: rgba(255, 255, 255, 0) 0px 0px 20px; */
+  filter: drop-shadow(0 0px 0px rgba(255, 255, 255, 0));
+  transform: scaleX(1);
+  transform-origin: top left;
+
+  transition: filter 0.2s ease-in-out, transform 0.2s ease-in-out;
+
+  .dragging &,
+  ${CellContainer}:has(.drag-handle:hover) &,
+  ${CellContainer}:has(.menu:focus) & {
+    /* box-shadow: rgba(255, 255, 255, 0.1) 0px 0px 20px; */
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.1));
+    /* transform: scaleX(1.05); */
+    transform: translateX(-2px) translateY(-2px);
+    z-index: 1;
+  }
+  .dragging & {
+    --prexisting-transform: translateX(-2px) translateY(-2px);
+    animation: shake 0.2s ease-in-out infinite alternate;
+  }
+
+  .inline-code {
+    background-color: black;
+
+    .code-mark {
+      color: red;
+    }
+  }
+
+  .list-item.cm-line:has(.list-mark) {
+    margin-left: -1em;
+  }
+  .cm-line.list-item:not(:has(.list-mark)) {
+    /* Most likely need to tweak this for other em's */
+    margin-left: 5px;
+  }
+  .list-mark {
+    color: transparent;
+    width: 1em;
+    display: inline-block;
+  }
+  span.list-mark::before {
+    content: "-";
+    position: absolute;
+    /* top: 0; */
+    transform: translateY(-4px);
+    font-size: 1.2em;
+    color: rgba(200, 0, 0);
+  }
+  .hard-break::after {
+    content: "⏎";
+    color: rgba(255, 255, 255, 0.2);
+  }
+  .hr {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    display: inline-block;
+    width: 100%;
+    vertical-align: middle;
+  }
+
+  /* .blockquote.cm-line {
+    margin-left: -1em;
+  } */
+  .quote-mark {
+    color: transparent;
+    font-size: 0;
+    display: inline-block;
+    position: relative;
+  }
+  .blockquote {
+    position: relative;
+  }
+  .blockquote::before {
+    content: "";
+    position: absolute;
+    margin-left: 0.2em;
+    pointer-events: none;
+    font-size: 1.2em;
+    background-color: rgba(200, 0, 0);
+    width: 0.16em;
+    top: 0;
+    bottom: 0;
+    left: -0.6em;
+  }
+
+  .emphasis-mark {
+    opacity: 0.5;
+  }
+
+  .emphasis {
+    font-style: italic;
+  }
+  .strong-emphasis {
+    font-weight: bold;
+  }
+`;
 
 let AddButton = styled.button`
   position: absolute;

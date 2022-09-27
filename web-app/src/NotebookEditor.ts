@@ -107,13 +107,10 @@ export let CellDispatchEffect = StateEffect.define<{
   transaction: TransactionSpec;
 }>();
 
-/**
- * @param {string} id
- * @returns {import("../../notebook-types").Cell}
- */
-export let empty_cell = (id = uuidv4()) => {
+export let empty_cell = (type: "code" | "text" = "code") => {
   return {
-    id: id,
+    id: uuidv4(),
+    type: type,
     code: "",
     unsaved_code: "",
     last_run: -Infinity,
@@ -169,6 +166,15 @@ let emit_transaction_from_nexus_to_cell_extension = ViewPlugin.define(
     };
   }
 );
+
+export let CellTypeFacet = Facet.define<
+  Exclude<Cell["type"], void>,
+  Exclude<Cell["type"], void>
+>({
+  combine: (x) => x[0],
+  static: true,
+});
+
 export let editor_state_for_cell = (cell: Cell, nexus_state: EditorState) => {
   let event_emitter = new SingleEventEmitter<Transaction>();
   let extensions = nexus_state.facet(CellPlugin);
@@ -183,6 +189,7 @@ export let editor_state_for_cell = (cell: Cell, nexus_state: EditorState) => {
         last_run: cell.last_run,
         folded: cell.folded,
       })),
+      CellTypeFacet.of(cell.type ?? "code"),
 
       TransactionFromNexusToCellEmitterFacet.of(event_emitter),
       emit_transaction_from_nexus_to_cell_extension,
