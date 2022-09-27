@@ -23,7 +23,7 @@
   --cm-placeholder-text-color: rgb(255 255 255 / 20%);
 
   --cm-selection-background: hsl(215deg 64% 59% / 48%);
-  --cm-selection-background-blurred: hsl(215deg 0% 59% / 48%);
+  --cm-selection-background-blurred: hsl(0deg 0% 59% / 11%);
 
   color-scheme: light dark;
 }
