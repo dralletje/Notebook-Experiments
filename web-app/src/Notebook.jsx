@@ -240,12 +240,15 @@ let ContextMenuItem = ({ icon, label, shortcut }) => {
         display: "flex",
         flexDirection: "row",
         alignItems: "center",
+        whiteSpace: "pre",
       }}
     >
-      {icon}
+      <span style={{ flex: "0 1 content", transform: "translateY(2px)" }}>
+        {icon}
+      </span>
       <div style={{ minWidth: 8 }} />
-      {label}
-      <div style={{ flex: 1 }} />
+      <span>{label}</span>
+      <div style={{ flex: "1 0 40px" }} />
       {shortcut && (
         <div style={{ opacity: 0.5, fontSize: "0.8em" }}>{shortcut}</div>
       )}
@@ -445,21 +448,60 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                   position: "relative",
                 }}
               >
-                <AddButton
-                  onClick={() => {
-                    let id = uuidv4();
-                    let my_index = notebook.cell_order.indexOf(cell.id);
-
-                    nexus_editorview.dispatch({
-                      effects: AddCellEffect.of({
-                        index: my_index + 1,
-                        cell: empty_cell(),
-                      }),
-                    });
-                  }}
+                <ContextMenuWrapper
+                  options={[
+                    {
+                      title: (
+                        <ContextMenuItem
+                          icon={<IonIcon icon={planetOutline} />}
+                          label="Add Code Cell"
+                          shortcut="⌘K"
+                        />
+                      ),
+                      onClick: () => {
+                        nexus_editorview.dispatch({
+                          effects: [RemoveCellEffect.of({ cell_id: cell.id })],
+                        });
+                      },
+                    },
+                    {
+                      title: (
+                        <ContextMenuItem
+                          icon={<IonIcon icon={eyeOutline} />}
+                          label="Add Text Cell"
+                        />
+                      ),
+                      onClick: () => {
+                        notebook_view.dispatch({
+                          effects: CellDispatchEffect.of({
+                            cell_id: cell.id,
+                            transaction: {
+                              effects: MutateCellMetaEffect.of((cell) => {
+                                cell.folded = !cell.folded;
+                              }),
+                            },
+                          }),
+                        });
+                      },
+                    },
+                  ]}
                 >
-                  + <span className="show-me-later">add cell</span>
-                </AddButton>
+                  <AddButton
+                    onClick={() => {
+                      let id = uuidv4();
+                      let my_index = notebook.cell_order.indexOf(cell.id);
+
+                      nexus_editorview.dispatch({
+                        effects: AddCellEffect.of({
+                          index: my_index + 1,
+                          cell: empty_cell(),
+                        }),
+                      });
+                    }}
+                  >
+                    + <span className="show-me-later">add cell</span>
+                  </AddButton>
+                </ContextMenuWrapper>
               </div>
             </React.Fragment>
           ))}
@@ -658,6 +700,7 @@ let AddButton = styled.button`
 
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
+
   *:hover + div > &,
   div:hover > &,
   div:has(+ *:hover) > & {
@@ -668,7 +711,13 @@ let AddButton = styled.button`
     display: none;
     font-size: 0.8rem;
   }
-  &:hover .show-me-later {
+  &:hover .show-me-later,
+  dialog[open] + div & .show-me-later {
     display: inline;
+  }
+  /* Hehe */
+  dialog[open] + div & {
+    background-color: white;
+    color: black;
   }
 `;

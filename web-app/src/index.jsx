@@ -8,7 +8,7 @@ import { enablePatches } from "immer";
 
 // import { App } from "./experiments/use-memo-after-hot-reload/use-memo-after-hot-reload";
 
-// enablePatches();
+enablePatches();
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
