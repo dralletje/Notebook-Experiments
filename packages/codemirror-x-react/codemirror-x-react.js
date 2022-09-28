@@ -116,12 +116,12 @@ export let CodeMirror = React.forwardRef(
    *  as?: string,
    *  state: Exclude<import("@codemirror/view").EditorViewConfig["state"], void>,
    *  root?: import("@codemirror/view").EditorViewConfig["root"],
-   *  dispatch?: (tr: import("@codemirror/state").Transaction) => void,
+   *  update?: (transactions: import("@codemirror/state").Transaction[]) => void,
    * } & import("react").HtmlHTMLAttributes<"div">} editor_props
    * @param {React.Ref<EditorView>} _ref
    */
   (
-    { state, children, as = "codemirror-editor", dispatch, root, ...props },
+    { state, children, as = "codemirror-editor", update, root, ...props },
     _ref
   ) => {
     /** @type {React.MutableRefObject<HTMLDivElement>} */
@@ -133,9 +133,9 @@ export let CodeMirror = React.forwardRef(
 
     let view = useBareView({
       state,
-      dispatch:
-        dispatch ??
-        ((transaction) => editorview_ref.current.update([transaction])),
+      update:
+        update ??
+        ((transactions) => editorview_ref.current.update(transactions)),
     });
 
     React.useLayoutEffect(() => {
@@ -266,10 +266,10 @@ let useExtensionReconfigures = (extensions) => {
  *
  * @param {{
  *  state: import("@codemirror/state").EditorState,
- *  dispatch: (transaction: import("@codemirror/state").Transaction) => void;
+ *  update: (transactions: import("@codemirror/state").Transaction[]) => void;
  * }} props
  */
-export let useBareView = ({ state: initial_state, dispatch }) => {
+export let useBareView = ({ state: initial_state, update }) => {
   // let initial_extensions_ref = React.useRef(extensions);
   // let previous_extensions_ref = React.useRef(extensions);
 
@@ -395,16 +395,23 @@ export let useBareView = ({ state: initial_state, dispatch }) => {
     // I'm still going to do a premature optimisation here, specifically to avoid applying transactions that
     // React with all it's sync magic, might not have updated the state for yet (aiming at the gap between setState and ref.current = mutation)
     // Not sure if will happen a bit, but I'm in an overengineering mood.
-    let transactions_to_apply_now = takeWhile(
-      transactions_to_apply_ref.current,
-      (transaction) => transaction.startState !== state
-    );
-    transactions_to_apply_ref.current = transactions_to_apply_ref.current.slice(
-      transactions_to_apply_now.length
-    );
+    // console.log(
+    //   `transactions_to_apply_ref.current:`,
+    //   transactions_to_apply_ref.current
+    // );
+    // let transactions_to_apply_now = takeWhile(
+    //   transactions_to_apply_ref.current,
+    //   (transaction) => transaction.startState !== state
+    // );
+    // console.log(`transactions_to_apply_now:`, transactions_to_apply_now);
+    // transactions_to_apply_ref.current = transactions_to_apply_ref.current.slice(
+    //   transactions_to_apply_now.length
+    // );
+    let transactions_to_apply_now = transactions_to_apply_ref.current;
+    transactions_to_apply_ref.current = [];
 
-    for (let transaction of transactions_to_apply_now) {
-      dispatch(transaction);
+    if (transactions_to_apply_now.length > 0) {
+      update(transactions_to_apply_now);
     }
   }, [state]);
 

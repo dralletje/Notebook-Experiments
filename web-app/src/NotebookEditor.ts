@@ -17,6 +17,7 @@ import { SingleEventEmitter } from "single-event-emitter";
 import { ViewPlugin } from "@codemirror/view";
 import { invertedEffects } from "@codemirror/commands";
 import { v4 as uuidv4 } from "uuid";
+import { useBareView } from "codemirror-x-react";
 
 export type NotebookState = EditorState;
 
@@ -149,8 +150,8 @@ export let CellMetaField = StateField.define<CellMeta>({
 });
 
 let TransactionFromNexusToCellEmitterFacet = Facet.define<
-  SingleEventEmitter<Transaction>,
-  SingleEventEmitter<Transaction>
+  SingleEventEmitter<Transaction[]>,
+  SingleEventEmitter<Transaction[]>
 >({
   combine: (x) => x[0],
 });
@@ -159,8 +160,8 @@ let emit_transaction_from_nexus_to_cell_extension = ViewPlugin.define(
     let emitter = cell_editor_view.state.facet(
       TransactionFromNexusToCellEmitterFacet
     );
-    let off = emitter.on((transaction) => {
-      cell_editor_view.update([transaction]);
+    let off = emitter.on((transactions) => {
+      cell_editor_view.update(transactions);
     });
     return {
       destroy() {
@@ -170,7 +171,7 @@ let emit_transaction_from_nexus_to_cell_extension = ViewPlugin.define(
   }
 );
 export let editor_state_for_cell = (cell: Cell, nexus_state: EditorState) => {
-  let event_emitter = new SingleEventEmitter<Transaction>();
+  let event_emitter = new SingleEventEmitter<Transaction[]>();
   let extensions = nexus_state.facet(CellPlugin);
 
   return EditorState.create({
@@ -417,12 +418,27 @@ let updateCellsFromNexus = updateListener.of((viewupdate) => {
     CellEditorStatesField
   ).transactions_to_send_to_cells;
 
+  let pre_existing_cells = viewupdate.state.field(CellEditorStatesField).cells;
+
+  let transactions_per_cell = new Map<
+    SingleEventEmitter<Transaction[]>,
+    Array<Transaction>
+  >();
   for (let transaction of transactions) {
-    // Get the emitter, FROM THE TRANSACTION?? WHAAAAAT that's crazy!!
+    let id = transaction.startState.facet(CellIdFacet);
+    if (!(id in pre_existing_cells)) continue;
+
     let emitter = transaction.startState.facet(
       TransactionFromNexusToCellEmitterFacet
     );
-    emitter.emit(transaction);
+    if (!transactions_per_cell.has(emitter)) {
+      transactions_per_cell.set(emitter, []);
+    }
+    transactions_per_cell.get(emitter)!.push(transaction);
+  }
+
+  for (let [emitter, transactions] of transactions_per_cell) {
+    emitter.emit(transactions);
   }
 });
 
@@ -480,151 +496,169 @@ export let useNotebookviewWithExtensions = ({
   extensions: Array<import("@codemirror/state").Extension>;
 }) => {
   let initial_extensions_ref = React.useRef(extensions);
-  let previous_extensions_ref = React.useRef(extensions);
+  //   let previous_extensions_ref = React.useRef(extensions);
 
-  let did_just_hot_reload = useDidJustHotReload();
-  if (previous_extensions_ref.current.length !== extensions.length) {
-    if (did_just_hot_reload) {
-      // Allowing changing amount of extension during hot-reload,
-      // will totally reload the editor then (which is fine during hot-reload)
-      initial_extensions_ref.current = extensions;
-      previous_extensions_ref.current = extensions;
-    } else {
-      // prettier-ignore
-      throw new Error(`Can't change the amount of extensions in useCodemirrorEditorviewWithExtensions`);
-    }
-  }
+  //   let did_just_hot_reload = useDidJustHotReload();
+  //   if (previous_extensions_ref.current.length !== extensions.length) {
+  //     if (did_just_hot_reload) {
+  //       // Allowing changing amount of extension during hot-reload,
+  //       // will totally reload the editor then (which is fine during hot-reload)
+  //       initial_extensions_ref.current = extensions;
+  //       previous_extensions_ref.current = extensions;
+  //     } else {
+  //       // prettier-ignore
+  //       throw new Error(`Can't change the amount of extensions in useCodemirrorEditorviewWithExtensions`);
+  //     }
+  //   }
   let initial_extensions = initial_extensions_ref.current;
 
-  // Above is just to make it easier to hot-reload and give nice errors when you change the amount of extensions at runtime
-  // What follows is the actual extension 🙃
+  //   // Above is just to make it easier to hot-reload and give nice errors when you change the amount of extensions at runtime
+  //   // What follows is the actual extension 🙃
 
   let compartments = useRealMemo(() => {
     return initial_extensions.map((extension) => new Compartment());
   }, [initial_extensions]);
 
-  let initial_notebook_transaction = useRealMemo(() => {
+  let initial_state = useRealMemo(() => {
     return EditorState.create({
       extensions: zip(compartments, initial_extensions).map(
         // @ts-ignore trust me, `compartments` and `extensions` are the same length
         ([compartment, extension]) => compartment.of(extension)
       ),
-    }).update({});
+    });
   }, [compartments]);
 
-  let [notebook_transaction, set_notebook_transaction] = React.useState(
-    initial_notebook_transaction
-  );
-
-  // prettier-ignore
-  { // HOT RELOADING TWEAK - I hate myself but I am too far in now
-    let last_initial_notebook_transaction_ref = React.useRef(initial_notebook_transaction)
-    if (last_initial_notebook_transaction_ref.current !== initial_notebook_transaction) {
-      set_notebook_transaction(initial_notebook_transaction)
-      last_initial_notebook_transaction_ref.current = initial_notebook_transaction
-    }
-  } // END HOT RELOADING TWEAK
-
-  let reconfigures = compact(
-    zip(compartments, extensions, previous_extensions_ref.current).map(
-      ([compartment, extension, previous_extension]) => {
-        if (extension !== previous_extension) {
-          // @ts-ignore
-          return compartment.reconfigure(extension);
-        } else {
-          return null;
-        }
-      }
-    )
-  );
-  let reconfigures_counter = useImmediateRerenderCounter();
-  if (reconfigures.length > 0) {
-    // PREVENT AN INFINITE LOOP BECAUSE OF "UNSTABLE" EXTENSIONS
-    {
-      if (reconfigures_counter.current > 10) {
-        let indexes_that_changed = compact(
-          zip(extensions, previous_extensions_ref.current).map(
-            ([extension, previous_extension], index) =>
-              extension !== previous_extension ? index : null
-          )
-        );
-        // prettier-ignore
-        throw new Error(`
-Seems like one of the extensions you passed to useNotebookviewWithExtensions is unstable (changes every render), causing an infinite loop.
-You likely want to wrap that extension in a React.useMemo() call.
-(The extensions that changed are at index ${indexes_that_changed.join(", ")} in the extensions array you passed to useNotebookviewWithExtensions)`);
-      }
-      reconfigures_counter.current++;
-    }
-
-    // Recently learned that it is _OK_ to put a setState in render?
-    // It still runs this function, but will discard everything and re-run, which is what I want.
-    set_notebook_transaction(
-      notebook_transaction.state.update({
-        effects: reconfigures,
-      })
-    );
-    previous_extensions_ref.current = extensions;
-  }
-
-  // I feel dirty for using a ref STILL, after all my hard work to get rid of them.
-  let transactions_to_apply_ref = React.useRef<Transaction[]>([]);
-
-  // Used `useEvent` here before, because I wasn't using the setState-render loop to sync the children...
-  // Now that is fixed, I don't need the immediate update stuff anymore... don't need any update actually!
-  // I think `set_notebook_transaction` is completely stable so... cool 😎
-  let notebook_dispatch = React.useCallback(
-    (...transaction_specs: TransactionSpec[]) => {
-      // console.log(`Receiving transaction at nexus:`, transaction_specs);
-      if (transaction_specs.length !== 0) {
-        // Problem with this state mapper is that multiple calls in the same render will cause the other transactions to be swallowed.
-        // So I have to use a ref to store them, and then apply them all in the next render.
-        set_notebook_transaction((previous_transaction) => {
-          let next_transaction = previous_transaction.state.update(
-            ...transaction_specs
-          );
-          transactions_to_apply_ref.current.push(next_transaction);
-          return next_transaction;
+  let view = useBareView({
+    state: initial_state,
+    update(transactions) {
+      if (transactions.length === 0) return;
+      let startState = transactions.at(0)!.startState;
+      let state = transactions.at(-1)!.state;
+      for (let listener of state.facet(updateListener)) {
+        listener({
+          transactions: transactions,
+          view: { state, dispatch: view.dispatch },
+          startState: startState,
+          state: state,
         });
       }
     },
-    [set_notebook_transaction]
-  );
+  });
 
-  React.useLayoutEffect(() => {
-    // Only of these listeners will do the cell_editor_view.update() calls
-    // after a transaction, which is nice! That means the cell_editor_views won't
-    // do any dom mutations until this layout effect is done!
-    // So everything stays in sync 🤩
-    // This _might_ just work with async react.
-    // TODO? Maybe the stuff that applies the `cell_editor_view.update()` should be
-    // ..... in sync with component it is in, instead of this parent component? Food for thought/improvement.
+  //   let [notebook_transaction, set_notebook_transaction] = React.useState(
+  //     initial_notebook_transaction
+  //   );
 
-    // I'm still going to do a premature optimisation here, specifically to avoid applying transactions that
-    // React with all it's sync magic, might not have updated the state for yet (aiming at the gap between setState and ref.current = mutation)
-    // Not sure if will happen a bit, but I'm in an overengineering mood.
-    let transactions_to_apply_now = takeWhile(
-      transactions_to_apply_ref.current,
-      (transaction) => transaction.startState !== notebook_transaction.state
-    );
-    transactions_to_apply_ref.current = transactions_to_apply_ref.current.slice(
-      transactions_to_apply_now.length
-    );
+  //   // prettier-ignore
+  //   { // HOT RELOADING TWEAK - I hate myself but I am too far in now
+  //     let last_initial_notebook_transaction_ref = React.useRef(initial_notebook_transaction)
+  //     if (last_initial_notebook_transaction_ref.current !== initial_notebook_transaction) {
+  //       set_notebook_transaction(initial_notebook_transaction)
+  //       last_initial_notebook_transaction_ref.current = initial_notebook_transaction
+  //     }
+  //   } // END HOT RELOADING TWEAK
 
-    for (let transaction of transactions_to_apply_now) {
-      for (let listener of transaction.state.facet(updateListener)) {
-        listener({
-          transactions: [transaction],
-          view: {
-            state: transaction.state,
-            dispatch: notebook_dispatch,
-          },
-          startState: transaction.startState,
-          state: transaction.state,
-        });
-      }
-    }
-  }, [notebook_transaction]);
+  //   let reconfigures = compact(
+  //     zip(compartments, extensions, previous_extensions_ref.current).map(
+  //       ([compartment, extension, previous_extension]) => {
+  //         if (extension !== previous_extension) {
+  //           // @ts-ignore
+  //           return compartment.reconfigure(extension);
+  //         } else {
+  //           return null;
+  //         }
+  //       }
+  //     )
+  //   );
+  //   let reconfigures_counter = useImmediateRerenderCounter();
+  //   if (reconfigures.length > 0) {
+  //     // PREVENT AN INFINITE LOOP BECAUSE OF "UNSTABLE" EXTENSIONS
+  //     {
+  //       if (reconfigures_counter.current > 10) {
+  //         let indexes_that_changed = compact(
+  //           zip(extensions, previous_extensions_ref.current).map(
+  //             ([extension, previous_extension], index) =>
+  //               extension !== previous_extension ? index : null
+  //           )
+  //         );
+  //         // prettier-ignore
+  //         throw new Error(`
+  // Seems like one of the extensions you passed to useNotebookviewWithExtensions is unstable (changes every render), causing an infinite loop.
+  // You likely want to wrap that extension in a React.useMemo() call.
+  // (The extensions that changed are at index ${indexes_that_changed.join(", ")} in the extensions array you passed to useNotebookviewWithExtensions)`);
+  //       }
+  //       reconfigures_counter.current++;
+  //     }
 
-  return { state: notebook_transaction.state, dispatch: notebook_dispatch };
+  //     // Recently learned that it is _OK_ to put a setState in render?
+  //     // It still runs this function, but will discard everything and re-run, which is what I want.
+  //     set_notebook_transaction(
+  //       notebook_transaction.state.update({
+  //         effects: reconfigures,
+  //       })
+  //     );
+  //     previous_extensions_ref.current = extensions;
+  //   }
+
+  //   // I feel dirty for using a ref STILL, after all my hard work to get rid of them.
+  //   let transactions_to_apply_ref = React.useRef<Transaction[]>([]);
+
+  //   // Used `useEvent` here before, because I wasn't using the setState-render loop to sync the children...
+  //   // Now that is fixed, I don't need the immediate update stuff anymore... don't need any update actually!
+  //   // I think `set_notebook_transaction` is completely stable so... cool 😎
+  //   let notebook_dispatch = React.useCallback(
+  //     (...transaction_specs: TransactionSpec[]) => {
+  //       // console.log(`Receiving transaction at nexus:`, transaction_specs);
+  //       if (transaction_specs.length !== 0) {
+  //         // Problem with this state mapper is that multiple calls in the same render will cause the other transactions to be swallowed.
+  //         // So I have to use a ref to store them, and then apply them all in the next render.
+  //         set_notebook_transaction((previous_transaction) => {
+  //           let next_transaction = previous_transaction.state.update(
+  //             ...transaction_specs
+  //           );
+  //           transactions_to_apply_ref.current.push(next_transaction);
+  //           return next_transaction;
+  //         });
+  //       }
+  //     },
+  //     [set_notebook_transaction]
+  //   );
+
+  //   React.useLayoutEffect(() => {
+  //     // Only of these listeners will do the cell_editor_view.update() calls
+  //     // after a transaction, which is nice! That means the cell_editor_views won't
+  //     // do any dom mutations until this layout effect is done!
+  //     // So everything stays in sync 🤩
+  //     // This _might_ just work with async react.
+  //     // TODO? Maybe the stuff that applies the `cell_editor_view.update()` should be
+  //     // ..... in sync with component it is in, instead of this parent component? Food for thought/improvement.
+
+  //     // I'm still going to do a premature optimisation here, specifically to avoid applying transactions that
+  //     // React with all it's sync magic, might not have updated the state for yet (aiming at the gap between setState and ref.current = mutation)
+  //     // Not sure if will happen a bit, but I'm in an overengineering mood.
+  //     let transactions_to_apply_now = takeWhile(
+  //       transactions_to_apply_ref.current,
+  //       (transaction) => transaction.startState !== notebook_transaction.state
+  //     );
+  //     transactions_to_apply_ref.current = transactions_to_apply_ref.current.slice(
+  //       transactions_to_apply_now.length
+  //     );
+
+  //     for (let transaction of transactions_to_apply_now) {
+  //       for (let listener of transaction.state.facet(updateListener)) {
+  //         listener({
+  //           transactions: [transaction],
+  //           view: {
+  //             state: transaction.state,
+  //             dispatch: notebook_dispatch,
+  //           },
+  //           startState: transaction.startState,
+  //           state: transaction.state,
+  //         });
+  //       }
+  //     }
+  //   }, [notebook_transaction]);
+
+  //   return { state: notebook_transaction.state, dispatch: notebook_dispatch };
+  return view;
 };
