@@ -62,7 +62,6 @@ export let cell_keymap = Prec.high(
       key: "Mod-Enter",
       run: (view) => {
         let cell_id = view.state.facet(CellIdFacet);
-        let notebook = view.state.field(CellEditorStatesField);
         view.dispatch({
           effects: [
             NexusEffect.of(
@@ -70,7 +69,7 @@ export let cell_keymap = Prec.high(
             ),
             NexusEffect.of(
               AddCellEffect.of({
-                index: notebook.cell_order.indexOf(cell_id) + 1,
+                index: { after: cell_id },
                 cell: empty_cell(),
               })
             ),

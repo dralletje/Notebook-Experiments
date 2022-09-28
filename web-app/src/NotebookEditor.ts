@@ -36,7 +36,27 @@ export let updateListener = Facet.define<(update: NotebookUpdate) => void>({
   combine: (listeners) => listeners,
 });
 
-export let AddCellEffect = StateEffect.define<{ index: number; cell: Cell }>();
+export type RelativeCellPosition = { after: CellId } | { before: CellId };
+let cell_position_to_index = (
+  position: RelativeCellPosition | number,
+  cell_order: Array<CellId>
+) => {
+  if (typeof position === "number") {
+    return position;
+  }
+  if ("after" in position) {
+    return cell_order.indexOf(position.after) + 1;
+  }
+  if ("before" in position) {
+    return cell_order.indexOf(position.before) - 1;
+  }
+  throw new Error("Invalid position");
+};
+
+export let AddCellEffect = StateEffect.define<{
+  index: number | RelativeCellPosition;
+  cell: Cell;
+}>();
 
 export let AddCellEditorStateEffect = StateEffect.define<{
   index: number;
@@ -298,7 +318,11 @@ export let CellEditorStatesField = StateField.define<{
           let { index, cell } = effect.value;
           console.log(`ADD CELL EFFECT index, cell:`, { index, cell });
           cells[cell.id] = editor_state_for_cell(cell, transaction.state);
-          cell_order.splice(index, 0, cell.id);
+          cell_order.splice(
+            cell_position_to_index(index, cell_order),
+            0,
+            cell.id
+          );
         }
         if (effect.is(AddCellEditorStateEffect)) {
           let { index, cell_id, cell_editor_state } = effect.value;
