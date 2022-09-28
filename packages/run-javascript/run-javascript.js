@@ -133,7 +133,6 @@ export function transform(ast) {
   }
 
   let scope = get_scope(ast);
-  console.log(`scope:`, scope);
   // TODO scope.getAllBindings?
   let created_names = [...Object.keys(scope.bindings), ...accidental_globals];
   let consumed_names = without(
@@ -145,8 +144,6 @@ export function transform(ast) {
   let properties_to_return = created_names.map((name) => {
     return t.objectProperty(t.identifier(name), t.identifier(name));
   });
-
-  console.log(`properties_to_return:`, properties_to_return);
 
   let return_with_default = (_default) => {
     return t.returnStatement(
@@ -180,11 +177,21 @@ export function transform(ast) {
         statement.type === "VariableDeclaration" &&
         statement.declarations.length === 1
       ) {
-        result_name = statement.declarations[0].id.name;
-        return [
-          statement,
-          return_with_default(t.identifier(statement.declarations[0].id.name)),
-        ];
+        let left_hand_side = statement.declarations[0].id;
+
+        if (left_hand_side.type === "Identifier") {
+          result_name = statement.declarations[0].id.name;
+          return [
+            statement,
+            return_with_default(
+              t.identifier(statement.declarations[0].id.name)
+            ),
+          ];
+        } else {
+          // TODO For the code `let { a: new_a } = c`, this will return `{ a: new_a }`,
+          // .... but I want to return `{ new_a: new_a }` (the original name is irrelevant)
+          return [statement, return_with_default(left_hand_side)];
+        }
       } else {
         throw new Error(`Couldn't 'return-ify' "${print(statement).code}"`);
       }

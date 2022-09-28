@@ -23,6 +23,7 @@ import {
   CellMetaField,
   editor_state_for_cell,
   nested_cell_states_basics,
+  updateListener,
   useNotebookviewWithExtensions,
 } from "./NotebookEditor";
 import { useRealMemo } from "use-real-memo";
@@ -152,14 +153,35 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
 
 let JustForKicksFacet = Facet.define({});
 
+let UpdateLocalStorage = updateListener.of((viewupdate) => {
+  let cell_state = viewupdate.state.field(CellEditorStatesField);
+  localStorage.setItem(
+    "notebook",
+    JSON.stringify(
+      /** @type {import("./notebook-types").Notebook} */ ({
+        id: "hi",
+        cell_order: cell_state.cell_order,
+        cells: mapValues(cell_state.cells, (cell_state) => {
+          let meta = cell_state.field(CellMetaField);
+          return /** @type {import("./notebook-types").Cell} */ ({
+            id: cell_state.facet(CellIdFacet),
+            code: meta.code,
+            unsaved_code: cell_state.doc.toString(),
+            last_run: meta.last_run,
+            folded: meta.folded,
+          });
+        }),
+      })
+    )
+  );
+});
+
 function App() {
   let initial_notebook = React.useMemo(
     () =>
       CellEditorStatesField.init((editorstate) => {
         /** @type {import("./notebook-types").Notebook} */
-        let notebook_from_json = try_json(
-          localStorage.getItem("_notebook__")
-        ) ?? {
+        let notebook_from_json = try_json(localStorage.getItem("notebook")) ?? {
           id: "1",
           cell_order: ["1", "2", "3"],
           cells: {
@@ -228,6 +250,7 @@ function App() {
       useRealMemo(() => [shared_history(), keymap.of(historyKeymap)], []),
 
       // just_for_kicks_extension
+      UpdateLocalStorage,
     ],
   });
 
@@ -410,7 +433,7 @@ function App() {
           meta
         </MyButton>
 
-        <ShowKeysPressed />
+        {/* <ShowKeysPressed /> */}
       </div>
     </div>
   );

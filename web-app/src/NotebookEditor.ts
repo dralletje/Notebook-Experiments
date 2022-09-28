@@ -650,12 +650,6 @@ You likely want to wrap that extension in a React.useMemo() call.
       transactions_to_apply_now.length
     );
 
-    console.log(`transactions_to_apply_now:`, transactions_to_apply_now);
-    console.log(
-      `transactions_to_apply_ref.current:`,
-      transactions_to_apply_ref.current
-    );
-
     if (transactions_to_apply_now.length > 0) {
       let startState = transactions_to_apply_now.at(0)!.state;
       let state = transactions_to_apply_now.at(-1)!.state;

@@ -17,6 +17,7 @@ import { cells_to_dag, get_next_cell_to_run } from "./dag-things.js";
 
 import { run_in_environment } from "../cell-environment/cell-environment.js";
 import { html, md } from "./html.js";
+import fetch from "node-fetch";
 
 const app = express();
 app.use(cors());
@@ -214,11 +215,20 @@ let notebook_step = async (engine, notebook, onChange) => {
     cylinder.invalidation_token = invalidation_token;
     inputs.invalidation = invalidation_token.add;
 
+    // Adding AbortController too, but it is sync so might not cover all cases.
+    // (I specifically added `invalidation(async () => {}))` because express didn't shut down directly.
+    let abort_controller = new AbortController();
+    invalidation_token.add(() => {
+      abort_controller.abort();
+    });
+    inputs.signal = abort_controller.signal;
+
     inputs.__meta__ = {
       is_in_notebook: true,
       url: new URL("../cell-environment/cell-environment.js", import.meta.url),
     };
 
+    inputs.fetch = fetch;
     inputs.html = html;
     inputs.md = md;
 
