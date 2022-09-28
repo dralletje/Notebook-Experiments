@@ -166,8 +166,8 @@ export let CellMetaField = StateField.define<CellMeta>({
 });
 
 let TransactionFromNexusToCellEmitterFacet = Facet.define<
-  SingleEventEmitter<Transaction>,
-  SingleEventEmitter<Transaction>
+  SingleEventEmitter<Transaction[]>,
+  SingleEventEmitter<Transaction[]>
 >({
   combine: (x) => x[0],
 });
@@ -176,8 +176,8 @@ let emit_transaction_from_nexus_to_cell_extension = ViewPlugin.define(
     let emitter = cell_editor_view.state.facet(
       TransactionFromNexusToCellEmitterFacet
     );
-    let off = emitter.on((transaction) => {
-      cell_editor_view.update([transaction]);
+    let off = emitter.on((transactions) => {
+      cell_editor_view.update(transactions);
     });
     return {
       destroy() {
@@ -196,7 +196,7 @@ export let CellTypeFacet = Facet.define<
 });
 
 export let editor_state_for_cell = (cell: Cell, nexus_state: EditorState) => {
-  let event_emitter = new SingleEventEmitter<Transaction>();
+  let event_emitter = new SingleEventEmitter<Transaction[]>();
   let extensions = nexus_state.facet(CellPlugin);
 
   return EditorState.create({
@@ -448,12 +448,27 @@ let updateCellsFromNexus = updateListener.of((viewupdate) => {
     CellEditorStatesField
   ).transactions_to_send_to_cells;
 
+  let pre_existing_cells = viewupdate.state.field(CellEditorStatesField).cells;
+
+  let transactions_per_cell = new Map<
+    SingleEventEmitter<Transaction[]>,
+    Array<Transaction>
+  >();
   for (let transaction of transactions) {
-    // Get the emitter, FROM THE TRANSACTION?? WHAAAAAT that's crazy!!
+    let id = transaction.startState.facet(CellIdFacet);
+    if (!(id in pre_existing_cells)) continue;
+
     let emitter = transaction.startState.facet(
       TransactionFromNexusToCellEmitterFacet
     );
-    emitter.emit(transaction);
+    if (!transactions_per_cell.has(emitter)) {
+      transactions_per_cell.set(emitter, []);
+    }
+    transactions_per_cell.get(emitter)!.push(transaction);
+  }
+
+  for (let [emitter, transactions] of transactions_per_cell) {
+    emitter.emit(transactions);
   }
 });
 
@@ -626,16 +641,18 @@ You likely want to wrap that extension in a React.useMemo() call.
       transactions_to_apply_now.length
     );
 
-    for (let transaction of transactions_to_apply_now) {
-      for (let listener of transaction.state.facet(updateListener)) {
+    if (transactions_to_apply_now.length > 0) {
+      let startState = transactions_to_apply_now.at(0)!.state;
+      let state = transactions_to_apply_now.at(-1)!.state;
+      for (let listener of state.facet(updateListener)) {
         listener({
-          transactions: [transaction],
+          transactions: transactions_to_apply_now,
           view: {
-            state: transaction.state,
+            state: state,
             dispatch: notebook_dispatch,
           },
-          startState: transaction.startState,
-          state: transaction.state,
+          startState: startState,
+          state: state,
         });
       }
     }
