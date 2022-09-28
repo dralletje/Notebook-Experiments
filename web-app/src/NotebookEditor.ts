@@ -443,20 +443,30 @@ let invert_removing_and_adding_cells = invertedEffects.of((transaction) => {
   }
   return inverted_effects;
 });
+
 let updateCellsFromNexus = updateListener.of((viewupdate) => {
-  let transactions = viewupdate.state.field(
+  // Because we get one `viewupdate` for multiple transactions happening,
+  // and `.transactions_to_send_to_cells` gets cleared after every transactions,
+  // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
+  let cell_transactions = viewupdate.transactions.flatMap((transaction) => {
+    return transaction.state.field(CellEditorStatesField)
+      .transactions_to_send_to_cells;
+  });
+
+  // We don't want to send an viewupdate to cells that weren't initialized before this viewupdate started.
+  // Because their state will already be the latest state we have here, and we don't want to send them a viewupdate.
+  let pre_existing_cells = viewupdate.startState.field(
     CellEditorStatesField
-  ).transactions_to_send_to_cells;
+  ).cells;
 
-  let pre_existing_cells = viewupdate.state.field(CellEditorStatesField).cells;
-
+  // We bunch up all the transactions into one viewupdate for each cell.
   let transactions_per_cell = new Map<
     SingleEventEmitter<Transaction[]>,
     Array<Transaction>
   >();
-  for (let transaction of transactions) {
+  for (let transaction of cell_transactions) {
     let id = transaction.startState.facet(CellIdFacet);
-    if (!(id in pre_existing_cells)) continue;
+    if (!(id in pre_existing_cells)) return;
 
     let emitter = transaction.startState.facet(
       TransactionFromNexusToCellEmitterFacet
@@ -466,7 +476,6 @@ let updateCellsFromNexus = updateListener.of((viewupdate) => {
     }
     transactions_per_cell.get(emitter)!.push(transaction);
   }
-
   for (let [emitter, transactions] of transactions_per_cell) {
     emitter.emit(transactions);
   }
@@ -639,6 +648,12 @@ You likely want to wrap that extension in a React.useMemo() call.
     );
     transactions_to_apply_ref.current = transactions_to_apply_ref.current.slice(
       transactions_to_apply_now.length
+    );
+
+    console.log(`transactions_to_apply_now:`, transactions_to_apply_now);
+    console.log(
+      `transactions_to_apply_ref.current:`,
+      transactions_to_apply_ref.current
     );
 
     if (transactions_to_apply_now.length > 0) {
