@@ -82,7 +82,7 @@ let delegate_moves_to_relative_cells = EditorState.transactionExtender.of(
               CellDispatchEffect.of({
                 cell_id: cell_order[cell_index - 1],
                 transaction: {
-                  effects: [MoveFromCellAboveEffect.of(effect.value)],
+                  effects: [MoveFromCellBelowEffect.of(effect.value)],
                 },
               })
             );
@@ -100,7 +100,7 @@ let delegate_moves_to_relative_cells = EditorState.transactionExtender.of(
               CellDispatchEffect.of({
                 cell_id: cell_order[cell_index + 1],
                 transaction: {
-                  effects: [MoveFromCellBelowEffect.of(effect.value)],
+                  effects: [MoveFromCellAboveEffect.of(effect.value)],
                 },
               })
             );
@@ -135,6 +135,7 @@ let viewplugin_for_cell = CellPlugin.of(
 
         if (effect.is(MoveFromCellBelowEffect)) {
           let { start, screenGoalColumn } = effect.value;
+          console.log(`start, screenGoalColumn:`, start, screenGoalColumn);
           if (start === "end") {
             view.dispatch({
               selection: EditorSelection.cursor(state.doc.length),
@@ -143,29 +144,29 @@ let viewplugin_for_cell = CellPlugin.of(
             view.dispatch({
               selection: EditorSelection.cursor(0),
             });
-          } else if (screenGoalColumn != null) {
-            let _screenGoalColumn = screenGoalColumn;
-            // view.requestMeasure({
-            //   read() {
-            let rect = view.contentDOM.getBoundingClientRect();
-            let where = view.coordsAtPos(view.state.doc.length);
-            let new_selection = view.posAtCoords(
-              {
-                x: _screenGoalColumn,
-                y: where?.bottom ?? rect.bottom - 2 * view.defaultLineHeight,
-              },
-              false
-            );
-            view.dispatch({
-              selection: EditorSelection.cursor(
-                new_selection,
-                undefined,
-                undefined,
-                _screenGoalColumn - rect.left
-              ),
-            });
-            //   },
-            // });
+            // } else if (screenGoalColumn != null) {
+            //   let _screenGoalColumn = screenGoalColumn;
+            //   // view.requestMeasure({
+            //   //   read() {
+            //   let rect = view.contentDOM.getBoundingClientRect();
+            //   let where = view.coordsAtPos(view.state.doc.length);
+            //   let new_selection = view.posAtCoords(
+            //     {
+            //       x: _screenGoalColumn,
+            //       y: where?.bottom ?? rect.bottom - 2 * view.defaultLineHeight,
+            //     },
+            //     false
+            //   );
+            //   view.dispatch({
+            //     selection: EditorSelection.cursor(
+            //       new_selection,
+            //       undefined,
+            //       undefined,
+            //       _screenGoalColumn - rect.left
+            //     ),
+            //   });
+            //   //   },
+            //   // });
           } else if (start?.goalColumn == null) {
             view.dispatch({
               selection: EditorSelection.cursor(state.doc.length),

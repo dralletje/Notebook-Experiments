@@ -1,5 +1,6 @@
 import prettier from "prettier";
 import prettier_javascript_parser from "prettier/parser-babel";
+import prettier_typescript_parser from "prettier/parser-typescript";
 
 /**
  * @param {{
@@ -11,9 +12,10 @@ import prettier_javascript_parser from "prettier/parser-babel";
  */
 export let format_with_prettier = ({ code, cursor }) => {
   return prettier.formatWithCursor(code, {
-    parser: "babel",
-    plugins: [prettier_javascript_parser],
-    printWidth: 80,
+    parser: "typescript",
+    plugins: [prettier_typescript_parser],
+    printWidth: 60,
+    tabWidth: 4,
     semi: false,
     cursorOffset: cursor,
     useTabs: true,

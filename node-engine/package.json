@@ -5,7 +5,7 @@
   "type": "module",
   "main": "node-engine.js",
   "scripts": {
-    "start": "nodemon --enable-source-maps --watch ../packages/run-javascript --watch . node-engine",
+    "start": "nodemon --ext \"js,ts\" --watch ../packages/run-javascript --watch . --exec \"ts-node --esm -T ./node-engine.ts\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -25,6 +25,8 @@
     "stacktrace-parser": "^0.1.10"
   },
   "devDependencies": {
-    "nodemon": "^2.0.19"
+    "@types/lodash-es": "^4.17.6",
+    "nodemon": "^2.0.19",
+    "ts-node": "^10.9.1"
   }
 }

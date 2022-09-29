@@ -3,10 +3,12 @@ import { builders, Type } from "ast-types";
 import { parse as parseBabel } from "@babel/parser";
 import traverse1, { NodePath } from "@babel/traverse";
 import { compact, without } from "lodash-es";
+import { transformSync } from "@babel/core";
+import preset from "@babel/preset-typescript";
 
 let t = builders;
 /** @type {typeof traverse1} */
-let traverse = /** @type {any} */ (traverse1).default;
+let traverse = /** @type {any} */ (traverse1).default ?? traverse1;
 
 let get_scope = (ast) => {
   /** @type {NodePath<any>} */
@@ -30,9 +32,23 @@ let btoa = (string) => {
  * @param {{ filename: string }} options
  */
 export function transform_code(code, { filename }) {
+  let without_typescript = transformSync(code, {
+    filename: "file.ts",
+    presets: [[preset, { onlyRemoveTypeImports: true }]],
+  });
+  /** @type {string} */
+  let without_typescript_code = /** @type {any} */ (without_typescript?.code);
+
   // /** @type {ReturnType<parseBabel>} */
-  const unmodified_ast = parse(code, {
-    parser: { parse: parseBabel },
+  const unmodified_ast = parse(without_typescript_code, {
+    parser: {
+      parse: (input, options) => {
+        return parseBabel(input, {
+          ...options,
+          plugins: ["typescript", "jsx"],
+        });
+      },
+    },
     // tabWidth: 0,
     sourceFileName: filename,
   });
@@ -71,6 +87,11 @@ export function transform(ast) {
     MetaProperty(path) {
       // @ts-ignore
       path.replaceWith(t.identifier("__meta__"));
+    },
+    ExportNamedDeclaration(path) {
+      if (path.node.declaration) {
+        path.replaceWith(path.node.declaration);
+      }
     },
   });
 

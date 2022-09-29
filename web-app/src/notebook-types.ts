@@ -20,6 +20,7 @@ export type CylinderShadow = {
   last_run: number | null;
   result: Result<any, any> | null;
   running: boolean;
+  waiting: boolean;
 };
 
 export type CellId = string;
@@ -32,7 +33,7 @@ export type Notebook = {
 
 export type Cell = {
   id: CellId;
-  type?: "code" | "text";
+  type: "code" | "text";
   code: string;
   unsaved_code: string;
   last_run: number;

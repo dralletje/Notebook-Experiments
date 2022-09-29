@@ -1,7 +1,12 @@
 import React from "react";
 import styled from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
-import { EditorSelection, EditorState, StateField } from "@codemirror/state";
+import {
+  EditorSelection,
+  EditorState,
+  StateField,
+  StateEffect,
+} from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { Inspector } from "./Inspector";
 import { compact, isEqual } from "lodash";
@@ -263,37 +268,6 @@ let ContextMenuItem = ({ icon, label, shortcut }) => {
   );
 };
 
-// let blur_cells_when_selecting = EditorState.transactionExtender.of(
-//   (transaction) => {
-//     if (
-//       transaction.startState.field(SelectedCellsField) != null &&
-//       transaction.state.field(SelectedCellsField, false) == null
-//     ) {
-//       // This happens when hot reloading, this extension hasn't reloaded yet, but
-//       // the next version of `SelectedCellsFacet` has replaced the old.
-//       // Thus, we are looking for the old version of `SelectedCellsFacet` on the new state,
-//       // which doesn't exist!!
-//       return null;
-//     }
-//     if (
-//       transaction.startState.field(SelectedCellsField) !==
-//         transaction.state.field(SelectedCellsField) &&
-//       transaction.state.field(SelectedCellsField).length > 0
-//     ) {
-//       let notebook = transaction.state.field(CellEditorStatesField);
-//       return {
-//         effects: notebook.cell_order.map((cell_id) =>
-//           FromCellTransactionEffect.of({
-//             cell_id: cell_id,
-//             transaction: notebook.cells[cell_id].state.update({ effects: [BlurEffect.of()] }),
-//           })
-//         ),
-//       };
-//     }
-//     return null;
-//   }
-// );
-
 /**
  * @param {{
  *  notebook: import("./notebook-types").Notebook,
@@ -366,9 +340,9 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       className={
-                        snapshot.isDragging && !snapshot.dropAnimation
+                        (snapshot.isDragging && !snapshot.dropAnimation
                           ? "dragging"
-                          : ""
+                          : "") + " cell-container"
                       }
                     >
                       <ContextMenuWrapper
@@ -441,6 +415,7 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                               .cells[cell.id]
                           }
                           dispatch_to_nexus={notebook_view.dispatch}
+                          is_selected={selected_cells.includes(cell.id)}
                         />
                       ) : (
                         <Cell
@@ -508,6 +483,7 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                   ]}
                 >
                   <AddButton
+                    data-can-start-selection={false}
                     onClick={() => {
                       console.log("Hi");
                       let my_index = notebook.cell_order.indexOf(cell.id);
@@ -616,7 +592,8 @@ export let Cell = ({
       data-cell-id={cell.id}
       className={compact([
         cylinder.running && "running",
-        (cylinder.last_run ?? -Infinity) < (cell.last_run ?? -Infinity) &&
+        (cylinder.waiting ||
+          (cylinder.last_run ?? -Infinity) < (cell.last_run ?? -Infinity)) &&
           "pending",
         cylinder.result?.type === "throw" && "error",
         cylinder.result?.type === "return" && "success",
@@ -660,32 +637,6 @@ export let Cell = ({
           <Extension
             key="basic-javascript-setup"
             extension={basic_javascript_setup}
-          />
-
-          <Extension
-            extension={keymap.of([
-              {
-                key: "Mod-g",
-                run: (view) => {
-                  try {
-                    let x = format_with_prettier({
-                      code: view.state.doc.toString(),
-                      cursor: view.state.selection.main.head,
-                    });
-                    view.dispatch({
-                      selection: EditorSelection.cursor(x.cursorOffset),
-                      changes: {
-                        from: 0,
-                        to: view.state.doc.length,
-                        insert: x.formatted.trim(),
-                      },
-                    });
-                  } catch (e) {}
-                  return true;
-                },
-              },
-            ])}
-            deps={[]}
           />
 
           {/* <Extension extension={codemirror_interactive} /> */}
@@ -789,11 +740,6 @@ export let TextCell = ({
       ref={cell_wrapper_ref}
       data-cell-id={cell.id}
       className={compact([
-        cylinder.running && "running",
-        (cylinder.last_run ?? -Infinity) < (cell.last_run ?? -Infinity) &&
-          "pending",
-        cylinder.result?.type === "throw" && "error",
-        cylinder.result?.type === "return" && "success",
         cell.unsaved_code !== cell.code && "modified",
         is_selected && "selected",
       ]).join(" ")}
@@ -879,34 +825,112 @@ let TextCellStyle = styled.div`
     animation: shake 0.2s ease-in-out infinite alternate;
   }
 
-  .inline-code {
-    background-color: black;
+  --accent-color: rgba(200, 0, 0);
+  accent-color: var(--accent-color);
 
-    .code-mark {
-      color: red;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    display: inline-block;
+  }
+  .cm-line:has(h1) {
+    margin-top: 0.2em;
+    margin-bottom: 0.3em;
+  }
+  .cm-line:has(h2) {
+    margin-top: 0.2em;
+    margin-bottom: 0.2em;
+  }
+  .cm-line:has(h3) {
+    margin-top: 0.2em;
+    margin-bottom: 0.1em;
+  }
+  .header-mark {
+    font-variant-numeric: tabular-nums;
+    margin-left: calc(-1.8em - 5px);
+    opacity: 0.3;
+    font-size: 0.8em;
+    display: inline-block;
+
+    &.header-mark-h1 {
+      margin-right: 5px;
+      margin-left: calc(-1.8em - 6px);
+    }
+    &.header-mark-h2 {
+      margin-right: 7px;
+    }
+    &.header-mark-h3 {
+      margin-right: 9px;
+    }
+    &.header-mark-h4 {
+      margin-right: 10px;
+    }
+    &.header-mark-h5 {
+      margin-right: 11px;
+    }
+    &.header-mark-h6 {
+      margin-right: 12px;
     }
   }
 
-  .list-item.cm-line:has(.list-mark) {
+  .link-mark {
+    opacity: 0.5;
+  }
+  .link-mark,
+  .link-mark .link {
+    color: white;
+  }
+  .link {
+    color: var(--accent-color);
+  }
+  .url,
+  .url .link {
+    color: white;
+    opacity: 0.5;
+  }
+
+  .table {
+    color: var(--accent-color);
+  }
+
+  .cm-line.list-item:has(.list-mark) {
     margin-left: -1em;
   }
   .cm-line.list-item:not(:has(.list-mark)) {
     /* Most likely need to tweak this for other em's */
-    margin-left: 5px;
+    /* margin-left: 5px; */
   }
+  .cm-line.list-item {
+    margin-top: 0.3em;
+    /* margin-bottom: 0.3em; */
+  }
+  .cm-line.list-item + .cm-line.list-item {
+    margin-top: 0;
+  }
+  /* .cm-line.list-item:has(+ .cm-line.list-item) {
+    margin-bottom: 0;
+  } */
+
   .list-mark {
     color: transparent;
     width: 1em;
     display: inline-block;
   }
-  span.list-mark::before {
+  .list-item:not(:has(.task-marker)) .list-mark::before {
     content: "-";
     position: absolute;
     /* top: 0; */
     transform: translateY(-4px);
     font-size: 1.2em;
-    color: rgba(200, 0, 0);
+    color: var(--accent-color);
   }
+  .task-marker {
+    margin-left: -25px;
+  }
+
   .hard-break::after {
     content: "⏎";
     color: rgba(255, 255, 255, 0.2);
@@ -943,15 +967,81 @@ let TextCellStyle = styled.div`
     left: -0.6em;
   }
 
+  .emoji {
+    color: var(--accent-color);
+    font-style: italic;
+  }
+
   .emphasis-mark {
     opacity: 0.5;
   }
+  .strikethrough-mark {
+    text-decoration: line-through;
+    text-decoration-color: transparent;
+    opacity: 0.5;
+  }
 
+  .strikethrough {
+    text-decoration: line-through;
+  }
   .emphasis {
     font-style: italic;
   }
   .strong-emphasis {
     font-weight: bold;
+  }
+
+  /* I apply this to the line because else the line will stay high, making
+     the code look really fragile */
+  .cm-line:has(.html) {
+    font-size: 0.8em;
+    color: #2fbf00;
+  }
+  .html-previous-toggle {
+    position: absolute;
+    transform: translateX(-100%) translateX(-10px) translateY(5px);
+    font-size: 0.8em;
+    color: #2fbf00;
+    opacity: 0.5;
+  }
+  .html-previous-toggle:hover {
+    opacity: 1;
+    cursor: pointer;
+  }
+
+  .fenced-code {
+    font-size: 0.9em;
+  }
+  .code-text {
+  }
+  .code-mark {
+    opacity: 0.5;
+  }
+  .inline-code {
+    font-size: 0.9em;
+    outline: 1px solid #ffffff36;
+    display: inline-block;
+    padding: 0 5px;
+    margin: 0 4px;
+    border-radius: 2px;
+  }
+  /* .inline-code:first-child {
+    margin-left: -5px;
+  } */
+
+  .cm-line.has-fenced-code {
+    border: solid 1px #ffffff36;
+    border-radius: 5px;
+  }
+  .cm-line.has-fenced-code + .cm-line.has-fenced-code {
+    border-top: none;
+    border-top-right-radius: 0;
+    border-top-left-radius: 0;
+  }
+  .cm-line.has-fenced-code:has(+ .cm-line.has-fenced-code) {
+    border-bottom: none;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
   }
 `;
 
@@ -972,9 +1062,11 @@ let AddButton = styled.button`
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
 
-  *:hover + div > &,
+  .cell-container:focus-within + div &,
+  .cell-container:hover + div &,
   div:hover > &,
-  div:has(+ *:hover) > & {
+  div:has(+ .cell-container:hover) &,
+  div:has(+ .cell-container:focus-within) & {
     opacity: 1;
   }
 
@@ -983,11 +1075,11 @@ let AddButton = styled.button`
     font-size: 0.8rem;
   }
   &:hover .show-me-later,
-  dialog[open] + div & .show-me-later {
+  dialog[open] + div > & > .show-me-later {
     display: inline;
   }
   /* Hehe */
-  dialog[open] + div & {
+  dialog[open] + div > & {
     background-color: white;
     color: black;
   }

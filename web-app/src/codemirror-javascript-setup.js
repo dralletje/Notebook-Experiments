@@ -7,6 +7,7 @@ import {
   HighlightStyle,
   indentUnit,
   syntaxHighlighting,
+  bracketMatching,
 } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 
@@ -71,24 +72,13 @@ export const syntax_colors = HighlightStyle.define(
   }
 );
 
-/**
- * Tiny extension that will put the editor in focus whenever any transaction comes with `scrollIntoView` effect.
- * For example, history uses this. Normally, this doesn't focus the editor, because it is assumed the editor is already in focus.
- * Well guess what, on notebooks it ain't!
- */
-let focus_on_scrollIntoView = EditorView.updateListener.of((update) => {
-  if (update.transactions.some((tx) => tx.scrollIntoView)) {
-    update.view.focus();
-  }
-});
-
 export let basic_javascript_setup = [
   EditorState.tabSize.of(4),
   indentUnit.of("\t"),
   syntaxHighlighting(syntax_colors),
   javascript(),
   placeholder("The rest is still unwritten..."),
-  focus_on_scrollIntoView,
+  bracketMatching({}),
 
   // TODO Tab should do autocomplete when not selecting/at the beginning of a line
   keymap.of([
@@ -98,7 +88,7 @@ export let basic_javascript_setup = [
       shift: indentLess,
     },
   ]),
-  // keymap.of(defaultKeymap),
+  keymap.of(defaultKeymap),
   drawSelection(),
 
   awesome_line_wrapping,

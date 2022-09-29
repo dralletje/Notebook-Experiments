@@ -21,6 +21,7 @@ import {
   CellEditorStatesField,
   CellIdFacet,
   CellMetaField,
+  CellTypeFacet,
   editor_state_for_cell,
   nested_cell_states_basics,
   updateListener,
@@ -46,6 +47,23 @@ import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-ce
 import { ShowKeysPressed } from "./ShowKeys";
 import { MetaNotebook } from "./MetaNotebook";
 import { SelectionArea } from "./selection-area/SelectionArea";
+import { blur_stuff } from "./blur-stuff";
+import {
+  create_worker,
+  post_message,
+} from "./packages/babel-worker/babel-worker";
+
+let worker = create_worker();
+console.log(`worker:`, worker);
+
+post_message(worker, {
+  type: "transform-code",
+  data: {
+    code: `let x = 1;`,
+  },
+}).then((x) => {
+  console.log(`x:`, x);
+});
 
 let AppStyle = styled.div`
   padding-top: 100px;
@@ -92,6 +110,9 @@ let DependenciesTab = () => {
     </div>
   );
 };
+
+// let LOCALSTORAGE_KEY = "ASDASDASD";
+let LOCALSTORAGE_KEY = "notebook";
 
 let GraphTab = ({ dag }) => {
   /** @type {any} */
@@ -156,7 +177,7 @@ let JustForKicksFacet = Facet.define({});
 let UpdateLocalStorage = updateListener.of((viewupdate) => {
   let cell_state = viewupdate.state.field(CellEditorStatesField);
   localStorage.setItem(
-    "notebook",
+    LOCALSTORAGE_KEY,
     JSON.stringify(
       /** @type {import("./notebook-types").Notebook} */ ({
         id: "hi",
@@ -169,6 +190,7 @@ let UpdateLocalStorage = updateListener.of((viewupdate) => {
             unsaved_code: cell_state.doc.toString(),
             last_run: meta.last_run,
             folded: meta.folded,
+            type: cell_state.facet(CellTypeFacet),
           });
         }),
       })
@@ -181,7 +203,9 @@ function App() {
     () =>
       CellEditorStatesField.init((editorstate) => {
         /** @type {import("./notebook-types").Notebook} */
-        let notebook_from_json = try_json(localStorage.getItem("notebook")) ?? {
+        let notebook_from_json = try_json(
+          localStorage.getItem(LOCALSTORAGE_KEY)
+        ) ?? {
           id: "1",
           cell_order: ["1", "2", "3"],
           cells: {
@@ -243,6 +267,8 @@ function App() {
       cell_movement_extension_default,
       selected_cells_keymap,
 
+      blur_stuff,
+
       // // blur_cells_when_selecting,
       // keep_track_of_last_created_cells_extension,
 
@@ -264,6 +290,7 @@ function App() {
           id: cell_state.facet(CellIdFacet),
           unsaved_code: cell_state.doc.toString(),
           ...cell_state.field(CellMetaField),
+          type: cell_state.facet(CellTypeFacet),
         };
       }),
     });
@@ -303,6 +330,7 @@ function App() {
 
     socket.on("engine", (engine) => {
       set_engine(engine);
+      console.log(`engine:`, engine);
     });
     socketio_ref.current = socket;
 

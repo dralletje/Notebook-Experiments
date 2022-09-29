@@ -1,20 +1,13 @@
-import { mutate, readonly } from "use-immer-store";
-import {
-  EditorState,
-  Facet,
-  Prec,
-  StateEffect,
-  StateEffectType,
-} from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
-import { without } from "lodash";
-import { v4 as uuidv4 } from "uuid";
-import { invertedEffects } from "./codemirror-shared-history";
+import { Prec, EditorSelection } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 
 import {
   AddCellEffect,
+  CellDispatchEffect,
   CellEditorStatesField,
   CellIdFacet,
+  CellMetaField,
+  CellTypeFacet,
   empty_cell,
   NexusEffect,
   RemoveCellEffect,
@@ -22,6 +15,7 @@ import {
   RunIfChangedCellEffect,
 } from "../../NotebookEditor";
 import { MoveToCellAboveEffect } from "./codemirror-cell-movement";
+import { format_with_prettier } from "../../format-javascript-with-prettier";
 
 export let notebook_keymap = keymap.of([
   {
@@ -32,9 +26,44 @@ export let notebook_keymap = keymap.of([
 
       console.log("AWESOME");
 
+      let changed_cells = notebook.cell_order.filter((cell_id) => {
+        let cell = notebook.cells[cell_id];
+        if (cell.facet(CellTypeFacet) === "text") return false;
+
+        return cell.doc.toString() !== cell.field(CellMetaField).code;
+      });
+
+      let prettified_results = changed_cells.map((cell_id) => {
+        let cell_state = notebook.cells[cell_id];
+        let { cursorOffset, formatted } = format_with_prettier({
+          code: cell_state.doc.toString(),
+          cursor: cell_state.selection.main.head,
+        });
+        let trimmed = formatted.trim();
+        return {
+          docLength: cell_state.doc.length,
+          cursorOffset: Math.min(cursorOffset, trimmed.length),
+          formatted: trimmed,
+          cell_id,
+        };
+      });
+
       dispatch({
-        effects: notebook.cell_order.map((cell_id) =>
-          RunIfChangedCellEffect.of({ cell_id: cell_id, at: now })
+        effects: prettified_results.flatMap(
+          ({ cursorOffset, docLength, formatted, cell_id }) => [
+            CellDispatchEffect.of({
+              cell_id,
+              transaction: {
+                selection: EditorSelection.cursor(cursorOffset),
+                changes: {
+                  from: 0,
+                  to: docLength,
+                  insert: formatted,
+                },
+              },
+            }),
+            RunCellEffect.of({ cell_id: cell_id, at: now }),
+          ]
         ),
       });
       return true;
@@ -48,6 +77,10 @@ export let cell_keymap = Prec.high(
       key: "Shift-Enter",
       run: (view) => {
         let cell_id = view.state.facet(CellIdFacet);
+
+        // TODO Should just not apply this to text cells to begin with 🤷‍♀️ but cba
+        if (view.state.facet(CellTypeFacet) === "text") return false;
+
         view.dispatch({
           effects: [
             NexusEffect.of(

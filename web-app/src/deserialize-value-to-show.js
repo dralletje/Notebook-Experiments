@@ -56,6 +56,13 @@ export let deserialize = (index, heap, result_heap = {}) => {
     error.name = result.value.name;
     error.stack = result.value.stack;
     return error;
+  } else if (result.type === "set") {
+    let xs = [];
+    result_heap[index] = xs;
+    for (let { key, value } of result.value) {
+      xs.push(deserialize(value, heap, result_heap));
+    }
+    return new Set(xs);
   } else if (result.type === "nan") {
     return NaN;
   } else if (result.type === "@observablehq/htl") {

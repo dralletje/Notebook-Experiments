@@ -173,8 +173,8 @@ export let ContextMenuWrapper = ({
           if (!options || options.length === 0) return;
 
           event.preventDefault();
-          let top = event.pageY - 4;
-          let left = event.pageX + 2;
+          let top = event.clientY - 4;
+          let left = event.clientX + 2;
 
           // let span_position = current_span_ref.current.getBoundingClientRect();
           dialog_ref.current.style.top = `${top}px`;
