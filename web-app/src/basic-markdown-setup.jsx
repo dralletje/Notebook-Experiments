@@ -183,6 +183,22 @@ let insert_around_command = (str) => (view) => {
 
 let my_markdown_keymap = keymap.of([
   {
+    key: "Mod-l",
+    run: (view) => {
+      // TODO Doing two synchonous view.dispatch'es crashes my state stuff...
+      // .... Well, good I know that it does I guess
+      let { from, to } = view.state.selection.main;
+      view.dispatch({
+        changes: { from: from, to: to, insert: "CRASH" },
+      });
+      view.dispatch({
+        changes: { from: from, to: to, insert: "MORE CRASH" },
+      });
+      return true;
+    },
+  },
+
+  {
     key: "Mod-b",
     run: (view) => {
       let { from, to } = view.state.selection.main;
@@ -251,9 +267,32 @@ let my_markdown_keymap = keymap.of([
     run: (view) => {
       let tree = syntaxTree(view.state);
       let node = tree.cursorAt(view.state.selection.main.from, -1).node;
+      let { from, to } = view.state.selection.main;
+
+      if (from !== to) {
+        view.dispatch({
+          changes: { from: from, to: to, insert: "\n" },
+          selection: { anchor: from + 1 },
+        });
+        return true;
+      }
 
       if (node.name === "Task") {
-        let { from, to } = view.state.selection.main;
+        let node_just_before = tree.cursorAt(
+          view.state.selection.main.from - 1,
+          -1
+        ).node;
+        if (node_just_before.name === "TaskMarker") {
+          view.dispatch({
+            changes: { from: from, to: to, insert: "\n" },
+            selection: { anchor: from + 1 },
+          });
+          return true;
+        }
+        // let TASK_PREFIX = "\n- [ ] "
+        // Make sure it is not an empty task
+        // if (view.state.doc.sliceString(from - TASK_PREFIX.length, from) === "[ ]") {
+
         let insert = "\n- [ ] ";
         view.dispatch({
           changes: { from: from, to: to, insert: insert },
@@ -262,7 +301,6 @@ let my_markdown_keymap = keymap.of([
         return true;
       }
 
-      let { from, to } = view.state.selection.main;
       view.dispatch({
         changes: { from: from, to: to, insert: "\n" },
         selection: { anchor: from + 1 },
@@ -319,10 +357,99 @@ let html_demo_statefield = StateField.define({
   },
 });
 
+let html_preview_extensions = [
+  EditorView.decorations.compute(["doc", html_demo_statefield], (state) => {
+    let tree = syntaxTree(state);
+    let doc = state.doc;
+    let decorations = [];
+    iterate_with_cursor({
+      tree,
+      enter: (cursor) => {
+        if (cursor.name === "HTMLBlock") {
+          let show_html_for_line = state.field(html_demo_statefield);
+          let line_number = doc.lineAt(cursor.from).number;
+          let show_html = show_html_for_line.get(line_number) ?? false;
+
+          if (show_html) {
+            decorations.push(
+              Decoration.replace({
+                block: true,
+                inclusive: true,
+                // inclusiveEnd: false,
+                widget: new ReactWidget(
+                  (
+                    <HTMLPreviewWidget
+                      show_html={show_html}
+                      line_number={line_number}
+                      html={doc.sliceString(cursor.from, cursor.to)}
+                    />
+                  )
+                ),
+                side: 1,
+              }).range(cursor.from, cursor.to)
+            );
+          } else {
+            decorations.push(
+              Decoration.widget({
+                widget: new ReactWidget(
+                  (
+                    <ToggleHTMLMarkerWidget
+                      show_html={show_html}
+                      line_number={line_number}
+                    />
+                  )
+                ),
+                side: -1,
+              }).range(cursor.from, cursor.from)
+            );
+            decorations.push(
+              Decoration.mark({
+                tagName: "code",
+                class: "html",
+              }).range(cursor.from, cursor.to)
+            );
+          }
+        }
+      },
+    });
+
+    return Decoration.set(decorations, true);
+  }),
+  EditorView.atomicRanges.of(({ state }) => {
+    let tree = syntaxTree(state);
+    let doc = state.doc;
+    let ranges = new RangeSetBuilder();
+    iterate_with_cursor({
+      tree,
+      enter: (cursor) => {
+        if (cursor.name === "HTMLBlock") {
+          // Seperate because it uses `html_demo_statefield`,
+          // not sure if it is better to be separate but feels good
+          let show_html_for_line = state.field(html_demo_statefield);
+
+          let line_number = doc.lineAt(cursor.from).number;
+          let show_html = show_html_for_line.get(line_number) ?? false;
+          if (show_html) {
+            ranges.add(cursor.from, cursor.to, new EZRange());
+          }
+        }
+      },
+    });
+    return ranges.finish();
+  }),
+  html_demo_statefield,
+];
+
+let markdown_mark_to_decoration = {
+  CodeMark: Decoration.mark({ class: "code-mark" }),
+  EmphasisMark: Decoration.mark({ class: "emphasis-mark" }),
+  StrikethroughMark: Decoration.mark({ class: "strikethrough-mark" }),
+  LinkMark: Decoration.mark({ class: "link-mark" }),
+};
+
 export let basic_markdown_setup = [
   EditorState.tabSize.of(4),
   indentUnit.of("\t"),
-  // syntaxHighlighting(syntax_colors),
   placeholder("The rest is still unwritten..."),
   markdown({ addKeymap: false, base: markdownLanguage }),
 
@@ -331,45 +458,16 @@ export let basic_markdown_setup = [
   // instead of `<em><mark>*</mark>sad<mark>*</mark></em>`
   EditorView.decorations.compute(["doc"], (state) => {
     let tree = syntaxTree(state);
-    let doc = state.doc;
     let decorations = [];
     iterate_with_cursor({
       tree,
       enter: (cursor) => {
-        if (cursor.name === "CodeMark") {
+        if (cursor.name in markdown_mark_to_decoration) {
           decorations.push(
-            Decoration.mark({
-              attributes: {
-                class: "code-mark",
-              },
-            }).range(cursor.from, cursor.to)
-          );
-        }
-        if (cursor.name === "EmphasisMark") {
-          decorations.push(
-            Decoration.mark({
-              attributes: {
-                class: "emphasis-mark",
-              },
-            }).range(cursor.from, cursor.to)
-          );
-        }
-        if (cursor.name === "StrikethroughMark") {
-          decorations.push(
-            Decoration.mark({
-              attributes: {
-                class: "strikethrough-mark",
-              },
-            }).range(cursor.from, cursor.to)
-          );
-        }
-        if (cursor.name === "LinkMark") {
-          decorations.push(
-            Decoration.mark({
-              attributes: {
-                class: "link-mark",
-              },
-            }).range(cursor.from, cursor.to)
+            markdown_mark_to_decoration[cursor.name].range(
+              cursor.from,
+              cursor.to
+            )
           );
         }
       },
@@ -401,7 +499,6 @@ export let basic_markdown_setup = [
           }).range(start, end);
           decorations.push(decoration);
         }
-
         if (cursor.name === "Emoji") {
           let text = doc.sliceString(cursor.from, cursor.to);
           if (emoji.hasEmoji(text)) {
@@ -419,7 +516,6 @@ export let basic_markdown_setup = [
             );
           }
         }
-
         if (cursor.name === "HeaderMark") {
           let node = cursor.node;
           let header_tag = node.parent ? headers[node.parent.name] : "h1";
@@ -462,14 +558,6 @@ export let basic_markdown_setup = [
             )
           );
         }
-        if (cursor.name === "CodeText") {
-          decorations.push(
-            Decoration.mark({ class: "code-text" }).range(
-              cursor.from,
-              cursor.to
-            )
-          );
-        }
         if (cursor.name === "ListItem") {
           let line_from = doc.lineAt(cursor.from);
           let line_to = doc.lineAt(cursor.to);
@@ -490,23 +578,6 @@ export let basic_markdown_setup = [
             );
           }
         }
-        if (cursor.name === "ListMark") {
-          if (doc.sliceString(cursor.to, cursor.to + 1) !== " ") {
-            return;
-          }
-          decorations.push(
-            Decoration.mark({
-              class: "list-mark",
-            }).range(cursor.from, cursor.to)
-          );
-        }
-        if (cursor.name === "HardBreak") {
-          decorations.push(
-            Decoration.mark({
-              class: "hard-break",
-            }).range(cursor.from, cursor.to)
-          );
-        }
         if (cursor.name === "HorizontalRule") {
           decorations.push(
             Decoration.replace({
@@ -514,16 +585,6 @@ export let basic_markdown_setup = [
             }).range(cursor.from, cursor.to)
           );
         }
-
-        if (cursor.name === "InlineCode") {
-          decorations.push(
-            Decoration.mark({
-              tagName: "code",
-              class: "inline-code",
-            }).range(cursor.from, cursor.to)
-          );
-        }
-
         if (cursor.name === "Blockquote") {
           let line_from = doc.lineAt(cursor.from);
           let line_to = doc.lineAt(cursor.to);
@@ -543,6 +604,40 @@ export let basic_markdown_setup = [
               }).range(line.from, line.from)
             );
           }
+        }
+        if (cursor.name === "ListMark") {
+          if (doc.sliceString(cursor.to, cursor.to + 1) !== " ") {
+            return;
+          }
+          decorations.push(
+            Decoration.mark({
+              class: "list-mark",
+            }).range(cursor.from, cursor.to)
+          );
+        }
+
+        if (cursor.name === "CodeText") {
+          decorations.push(
+            Decoration.mark({ class: "code-text" }).range(
+              cursor.from,
+              cursor.to
+            )
+          );
+        }
+        if (cursor.name === "HardBreak") {
+          decorations.push(
+            Decoration.mark({
+              class: "hard-break",
+            }).range(cursor.from, cursor.to)
+          );
+        }
+        if (cursor.name === "InlineCode") {
+          decorations.push(
+            Decoration.mark({
+              tagName: "code",
+              class: "inline-code",
+            }).range(cursor.from, cursor.to)
+          );
         }
         if (cursor.name === "QuoteMark") {
           let extra_space = doc.sliceString(cursor.to, cursor.to + 1) === " ";
@@ -604,85 +699,7 @@ export let basic_markdown_setup = [
     return Decoration.set(decorations, true);
   }),
 
-  EditorView.decorations.compute(["doc", html_demo_statefield], (state) => {
-    let tree = syntaxTree(state);
-    let doc = state.doc;
-    let decorations = [];
-    iterate_with_cursor({
-      tree,
-      enter: (cursor) => {
-        if (cursor.name === "HTMLBlock") {
-          let show_html_for_line = state.field(html_demo_statefield);
-          let line_number = doc.lineAt(cursor.from).number;
-          let show_html = show_html_for_line.get(line_number) ?? false;
-
-          if (show_html) {
-            decorations.push(
-              Decoration.replace({
-                block: true,
-                inclusive: true,
-                // inclusiveEnd: false,
-                widget: new ReactWidget(
-                  (
-                    <HTMLPreviewWidget
-                      show_html={show_html}
-                      line_number={line_number}
-                      html={doc.sliceString(cursor.from, cursor.to)}
-                    />
-                  )
-                ),
-                side: 1,
-              }).range(cursor.from, cursor.to)
-            );
-          } else {
-            decorations.push(
-              Decoration.widget({
-                widget: new ReactWidget(
-                  (
-                    <ToggleHTMLMarkerWidget
-                      show_html={show_html}
-                      line_number={line_number}
-                    />
-                  )
-                ),
-                side: -1,
-              }).range(cursor.from, cursor.from)
-            );
-            decorations.push(
-              Decoration.mark({
-                tagName: "code",
-                class: "html",
-              }).range(cursor.from, cursor.to)
-            );
-          }
-        }
-      },
-    });
-
-    return Decoration.set(decorations, true);
-  }),
-
-  EditorView.atomicRanges.of(({ state }) => {
-    let tree = syntaxTree(state);
-    let doc = state.doc;
-    let ranges = new RangeSetBuilder();
-    iterate_with_cursor({
-      tree,
-      enter: (cursor) => {
-        if (cursor.name === "HTMLBlock") {
-          let show_html_for_line = state.field(html_demo_statefield);
-          let line_number = doc.lineAt(cursor.from).number;
-          let show_html = show_html_for_line.get(line_number) ?? false;
-          if (show_html) {
-            ranges.add(cursor.from, cursor.to, new EZRange());
-          }
-        }
-      },
-    });
-    return ranges.finish();
-  }),
-
-  html_demo_statefield,
+  html_preview_extensions,
 
   EditorView.atomicRanges.of(({ state }) => {
     let tree = syntaxTree(state);
@@ -703,9 +720,6 @@ export let basic_markdown_setup = [
         if (cursor.name === "HorizontalRule") {
           ranges.add(cursor.from, cursor.to, new EZRange());
         }
-        // if (cursor.name === "TaskMarker") {
-        //   ranges.add(cursor.from, cursor.to, new EZRange());
-        // }
         if (cursor.name === "ListMark") {
           let node = cursor.node;
           if (
