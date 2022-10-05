@@ -5,7 +5,7 @@ import {
   EditorSelection,
   EditorState,
   StateField,
-  StateEffect,
+  Transaction,
 } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { Inspector } from "./Inspector";
@@ -99,6 +99,12 @@ let CellStyle = styled.div`
       transition: all 1s ease-in-out;
       opacity: 0.5;
       filter: blur(1px);
+    }
+  }
+
+  &:not(.folded) {
+    .cm-editor {
+      border: solid 1px #ffffff14;
     }
   }
 
@@ -597,6 +603,7 @@ export let Cell = ({
           "pending",
         cylinder.result?.type === "throw" && "error",
         cylinder.result?.type === "return" && "success",
+        cell.folded && "folded",
         cell.unsaved_code !== cell.code && "modified",
         is_selected && "selected",
       ]).join(" ")}
@@ -624,13 +631,15 @@ export let Cell = ({
         <CodeMirror
           state={initial_editor_state}
           ref={editorview_ref}
-          dispatch={(tr, editorview) => {
+          dispatch={(transactions, editorview) => {
             // editorview.update([tr]);
             dispatch_to_nexus({
-              effects: FromCellTransactionEffect.of({
-                cell_id: cell.id,
-                transaction: tr,
-              }),
+              effects: transactions.map((tr) =>
+                CellDispatchEffect.of({
+                  cell_id: cell.id,
+                  transaction: tr,
+                })
+              ),
             });
           }}
         >
@@ -747,13 +756,26 @@ export let TextCell = ({
       <CodeMirror
         state={initial_editor_state}
         ref={editorview_ref}
-        dispatch={(tr, editorview) => {
+        dispatch={(transactions, editorview) => {
+          // for (let transaction of transactions) {
+          //   if (transaction instanceof Transaction) {
+          //     // prettier-ignore
+          //     throw new Error(`Transaction in dispatch?? Guess that should be supported but I don't`)
+          //   }
+          // }
           // editorview.update([tr]);
           dispatch_to_nexus({
-            effects: FromCellTransactionEffect.of({
-              cell_id: cell.id,
-              transaction: tr,
-            }),
+            effects: transactions.map((tr) =>
+              tr instanceof Transaction
+                ? FromCellTransactionEffect.of({
+                    cell_id: cell.id,
+                    transaction: tr,
+                  })
+                : CellDispatchEffect.of({
+                    cell_id: cell.id,
+                    transaction: tr,
+                  })
+            ),
           });
         }}
       >
@@ -892,11 +914,10 @@ let TextCellStyle = styled.div`
     opacity: 0.5;
   }
 
-  .table {
-    color: var(--accent-color);
-  }
-
   .cm-line.list-item:has(.list-mark) {
+    margin-left: -1em;
+  }
+  .cm-line.order-list-item:has(.list-mark) {
     margin-left: -1em;
   }
   .cm-line.list-item:not(:has(.list-mark)) {
@@ -927,6 +948,13 @@ let TextCellStyle = styled.div`
     font-size: 1.2em;
     color: var(--accent-color);
   }
+  .order-list-item:not(:has(.task-marker)) .list-mark::before {
+    content: unset;
+  }
+  .order-list-item:not(:has(.task-marker)) .list-mark {
+    color: var(--accent-color);
+  }
+
   .task-marker {
     margin-left: -25px;
   }
@@ -1042,6 +1070,30 @@ let TextCellStyle = styled.div`
     border-bottom: none;
     border-bottom-right-radius: 0;
     border-bottom-left-radius: 0;
+  }
+
+  /* Table */
+  .table {
+    color: white;
+  }
+  .cm-line:has(.table) {
+    background-color: #ffffff0a;
+  }
+  .table-header {
+    font-weight: bold;
+  }
+  .table-delimiter {
+    opacity: 0.5;
+  }
+
+  .html-tag * {
+    color: #2fbf00;
+  }
+  .comment-block {
+    opacity: 0.5;
+  }
+  .processing-instruction-block {
+    color: #2fbf00;
   }
 `;
 

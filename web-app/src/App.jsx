@@ -22,6 +22,7 @@ import {
   CellIdFacet,
   CellMetaField,
   CellTypeFacet,
+  // cell_dispatch_to_cell_transaction_extender,
   editor_state_for_cell,
   nested_cell_states_basics,
   updateListener,
@@ -53,17 +54,17 @@ import {
   post_message,
 } from "./packages/babel-worker/babel-worker";
 
-let worker = create_worker();
-console.log(`worker:`, worker);
+// let worker = create_worker();
+// console.log(`worker:`, worker);
 
-post_message(worker, {
-  type: "transform-code",
-  data: {
-    code: `let x = 1;`,
-  },
-}).then((x) => {
-  console.log(`x:`, x);
-});
+// post_message(worker, {
+//   type: "transform-code",
+//   data: {
+//     code: `let x = 1;`,
+//   },
+// }).then((x) => {
+//   console.log(`x:`, x);
+// });
 
 let AppStyle = styled.div`
   padding-top: 100px;
@@ -254,7 +255,7 @@ function App() {
 
   let { state, dispatch } = useNotebookviewWithExtensions({
     extensions: [
-      // expand_cell_effects_that_area_actually_meant_for_the_nexus,
+      // cell_dispatch_to_cell_transaction_extender,
 
       initial_notebook,
       nested_cell_states_basics,
@@ -330,7 +331,6 @@ function App() {
 
     socket.on("engine", (engine) => {
       set_engine(engine);
-      console.log(`engine:`, engine);
     });
     socketio_ref.current = socket;
 

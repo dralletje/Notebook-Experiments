@@ -7,12 +7,13 @@ import {
   StateField,
   Transaction,
   TransactionSpec,
+  StateEffectType,
 } from "@codemirror/state";
 import { Cell, CellId, Notebook } from "./notebook-types";
 import immer from "immer";
 import { useDidJustHotReload, useRealMemo } from "use-real-memo";
 import React from "react";
-import { compact, takeWhile, zip } from "lodash";
+import { compact, takeWhile, zip, remove } from "lodash";
 import { SingleEventEmitter } from "single-event-emitter";
 import { ViewPlugin } from "@codemirror/view";
 import { invertedEffects } from "@codemirror/commands";
@@ -88,16 +89,83 @@ export let CellIdFacet = Facet.define<string, string>({
 
 export let CellPlugin = Facet.define<Extension>({ static: true });
 
+// Not sure if the best way to fix this, but
+// This makes it so cells and extensions can trigger CellDispatchEffect's,
+// and they will be transformed into transactions that will be added as FromCellTransactionEffect's.
+// This is because the rest of the extensions currently expect FromCellTransactionEffect instead of CellDispatchEffects.
+// export let cell_dispatch_to_cell_transaction_extender =
+//   EditorState.transactionExtender.of((transaction) => {
+//     let new_states = new Map<CellId, EditorState>();
+//     let cell_states = transaction.startState.field(CellEditorStatesField);
+
+//     // console.trace(`transaction:`, transaction);
+//     console.log("TRANSACTION EXTENDER START", { transaction });
+//     let moar_effects: Array<StateEffect<any>> = [];
+//     for (let effect of transaction.effects) {
+//       if (effect.is(FromCellTransactionEffect)) {
+//         console.log("Dafuq");
+//         // prettier-ignore
+//         throw new Error(`FromCellTransactionEffect can't be dispatched, only created by transactionExtender`);
+//       }
+//       if (effect.is(CellDispatchEffect)) {
+//         let { cell_id, transaction: transaction_spec } = effect.value;
+//         let new_state = new_states.get(cell_id) ?? cell_states.cells[cell_id];
+
+//         if (transaction_spec instanceof Transaction) {
+//           // prettier-ignore
+//           console.warn('Hmmm, `CellDispatchEffect` transaction_spec is already a transaction');
+//         }
+
+//         console.log("cell_dispatch_to_cell_transaction_extender", {
+//           cell_id,
+//           transaction_spec,
+//           new_state: new_states.get(cell_id),
+//           cell_state: cell_states.cells[cell_id],
+//         });
+
+//         let transaction = new_state.update(transaction_spec);
+//         new_states.set(cell_id, transaction.state);
+//         moar_effects.push(
+//           FromCellTransactionEffect.of({
+//             cell_id,
+//             transaction,
+//           })
+//         );
+//       }
+//     }
+
+//     if (moar_effects.length > 0) {
+//       return { effects: moar_effects };
+//     }
+//     return null;
+//   });
+
+type StateEffectFromType<Type> = Type extends StateEffectType<infer X>
+  ? StateEffect<X>
+  : never;
+
+export let cell_dispatch_effect_effects = (
+  effect: StateEffectFromType<typeof CellDispatchEffect>
+) => {
+  let effects = effect.value.transaction.effects;
+  if (Array.isArray(effects)) {
+    return effects;
+  } else if (effects == null) {
+    return [];
+  } else {
+    return [effects];
+  }
+};
+
 export let NexusEffect = StateEffect.define<StateEffect<any>>();
 let expand_cell_effects_that_area_actually_meant_for_the_nexus =
   EditorState.transactionExtender.of((transaction) => {
     let moar_effects: Array<StateEffect<any>> = [];
     for (let effect of transaction.effects) {
-      if (effect.is(FromCellTransactionEffect)) {
-        let { cell_id, transaction } = effect.value;
-        for (let effect of transaction.effects) {
-          if (effect.is(NexusEffect)) {
-            moar_effects.push(effect.value);
+      if (effect.is(CellDispatchEffect)) {
+        for (let cell_effect of cell_dispatch_effect_effects(effect)) {
+          if (cell_effect.is(NexusEffect)) {
+            moar_effects.push(cell_effect.value);
           }
         }
       }
@@ -124,7 +192,7 @@ export let FromCellTransactionEffect = StateEffect.define<{
 
 export let CellDispatchEffect = StateEffect.define<{
   cell_id: CellId;
-  transaction: TransactionSpec;
+  transaction: TransactionSpec | Transaction;
 }>();
 
 export let empty_cell = (type: "code" | "text" = "code") => {
@@ -267,6 +335,7 @@ export let CellEditorStatesField = StateField.define<{
     };
   },
   update(state, transaction) {
+    let initial_state = state;
     return immer(state, (state) => {
       state.transactions_to_send_to_cells = [];
       let {
@@ -290,17 +359,38 @@ export let CellEditorStatesField = StateField.define<{
       }
 
       for (let effect of transaction.effects) {
+        // So FromCellTransactionEffect is a bit iffy...
+        // It can be that the startState this transaction is made from, is not the result
+        // from (batched) CellDispatchEffect's that were applied to the state in this pass...
+        // So I see if it was, in which case I happily apply it, but if it wasn't
+        // I check if maybe it applies to the initial state for this pass, and apply it there (ignoring the CellDispatchEffects that came before)
+        // I hope it works D:
         if (effect.is(FromCellTransactionEffect)) {
           let { cell_id, transaction } = effect.value;
 
           if (cells[cell_id] !== transaction.startState) {
-            console.log(`map.get(cell_id)?.state !== transaction.startState:`, {
-              map: cells,
-              state: cells[cell_id],
-              startState: transaction.startState,
-            });
+            console.log(
+              `FromCellTransactionEffect with different startState... Trying from initial state`,
+              {
+                map: cells,
+                state: cells[cell_id],
+                transaction: transaction,
+              }
+            );
             // prettier-ignore
-            throw new Error(`Updating cell state for Cell(${cell_id}) but the cell state is not the same as the transaction start state`);
+            // throw new Error(`Updating cell state for Cell(${cell_id}) but the cell state is not the same as the transaction start state`);
+            // continue
+
+            if (initial_state.cells[cell_id] === transaction.startState) {
+              remove(transactions_to_send_to_cells, tr => {
+                return tr.startState.facet(CellIdFacet) === cell_id;
+              })
+              cells[cell_id] = transaction.state;
+              continue
+            } else {
+              // prettier-ignore
+              throw new Error(`Updating cell state for Cell(${cell_id}) but the cell state is not the same as the transaction start state`);
+            }
           }
           transactions_to_send_to_cells.push(transaction);
           cells[cell_id] = transaction.state;
@@ -498,14 +588,17 @@ export let update_cell_state = (
   let cell_editor_state = cell_editor_states.cells[cell_id];
   if (cell_editor_state == null)
     throw new Error(`No cell found for "${cell_id}`);
-  return nexus_state.update({
-    effects: [
-      FromCellTransactionEffect.of({
-        cell_id,
-        transaction: cell_editor_state.update(spec),
-      }),
-    ],
-  });
+  // return nexus_state.update({
+  //   effects: [
+  //     FromCellTransactionEffect.of({
+  //       cell_id,
+  //       transaction: cell_editor_state.update(spec),
+  //     }),
+  //   ],
+  // });
+  return {
+    effects: [CellDispatchEffect.of({ cell_id, transaction: spec })],
+  };
 };
 
 let useImmediateRerenderCounter = () => {

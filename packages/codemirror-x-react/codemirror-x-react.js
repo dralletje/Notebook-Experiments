@@ -7,6 +7,7 @@ import {
   Compartment,
   StateEffect,
   Facet,
+  Transaction,
 } from "@codemirror/state";
 import {
   keymap,
@@ -166,7 +167,7 @@ export let CodeMirror = React.forwardRef(
    *  as?: string,
    *  state: import("@codemirror/view").EditorViewConfig["state"],
    *  root?: import("@codemirror/view").EditorViewConfig["root"],
-   *  dispatch?: (tr: import("@codemirror/state").Transaction, view: EditorView) => void,
+   *  dispatch?: (tr: import("@codemirror/state").TransactionSpec[], view: EditorView) => void,
    * } & import("react").HtmlHTMLAttributes<"div">} editor_props
    * @param {React.Ref<EditorView>} _ref
    */
@@ -200,23 +201,41 @@ export let CodeMirror = React.forwardRef(
     // but codemirror doesn't allow changing it afterwards so we
     // need to trick codemirror by creating a proxy function,
     // so we can still collect effects before the editorview is created.
-    let dispatch_proxy = useEvent((tr, editorview) => {
-      if (dispatch) {
-        return dispatch(tr, editorview);
-      } else {
-        return editorview.update([tr]);
+
+    let dispatch_proxy = useEvent(
+      /**
+       * @param {import("@codemirror/state").TransactionSpec[] | [import("@codemirror/state").Transaction]} transactions
+       * @param {EditorView} editorview
+       */
+      (transactions, editorview) => {
+        if (dispatch) {
+          return dispatch(transactions, editorview);
+        } else {
+          return editorview.update([
+            transactions.length == 1 && transactions[0] instanceof Transaction
+              ? transactions[0]
+              : editorview.state.update(...transactions),
+          ]);
+        }
       }
-    });
+    );
 
     React.useLayoutEffect(() => {
       let editorview = new EditorView({
         state: state,
         parent: dom_node_ref.current,
         // root: root,
-        dispatch: (tr) => {
-          return dispatch_proxy(tr, editorview);
-        },
       });
+      // NOTE: HACKY
+      // Overrides the dispatch method, because I need access to the dispatched TransactionSpec's,
+      // instead of getting the spec already applied to the current state in the form of a Transaction.
+      // The reason is that I don't update the state immediately (I stay in sync with React),
+      // but `view.dispatch` will update the state immediately...
+      // I hope this doesn't break anything? Hehehe
+      /** @param {import("@codemirror/state").TransactionSpec[] | [import("@codemirror/state").Transaction]} transactions */
+      editorview.dispatch = (...transactions) => {
+        dispatch_proxy(transactions, editorview);
+      };
       editorview_ref.current = editorview;
 
       // Apply effects we have collected before this mount (dispatches from child <Extension /> components)
