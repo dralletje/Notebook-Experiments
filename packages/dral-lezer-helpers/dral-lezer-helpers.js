@@ -35,11 +35,10 @@ export function iterate_with_cursor({
  *
  * @param {{
  *  cursor: TreeCursor,
- *  enter: (cursor: TreeCursor) => (void | boolean),
- *  leave?: (cursor: TreeCursor) => (void | boolean),
+ *  enter: (cursor: TreeCursor, depth: number) => (void | boolean),
+ *  leave?: (cursor: TreeCursor, depth: number) => (void | boolean),
  *  from?: number,
  *  to?: number,
- *  skip_first_container?: boolean,
  * }} options
  */
 export function iterate_over_cursor({
@@ -48,9 +47,8 @@ export function iterate_over_cursor({
   leave,
   from = cursor.from,
   to = cursor.to,
-  skip_first_container = false,
 }) {
-  let depth = 0
+  let depth = 0;
 
   while (true) {
     let mustLeave = false;
@@ -60,21 +58,18 @@ export function iterate_over_cursor({
       (cursor.type.isAnonymous || enter(cursor, depth) !== false)
     ) {
       if (cursor.firstChild()) {
-        depth++
+        depth++;
         continue;
-      };
+      }
       if (!cursor.type.isAnonymous) mustLeave = true;
     }
     while (true) {
-      if (mustLeave && leave) leave(cursor);
+      if (mustLeave && leave) leave(cursor, depth);
       mustLeave = cursor.type.isAnonymous;
       if (cursor.nextSibling()) break;
-      if (!cursor.parent()) {
-        if (did_skip_first_container) {
-          cursor.parent();
-        }
-        return;
-      }
+      if (!cursor.parent()) return;
+      depth--;
+      if (depth <= 0) return;
       mustLeave = true;
     }
   }

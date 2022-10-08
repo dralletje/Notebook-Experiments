@@ -1038,9 +1038,11 @@ let TextCellStyle = styled.div`
   }
 
   .fenced-code {
-    font-size: 0.9em;
   }
   .code-text {
+    font-size: 0.9em;
+    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+      monospace;
   }
   .code-mark {
     opacity: 0.5;

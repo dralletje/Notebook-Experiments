@@ -451,8 +451,9 @@ let search_block_or_inline_decorations = ({
   if (cursor.name === "BulletList") {
     iterate_over_cursor({
       cursor: cursor,
-      skip_first_container: true,
-      enter: (cursor) => {
+      enter: (cursor, depth) => {
+        if (depth === 0) return;
+        console.log(`depth:`, depth);
         search_block_or_inline_decorations({
           cursor,
           doc,
@@ -520,8 +521,10 @@ let search_block_or_inline_decorations = ({
   if (cursor.name === "OrderedList") {
     iterate_over_cursor({
       cursor: cursor,
-      skip_first_container: true,
-      enter: (cursor) => {
+      enter: (cursor, depth) => {
+        if (depth === 0) return;
+        console.log(`depth:`, depth);
+
         search_block_or_inline_decorations({
           cursor,
           doc,
