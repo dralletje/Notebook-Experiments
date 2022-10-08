@@ -19,12 +19,14 @@ import {
   ChangeSet,
   ChangeDesc,
   EditorSelection,
+  TransactionSpec,
 } from "@codemirror/state";
 import { KeyBinding, EditorView } from "@codemirror/view";
 
 import { invertedEffects, isolateHistory } from "@codemirror/commands";
 import {
-  FromCellTransactionEffect,
+  CellEditorStatesField,
+  CellIdFacet,
   update_cell_state,
 } from "../../NotebookEditor";
 // import { FromCellEffect, ToCellEffect } from "./codemirror-nexus";
@@ -156,13 +158,16 @@ const historyField_ = StateField.define({
       combined_transaction.state
     );
 
+    let transactions_to_send_to_cells = combined_transaction.state.field(
+      CellEditorStatesField
+    ).transactions_to_send_to_cells;
+
     // Check if there is any FromCellEffects to save
-    for (let effect of combined_transaction.effects) {
-      if (!effect.is(FromCellTransactionEffect)) continue;
-      let { cell_id, transaction: tr } = effect.value;
+    for (let transaction of transactions_to_send_to_cells) {
+      let cell_id = transaction.state.facet(CellIdFacet);
       state = update_from_transaction_with_cell_id(
         state,
-        tr,
+        transaction,
         cell_id,
         combined_transaction.state
       );
@@ -215,13 +220,7 @@ export function shared_history(config: HistoryConfig = {}): Extension {
 export const historyField = historyField_ as StateField<unknown>;
 
 function cmd(side: BranchName, selection: boolean): StateCommand {
-  return function ({
-    state,
-    dispatch,
-  }: {
-    state: EditorState;
-    dispatch: (tr: Transaction) => void;
-  }) {
+  return function ({ state, dispatch }) {
     if (!selection && state.readOnly) return false;
     let historyState = state.field(historyField_, false);
     if (!historyState) return false;
@@ -231,6 +230,7 @@ function cmd(side: BranchName, selection: boolean): StateCommand {
     // });
     let tr = historyState.pop(side, state, selection);
     if (!tr) return false;
+    // @ts-ignore
     dispatch(tr);
     return true;
   };
@@ -590,7 +590,7 @@ class HistoryState {
     side: BranchName,
     state: EditorState,
     selection: boolean
-  ): Transaction | null {
+  ): TransactionSpec | null {
     let branch = side == BranchName.Done ? this.done : this.undone;
     if (branch.length == 0) return null;
     let event = branch[branch.length - 1];

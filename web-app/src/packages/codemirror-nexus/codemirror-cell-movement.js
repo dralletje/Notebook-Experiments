@@ -12,7 +12,7 @@ import { EditorView, keymap } from "@codemirror/view";
 import {
   CellDispatchEffect,
   CellPlugin,
-  FromCellTransactionEffect,
+  cell_dispatch_effect_effects,
 } from "../../NotebookEditor";
 
 // A lot of this file is an adaptation of https://github.com/fonsp/Pluto.jl/blob/ab85efca962d009c741d4ec66508d687806e9579/frontend/components/CellInput/cell_movement_plugin.js
@@ -66,11 +66,11 @@ let delegate_moves_to_relative_cells = EditorState.transactionExtender.of(
 
     let cell_order = transaction.startState.facet(CellIdOrder);
     for (let effect of transaction.effects) {
-      if (effect.is(FromCellTransactionEffect)) {
+      if (effect.is(CellDispatchEffect)) {
         let { cell_id, transaction } = effect.value;
-        for (let effect of transaction.effects) {
-          if (effect.is(MoveToCellAboveEffect)) {
-            let { start } = effect.value;
+        for (let cell_effect of cell_dispatch_effect_effects(effect)) {
+          if (cell_effect.is(MoveToCellAboveEffect)) {
+            let { start } = cell_effect.value;
 
             let cell_index = cell_order.indexOf(cell_id);
             if (cell_order[cell_index - 1] == null) {
@@ -82,13 +82,13 @@ let delegate_moves_to_relative_cells = EditorState.transactionExtender.of(
               CellDispatchEffect.of({
                 cell_id: cell_order[cell_index - 1],
                 transaction: {
-                  effects: [MoveFromCellBelowEffect.of(effect.value)],
+                  effects: [MoveFromCellBelowEffect.of(cell_effect.value)],
                 },
               })
             );
           }
-          if (effect.is(MoveToCellBelowEffect)) {
-            let { start } = effect.value;
+          if (cell_effect.is(MoveToCellBelowEffect)) {
+            let { start } = cell_effect.value;
 
             let cell_index = cell_order.indexOf(cell_id);
             if (cell_order[cell_index + 1] == null) {
@@ -100,7 +100,7 @@ let delegate_moves_to_relative_cells = EditorState.transactionExtender.of(
               CellDispatchEffect.of({
                 cell_id: cell_order[cell_index + 1],
                 transaction: {
-                  effects: [MoveFromCellAboveEffect.of(effect.value)],
+                  effects: [MoveFromCellAboveEffect.of(cell_effect.value)],
                 },
               })
             );

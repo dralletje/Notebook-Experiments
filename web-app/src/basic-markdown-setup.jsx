@@ -11,7 +11,8 @@ import {
   EditorState,
   RangeSetBuilder,
   RangeValue,
-  RangeSet,
+  Range,
+  Facet,
   StateField,
   StateEffect,
   StateEffectType,
@@ -26,7 +27,7 @@ import {
 } from "@codemirror/view";
 import { defaultKeymap, indentLess, indentMore } from "@codemirror/commands";
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
-import { iterate_with_cursor } from "dral-lezer-helpers";
+import { iterate_over_cursor, iterate_with_cursor } from "dral-lezer-helpers";
 import { range } from "lodash";
 import { ReactWidget, useEditorView } from "react-codemirror-widget";
 import React from "react";
@@ -96,8 +97,6 @@ let ToggleHTMLMarkerWidget = ({ show_html, line_number }) => {
 };
 
 let HTMLPreviewWidget = ({ html, show_html, line_number }) => {
-  let view = useEditorView();
-
   return (
     <div>
       <div style={{ fontSize: "0.8em", transform: "translateX(4px)" }}>
@@ -137,6 +136,7 @@ let my_markdown_keymap = keymap.of([
     run: (view) => {
       // TODO Doing two synchonous view.dispatch'es crashes my state stuff...
       // .... Well, good I know that it does I guess
+      // NOTE Not anymore!! Fixed???
       let { from, to } = view.state.selection.main;
       view.dispatch({
         changes: { from: from, to: to, insert: "CRASH" },
@@ -202,6 +202,10 @@ let my_markdown_keymap = keymap.of([
     run: insert_around_command("~"),
   },
   {
+    key: "_",
+    run: insert_around_command("_"),
+  },
+  {
     key: "Shift-Enter",
     run: (view) => {
       let { from, to } = view.state.selection.main;
@@ -226,34 +230,33 @@ let my_markdown_keymap = keymap.of([
         });
         return true;
       }
+      let cursor = from;
 
       if (node.name === "Task") {
-        let node_just_before = tree.cursorAt(
-          view.state.selection.main.from - 1,
-          -1
-        ).node;
+        let node_just_before = tree.cursorAt(cursor - 1, -1).node;
         if (node_just_before.name === "TaskMarker") {
+          // If there is no text in the task yet, I assume we want to get rid of the task marker
+          let line = view.state.doc.lineAt(cursor);
           view.dispatch({
-            changes: { from: from, to: to, insert: "\n" },
-            selection: { anchor: from + 1 },
+            changes: { from: line.from, to: cursor, insert: "\n" },
+            selection: { anchor: line.from + 1 },
           });
           return true;
         }
-        // let TASK_PREFIX = "\n- [ ] "
-        // Make sure it is not an empty task
-        // if (view.state.doc.sliceString(from - TASK_PREFIX.length, from) === "[ ]") {
 
         let insert = "\n- [ ] ";
         view.dispatch({
-          changes: { from: from, to: to, insert: insert },
-          selection: { anchor: from + insert.length },
+          changes: { from: cursor, to: cursor, insert: insert },
+          selection: { anchor: cursor + insert.length },
         });
         return true;
       }
 
+      // TODO Same as above but for ListItem
+
       view.dispatch({
-        changes: { from: from, to: to, insert: "\n" },
-        selection: { anchor: from + 1 },
+        changes: { from: cursor, to: cursor, insert: "\n" },
+        selection: { anchor: cursor + 1 },
       });
       return true;
     },
@@ -262,9 +265,25 @@ let my_markdown_keymap = keymap.of([
 
 /** @type {StateEffectType<{ line: number, show: boolean }>} */
 let toggle_html_demo_effect = StateEffect.define();
+
+class HTMLBlockRange extends RangeValue {
+  eq(x) {
+    return true;
+  }
+}
+let html_block_range = new HTMLBlockRange();
+
+/** @type {Facet<Array<Range<HTMLBlockRange>>, Array<Range<HTMLBlockRange>>>} */
+let html_blocks_facet = Facet.define({
+  combine: (x) => x[0],
+});
+
 let html_demo_statefield = StateField.define({
-  create() {
-    return new Map();
+  create(state) {
+    let intitial_html_blocks = state.facet(html_blocks_facet);
+    return new Map(
+      intitial_html_blocks.map((x) => [state.doc.lineAt(x.from).number, true])
+    );
   },
   update(value, tr) {
     let new_map = null;
@@ -308,83 +327,91 @@ let html_demo_statefield = StateField.define({
 });
 
 let html_preview_extensions = [
-  EditorView.decorations.compute(["doc", html_demo_statefield], (state) => {
+  html_blocks_facet.compute(["doc"], (state) => {
     let tree = syntaxTree(state);
-    let doc = state.doc;
-    let decorations = [];
+    let ranges = [];
     iterate_with_cursor({
       tree,
       enter: (cursor) => {
         if (cursor.name === "HTMLBlock") {
-          let show_html_for_line = state.field(html_demo_statefield);
-          let line_number = doc.lineAt(cursor.from).number;
-          let show_html = show_html_for_line.get(line_number) ?? false;
-
-          if (show_html) {
-            decorations.push(
-              Decoration.replace({
-                block: true,
-                inclusive: true,
-                // inclusiveEnd: false,
-                widget: new ReactWidget(
-                  (
-                    <HTMLPreviewWidget
-                      show_html={show_html}
-                      line_number={line_number}
-                      html={doc.sliceString(cursor.from, cursor.to)}
-                    />
-                  )
-                ),
-                side: 1,
-              }).range(cursor.from, cursor.to)
-            );
-          } else {
-            decorations.push(
-              Decoration.widget({
-                widget: new ReactWidget(
-                  (
-                    <ToggleHTMLMarkerWidget
-                      show_html={show_html}
-                      line_number={line_number}
-                    />
-                  )
-                ),
-                side: -1,
-              }).range(cursor.from, cursor.from)
-            );
-            decorations.push(
-              Decoration.mark({
-                tagName: "code",
-                class: "html",
-              }).range(cursor.from, cursor.to)
-            );
-          }
+          ranges.push(html_block_range.range(cursor.from, cursor.to));
         }
       },
     });
-
-    return Decoration.set(decorations, true);
+    return ranges;
   }),
+  EditorView.decorations.compute(
+    [html_blocks_facet, html_demo_statefield],
+    (state) => {
+      let doc = state.doc;
+      let decorations = [];
+      let html_ranges = state.facet(html_blocks_facet);
+
+      for (let range of html_ranges) {
+        let show_html_for_line = state.field(html_demo_statefield);
+        let line_number = doc.lineAt(range.from).number;
+        let show_html = show_html_for_line.get(line_number) ?? false;
+
+        if (show_html) {
+          decorations.push(
+            Decoration.replace({
+              block: true,
+              inclusive: true,
+              // inclusiveEnd: false,
+              widget: new ReactWidget(
+                (
+                  <HTMLPreviewWidget
+                    show_html={show_html}
+                    line_number={line_number}
+                    html={doc.sliceString(range.from, range.to)}
+                  />
+                )
+              ),
+              side: 1,
+            }).range(range.from, range.to)
+          );
+        } else {
+          decorations.push(
+            Decoration.widget({
+              widget: new ReactWidget(
+                (
+                  <ToggleHTMLMarkerWidget
+                    show_html={show_html}
+                    line_number={line_number}
+                  />
+                )
+              ),
+              side: -1,
+            }).range(range.from, range.from)
+          );
+          decorations.push(
+            Decoration.mark({
+              tagName: "code",
+              class: "html",
+            }).range(range.from, range.to)
+          );
+        }
+      }
+
+      return Decoration.set(decorations, true);
+    }
+  ),
   EditorView.atomicRanges.of(({ state }) => {
-    let tree = syntaxTree(state);
     let doc = state.doc;
     let ranges = new RangeSetBuilder();
-    iterate_with_cursor({
-      tree,
-      enter: (cursor) => {
-        if (cursor.name === "HTMLBlock") {
-          // Seperate because it uses `html_demo_statefield`,
-          // not sure if it is better to be separate but feels good
-          let show_html_for_line = state.field(html_demo_statefield);
+    let html_ranges = state.facet(html_blocks_facet);
 
-          let line_number = doc.lineAt(cursor.from).number;
-          let show_html = show_html_for_line.get(line_number) ?? false;
-          if (show_html) {
-            ranges.add(cursor.from, cursor.to, new EZRange());
-          }
-        }
-      },
-    });
+    for (let range of html_ranges) {
+      // Seperate because it uses `html_demo_statefield`,
+      // not sure if it is better to be separate but feels good
+      let show_html_for_line = state.field(html_demo_statefield);
+
+      let line_number = doc.lineAt(range.from).number;
+      let show_html = show_html_for_line.get(line_number) ?? false;
+      if (show_html) {
+        ranges.add(range.from, range.to, new EZRange());
+      }
+    }
     return ranges.finish();
   }),
   html_demo_statefield,
@@ -395,6 +422,152 @@ let markdown_mark_to_decoration = {
   EmphasisMark: Decoration.mark({ class: "emphasis-mark" }),
   StrikethroughMark: Decoration.mark({ class: "strikethrough-mark" }),
   LinkMark: Decoration.mark({ class: "link-mark" }),
+};
+
+let filter_selection_in_atomic_range = EditorState.changeFilter;
+
+let search_block_or_inline_decorations = ({
+  cursor,
+  doc,
+  mutable_decorations,
+}) => {
+  if (cursor.name === "Blockquote") {
+    let line_from = doc.lineAt(cursor.from);
+    let line_to = doc.lineAt(cursor.to);
+    mutable_decorations.push(
+      Decoration.line({
+        class: "blockquote",
+      }).range(line_from.from, line_from.from)
+    );
+    for (let line_number of range(line_from.number + 1, line_to.number + 1)) {
+      let line = doc.line(line_number);
+      mutable_decorations.push(
+        Decoration.line({
+          class: "blockquote",
+        }).range(line.from, line.from)
+      );
+    }
+  }
+  if (cursor.name === "BulletList") {
+    iterate_over_cursor({
+      cursor: cursor,
+      skip_first_container: true,
+      enter: (cursor) => {
+        search_block_or_inline_decorations({
+          cursor,
+          doc,
+          mutable_decorations,
+        });
+
+        if (cursor.name === "TaskMarker") {
+          let start = cursor.from;
+          let end = cursor.to;
+
+          if (doc.sliceString(end, end + 1) !== " ") {
+            return;
+          }
+
+          let text = doc.sliceString(start, end);
+          let checked = text === "[x]";
+          let decoration = Decoration.replace({
+            widget: new ReactWidget(
+              <TaskMarkerWidget checked={checked} start={start} end={end} />
+            ),
+          }).range(start, end);
+          mutable_decorations.push(decoration);
+        }
+        if (cursor.name === "ListItem") {
+          let line_from = doc.lineAt(cursor.from);
+          let line_to = doc.lineAt(cursor.to);
+          mutable_decorations.push(
+            Decoration.line({
+              class: "list-item has-list-mark",
+            }).range(line_from.from, line_from.from)
+          );
+          for (let line_number of range(
+            line_from.number + 1,
+            line_to.number + 1
+          )) {
+            let line = doc.line(line_number);
+            mutable_decorations.push(
+              Decoration.line({
+                class: "list-item",
+              }).range(line.from, line.from)
+            );
+          }
+        }
+        if (cursor.name === "ListMark") {
+          if (doc.sliceString(cursor.to, cursor.to + 1) !== " ") {
+            return;
+          }
+          mutable_decorations.push(
+            Decoration.replace({
+              widget: new ReactWidget(
+                (
+                  <span className="list-mark">
+                    {doc.sliceString(cursor.from, cursor.to)}
+                  </span>
+                )
+              ),
+            }).range(cursor.from, cursor.to + 1)
+          );
+        }
+      },
+    });
+    return false;
+  }
+
+  if (cursor.name === "OrderedList") {
+    iterate_over_cursor({
+      cursor: cursor,
+      skip_first_container: true,
+      enter: (cursor) => {
+        search_block_or_inline_decorations({
+          cursor,
+          doc,
+          mutable_decorations,
+        });
+
+        if (cursor.name === "ListItem") {
+          let line_from = doc.lineAt(cursor.from);
+          let line_to = doc.lineAt(cursor.to);
+          mutable_decorations.push(
+            Decoration.line({
+              class: "order-list-item has-list-mark",
+            }).range(line_from.from, line_from.from)
+          );
+          for (let line_number of range(
+            line_from.number + 1,
+            line_to.number + 1
+          )) {
+            let line = doc.line(line_number);
+            mutable_decorations.push(
+              Decoration.line({
+                class: "order-list-item",
+              }).range(line.from, line.from)
+            );
+          }
+        }
+        if (cursor.name === "ListMark") {
+          if (doc.sliceString(cursor.to, cursor.to + 1) !== " ") {
+            return;
+          }
+          mutable_decorations.push(
+            Decoration.replace({
+              widget: new ReactWidget(
+                (
+                  <span className="list-mark">
+                    {doc.sliceString(cursor.from, cursor.to)}
+                  </span>
+                )
+              ),
+            }).range(cursor.from, cursor.to + 1)
+          );
+        }
+      },
+    });
+    return false;
+  }
 };
 
 export let basic_markdown_setup = [
@@ -427,28 +600,29 @@ export let basic_markdown_setup = [
 
   EditorView.decorations.compute(["doc"], (state) => {
     let tree = syntaxTree(state);
+    console.log(`tree:`, tree.toString());
+    let decorations = [];
+
+    iterate_with_cursor({
+      tree,
+      enter: (cursor) => {
+        return search_block_or_inline_decorations({
+          cursor: cursor,
+          doc: state.doc,
+          mutable_decorations: decorations,
+        });
+      },
+    });
+    return Decoration.set(decorations, true);
+  }),
+
+  EditorView.decorations.compute(["doc"], (state) => {
+    let tree = syntaxTree(state);
     let doc = state.doc;
     let decorations = [];
     iterate_with_cursor({
       tree,
       enter: (cursor) => {
-        if (cursor.name === "TaskMarker") {
-          let start = cursor.from;
-          let end = cursor.to;
-
-          if (doc.sliceString(end, end + 1) !== " ") {
-            return;
-          }
-
-          let text = doc.sliceString(start, end);
-          let checked = text === "[x]";
-          let decoration = Decoration.replace({
-            widget: new ReactWidget(
-              <TaskMarkerWidget checked={checked} start={start} end={end} />
-            ),
-          }).range(start, end);
-          decorations.push(decoration);
-        }
         if (cursor.name === "Emoji") {
           let text = doc.sliceString(cursor.from, cursor.to);
           if (emoji.hasEmoji(text)) {
@@ -508,64 +682,6 @@ export let basic_markdown_setup = [
             )
           );
         }
-        if (cursor.name === "ListItem") {
-          let line_from = doc.lineAt(cursor.from);
-          let line_to = doc.lineAt(cursor.to);
-          decorations.push(
-            Decoration.line({
-              class: "list-item has-list-mark",
-            }).range(line_from.from, line_from.from)
-          );
-          for (let line_number of range(
-            line_from.number + 1,
-            line_to.number + 1
-          )) {
-            let line = doc.line(line_number);
-            decorations.push(
-              Decoration.line({
-                class: "list-item",
-              }).range(line.from, line.from)
-            );
-          }
-        }
-        if (cursor.name === "HorizontalRule") {
-          decorations.push(
-            Decoration.replace({
-              widget: new ReactWidget(<span className="hr" />),
-            }).range(cursor.from, cursor.to)
-          );
-        }
-        if (cursor.name === "Blockquote") {
-          let line_from = doc.lineAt(cursor.from);
-          let line_to = doc.lineAt(cursor.to);
-          decorations.push(
-            Decoration.line({
-              class: "blockquote",
-            }).range(line_from.from, line_from.from)
-          );
-          for (let line_number of range(
-            line_from.number + 1,
-            line_to.number + 1
-          )) {
-            let line = doc.line(line_number);
-            decorations.push(
-              Decoration.line({
-                class: "blockquote",
-              }).range(line.from, line.from)
-            );
-          }
-        }
-        if (cursor.name === "ListMark") {
-          if (doc.sliceString(cursor.to, cursor.to + 1) !== " ") {
-            return;
-          }
-          decorations.push(
-            Decoration.mark({
-              class: "list-mark",
-            }).range(cursor.from, cursor.to)
-          );
-        }
-
         if (cursor.name === "CodeText") {
           decorations.push(
             Decoration.mark({ class: "code-text" }).range(
@@ -574,6 +690,7 @@ export let basic_markdown_setup = [
             )
           );
         }
+
         if (cursor.name === "HardBreak") {
           decorations.push(
             Decoration.mark({
@@ -636,11 +753,42 @@ export let basic_markdown_setup = [
           );
         }
 
-        if (cursor.name === "Table") {
+        // Table stuff
+        let table_node_to_class = {
+          Table: "table",
+          TableHeader: "table-header",
+          TableDelimiter: "table-delimiter",
+          TableCell: "table-cell",
+          TableRow: "table-row",
+        };
+        let cursor_name = cursor.name;
+        if (cursor_name in table_node_to_class) {
           decorations.push(
             Decoration.mark({
-              class: "table",
+              class: table_node_to_class[cursor_name],
             }).range(cursor.from, cursor.to)
+          );
+        }
+
+        if (cursor.name === "HTMLTag") {
+          decorations.push(
+            Decoration.mark({ class: "html-tag" }).range(cursor.from, cursor.to)
+          );
+        }
+        if (cursor.name === "CommentBlock") {
+          decorations.push(
+            Decoration.mark({ class: "comment-block" }).range(
+              cursor.from,
+              cursor.to
+            )
+          );
+        }
+        if (cursor.name === "ProcessingInstructionBlock") {
+          decorations.push(
+            Decoration.mark({ class: "processing-instruction-block" }).range(
+              cursor.from,
+              cursor.to
+            )
           );
         }
       },
@@ -670,6 +818,7 @@ export let basic_markdown_setup = [
         if (cursor.name === "HorizontalRule") {
           ranges.add(cursor.from, cursor.to, new EZRange());
         }
+
         if (cursor.name === "ListMark") {
           let node = cursor.node;
           if (
@@ -686,6 +835,13 @@ export let basic_markdown_setup = [
               new EZRange()
             );
           } else {
+            console.log(`cursor:`, cursor);
+            console.log(
+              `state.doc.sliceString(cursor.to, cursor.to + 1):`,
+              `"${state.doc.sliceString(cursor.to, cursor.to + 1)}"`
+            );
+            if (state.doc.sliceString(cursor.to, cursor.to + 1) !== " ") return;
+            ranges.add(cursor.from, cursor.to + 1, new EZRange());
             // This is just one character anyway, so no need to make it atomic
             // ranges.add(cursor.from, cursor.to, new EZRange());
           }
