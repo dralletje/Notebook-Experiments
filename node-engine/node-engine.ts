@@ -105,6 +105,7 @@ let run_notebook = async (
       fn(engine);
       onChange_debounced(engine);
     });
+    onChange_debounced(engine);
   }
 };
 

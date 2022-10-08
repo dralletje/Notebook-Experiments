@@ -159,7 +159,11 @@ let notebook_to_graph_cell = (notebook: Notebook): GraphCell[] => {
           imports: parsed.output.consumed_names,
         };
       } else {
-        return null;
+        return {
+          id: cell_id,
+          exports: [],
+          imports: [],
+        };
       }
     })
   );
@@ -228,6 +232,7 @@ export let notebook_step = async (
             value: serialize(_parsed.error, global),
           },
           running: false,
+          waiting: false,
           upstream_cells: [],
           variables: {},
         };

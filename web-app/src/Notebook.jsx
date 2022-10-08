@@ -32,7 +32,6 @@ import {
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
 import { basic_javascript_setup } from "./codemirror-javascript-setup";
 import { useRealMemo } from "use-real-memo";
-import { format_with_prettier } from "./format-javascript-with-prettier";
 import { SelectCellsEffect, SelectedCellsField } from "./cell-selection";
 import {
   AddCellEffect,
@@ -649,7 +648,7 @@ export let Cell = ({
           />
 
           {/* <Extension extension={codemirror_interactive} /> */}
-          {/* <Extension extension={debug_syntax_plugin} /> */}
+          <Extension extension={debug_syntax_plugin} />
           {/* <Extension extension={inline_notebooks_extension} /> */}
 
           {/* <Extension
@@ -779,17 +778,8 @@ export let TextCell = ({
           });
         }}
       >
-        {/* <Extension
-            key="basic-javascript-setup"
-            extension={basic_javascript_setup}
-          /> */}
-
         <Extension key="markdown-setup" extension={basic_markdown_setup} />
-
-        {/* <Extension extension={codemirror_interactive} /> */}
-        <Extension extension={debug_syntax_plugin} />
-        {/* <Extension extension={inline_notebooks_extension} /> */}
-
+        {/* <Extension extension={debug_syntax_plugin} /> */}
         {/* <Extension
             key="blur_when_other_cell_focus"
             extension={blur_when_other_cell_focus}

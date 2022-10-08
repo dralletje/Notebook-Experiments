@@ -35,17 +35,26 @@ export let notebook_keymap = keymap.of([
 
       let prettified_results = changed_cells.map((cell_id) => {
         let cell_state = notebook.cells[cell_id];
-        let { cursorOffset, formatted } = format_with_prettier({
-          code: cell_state.doc.toString(),
-          cursor: cell_state.selection.main.head,
-        });
-        let trimmed = formatted.trim();
-        return {
-          docLength: cell_state.doc.length,
-          cursorOffset: Math.min(cursorOffset, trimmed.length),
-          formatted: trimmed,
-          cell_id,
-        };
+        try {
+          let { cursorOffset, formatted } = format_with_prettier({
+            code: cell_state.doc.toString(),
+            cursor: cell_state.selection.main.head,
+          });
+          let trimmed = formatted.trim();
+          return {
+            docLength: cell_state.doc.length,
+            cursorOffset: Math.min(cursorOffset, trimmed.length),
+            formatted: trimmed,
+            cell_id,
+          };
+        } catch (error) {
+          return {
+            docLength: cell_state.doc.length,
+            cursorOffset: cell_state.selection.main.head,
+            formatted: cell_state.doc.toString(),
+            cell_id,
+          };
+        }
       });
 
       dispatch({
