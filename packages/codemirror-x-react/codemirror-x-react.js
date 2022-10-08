@@ -162,7 +162,7 @@ function useEvent(handler) {
 export let CodeMirror = React.forwardRef(
   /**
    * @param {{
-   *  children: React.ReactNode,
+   *  children?: React.ReactNode,
    *  as?: string,
    *  state: import("@codemirror/view").EditorViewConfig["state"],
    *  root?: import("@codemirror/view").EditorViewConfig["root"],
