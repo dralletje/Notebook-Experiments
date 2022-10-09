@@ -7,7 +7,7 @@ import {
   StateField,
   Transaction,
 } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorView, keymap, ViewPlugin } from "@codemirror/view";
 import { Inspector } from "./Inspector";
 import { compact, isEqual } from "lodash";
 import { v4 as uuidv4 } from "uuid";
@@ -37,6 +37,7 @@ import {
   AddCellEffect,
   CellDispatchEffect,
   CellEditorStatesField,
+  CellHasSelectionField,
   CellTypeFacet,
   empty_cell,
   FromCellTransactionEffect,
@@ -45,6 +46,7 @@ import {
   RemoveCellEffect,
 } from "./NotebookEditor";
 import { basic_markdown_setup } from "./basic-markdown-setup";
+import { StyleModule } from "style-mod";
 
 let CellContainer = styled.div`
   display: flex;
@@ -66,12 +68,44 @@ let InspectorContainer = styled.div`
   min-height: 24px;
 `;
 
+let CellHasSelectionPlugin = [
+  EditorView.editorAttributes.of((view) => {
+    let has_selection = view.state.field(CellHasSelectionField);
+    console.log(`has_selection:`, has_selection, view.dom);
+    return { class: has_selection ? "has-selection" : "" };
+  }),
+  EditorView.styleModule.of(
+    new StyleModule({
+      ".cm-editor:not(.has-selection) .cm-selectionBackground": {
+        background: "none !important",
+      },
+
+      // ".has-selection .cm-selectionBackground": {
+      //   background: "red !important",
+      // },
+    })
+  ),
+];
+
+// ViewPlugin.define((cell_editor_view) => {
+//   return {
+//     update(update) {
+//     },
+//     destroy() {
+//       // off();
+//     },
+//   };
+// });
+
 export let EditorStyled = styled.div`
   background-color: rgba(0, 0, 0, 0.4);
   margin-top: 8px;
 
   & .cm-content {
     padding: 16px !important;
+  }
+
+  .cm-editor .cm-selectionBackground {
   }
 `;
 
@@ -636,6 +670,8 @@ export let Cell = ({
           />
           <Extension key="cell_keymap" extension={cell_keymap} />
 
+          <Extension extension={CellHasSelectionPlugin} key="oof" />
+
           {/* <Extension extension={codemirror_interactive} /> */}
           {/* <Extension extension={debug_syntax_plugin} /> */}
           {/* <Extension extension={inline_notebooks_extension} /> */}
@@ -657,9 +693,7 @@ let asd = [
       // console.log(`FOCUS`, view, event);
     },
   }),
-  EditorView.updateListener.of((update) => {
-    console.log(`UPDATE`, update);
-  }),
+  EditorView.updateListener.of((update) => {}),
 ];
 
 /**

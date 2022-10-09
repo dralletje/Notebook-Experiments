@@ -71,7 +71,7 @@ let focus_on_scrollIntoView = EditorView.updateListener.of((update) => {
 });
 
 export let blur_stuff = [
-  blur_effect_listener,
-  blur_cells_when_selecting,
-  CellPlugin.of(focus_on_scrollIntoView),
+  // blur_effect_listener,
+  // blur_cells_when_selecting,
+  // CellPlugin.of(focus_on_scrollIntoView),
 ];

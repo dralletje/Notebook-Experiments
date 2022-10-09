@@ -8,6 +8,7 @@ import {
   Transaction,
   TransactionSpec,
   StateEffectType,
+  EditorSelection,
 } from "@codemirror/state";
 import { Cell, CellId, Notebook } from "./notebook-types";
 import immer from "immer";
@@ -263,6 +264,21 @@ export let CellTypeFacet = Facet.define<
   static: true,
 });
 
+export let CellHasSelectionEffect = StateEffect.define<boolean>();
+export let CellHasSelectionField = StateField.define<boolean>({
+  create() {
+    return false;
+  },
+  update(value, transaction) {
+    for (let effect of transaction.effects) {
+      if (effect.is(CellHasSelectionEffect)) {
+        value = effect.value;
+      }
+    }
+    return value;
+  },
+});
+
 export let editor_state_for_cell = (cell: Cell, nexus_state: EditorState) => {
   let event_emitter = new SingleEventEmitter<Transaction[]>();
   let extensions = nexus_state.facet(CellPlugin);
@@ -278,6 +294,8 @@ export let editor_state_for_cell = (cell: Cell, nexus_state: EditorState) => {
         folded: cell.folded,
       })),
       CellTypeFacet.of(cell.type ?? "code"),
+
+      CellHasSelectionField,
 
       TransactionFromNexusToCellEmitterFacet.of(event_emitter),
       emit_transaction_from_nexus_to_cell_extension,
@@ -321,6 +339,9 @@ let add_single_cell_when_all_cells_are_removed =
 export let CellEditorStatesField = StateField.define<{
   cell_order: Array<CellId>;
   cells: { [key: CellId]: EditorState };
+  /** So... I need this separate from the EditorState's selection,
+   *  because EditorState.selection can't be empty/inactive */
+  has_active_selection: { [key: CellId]: boolean };
 
   /** Necessary because the cells views need to be updated with the transactions
    *  🤩 Needs no cell_id because the emitter is on the transaction state 🤩 */
@@ -330,6 +351,7 @@ export let CellEditorStatesField = StateField.define<{
     return {
       cell_order: [],
       cells: {},
+      has_active_selection: {},
 
       transactions_to_send_to_cells: [],
     };
@@ -478,6 +500,37 @@ export let CellEditorStatesField = StateField.define<{
         }
       }
 
+      // Go through all transactions to find out what cells
+      state.has_active_selection ??= {};
+      for (let transaction of transactions_to_send_to_cells) {
+        if (transaction.selection != null) {
+          state.has_active_selection = {
+            [transaction.startState.facet(CellIdFacet)]: true,
+          };
+        }
+      }
+      for (let cell_id of cell_order) {
+        if (state.has_active_selection[cell_id]) {
+          let cell = cells[cell_id];
+          if (!cell.field(CellHasSelectionField)) {
+            let transaction = cell.update({
+              effects: CellHasSelectionEffect.of(true),
+            });
+            transactions_to_send_to_cells.push(transaction);
+            cells[cell_id] = transaction.state;
+          }
+        } else {
+          let cell = cells[cell_id];
+          if (cell.field(CellHasSelectionField)) {
+            let transaction = cell.update({
+              effects: CellHasSelectionEffect.of(false),
+            });
+            transactions_to_send_to_cells.push(transaction);
+            cells[cell_id] = transaction.state;
+          }
+        }
+      }
+
       // Should this facet be pulled from the nexus, or the cell? (OR BOTH??)
       // TODO Enable this when I see a reason to use this over good ol' transactionExtenders
       // let cell_transaction_makers = transaction.startState.facet(
@@ -498,24 +551,6 @@ export let CellEditorStatesField = StateField.define<{
       //   }
       // }
     });
-  },
-});
-
-/**
- * Possibly
- *
- * @type {StateField<Array<{ cell_id: import("./notebook-types").CellId, selection: EditorSelection }>>}
- */
-let NotebookSelectionField = StateField.define({
-  create: () => [],
-  update(selections, transaction) {
-    let cell_transactions = transaction.state.field(
-      CellEditorStatesField
-    ).transactions_to_send_to_cells;
-
-    console.log(`cell_transactions:`, cell_transactions);
-
-    return selections;
   },
 });
 
