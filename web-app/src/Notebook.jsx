@@ -71,18 +71,14 @@ let InspectorContainer = styled.div`
 let CellHasSelectionPlugin = [
   EditorView.editorAttributes.of((view) => {
     let has_selection = view.state.field(CellHasSelectionField);
-    console.log(`has_selection:`, has_selection, view.dom);
     return { class: has_selection ? "has-selection" : "" };
   }),
   EditorView.styleModule.of(
     new StyleModule({
       ".cm-editor:not(.has-selection) .cm-selectionBackground": {
+        // Need to figure out what precedence I should give this thing so I don't need !important
         background: "none !important",
       },
-
-      // ".has-selection .cm-selectionBackground": {
-      //   background: "red !important",
-      // },
     })
   ),
 ];
@@ -103,9 +99,6 @@ export let EditorStyled = styled.div`
 
   & .cm-content {
     padding: 16px !important;
-  }
-
-  .cm-editor .cm-selectionBackground {
   }
 `;
 
