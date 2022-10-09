@@ -185,6 +185,7 @@ let engine_cell_from_notebook_cell = (cell) => {
     last_run: -Infinity,
     result: null,
     running: false,
+    waiting: false,
   };
 };
 
@@ -225,24 +226,6 @@ let DragAndDropList = ({ children, nexus_editorview, cell_order }) => {
   );
 };
 
-let CellEditorSelection = StateField.define({
-  create() {
-    return /** @type {null | { cell_id: import("./notebook-types").CellId, selection: EditorSelection }} */ (
-      null
-    );
-  },
-  update(value, tr) {
-    // for (let {
-    //   value: { cell_id, transaction },
-    // } of from_cell_effects(tr)) {
-    //   if (transaction.selection || transaction.docChanged) {
-    //     value = { cell_id, selection: transaction.newSelection };
-    //   }
-    // }
-    return value;
-  },
-});
-
 /**
  * @param {{
  *  icon: import("react").ReactElement,
@@ -273,6 +256,21 @@ let ContextMenuItem = ({ icon, label, shortcut }) => {
   );
 };
 
+export let LastCreatedCells = StateField.define({
+  create() {
+    return /** @type {import("./notebook-types").CellId[]} */ ([]);
+  },
+  update(value, tr) {
+    let previous_cell_ids = Object.keys(
+      tr.startState.field(CellEditorStatesField).cells
+    );
+    let cell_ids = Object.keys(tr.state.field(CellEditorStatesField).cells);
+    if (isEqual(previous_cell_ids, cell_ids)) return value;
+    let new_cell_ids = cell_ids.filter((id) => !previous_cell_ids.includes(id));
+    return new_cell_ids;
+  },
+});
+
 /**
  * @param {{
  *  notebook: import("./notebook-types").Notebook,
@@ -285,23 +283,8 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
    * Keep track of what cells are just created by the users,
    * so we can animate them in 🤩
    */
-  let [last_created_cells, set_last_created_cells] = React.useState(
-    /** @type {any[]} */ ([])
-  );
-  let keep_track_of_last_created_cells_extension = React.useMemo(
-    () =>
-      EditorView.updateListener.of((update) => {
-        let created_cells = update.transactions.flatMap((transaction) =>
-          transaction.effects
-            .filter((x) => x.is(AddCellEffect))
-            .map((x) => x.value.cell.id)
-        );
-        if (created_cells.length !== 0) {
-          set_last_created_cells(created_cells);
-        }
-      }),
-    [set_last_created_cells]
-  );
+  let last_created_cells =
+    notebook_view.state.field(LastCreatedCells, false) ?? [];
 
   let nexus_editorview = notebook_view;
 
@@ -419,6 +402,10 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                             notebook_view.state.field(CellEditorStatesField)
                               .cells[cell.id]
                           }
+                          notebook={notebook}
+                          did_just_get_created={last_created_cells.includes(
+                            cell.id
+                          )}
                           dispatch_to_nexus={notebook_view.dispatch}
                           is_selected={selected_cells.includes(cell.id)}
                         />
@@ -568,7 +555,8 @@ export let Cell = ({
   let cell_wrapper_ref = React.useRef(/** @type {any} */ (null));
   React.useEffect(() => {
     if (did_just_get_created) {
-      editorview_ref.current.focus();
+      console.log(`editorview_ref:`, editorview_ref);
+      // editorview_ref.current.focus();
       cell_wrapper_ref.current.animate(
         [
           {
@@ -646,27 +634,37 @@ export let Cell = ({
             key="basic-javascript-setup"
             extension={basic_javascript_setup}
           />
+          <Extension key="cell_keymap" extension={cell_keymap} />
 
           {/* <Extension extension={codemirror_interactive} /> */}
-          <Extension extension={debug_syntax_plugin} />
+          {/* <Extension extension={debug_syntax_plugin} /> */}
           {/* <Extension extension={inline_notebooks_extension} /> */}
 
           {/* <Extension
             key="blur_when_other_cell_focus"
             extension={blur_when_other_cell_focus}
           /> */}
-
-          <Extension key="cell_keymap" extension={cell_keymap} />
+          <Extension key="asd" extension={asd} />
         </CodeMirror>
       </EditorStyled>
     </CellStyle>
   );
 };
 
+let asd = [
+  EditorView.domEventHandlers({
+    focus: (view, event) => {
+      // console.log(`FOCUS`, view, event);
+    },
+  }),
+  EditorView.updateListener.of((update) => {
+    console.log(`UPDATE`, update);
+  }),
+];
+
 /**
  * @param {{
  *  cell: import("./notebook-types").Cell,
- *  cylinder: import("./notebook-types").CylinderShadow,
  *  notebook: import("./notebook-types").Notebook,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
@@ -676,7 +674,6 @@ export let Cell = ({
  */
 export let TextCell = ({
   cell,
-  cylinder = engine_cell_from_notebook_cell(cell),
   notebook,
   is_selected,
   did_just_get_created,
@@ -686,41 +683,14 @@ export let TextCell = ({
   let initial_editor_state = useRealMemo(() => {
     return editor_state;
   }, []);
-  // let initial_editor_state = useRealMemo(() => {
-  //   let _editor_state = /** @type {EditorState} */ (editor_state);
-  //   return EditorState.create({
-  //     doc: _editor_state.doc.toString(),
-  //     extensions: [],
-  //   });
-  // }, []);
-
   // prettier-ignore
   let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
-
-  let result_deserialized = React.useMemo(() => {
-    if (cylinder?.result?.type === "return") {
-      return {
-        type: cylinder.result.type,
-        name: cylinder.result.name,
-        value: deserialize(0, cylinder.result.value),
-      };
-    } else if (cylinder?.result?.type === "throw") {
-      return {
-        // Because observable inspector doesn't show the stack trace when it is a thrown value?
-        // But we need to make our own custom error interface anyway (after we fix sourcemaps? Sighh)
-        type: "return",
-        value: deserialize(0, cylinder.result.value),
-      };
-    } else {
-      return { type: "pending" };
-    }
-  }, [cylinder?.result]);
 
   /** @type {import("react").MutableRefObject<HTMLDivElement>} */
   let cell_wrapper_ref = React.useRef(/** @type {any} */ (null));
   React.useEffect(() => {
     if (did_just_get_created) {
-      editorview_ref.current.focus();
+      // editorview_ref.current.focus();
       cell_wrapper_ref.current.animate(
         [
           {
@@ -756,13 +726,6 @@ export let TextCell = ({
         state={initial_editor_state}
         ref={editorview_ref}
         dispatch={(transactions, editorview) => {
-          // for (let transaction of transactions) {
-          //   if (transaction instanceof Transaction) {
-          //     // prettier-ignore
-          //     throw new Error(`Transaction in dispatch?? Guess that should be supported but I don't`)
-          //   }
-          // }
-          // editorview.update([tr]);
           dispatch_to_nexus({
             effects: transactions.map((tr) =>
               tr instanceof Transaction
@@ -784,7 +747,6 @@ export let TextCell = ({
             key="blur_when_other_cell_focus"
             extension={blur_when_other_cell_focus}
           /> */}
-
         <Extension key="cell_keymap" extension={cell_keymap} />
       </CodeMirror>
     </TextCellStyle>

@@ -501,6 +501,24 @@ export let CellEditorStatesField = StateField.define<{
   },
 });
 
+/**
+ * Possibly
+ *
+ * @type {StateField<Array<{ cell_id: import("./notebook-types").CellId, selection: EditorSelection }>>}
+ */
+let NotebookSelectionField = StateField.define({
+  create: () => [],
+  update(selections, transaction) {
+    let cell_transactions = transaction.state.field(
+      CellEditorStatesField
+    ).transactions_to_send_to_cells;
+
+    console.log(`cell_transactions:`, cell_transactions);
+
+    return selections;
+  },
+});
+
 let invert_removing_and_adding_cells = invertedEffects.of((transaction) => {
   let notebook = transaction.startState.field(CellEditorStatesField);
   let inverted_effects: Array<StateEffect<any>> = [];

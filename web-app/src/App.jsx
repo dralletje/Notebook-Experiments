@@ -4,7 +4,7 @@ import { produce } from "immer";
 import { mutate, readonly, useMutateable } from "use-immer-store";
 
 import { io, Socket } from "socket.io-client";
-import { CellList } from "./Notebook";
+import { CellList, LastCreatedCells } from "./Notebook";
 import styled from "styled-components";
 import { deserialize } from "./deserialize-value-to-show";
 
@@ -267,11 +267,11 @@ function App() {
 
       cell_movement_extension_default,
       selected_cells_keymap,
+      LastCreatedCells,
 
       blur_stuff,
 
       // // blur_cells_when_selecting,
-      // keep_track_of_last_created_cells_extension,
 
       // This works so smooth omg
       useRealMemo(() => [shared_history(), keymap.of(historyKeymap)], []),

@@ -18,6 +18,10 @@ let InspectorStyle = styled.div`
 
   display: contents;
 
+  & svg {
+    display: inline;
+  }
+
   /* For some, weird reason, this rule isn't 
             in the open source version */
   & .observablehq--caret {

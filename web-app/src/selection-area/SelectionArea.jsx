@@ -48,7 +48,8 @@ const in_request_animation_frame = (fn) => {
  */
 
 export const SelectionArea = ({ on_selection, children }) => {
-  const mouse_position_ref = React.useRef();
+  /** @type {import("react").MutableRefObject<MouseEvent | null>} */
+  const mouse_position_ref = React.useRef(null);
   const is_selecting_ref = React.useRef(false);
   const element_ref = React.useRef(
     /** @type {HTMLDivElement} */ (/** @type {any} */ (null))
@@ -58,7 +59,7 @@ export const SelectionArea = ({ on_selection, children }) => {
     /** @type {{start: Coordinate2D, end: Coordinate2D}?} */ (null)
   );
 
-  const onmousedown = (/** @type {MouseEvent} */ e) => {
+  const onmousedown = (/** @type {import("react").MouseEvent} */ e) => {
     let target = /** @type {HTMLElement} */ (e.target);
 
     // TODO: also allow starting the selection in one codemirror and stretching it to another cell
@@ -66,6 +67,7 @@ export const SelectionArea = ({ on_selection, children }) => {
       !e?.defaultPrevented &&
       element_ref.current.contains(target) &&
       e.button === 0 &&
+      // @ts-ignore
       target.closest("[data-can-start-selection]")?.dataset
         ?.canStartSelection !== "false"
     ) {
@@ -141,7 +143,7 @@ export const SelectionArea = ({ on_selection, children }) => {
     });
 
     const onscroll = (e) => {
-      if (is_selecting_ref.current) {
+      if (is_selecting_ref.current && mouse_position_ref.current != null) {
         update_selection({
           pageX: mouse_position_ref.current.clientX,
           pageY:
@@ -262,6 +264,10 @@ let SimpleDialog = ({ open, children }) => {
       }
     } else {
       ref.current.close();
+      // Dialog.close() wants to move focus back to whatever had focus before,
+      // Where I don't want that!!
+      // @ts-ignore
+      document.activeElement?.blur?.();
     }
   }, [open]);
 
