@@ -18,6 +18,9 @@ import {
 // A lot of this file is an adaptation of https://github.com/fonsp/Pluto.jl/blob/ab85efca962d009c741d4ec66508d687806e9579/frontend/components/CellInput/cell_movement_plugin.js
 // Only this uses my new nexus-style stuff, and it has cooler column-preserving-stuff 🤩
 
+// TODO: Now I moved selection to the notebook state,
+// ....  I can probably clean this up a bunch by using that.
+
 /**
  * Cell movement plugin!
  *

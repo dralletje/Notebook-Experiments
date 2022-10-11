@@ -1,58 +1,36 @@
 import React from "react";
 import "./App.css";
+
 import { produce } from "immer";
-import { mutate, readonly, useMutateable } from "use-immer-store";
-
 import { io, Socket } from "socket.io-client";
-import { CellList, LastCreatedCells } from "./Notebook";
+import { LastCreatedCells } from "./Notebook";
 import styled from "styled-components";
-import { deserialize } from "./deserialize-value-to-show";
-
-import dot from "@observablehq/graphviz";
-import { IonIcon } from "@ionic/react";
-import {
-  gitNetworkOutline,
-  iceCreamOutline,
-  pizzaOutline,
-  terminalOutline,
-} from "ionicons/icons";
-import { EditorState, Facet, StateField } from "@codemirror/state";
+import { EditorState, Facet } from "@codemirror/state";
 import {
   CellEditorStatesField,
   CellIdFacet,
   CellMetaField,
   CellTypeFacet,
-  // cell_dispatch_to_cell_transaction_extender,
   editor_state_for_cell,
   nested_cell_states_basics,
   updateListener,
   useNotebookviewWithExtensions,
 } from "./NotebookEditor";
 import { useRealMemo } from "use-real-memo";
-import {
-  SelectCellsEffect,
-  SelectedCellsField,
-  selected_cells_keymap,
-} from "./cell-selection";
+import { SelectedCellsField, selected_cells_keymap } from "./cell-selection";
 import { keymap, runScopeHandlers } from "@codemirror/view";
 import {
   shared_history,
   historyKeymap,
 } from "./packages/codemirror-nexus/codemirror-shared-history";
-import { isEqual, mapValues, sortBy } from "lodash";
+import { mapValues } from "lodash";
 import {
   CellIdOrder,
   cell_movement_extension_default,
 } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
-import { ShowKeysPressed } from "./ShowKeys";
-import { MetaNotebook } from "./MetaNotebook";
-import { SelectionArea } from "./selection-area/SelectionArea";
 import { blur_stuff } from "./blur-stuff";
-import {
-  create_worker,
-  post_message,
-} from "./packages/babel-worker/babel-worker";
+import { File } from "./File";
 
 // let worker = create_worker();
 // console.log(`worker:`, worker);
@@ -66,99 +44,7 @@ import {
 //   console.log(`x:`, x);
 // });
 
-let AppStyle = styled.div`
-  padding-top: 100px;
-  min-height: 100vh;
-  padding-bottom: 100px;
-  margin-right: 20px;
-
-  flex: 1;
-  flex-basis: min(700px, 100vw - 200px, 100%);
-  min-width: 0;
-`;
-
-let MyButton = styled.button`
-  font-size: 0.6rem;
-  hyphens: auto;
-  text-align: center;
-  border: none;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-
-  &.active {
-    background-color: rgb(45 21 29);
-    color: white;
-  }
-
-  ion-icon {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-  }
-`;
-
-let DependenciesTab = () => {
-  return (
-    <div style={{ padding: 16 }}>
-      <h1>Dependencies</h1>
-      <p>
-        Automatically manage dependencies, but actually nice this time. Possibly
-        having the actual `import X from "..."` cells living here.
-      </p>
-    </div>
-  );
-};
-
-// let LOCALSTORAGE_KEY = "ASDASDASD";
-let LOCALSTORAGE_KEY = "notebook";
-
-let GraphTab = ({ dag }) => {
-  /** @type {any} */
-  let ref = React.useRef();
-  React.useEffect(() => {
-    console.log(`engine:`, dag);
-    let element = dot`
-      digraph {
-        ${Object.values(dag)
-          .flatMap((from) => from.out.map((to) => `"${from.id}" -> "${to.id}"`))
-          .join("\n")}
-      }
-    `;
-    console.log(`element:`, element);
-    // Remove children
-    while (ref.current.firstChild) {
-      ref.current.removeChild(ref.current.firstChild);
-    }
-    ref.current.appendChild(element);
-  }, [dag]);
-  return (
-    <div style={{ padding: 16 }}>
-      <h1>Graph</h1>
-      <p>
-        A graph/visualisation of how the cells are connected... haven't figured
-        out a nice way yet, so here is a ugly graph.
-      </p>
-      <div ref={ref}></div>
-    </div>
-  );
-};
-
-let ShellTab = () => {
-  return (
-    <div style={{ padding: 16 }}>
-      <h1>Shell</h1>
-      <p>
-        Very ambitious: I want this to be a linear notebook that works kind of
-        like a REPL, having access to the variables created in the main
-        notebook, but not the other way around. And then, ideally, being able to
-        drag cells from here to the main notebook.
-      </p>
-    </div>
-  );
-};
+let LOCALSTORAGE_WORKSPACE_KEY = "__workspace";
 
 let try_json = (str) => {
   try {
@@ -175,154 +61,30 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
 
 let JustForKicksFacet = Facet.define({});
 
-let UpdateLocalStorage = updateListener.of((viewupdate) => {
-  let cell_state = viewupdate.state.field(CellEditorStatesField);
-  localStorage.setItem(
-    LOCALSTORAGE_KEY,
-    JSON.stringify(
-      /** @type {import("./notebook-types").Notebook} */ ({
-        id: "hi",
-        cell_order: cell_state.cell_order,
-        cells: mapValues(cell_state.cells, (cell_state) => {
-          let meta = cell_state.field(CellMetaField);
-          return /** @type {import("./notebook-types").Cell} */ ({
-            id: cell_state.facet(CellIdFacet),
-            code: meta.code,
-            unsaved_code: cell_state.doc.toString(),
-            last_run: meta.last_run,
-            folded: meta.folded,
-            type: cell_state.facet(CellTypeFacet),
-          });
-        }),
-      })
-    )
-  );
-});
+/**
+ * @typedef WorkspaceSerialized
+ * @property {string} id
+ * @property {{
+ *  [filename: string]: {
+ *    filename: string,
+ *    notebook: import("./notebook-types").NotebookSerialized,
+ *  }
+ * }} files
+ */
 
-function App() {
-  let initial_notebook = React.useMemo(
-    () =>
-      CellEditorStatesField.init((editorstate) => {
-        /** @type {import("./notebook-types").Notebook} */
-        let notebook_from_json = try_json(
-          localStorage.getItem(LOCALSTORAGE_KEY)
-        ) ?? {
-          id: "1",
-          cell_order: ["1", "2", "3"],
-          cells: {
-            1: {
-              id: "1",
-              code: "1 + 1 + xs.length",
-              unsaved_code: "1 + 1 + xs.length",
-              last_run: Date.now(),
-            },
-            2: {
-              id: "2",
-              code: "let xs = [1,2,3,4]",
-              unsaved_code: "let xs = [1,2,3,4]",
-              last_run: Date.now(),
-            },
-            3: {
-              id: "3",
-              code: "xs.map((x) => x * 2)",
-              unsaved_code: "xs.map((x) => x * 2)",
-              last_run: Date.now(),
-            },
-          },
-        };
+/**
+ * @typedef Workspace
+ * @property {string} id
+ * @property {{
+ *  [filename: string]: {
+ *    filename: string,
+ *    state: EditorState,
+ *  }
+ * }} files
+ */
 
-        return {
-          cell_order: notebook_from_json.cell_order,
-          cells: mapValues(notebook_from_json.cells, (cell) => {
-            return editor_state_for_cell(cell, editorstate);
-          }),
-          transactions_to_send_to_cells: [],
-        };
-      }),
-    [CellEditorStatesField]
-  );
-
-  // let [just_for_kicks, set_just_for_kicks] = React.useState(0);
-  // React.useEffect(() => {
-  //   let interval = setInterval(() => {
-  //     set_just_for_kicks((x) => x + 1);
-  //   }, 1000);
-  //   return () => clearInterval(interval);
-  // });
-  // let just_for_kicks_extension = React.useMemo(() => JustForKicksFacet.of(just_for_kicks), [just_for_kicks])
-  // This one will cause a crash because it unstable every render, but the error message should be pretty nice
-  // let just_for_kicks_extension = JustForKicksFacet.of(just_for_kicks)
-
-  let { state, dispatch } = useNotebookviewWithExtensions({
-    extensions: [
-      // cell_dispatch_to_cell_transaction_extender,
-
-      initial_notebook,
-      nested_cell_states_basics,
-
-      notebook_keymap,
-
-      SelectedCellsField,
-      cell_id_order_from_notebook_facet,
-
-      cell_movement_extension_default,
-      selected_cells_keymap,
-      LastCreatedCells,
-
-      blur_stuff,
-
-      // // blur_cells_when_selecting,
-
-      // This works so smooth omg
-      useRealMemo(() => [shared_history(), keymap.of(historyKeymap)], []),
-
-      // just_for_kicks_extension
-      UpdateLocalStorage,
-    ],
-  });
-
-  let cell_editor_states = state.field(CellEditorStatesField);
-
-  let notebook = React.useMemo(() => {
-    return /** @type {import("./notebook-types").Notebook} */ ({
-      cell_order: cell_editor_states.cell_order,
-      cells: mapValues(cell_editor_states.cells, (cell_state) => {
-        return {
-          id: cell_state.facet(CellIdFacet),
-          unsaved_code: cell_state.doc.toString(),
-          ...cell_state.field(CellMetaField),
-          type: cell_state.facet(CellTypeFacet),
-        };
-      }),
-    });
-  }, [cell_editor_states]);
-
-  /** @type {import("./NotebookEditor").NotebookView} */
-  let notebook_view = { state: state, dispatch: dispatch };
-
-  // Use the nexus' keymaps as shortcuts!
-  // This passes on keydown events from the document to the nexus for handling.
-  React.useEffect(() => {
-    let fn = (event) => {
-      if (event.defaultPrevented) {
-        return;
-      }
-      let should_cancel = runScopeHandlers(
-        // @ts-ignore
-        { state, dispatch },
-        event,
-        "editor"
-      );
-      if (should_cancel) {
-        event.preventDefault();
-      }
-    };
-    document.addEventListener("keydown", fn);
-    return () => {
-      document.removeEventListener("keydown", fn);
-    };
-  }, [state, dispatch]);
-
+/** @param {{ workspace: Workspace }} props */
+let useEngine = ({ workspace }) => {
   let [engine, set_engine] = React.useState({ cylinders: {} });
   /** @type {React.MutableRefObject<Socket<any, any>>} */
   let socketio_ref = React.useRef(/** @type {any} */ (null));
@@ -342,127 +104,179 @@ function App() {
   React.useEffect(() => {
     let socket = socketio_ref.current;
     let fn = () => {
-      socket.emit("notebook", notebook);
+      socket.emit("workspace", workspace);
     };
     socket.on("connect", fn);
     return () => {
       socket.off("connect", fn);
     };
-  }, [notebook]);
+  }, [workspace]);
 
   React.useEffect(() => {
     let socket = socketio_ref.current;
-    socket.emit("notebook", notebook);
-  }, [notebook]);
+    socket.emit("workspace", workspace);
+  }, [workspace]);
 
-  let [open_tab, set_open_tab] = React.useState(
-    /** @type {null | "graph" | "dependencies" | "shell" | "meta"} */
-    (null)
-  );
+  return engine;
+};
 
-  // @ts-ignore
-  let dag = React.useMemo(
-    // @ts-ignore
-    () => (engine.dag == null ? null : deserialize(0, engine.dag)),
-    // @ts-ignore
-    [engine.dag]
-  );
+/** @param {import("./notebook-types").NotebookSerialized} notebook */
+let notebook_to_state = (notebook) => {
+  let notebook_state = CellEditorStatesField.init((editorstate) => {
+    return {
+      cell_order: notebook.cell_order,
+      cells: mapValues(notebook.cells, (cell) => {
+        return editor_state_for_cell(cell, editorstate);
+      }),
+      transactions_to_send_to_cells: [],
+      has_active_selection: {},
+    };
+  });
+  return EditorState.create({
+    extensions: [
+      notebook_state,
+      nested_cell_states_basics,
 
-  let selected_cells = notebook_view.state.field(SelectedCellsField);
+      notebook_keymap,
+
+      SelectedCellsField,
+      cell_id_order_from_notebook_facet,
+
+      cell_movement_extension_default,
+      selected_cells_keymap,
+      LastCreatedCells,
+
+      blur_stuff,
+
+      // This works so smooth omg
+      [shared_history(), keymap.of(historyKeymap)],
+
+      // just_for_kicks_extension
+      // UpdateLocalStorage,
+    ],
+  });
+};
+
+function App() {
+  let initial_workspace = React.useMemo(() => {
+    let plain = /** @type {WorkspaceSerialized} */ (
+      try_json(localStorage.getItem(LOCALSTORAGE_WORKSPACE_KEY))
+    ) ?? {
+      id: "1",
+      files: {
+        "app.js": {
+          filename: "app.js",
+          notebook: {
+            id: "1",
+            // cell_order: ["1", "2", "3"],
+            cell_order: ["2"],
+            cells: {
+              // 1: {
+              //   id: "1",
+              //   type: "text",
+              //   code: "# My notebook",
+              //   unsaved_code: "# My notebook",
+              //   last_run: Date.now(),
+              //   is_waiting: true,
+              // },
+              2: {
+                id: "2",
+                code: "let xs = [1,2,3,4]",
+                unsaved_code: "let xs = [1,2,3,4]",
+                last_run: Date.now(),
+                is_waiting: true,
+              },
+              // 3: {
+              //   id: "3",
+              //   code: "xs.map((x) => x * 2)",
+              //   unsaved_code: "xs.map((x) => x * 2)",
+              //   last_run: Date.now(),
+              //   is_waiting: true,
+              // },
+            },
+          },
+        },
+        // "thing.js": {
+        //   filename: "app.js",
+        //   notebook: {
+        //     id: "1",
+        //     cell_order: ["1", "2", "3"],
+        //     cells: {
+        //       1: {
+        //         id: "1",
+        //         type: "text",
+        //         code: "# My notebook",
+        //         unsaved_code: "# My notebook",
+        //         last_run: Date.now(),
+        //         is_waiting: true,
+        //       },
+        //       2: {
+        //         id: "2",
+        //         code: "let xs = [1,2,3,4]",
+        //         unsaved_code: "let xs = [1,2,3,4]",
+        //         last_run: Date.now(),
+        //         is_waiting: true,
+        //       },
+        //       3: {
+        //         id: "3",
+        //         code: "xs.map((x) => x * 2)",
+        //         unsaved_code: "xs.map((x) => x * 2)",
+        //         last_run: Date.now(),
+        //         is_waiting: true,
+        //       },
+        //     },
+        //   },
+        // },
+      },
+    };
+
+    return /** @type {Workspace} */ ({
+      id: plain.id,
+      files: mapValues(plain.files, (file) => {
+        return {
+          filename: file.filename,
+          state: notebook_to_state(file.notebook),
+        };
+      }),
+    });
+  }, []);
+
+  let [workspace, set_workspace] = React.useState(initial_workspace);
+
+  let [open_file, set_open_file] = React.useState("app.js");
 
   return (
-    <div style={{ display: "flex" }}>
-      <SelectionArea
-        on_selection={(new_selected_cells) => {
-          if (!isEqual(new_selected_cells, selected_cells)) {
-            notebook_view.dispatch({
-              effects: SelectCellsEffect.of(new_selected_cells),
-            });
-          }
-        }}
-      >
-        <AppStyle>
-          <CellList
-            notebook_view={notebook_view}
-            notebook={notebook}
-            engine={engine}
-          />
-        </AppStyle>
-        <div style={{ flex: 1 }} />
-      </SelectionArea>
-
-      {open_tab != null && (
-        <div
-          style={{
-            width: 400,
-            backgroundColor: "rgb(45 21 29)",
-            height: "100vh",
-            position: "sticky",
-            top: 0,
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {open_tab === "graph" && <GraphTab dag={dag} />}
-          {open_tab === "dependencies" && <DependenciesTab />}
-          {open_tab === "shell" && <ShellTab />}
-          {open_tab === "meta" && <MetaNotebook />}
-        </div>
-      )}
-      <div
-        style={{
-          flex: "0 0 50px",
-          backgroundColor: "rgba(0,0,0,.4)",
-          height: "100vh",
-          position: "sticky",
-          top: 0,
-
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "stretch",
-          paddingTop: 32,
-          paddingBottom: 32,
-        }}
-      >
-        <MyButton
-          className={open_tab === "graph" ? "active" : ""}
-          onClick={() => {
-            set_open_tab((x) => (x === "graph" ? null : "graph"));
-          }}
-        >
-          <IonIcon icon={gitNetworkOutline} />
-          graph
-        </MyButton>
-        <MyButton
-          className={open_tab === "dependencies" ? "active" : ""}
-          onClick={() => {
-            set_open_tab((x) => (x === "dependencies" ? null : "dependencies"));
-          }}
-        >
-          <IonIcon icon={pizzaOutline} />
-          dependencies
-        </MyButton>
-        <MyButton
-          className={open_tab === "shell" ? "active" : ""}
-          onClick={() => {
-            set_open_tab((x) => (x === "shell" ? null : "shell"));
-          }}
-        >
-          <IonIcon icon={terminalOutline} />
-          shell
-        </MyButton>
-        <MyButton
-          className={open_tab === "meta" ? "active" : ""}
-          onClick={() => {
-            set_open_tab((x) => (x === "meta" ? null : "meta"));
-          }}
-        >
-          <IonIcon icon={iceCreamOutline} />
-          meta
-        </MyButton>
-
-        {/* <ShowKeysPressed /> */}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "stretch",
+      }}
+    >
+      <div>
+        {Object.keys(workspace.files).map((filename) => (
+          <button
+            key={filename}
+            onClick={() => {
+              set_open_file(filename);
+            }}
+          >
+            {filename}
+          </button>
+        ))}
       </div>
+      <File
+        key={open_file}
+        state={workspace.files[open_file].state}
+        // onChange={(state) => {
+        //   set_workspace(
+        //     produce((workspace) => {
+        //       console.log("updating workspace");
+        //       workspace.files[open_file].state = state;
+        //     })
+        //   );
+        // }}
+      />
     </div>
   );
 }

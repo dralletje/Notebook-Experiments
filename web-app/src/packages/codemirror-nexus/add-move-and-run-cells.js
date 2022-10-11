@@ -127,10 +127,10 @@ export let cell_keymap = Prec.high(
         if (view.state.doc.length === 0) {
           view.dispatch({
             effects: [
-              // Remove cell
-              NexusEffect.of(RemoveCellEffect.of({ cell_id: cell_id })),
               // Focus on previous cell
               MoveToCellAboveEffect.of({ start: "end" }),
+              // Remove cell
+              NexusEffect.of(RemoveCellEffect.of({ cell_id: cell_id })),
             ],
           });
           return true;

@@ -14,7 +14,7 @@ import { Cell, CellId, Notebook } from "./notebook-types";
 import immer from "immer";
 import { useDidJustHotReload, useRealMemo } from "use-real-memo";
 import React from "react";
-import { compact, takeWhile, zip, remove } from "lodash";
+import { compact, takeWhile, zip, remove, without } from "lodash";
 import { SingleEventEmitter } from "single-event-emitter";
 import { ViewPlugin } from "@codemirror/view";
 import { invertedEffects } from "@codemirror/commands";
@@ -298,7 +298,7 @@ export let editor_state_for_cell = (cell: Cell, nexus_state: EditorState) => {
       CellHasSelectionField,
 
       TransactionFromNexusToCellEmitterFacet.of(event_emitter),
-      emit_transaction_from_nexus_to_cell_extension,
+      // emit_transaction_from_nexus_to_cell_extension,
 
       ...extensions,
     ],
@@ -421,6 +421,13 @@ export let CellEditorStatesField = StateField.define<{
         if (effect.is(CellDispatchEffect)) {
           let { cell_id, transaction: spec } = effect.value;
           let cell_state = cells[cell_id];
+
+          if (cell_state == null) {
+            // prettier-ignore
+            console.warn(`CellDispatchEffect for Cell(${cell_id}) but no cell state exists`);
+            continue;
+          }
+
           let transaction = cell_state.update(spec);
           transactions_to_send_to_cells.push(transaction);
           cells[cell_id] = transaction.state;
@@ -619,9 +626,9 @@ let updateCellsFromNexus = updateListener.of((viewupdate) => {
     }
     transactions_per_cell.get(emitter)!.push(transaction);
   }
-  for (let [emitter, transactions] of transactions_per_cell) {
-    emitter.emit(transactions);
-  }
+  // for (let [emitter, transactions] of transactions_per_cell) {
+  //   emitter.emit(transactions);
+  // }
 });
 
 export let nested_cell_states_basics = [
@@ -814,4 +821,91 @@ You likely want to wrap that extension in a React.useMemo() call.
   }, [state]);
 
   return { state: state, dispatch: notebook_dispatch };
+};
+
+export class ViewUpdate {
+  constructor(public transactions: Transaction[], public view: NotebookView) {
+    // TODO Check if the transactions are actually in order?
+  }
+  get state() {
+    return this.view.state;
+  }
+  get startState() {
+    return this.transactions.at[0]?.state ?? this.view.state;
+  }
+}
+
+// TODO This now only looks at the transactions linearly, might want to
+// .... add the ability to find "rogue" transactions that deviated (and should be removed)
+let find_transactions_to_apply = (
+  transactions: Transaction[],
+  state: EditorState
+) => {
+  let transactions_to_apply_now = takeWhile(
+    transactions,
+    (transaction) => transaction.startState !== state
+  );
+  return transactions_to_apply_now;
+};
+
+export let useNotebookview = (
+  initial_state: EditorState,
+  on_transaction?: (state: Transaction) => void
+) => {
+  let [state, set_state] = React.useState(initial_state);
+
+  // I feel dirty for using a ref STILL, after all my hard work to get rid of them.
+  let transactions_to_apply_ref = React.useRef<Transaction[]>([]);
+
+  // Used `useEvent` here before, because I wasn't using the setState-render loop to sync the children...
+  // Now that is fixed, I don't need the immediate update stuff anymore... don't need any update actually!
+  // I think `set_notebook_transaction` is completely stable so... cool 😎
+  let notebook_dispatch = React.useCallback(
+    (...transaction_specs: TransactionSpec[]) => {
+      // console.log(`Receiving transaction at nexus:`, transaction_specs);
+      if (transaction_specs.length !== 0) {
+        // Problem with this state mapper is that multiple calls in the same render will cause the other transactions to be swallowed.
+        // So I have to use a ref to store them, and then apply them all in the next render.
+        set_state((state) => {
+          let transaction = state.update(...transaction_specs);
+          on_transaction?.(transaction);
+          transactions_to_apply_ref.current.push(transaction);
+          return transaction.state;
+        });
+      }
+    },
+    [set_state]
+  );
+
+  // To apply the transactions to the view, we need to pass the whole viewupdate down to the codemirror instances.
+  // To do so, we make this viewupdate every render.
+  // It uses the `transactions_to_apply_ref`, which is odd because using a ref in render?
+  // YES!
+  // We want to make sure the childrens `useLayoutEffect`s only apply the transactions once,
+  // and I think this works where I use the ref, and then in this parent useLayoutEffect I clear the ref.
+  let transactions_to_apply_now = find_transactions_to_apply(
+    transactions_to_apply_ref.current,
+    state
+  );
+  let viewupdate = React.useMemo(() => {
+    return new ViewUpdate(transactions_to_apply_now, {
+      state,
+      dispatch: notebook_dispatch,
+    });
+  }, [state]);
+  React.useLayoutEffect(() => {
+    if (viewupdate.transactions.length > 0) {
+      // This will clear the ref from any transactions that I'm sending down now
+      transactions_to_apply_ref.current = without(
+        transactions_to_apply_ref.current,
+        ...viewupdate.transactions
+      );
+      // Trigger `updateListeners.of(...)`, not used right now I think
+      for (let listener of viewupdate.state.facet(updateListener)) {
+        listener(viewupdate);
+      }
+    }
+  }, [viewupdate]);
+
+  return { state: state, viewupdate, dispatch: notebook_dispatch };
 };

@@ -25,11 +25,13 @@ export type CylinderShadow = {
 
 export type CellId = string;
 
-export type Notebook = {
+export type NotebookSerialized = {
   id: string;
   cells: { [key: CellId]: Cell };
   cell_order: CellId[];
 };
+
+export type Notebook = NotebookSerialized;
 
 export type Cell = {
   id: CellId;

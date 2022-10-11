@@ -38,12 +38,14 @@ import {
   CellDispatchEffect,
   CellEditorStatesField,
   CellHasSelectionField,
+  CellIdFacet,
   CellTypeFacet,
   empty_cell,
   FromCellTransactionEffect,
   MoveCellEffect,
   MutateCellMetaEffect,
   RemoveCellEffect,
+  ViewUpdate,
 } from "./NotebookEditor";
 import { basic_markdown_setup } from "./basic-markdown-setup";
 import { StyleModule } from "style-mod";
@@ -303,9 +305,10 @@ export let LastCreatedCells = StateField.define({
  *  notebook: import("./notebook-types").Notebook,
  *  engine: import("./notebook-types").EngineShadow,
  *  notebook_view: import("./NotebookEditor").NotebookView,
+ *  viewupdate: import("./NotebookEditor").ViewUpdate,
  * }} props
  */
-export let CellList = ({ notebook, engine, notebook_view }) => {
+export let CellList = ({ notebook, engine, notebook_view, viewupdate }) => {
   /**
    * Keep track of what cells are just created by the users,
    * so we can animate them in 🤩
@@ -422,23 +425,18 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
                       </ContextMenuWrapper>
                       {notebook_view.state
                         .field(CellEditorStatesField)
-                        .cells[cell.id].facet(CellTypeFacet) === "text" ? (
-                        <TextCell
-                          cell={cell}
-                          editor_state={
-                            notebook_view.state.field(CellEditorStatesField)
-                              .cells[cell.id]
-                          }
-                          notebook={notebook}
-                          did_just_get_created={last_created_cells.includes(
-                            cell.id
-                          )}
-                          dispatch_to_nexus={notebook_view.dispatch}
-                          is_selected={selected_cells.includes(cell.id)}
-                        />
-                      ) : (
+                        .cells[cell.id].facet(CellTypeFacet) ===
+                      "text" ? //   notebook={notebook} //   } //       .cells[cell.id] //     notebook_view.state.field(CellEditorStatesField) //   editor_state={ //   cell={cell} // <TextCell
+                      //   did_just_get_created={last_created_cells.includes(
+                      //     cell.id
+                      //   )}
+                      //   dispatch_to_nexus={notebook_view.dispatch}
+                      //   is_selected={selected_cells.includes(cell.id)}
+                      // />
+                      null : (
                         <Cell
                           cell={cell}
+                          viewupdate={viewupdate}
                           cylinder={engine.cylinders[cell.id]}
                           notebook={notebook}
                           is_selected={selected_cells.includes(cell.id)}
@@ -534,6 +532,7 @@ export let CellList = ({ notebook, engine, notebook_view }) => {
  *  did_just_get_created: boolean,
  *  editor_state: EditorState | void,
  *  dispatch_to_nexus: (tr: import("@codemirror/state").TransactionSpec) => void,
+ *  viewupdate: ViewUpdate,
  * }} props
  */
 export let Cell = ({
@@ -544,6 +543,7 @@ export let Cell = ({
   did_just_get_created,
   editor_state,
   dispatch_to_nexus,
+  viewupdate,
 }) => {
   let initial_editor_state = useRealMemo(() => {
     return editor_state;
@@ -582,8 +582,8 @@ export let Cell = ({
   let cell_wrapper_ref = React.useRef(/** @type {any} */ (null));
   React.useEffect(() => {
     if (did_just_get_created) {
-      console.log(`editorview_ref:`, editorview_ref);
-      // editorview_ref.current.focus();
+      // TODO This should be in extensions some way
+      editorview_ref.current.focus();
       cell_wrapper_ref.current.animate(
         [
           {
@@ -601,6 +601,28 @@ export let Cell = ({
       );
     }
   }, []);
+
+  React.useLayoutEffect(() => {
+    let cell_id = cell.id;
+    // Because we get one `viewupdate` for multiple transactions happening,
+    // and `.transactions_to_send_to_cells` gets cleared after every transactions,
+    // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
+    let cell_transactions = viewupdate.transactions.flatMap((transaction) => {
+      return transaction.state.field(CellEditorStatesField)
+        .transactions_to_send_to_cells;
+    });
+
+    let transaction_for_this_cell = [];
+    for (let transaction of cell_transactions) {
+      if (cell_id === transaction.startState.facet(CellIdFacet)) {
+        transaction_for_this_cell.push(transaction);
+      }
+    }
+    if (transaction_for_this_cell.length > 0) {
+      // console.log(`transaction_for_this_cell:`, transaction_for_this_cell);
+      editorview_ref.current.update(transaction_for_this_cell);
+    }
+  }, [viewupdate]);
 
   if (initial_editor_state == null) {
     throw new Error("HUH");
@@ -668,11 +690,6 @@ export let Cell = ({
           {/* <Extension extension={codemirror_interactive} /> */}
           {/* <Extension extension={debug_syntax_plugin} /> */}
           {/* <Extension extension={inline_notebooks_extension} /> */}
-
-          {/* <Extension
-            key="blur_when_other_cell_focus"
-            extension={blur_when_other_cell_focus}
-          /> */}
           <Extension key="asd" extension={asd} />
         </CodeMirror>
       </EditorStyled>
@@ -770,10 +787,7 @@ export let TextCell = ({
       >
         <Extension key="markdown-setup" extension={basic_markdown_setup} />
         {/* <Extension extension={debug_syntax_plugin} /> */}
-        {/* <Extension
-            key="blur_when_other_cell_focus"
-            extension={blur_when_other_cell_focus}
-          /> */}
+        <Extension extension={CellHasSelectionPlugin} key="oof" />
         <Extension key="cell_keymap" extension={cell_keymap} />
       </CodeMirror>
     </TextCellStyle>
@@ -837,18 +851,31 @@ let TextCellStyle = styled.div`
   h6 {
     display: inline-block;
   }
-  .cm-line:has(h1) {
-    margin-top: 0.2em;
-    margin-bottom: 0.3em;
+  h1 {
+    font-size: 32px;
+
+    .cm-line:has(&) {
+      margin-top: 0.2em;
+      margin-bottom: 0.3em;
+    }
   }
-  .cm-line:has(h2) {
-    margin-top: 0.2em;
-    margin-bottom: 0.2em;
+  h2 {
+    font-size: 24px;
+
+    .cm-line:has(&) {
+      margin-top: 0.2em;
+      margin-bottom: 0.2em;
+    }
   }
-  .cm-line:has(h3) {
-    margin-top: 0.2em;
-    margin-bottom: 0.1em;
+  h3 {
+    font-size: 20px;
+
+    .cm-line:has(&) {
+      margin-top: 0.2em;
+      margin-bottom: 0.1em;
+    }
   }
+
   .header-mark {
     font-variant-numeric: tabular-nums;
     margin-left: calc(-1.8em - 5px);
