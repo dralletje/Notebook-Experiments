@@ -8,9 +8,8 @@ import {
   Transaction,
   TransactionSpec,
   StateEffectType,
-  EditorSelection,
 } from "@codemirror/state";
-import { Cell, CellId, Notebook } from "./notebook-types";
+import { Cell, CellId } from "./notebook-types";
 import immer from "immer";
 import { useDidJustHotReload, useRealMemo } from "use-real-memo";
 import React from "react";
@@ -19,6 +18,16 @@ import { SingleEventEmitter } from "single-event-emitter";
 import { ViewPlugin } from "@codemirror/view";
 import { invertedEffects } from "@codemirror/commands";
 import { v4 as uuidv4 } from "uuid";
+
+/**
+ * So this should be split into two files:
+ * 1. *React x Codemirror Xtreme*
+ *    This is the file that allows using the React lifecycle as EditorView lifecycle.
+ *    Could be part of Codemirror-x-React, but could also be on its own (and be a dependency of Codemirror-x-React ??)
+ * 2. *Nested EditorStates/Cell EditorStates*
+ *    This allows putting EditorStates inside of a parent EditorState, and make transactions and all
+ *    work for it. This would be most that is currently in this file.
+ */
 
 export type NotebookState = EditorState;
 
@@ -831,7 +840,7 @@ export class ViewUpdate {
     return this.view.state;
   }
   get startState() {
-    return this.transactions.at[0]?.state ?? this.view.state;
+    return this.transactions[0]?.state ?? this.view.state;
   }
 }
 
@@ -848,33 +857,39 @@ let find_transactions_to_apply = (
   return transactions_to_apply_now;
 };
 
-export let useNotebookview = (
-  initial_state: EditorState,
-  on_transaction?: (state: Transaction) => void
+/**
+ * So this is a funny function:
+ * It takes a state and a onChange function for the state, but it returns a `ViewUpdate`.
+ * This `ViewUpdate` is not the Codemirror `ViewUpdate`, as it doesn't necessarily have a document, so no `changes` or `docChanged` etc.
+ * But it is a batch of all the "flushed" transactions that happened in to state during this React render.
+ * Updating the state has to go though the `viewupdate.view.dispatch`, or else the view should be reset.
+ */
+export let useViewUpdate = (
+  state: EditorState,
+  on_change: (state: EditorState) => void
 ) => {
-  let [state, set_state] = React.useState(initial_state);
-
   // I feel dirty for using a ref STILL, after all my hard work to get rid of them.
   let transactions_to_apply_ref = React.useRef<Transaction[]>([]);
+  // But now I do use refs, I'll fuckin' use them
+  let current_state = React.useRef(state);
+  current_state.current = state;
 
-  // Used `useEvent` here before, because I wasn't using the setState-render loop to sync the children...
-  // Now that is fixed, I don't need the immediate update stuff anymore... don't need any update actually!
-  // I think `set_notebook_transaction` is completely stable so... cool 😎
+  // Hope that the way I use with refs and all (and not useState) is not a problem?
   let notebook_dispatch = React.useCallback(
     (...transaction_specs: TransactionSpec[]) => {
       // console.log(`Receiving transaction at nexus:`, transaction_specs);
       if (transaction_specs.length !== 0) {
         // Problem with this state mapper is that multiple calls in the same render will cause the other transactions to be swallowed.
         // So I have to use a ref to store them, and then apply them all in the next render.
-        set_state((state) => {
-          let transaction = state.update(...transaction_specs);
-          on_transaction?.(transaction);
-          transactions_to_apply_ref.current.push(transaction);
-          return transaction.state;
-        });
+        let state = current_state.current;
+        let transaction = state.update(...transaction_specs);
+        transactions_to_apply_ref.current.push(transaction);
+        current_state.current = transaction.state;
+
+        on_change(transaction.state);
       }
     },
-    [set_state]
+    [current_state, transactions_to_apply_ref]
   );
 
   // To apply the transactions to the view, we need to pass the whole viewupdate down to the codemirror instances.
@@ -893,6 +908,7 @@ export let useNotebookview = (
       dispatch: notebook_dispatch,
     });
   }, [state]);
+
   React.useLayoutEffect(() => {
     if (viewupdate.transactions.length > 0) {
       // This will clear the ref from any transactions that I'm sending down now
@@ -905,7 +921,7 @@ export let useNotebookview = (
         listener(viewupdate);
       }
     }
-  }, [viewupdate]);
+  }, [viewupdate, transactions_to_apply_ref]);
 
-  return { state: state, viewupdate, dispatch: notebook_dispatch };
+  return viewupdate;
 };

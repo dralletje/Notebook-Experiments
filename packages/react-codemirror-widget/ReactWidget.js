@@ -29,8 +29,6 @@ export class ReactWidget extends WidgetType {
   }
 
   toDOM(view) {
-    console.log("TO DOM!");
-
     this.view = view;
     let span = document.createElement("span");
     let root = createRoot(span);

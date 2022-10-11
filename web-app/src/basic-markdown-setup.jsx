@@ -453,7 +453,6 @@ let search_block_or_inline_decorations = ({
       cursor: cursor,
       enter: (cursor, depth) => {
         if (depth === 0) return;
-        console.log(`depth:`, depth);
         search_block_or_inline_decorations({
           cursor,
           doc,
@@ -523,7 +522,6 @@ let search_block_or_inline_decorations = ({
       cursor: cursor,
       enter: (cursor, depth) => {
         if (depth === 0) return;
-        console.log(`depth:`, depth);
 
         search_block_or_inline_decorations({
           cursor,
@@ -603,7 +601,6 @@ export let basic_markdown_setup = [
 
   EditorView.decorations.compute(["doc"], (state) => {
     let tree = syntaxTree(state);
-    console.log(`tree:`, tree.toString());
     let decorations = [];
 
     iterate_with_cursor({

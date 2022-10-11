@@ -13,43 +13,21 @@ import {
   pizzaOutline,
   terminalOutline,
 } from "ionicons/icons";
-import { EditorState, Facet, StateField } from "@codemirror/state";
+import { Facet } from "@codemirror/state";
 import {
   CellEditorStatesField,
   CellIdFacet,
   CellMetaField,
   CellTypeFacet,
-  editor_state_for_cell,
-  nested_cell_states_basics,
   updateListener,
-  useNotebookview,
-  useNotebookviewWithExtensions,
+  useViewUpdate,
 } from "./NotebookEditor";
-import { useRealMemo } from "use-real-memo";
-import {
-  SelectCellsEffect,
-  SelectedCellsField,
-  selected_cells_keymap,
-} from "./cell-selection";
-import { keymap, runScopeHandlers } from "@codemirror/view";
-import {
-  shared_history,
-  historyKeymap,
-} from "./packages/codemirror-nexus/codemirror-shared-history";
+import { SelectCellsEffect, SelectedCellsField } from "./cell-selection";
+import { runScopeHandlers } from "@codemirror/view";
 import { isEqual, mapValues, sortBy } from "lodash";
-import {
-  CellIdOrder,
-  cell_movement_extension_default,
-} from "./packages/codemirror-nexus/codemirror-cell-movement";
-import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
-import { ShowKeysPressed } from "./ShowKeys";
+import { CellIdOrder } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { MetaNotebook } from "./MetaNotebook";
 import { SelectionArea } from "./selection-area/SelectionArea";
-import { blur_stuff } from "./blur-stuff";
-import {
-  create_worker,
-  post_message,
-} from "./packages/babel-worker/babel-worker";
 
 // let worker = create_worker();
 // console.log(`worker:`, worker);
@@ -196,8 +174,8 @@ let UpdateLocalStorage = updateListener.of((viewupdate) => {
   );
 });
 
-export function File({ state }) {
-  let { viewupdate } = useNotebookview(state);
+export function File({ state, onChange }) {
+  let viewupdate = useViewUpdate(state, onChange);
 
   let cell_editor_states = state.field(CellEditorStatesField);
 

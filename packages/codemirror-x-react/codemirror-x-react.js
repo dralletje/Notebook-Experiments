@@ -1,37 +1,14 @@
 import React, { useLayoutEffect, useRef, useMemo } from "react";
-import _, { compact, takeWhile, zip } from "lodash";
+import { compact, takeWhile, zip } from "lodash";
 import styled from "styled-components";
 
 import {
   EditorState,
   Compartment,
   StateEffect,
-  Facet,
   Transaction,
 } from "@codemirror/state";
-import {
-  keymap,
-  EditorView,
-  highlightSpecialChars,
-  drawSelection,
-  placeholder,
-} from "@codemirror/view";
-import {
-  defaultKeymap,
-  history,
-  historyKeymap,
-  indentLess,
-  indentMore,
-} from "@codemirror/commands";
-import {
-  indentOnInput,
-  foldKeymap,
-  bracketMatching,
-} from "@codemirror/language";
-import { highlightSelectionMatches } from "@codemirror/search";
-import { closeBrackets } from "@codemirror/autocomplete";
-
-import { collab } from "@codemirror/collab";
+import { EditorView } from "@codemirror/view";
 import { useDidJustHotReload, useRealMemo } from "use-real-memo";
 
 /** @type {React.Context<(...spec: any[]) => void>} */

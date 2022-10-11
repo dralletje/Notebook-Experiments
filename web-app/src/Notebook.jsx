@@ -31,7 +31,7 @@ import {
 
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
 import { basic_javascript_setup } from "./codemirror-javascript-setup";
-import { useRealMemo } from "use-real-memo";
+import { useDidJustHotReload, useRealMemo } from "use-real-memo";
 import { SelectCellsEffect, SelectedCellsField } from "./cell-selection";
 import {
   AddCellEffect,
@@ -425,29 +425,24 @@ export let CellList = ({ notebook, engine, notebook_view, viewupdate }) => {
                       </ContextMenuWrapper>
                       {notebook_view.state
                         .field(CellEditorStatesField)
-                        .cells[cell.id].facet(CellTypeFacet) ===
-                      "text" ? //   notebook={notebook} //   } //       .cells[cell.id] //     notebook_view.state.field(CellEditorStatesField) //   editor_state={ //   cell={cell} // <TextCell
-                      //   did_just_get_created={last_created_cells.includes(
-                      //     cell.id
-                      //   )}
-                      //   dispatch_to_nexus={notebook_view.dispatch}
-                      //   is_selected={selected_cells.includes(cell.id)}
-                      // />
-                      null : (
-                        <Cell
+                        .cells[cell.id].facet(CellTypeFacet) === "text" ? (
+                        <TextCell
                           cell={cell}
                           viewupdate={viewupdate}
-                          cylinder={engine.cylinders[cell.id]}
-                          notebook={notebook}
                           is_selected={selected_cells.includes(cell.id)}
                           did_just_get_created={last_created_cells.includes(
                             cell.id
                           )}
-                          editor_state={
-                            notebook_view.state.field(CellEditorStatesField)
-                              .cells[cell.id]
-                          }
-                          dispatch_to_nexus={notebook_view.dispatch}
+                        />
+                      ) : (
+                        <Cell
+                          cell={cell}
+                          viewupdate={viewupdate}
+                          cylinder={engine.cylinders[cell.id]}
+                          is_selected={selected_cells.includes(cell.id)}
+                          did_just_get_created={last_created_cells.includes(
+                            cell.id
+                          )}
                         />
                       )}
                     </CellContainer>
@@ -523,39 +518,90 @@ export let CellList = ({ notebook, engine, notebook_view, viewupdate }) => {
   );
 };
 
+// TODO Should be part of NotebookEditor
+export let NestedCodemirror = React.forwardRef(
+  (
+    /** @type {{ viewupdate: ViewUpdate, cell_id: import("./notebook-types").CellId, children: React.ReactNode }} */ {
+      viewupdate,
+      cell_id,
+      children,
+    },
+    /** @type {import("react").ForwardedRef<EditorView>} */ _ref
+  ) => {
+    let initial_editor_state = React.useRef(
+      viewupdate.startState.field(CellEditorStatesField).cells[cell_id]
+    ).current;
+
+    // prettier-ignore
+    let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
+    React.useImperativeHandle(_ref, () => editorview_ref.current);
+
+    // prettier-ignore
+    let last_viewupdate_ref = React.useRef(/** @type {ViewUpdate} */ (/** @type {any} */ (null)));
+    React.useLayoutEffect(() => {
+      // Make sure we don't update from the same viewupdate twice
+      if (last_viewupdate_ref.current === viewupdate) {
+        return;
+      }
+      last_viewupdate_ref.current = viewupdate;
+
+      // Because we get one `viewupdate` for multiple transactions happening,
+      // and `.transactions_to_send_to_cells` gets cleared after every transactions,
+      // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
+      let cell_transactions = viewupdate.transactions.flatMap((transaction) => {
+        return transaction.state.field(CellEditorStatesField)
+          .transactions_to_send_to_cells;
+      });
+
+      let transaction_for_this_cell = [];
+      for (let transaction of cell_transactions) {
+        if (transaction.startState.facet(CellIdFacet) == cell_id) {
+          transaction_for_this_cell.push(transaction);
+        }
+      }
+      if (transaction_for_this_cell.length > 0) {
+        editorview_ref.current.update(transaction_for_this_cell);
+      }
+    }, [viewupdate]);
+
+    return (
+      <CodeMirror
+        state={initial_editor_state}
+        ref={editorview_ref}
+        dispatch={(transactions, editorview) => {
+          // editorview.update([tr]);
+          viewupdate.view.dispatch({
+            effects: transactions.map((tr) =>
+              CellDispatchEffect.of({
+                cell_id: cell_id,
+                transaction: tr,
+              })
+            ),
+          });
+        }}
+      >
+        {children}
+      </CodeMirror>
+    );
+  }
+);
+
 /**
  * @param {{
  *  cell: import("./notebook-types").Cell,
  *  cylinder: import("./notebook-types").CylinderShadow,
- *  notebook: import("./notebook-types").Notebook,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
- *  editor_state: EditorState | void,
- *  dispatch_to_nexus: (tr: import("@codemirror/state").TransactionSpec) => void,
  *  viewupdate: ViewUpdate,
  * }} props
  */
 export let Cell = ({
   cell,
   cylinder = engine_cell_from_notebook_cell(cell),
-  notebook,
   is_selected,
   did_just_get_created,
-  editor_state,
-  dispatch_to_nexus,
   viewupdate,
 }) => {
-  let initial_editor_state = useRealMemo(() => {
-    return editor_state;
-  }, []);
-  // let initial_editor_state = useRealMemo(() => {
-  //   let _editor_state = /** @type {EditorState} */ (editor_state);
-  //   return EditorState.create({
-  //     doc: _editor_state.doc.toString(),
-  //     extensions: [],
-  //   });
-  // }, []);
-
   // prettier-ignore
   let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
 
@@ -602,32 +648,6 @@ export let Cell = ({
     }
   }, []);
 
-  React.useLayoutEffect(() => {
-    let cell_id = cell.id;
-    // Because we get one `viewupdate` for multiple transactions happening,
-    // and `.transactions_to_send_to_cells` gets cleared after every transactions,
-    // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
-    let cell_transactions = viewupdate.transactions.flatMap((transaction) => {
-      return transaction.state.field(CellEditorStatesField)
-        .transactions_to_send_to_cells;
-    });
-
-    let transaction_for_this_cell = [];
-    for (let transaction of cell_transactions) {
-      if (cell_id === transaction.startState.facet(CellIdFacet)) {
-        transaction_for_this_cell.push(transaction);
-      }
-    }
-    if (transaction_for_this_cell.length > 0) {
-      // console.log(`transaction_for_this_cell:`, transaction_for_this_cell);
-      editorview_ref.current.update(transaction_for_this_cell);
-    }
-  }, [viewupdate]);
-
-  if (initial_editor_state == null) {
-    throw new Error("HUH");
-  }
-
   return (
     <CellStyle
       ref={cell_wrapper_ref}
@@ -664,20 +684,10 @@ export let Cell = ({
           marginTop: cell.folded ? 0 : undefined,
         }}
       >
-        <CodeMirror
-          state={initial_editor_state}
+        <NestedCodemirror
           ref={editorview_ref}
-          dispatch={(transactions, editorview) => {
-            // editorview.update([tr]);
-            dispatch_to_nexus({
-              effects: transactions.map((tr) =>
-                CellDispatchEffect.of({
-                  cell_id: cell.id,
-                  transaction: tr,
-                })
-              ),
-            });
-          }}
+          cell_id={cell.id}
+          viewupdate={viewupdate}
         >
           <Extension
             key="basic-javascript-setup"
@@ -691,7 +701,7 @@ export let Cell = ({
           {/* <Extension extension={debug_syntax_plugin} /> */}
           {/* <Extension extension={inline_notebooks_extension} /> */}
           <Extension key="asd" extension={asd} />
-        </CodeMirror>
+        </NestedCodemirror>
       </EditorStyled>
     </CellStyle>
   );
@@ -709,24 +719,17 @@ let asd = [
 /**
  * @param {{
  *  cell: import("./notebook-types").Cell,
- *  notebook: import("./notebook-types").Notebook,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
- *  editor_state: EditorState | void,
- *  dispatch_to_nexus: (tr: import("@codemirror/state").TransactionSpec) => void,
+ *  viewupdate: ViewUpdate,
  * }} props
  */
 export let TextCell = ({
   cell,
-  notebook,
   is_selected,
   did_just_get_created,
-  editor_state,
-  dispatch_to_nexus,
+  viewupdate,
 }) => {
-  let initial_editor_state = useRealMemo(() => {
-    return editor_state;
-  }, []);
   // prettier-ignore
   let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
 
@@ -753,10 +756,6 @@ export let TextCell = ({
     }
   }, []);
 
-  if (initial_editor_state == null) {
-    throw new Error("HUH");
-  }
-
   return (
     <TextCellStyle
       ref={cell_wrapper_ref}
@@ -766,30 +765,16 @@ export let TextCell = ({
         is_selected && "selected",
       ]).join(" ")}
     >
-      <CodeMirror
-        state={initial_editor_state}
+      <NestedCodemirror
         ref={editorview_ref}
-        dispatch={(transactions, editorview) => {
-          dispatch_to_nexus({
-            effects: transactions.map((tr) =>
-              tr instanceof Transaction
-                ? FromCellTransactionEffect.of({
-                    cell_id: cell.id,
-                    transaction: tr,
-                  })
-                : CellDispatchEffect.of({
-                    cell_id: cell.id,
-                    transaction: tr,
-                  })
-            ),
-          });
-        }}
+        cell_id={cell.id}
+        viewupdate={viewupdate}
       >
         <Extension key="markdown-setup" extension={basic_markdown_setup} />
         {/* <Extension extension={debug_syntax_plugin} /> */}
         <Extension extension={CellHasSelectionPlugin} key="oof" />
         <Extension key="cell_keymap" extension={cell_keymap} />
-      </CodeMirror>
+      </NestedCodemirror>
     </TextCellStyle>
   );
 };

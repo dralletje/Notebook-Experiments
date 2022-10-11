@@ -196,37 +196,37 @@ function App() {
             },
           },
         },
-        // "thing.js": {
-        //   filename: "app.js",
-        //   notebook: {
-        //     id: "1",
-        //     cell_order: ["1", "2", "3"],
-        //     cells: {
-        //       1: {
-        //         id: "1",
-        //         type: "text",
-        //         code: "# My notebook",
-        //         unsaved_code: "# My notebook",
-        //         last_run: Date.now(),
-        //         is_waiting: true,
-        //       },
-        //       2: {
-        //         id: "2",
-        //         code: "let xs = [1,2,3,4]",
-        //         unsaved_code: "let xs = [1,2,3,4]",
-        //         last_run: Date.now(),
-        //         is_waiting: true,
-        //       },
-        //       3: {
-        //         id: "3",
-        //         code: "xs.map((x) => x * 2)",
-        //         unsaved_code: "xs.map((x) => x * 2)",
-        //         last_run: Date.now(),
-        //         is_waiting: true,
-        //       },
-        //     },
-        //   },
-        // },
+        "thing.js": {
+          filename: "app.js",
+          notebook: {
+            id: "1",
+            cell_order: ["1", "2", "3"],
+            cells: {
+              1: {
+                id: "1",
+                type: "text",
+                code: "# My notebook",
+                unsaved_code: "# My notebook",
+                last_run: Date.now(),
+                is_waiting: true,
+              },
+              2: {
+                id: "2",
+                code: "let xs = [1,2,3,4]",
+                unsaved_code: "let xs = [1,2,3,4]",
+                last_run: Date.now(),
+                is_waiting: true,
+              },
+              3: {
+                id: "3",
+                code: "xs.map((x) => x * 2)",
+                unsaved_code: "xs.map((x) => x * 2)",
+                last_run: Date.now(),
+                is_waiting: true,
+              },
+            },
+          },
+        },
       },
     };
 
@@ -268,14 +268,13 @@ function App() {
       <File
         key={open_file}
         state={workspace.files[open_file].state}
-        // onChange={(state) => {
-        //   set_workspace(
-        //     produce((workspace) => {
-        //       console.log("updating workspace");
-        //       workspace.files[open_file].state = state;
-        //     })
-        //   );
-        // }}
+        onChange={(state) => {
+          set_workspace(
+            produce((workspace) => {
+              workspace.files[open_file].state = state;
+            })
+          );
+        }}
       />
     </div>
   );
