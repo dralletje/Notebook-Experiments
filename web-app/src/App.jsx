@@ -45,16 +45,6 @@ import { NotebookFilename, NotebookId } from "./notebook-types";
 //   console.log(`x:`, x);
 // });
 
-let LOCALSTORAGE_WORKSPACE_KEY = "__workspace";
-
-let try_json = (str) => {
-  try {
-    return JSON.parse(str);
-  } catch (error) {
-    return null;
-  }
-};
-
 let cell_id_order_from_notebook_facet = CellIdOrder.compute(
   [CellEditorStatesField],
   (state) => state.field(CellEditorStatesField).cell_order
@@ -153,83 +143,65 @@ let serialized_workspace_to_workspace = (serialized) => {
   });
 };
 
+let FileTab = styled.button`
+  background: none;
+  border: none;
+
+  padding-left: 24px;
+  padding-right: 24px;
+
+  &[aria-selected="true"] {
+    background: white;
+    color: black;
+  }
+  &:not([aria-selected="true"]):hover {
+    background: black;
+    color: white;
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-decoration-skip-ink: none;
+    /* text-underline-position: under; */
+  }
+`;
+
 function App() {
-  let initial_workspace = React.useMemo(() => {
-    let plain = /** @type {WorkspaceSerialized} */ (
-      try_json(localStorage.getItem(LOCALSTORAGE_WORKSPACE_KEY))
-    ) ?? {
-      id: "1",
-      files: {
-        "app.js": {
-          filename: "app.js",
-          notebook: {
-            id: "1",
-            // cell_order: ["1", "2", "3"],
-            cell_order: ["2"],
-            cells: {
-              // 1: {
-              //   id: "1",
-              //   type: "text",
-              //   code: "# My notebook",
-              //   unsaved_code: "# My notebook",
-              //   last_run: Date.now(),
-              //   is_waiting: true,
-              // },
-              2: {
-                id: "2",
-                code: "let xs = [1,2,3,4]",
-                unsaved_code: "let xs = [1,2,3,4]",
-                last_run: Date.now(),
-                is_waiting: true,
-              },
-              // 3: {
-              //   id: "3",
-              //   code: "xs.map((x) => x * 2)",
-              //   unsaved_code: "xs.map((x) => x * 2)",
-              //   last_run: Date.now(),
-              //   is_waiting: true,
-              // },
-            },
-          },
-        },
-        "thing.js": {
-          filename: "thing.js",
-          notebook: {
-            id: "3",
-            cell_order: ["1", "2", "3"],
-            cells: {
-              1: {
-                id: "1",
-                type: "text",
-                code: "# My notebook",
-                unsaved_code: "# My notebook",
-                last_run: Date.now(),
-                is_waiting: true,
-              },
-              2: {
-                id: "2",
-                code: "let xs = [1,2,3,4]",
-                unsaved_code: "let xs = [1,2,3,4]",
-                last_run: Date.now(),
-                is_waiting: true,
-              },
-              3: {
-                id: "3",
-                code: "xs.map((x) => x * 2)",
-                unsaved_code: "xs.map((x) => x * 2)",
-                last_run: Date.now(),
-                is_waiting: true,
-              },
-            },
-          },
-        },
-      },
-    };
+  // {
+  //   id: "1",
+  //   files: {
+  //     "app.js": {
+  //       filename: "app.js",
+  //       notebook: {
+  //         id: "1",
+  //         // cell_order: ["1", "2", "3"],
+  //         cells: {
+  //           1: {
+  //             id: "1",
+  //             type: "text",
+  //             code: "# My notebook",
+  //             unsaved_code: "# My notebook",
+  //             last_run: Date.now(),
+  //             is_waiting: true,
+  //           },
+  //           2: {
+  //             id: "2",
+  //             code: "let xs = [1,2,3,4]",
+  //             unsaved_code: "let xs = [1,2,3,4]",
+  //             last_run: Date.now(),
+  //             is_waiting: true,
+  //           },
+  //           3: {
+  //             id: "3",
+  //             code: "xs.map((x) => x * 2)",
+  //             unsaved_code: "xs.map((x) => x * 2)",
+  //             last_run: Date.now(),
+  //             is_waiting: true,
+  //           },
+  //         },
+  //       },
+  //     }
+  //   }
+  // }
 
-    return serialized_workspace_to_workspace(plain);
-  }, []);
-
-  // let [workspace, set_workspace] = React.useState(initial_workspace);
   let [workspace, set_workspace] = React.useState(
     /** @type {Workspace | null} */ (null)
   );
@@ -258,16 +230,29 @@ function App() {
         alignItems: "stretch",
       }}
     >
-      <div>
+      <div
+        style={{
+          height: 50,
+          position: "sticky",
+          top: 0,
+          backgroundColor: "black",
+          zIndex: 1,
+
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "stretch",
+        }}
+      >
         {Object.keys(workspace.files).map((filename) => (
-          <button
+          <FileTab
             key={filename}
+            aria-selected={filename === open_file}
             onClick={() => {
               set_open_file(filename);
             }}
           >
             {filename}
-          </button>
+          </FileTab>
         ))}
       </div>
       <File

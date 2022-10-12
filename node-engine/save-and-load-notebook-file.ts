@@ -49,6 +49,10 @@ let get_markdown_cells_before = (notebook: Notebook, index: number) => {
 export let notebook_to_string = (notebook: Notebook) => {
   let result = "";
 
+  result += format_toml_block({
+    DRAL_NOTEBOOK_VERSION: "0.0.1",
+  });
+
   // Add empty `export {}` so my typescript knows it is a module
   result += "export {};\n\n";
 
@@ -105,6 +109,8 @@ let un_body = (string: string) => {
   return string.replace(/^\/\/ ╠═╡ /gm, "");
 };
 
+export class NotNotebookError extends Error {}
+
 export let notebook_from_string = (string: string): Notebook => {
   let blocks = string.split(`${OPEN} `).slice(1);
   let configs = [];
@@ -123,6 +129,10 @@ ${TOML.stringify({ code })}
   }
 
   let config = merge({}, ...configs);
+
+  if (config.DRAL_NOTEBOOK_VERSION == null) {
+    throw new NotNotebookError();
+  }
 
   return {
     cell_order: config["Cell Order"]["Cell Order"],

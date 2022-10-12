@@ -43,7 +43,7 @@ import { NotebookFilename, NotebookId } from "./notebook-types";
 // });
 
 let AppStyle = styled.div`
-  padding-top: 100px;
+  padding-top: 50px;
   min-height: 100vh;
   padding-bottom: 100px;
   margin-right: 20px;
@@ -288,7 +288,7 @@ export function File({ state, onChange, socket }) {
   let selected_cells = viewupdate.state.field(SelectedCellsField);
 
   return (
-    <div style={{ display: "flex", flex: 1 }}>
+    <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
       <SelectionArea
         on_selection={(new_selected_cells) => {
           if (!isEqual(new_selected_cells, selected_cells)) {
@@ -330,9 +330,9 @@ export function File({ state, onChange, socket }) {
         style={{
           flex: "0 0 50px",
           backgroundColor: "rgba(0,0,0,.4)",
-          height: "100vh",
+          height: "calc(100vh - 50px)",
           position: "sticky",
-          top: 0,
+          top: 50,
 
           display: "flex",
           flexDirection: "column",

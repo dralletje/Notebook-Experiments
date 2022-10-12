@@ -9,7 +9,11 @@ import { mapValues, throttle } from "lodash-es";
 
 import serialize from "./serialize.js";
 import { notebook_step, topological_sort_notebook } from "./notebook-step.js";
-import { load_notebook, save_notebook } from "./save-and-load-notebook-file.js";
+import {
+  load_notebook,
+  NotNotebookError,
+  save_notebook,
+} from "./save-and-load-notebook-file.js";
 
 import { readdir } from "node:fs/promises";
 
@@ -157,7 +161,15 @@ io.on("connection", (socket) => {
     for (let file of files) {
       if (file === "__cell_environment.js") continue;
       if (file.endsWith(".js") || file.endsWith(".ts")) {
-        workspace.files[file] = await load_notebook(DIRECTORY, file);
+        try {
+          workspace.files[file] = await load_notebook(DIRECTORY, file);
+        } catch (error) {
+          if (error instanceof NotNotebookError) {
+            // Fine
+          } else {
+            throw error;
+          }
+        }
       }
     }
     socket.emit("load-workspace-from-directory", workspace);

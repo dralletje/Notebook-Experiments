@@ -87,8 +87,6 @@ let CellHasSelectionPlugin = [
 
 export let EditorStyled = styled.div`
   background-color: rgba(0, 0, 0, 0.4);
-  margin-top: 8px;
-
   & .cm-content {
     padding: 16px !important;
   }
@@ -275,6 +273,37 @@ let ContextMenuItem = ({ icon, label, shortcut }) => {
   );
 };
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+          }}
+        >
+          Error
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export let LastCreatedCells = StateField.define({
   create() {
     return /** @type {import("./notebook-types").CellId[]} */ ([]);
@@ -412,29 +441,32 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                           className="drag-handle"
                         />
                       </ContextMenuWrapper>
-                      {nexus_editorview.state
-                        .field(CellEditorStatesField)
-                        .cells[cell.id].facet(CellTypeFacet) === "text" ? (
-                        <TextCellMemo
-                          cell={cell}
-                          viewupdate={viewupdate}
-                          is_selected={selected_cells.includes(cell.id)}
-                          cell_id={cell.id}
-                          did_just_get_created={last_created_cells.includes(
-                            cell.id
-                          )}
-                        />
-                      ) : (
-                        <CellMemo
-                          viewupdate={viewupdate}
-                          cylinder={engine.cylinders[cell.id]}
-                          is_selected={selected_cells.includes(cell.id)}
-                          cell_id={cell.id}
-                          did_just_get_created={last_created_cells.includes(
-                            cell.id
-                          )}
-                        />
-                      )}
+
+                      <ErrorBoundary>
+                        {nexus_editorview.state
+                          .field(CellEditorStatesField)
+                          .cells[cell.id].facet(CellTypeFacet) === "text" ? (
+                          <TextCellMemo
+                            cell={cell}
+                            viewupdate={viewupdate}
+                            is_selected={selected_cells.includes(cell.id)}
+                            cell_id={cell.id}
+                            did_just_get_created={last_created_cells.includes(
+                              cell.id
+                            )}
+                          />
+                        ) : (
+                          <CellMemo
+                            viewupdate={viewupdate}
+                            cylinder={engine.cylinders[cell.id]}
+                            is_selected={selected_cells.includes(cell.id)}
+                            cell_id={cell.id}
+                            did_just_get_created={last_created_cells.includes(
+                              cell.id
+                            )}
+                          />
+                        )}
+                      </ErrorBoundary>
                     </CellContainer>
                   </Flipped>
                 )}
@@ -559,7 +591,6 @@ export let NestedCodemirror = React.forwardRef(
         state={initial_editor_state}
         ref={editorview_ref}
         dispatch={(transactions, editorview) => {
-          // editorview.update([tr]);
           viewupdate.view.dispatch({
             effects: transactions.map((tr) =>
               CellDispatchEffect.of({
@@ -580,10 +611,43 @@ let AAAAA = styled.div`
   & .cm-editor {
     border: none !important;
   }
+  & .cm-scroller {
+    padding-bottom: 8px;
+  }
+  .folded & .cm-scroller {
+    padding-bottom: 0px;
+  }
+
+  & .sticky-left {
+    position: sticky;
+    left: 4px;
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+
+      left: -4px;
+      background-color: hsl(0deg 0% 7%);
+    }
+  }
+  & .sticky-right {
+    position: sticky;
+    right: 2px;
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+
+      right: -2px;
+      background-color: hsl(0deg 0% 7%);
+    }
+  }
 `;
 let PlaceInsideExpression = ({ expression, children }) => {
-  let [first, last] = expression.split("__RESULT_PLACEHOLDER__");
-
   let state = React.useMemo(() => {
     return EditorState.create({
       doc: expression,
@@ -602,16 +666,31 @@ let PlaceInsideExpression = ({ expression, children }) => {
       let placeholder_index = state.doc
         .toString()
         .indexOf("__RESULT_PLACEHOLDER__");
-      console.log(`placeholder_index:`, placeholder_index);
+
       if (placeholder_index >= 0) {
-        return Decoration.set([
-          Decoration.replace({
-            widget: new ReactWidget(children),
-          }).range(
-            placeholder_index,
-            placeholder_index + "__RESULT_PLACEHOLDER__".length
-          ),
-        ]);
+        return Decoration.set(
+          compact([
+            placeholder_index === 0
+              ? null
+              : Decoration.mark({ class: "sticky-left" }).range(
+                  0,
+                  placeholder_index
+                ),
+            Decoration.replace({
+              widget: new ReactWidget(children),
+            }).range(
+              placeholder_index,
+              placeholder_index + "__RESULT_PLACEHOLDER__".length
+            ),
+            placeholder_index + "__RESULT_PLACEHOLDER__".length ===
+            state.doc.length
+              ? null
+              : Decoration.mark({ class: "sticky-right" }).range(
+                  placeholder_index + "__RESULT_PLACEHOLDER__".length,
+                  state.doc.length
+                ),
+          ])
+        );
       }
       return Decoration.set([]);
     });
@@ -752,7 +831,6 @@ export let Cell = ({
           {/* <Extension extension={codemirror_interactive} /> */}
           {/* <Extension extension={debug_syntax_plugin} /> */}
           {/* <Extension extension={inline_notebooks_extension} /> */}
-          <Extension key="asd" extension={asd} />
         </NestedCodemirror>
       </EditorStyled>
     </CellStyle>
@@ -779,15 +857,6 @@ let CellMemo = React.memo(
     );
   }
 );
-
-let asd = [
-  EditorView.domEventHandlers({
-    focus: (view, event) => {
-      // console.log(`FOCUS`, view, event);
-    },
-  }),
-  EditorView.updateListener.of((update) => {}),
-];
 
 /**
  * @param {{
@@ -904,270 +973,6 @@ let TextCellStyle = styled.div`
   .dragging & {
     --prexisting-transform: translateX(-2px) translateY(-2px);
     animation: shake 0.2s ease-in-out infinite alternate;
-  }
-
-  --accent-color: rgba(200, 0, 0);
-  accent-color: var(--accent-color);
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    display: inline-block;
-  }
-  h1 {
-    font-size: 32px;
-
-    .cm-line:has(&) {
-      margin-top: 0.2em;
-      margin-bottom: 0.3em;
-    }
-  }
-  h2 {
-    font-size: 24px;
-
-    .cm-line:has(&) {
-      margin-top: 0.2em;
-      margin-bottom: 0.2em;
-    }
-  }
-  h3 {
-    font-size: 20px;
-
-    .cm-line:has(&) {
-      margin-top: 0.2em;
-      margin-bottom: 0.1em;
-    }
-  }
-
-  .header-mark {
-    font-variant-numeric: tabular-nums;
-    margin-left: calc(-1.8em - 5px);
-    opacity: 0.3;
-    font-size: 0.8em;
-    display: inline-block;
-
-    &.header-mark-h1 {
-      margin-right: 5px;
-      margin-left: calc(-1.8em - 6px);
-    }
-    &.header-mark-h2 {
-      margin-right: 7px;
-    }
-    &.header-mark-h3 {
-      margin-right: 9px;
-    }
-    &.header-mark-h4 {
-      margin-right: 10px;
-    }
-    &.header-mark-h5 {
-      margin-right: 11px;
-    }
-    &.header-mark-h6 {
-      margin-right: 12px;
-    }
-  }
-
-  .link-mark {
-    opacity: 0.5;
-  }
-  .link-mark,
-  .link-mark .link {
-    color: white;
-  }
-  .link {
-    color: var(--accent-color);
-  }
-  .url,
-  .url .link {
-    color: white;
-    opacity: 0.5;
-  }
-
-  .cm-line.list-item:has(.list-mark) {
-    margin-left: -1em;
-  }
-  .cm-line.order-list-item:has(.list-mark) {
-    margin-left: -1em;
-  }
-  .cm-line.list-item:not(:has(.list-mark)) {
-    /* Most likely need to tweak this for other em's */
-    /* margin-left: 5px; */
-  }
-  .cm-line.list-item {
-    margin-top: 0.3em;
-    /* margin-bottom: 0.3em; */
-  }
-  .cm-line.list-item + .cm-line.list-item {
-    margin-top: 0;
-  }
-  /* .cm-line.list-item:has(+ .cm-line.list-item) {
-    margin-bottom: 0;
-  } */
-
-  .list-mark {
-    color: transparent;
-    width: 1em;
-    display: inline-block;
-  }
-  .list-item:not(:has(.task-marker)) .list-mark::before {
-    content: "-";
-    position: absolute;
-    /* top: 0; */
-    transform: translateY(-4px);
-    font-size: 1.2em;
-    color: var(--accent-color);
-  }
-  .order-list-item:not(:has(.task-marker)) .list-mark::before {
-    content: unset;
-  }
-  .order-list-item:not(:has(.task-marker)) .list-mark {
-    color: var(--accent-color);
-  }
-
-  .task-marker {
-    margin-left: -25px;
-  }
-
-  .hard-break::after {
-    content: "⏎";
-    color: rgba(255, 255, 255, 0.2);
-  }
-  .hr {
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    display: inline-block;
-    width: 100%;
-    vertical-align: middle;
-  }
-
-  /* .blockquote.cm-line {
-    margin-left: -1em;
-  } */
-  .quote-mark {
-    color: transparent;
-    font-size: 0;
-    display: inline-block;
-    position: relative;
-  }
-  .blockquote {
-    position: relative;
-  }
-  .blockquote::before {
-    content: "";
-    position: absolute;
-    margin-left: 0.2em;
-    pointer-events: none;
-    font-size: 1.2em;
-    background-color: rgba(200, 0, 0);
-    width: 0.16em;
-    top: 0;
-    bottom: 0;
-    left: -0.6em;
-  }
-
-  .emoji {
-    color: var(--accent-color);
-    font-style: italic;
-  }
-
-  .emphasis-mark {
-    opacity: 0.5;
-  }
-  .strikethrough-mark {
-    text-decoration: line-through;
-    text-decoration-color: transparent;
-    opacity: 0.5;
-  }
-
-  .strikethrough {
-    text-decoration: line-through;
-  }
-  .emphasis {
-    font-style: italic;
-  }
-  .strong-emphasis {
-    font-weight: bold;
-  }
-
-  /* I apply this to the line because else the line will stay high, making
-     the code look really fragile */
-  .cm-line:has(.html) {
-    font-size: 0.8em;
-    color: #2fbf00;
-  }
-  .html-previous-toggle {
-    position: absolute;
-    transform: translateX(-100%) translateX(-10px) translateY(5px);
-    font-size: 0.8em;
-    color: #2fbf00;
-    opacity: 0.5;
-  }
-  .html-previous-toggle:hover {
-    opacity: 1;
-    cursor: pointer;
-  }
-
-  .fenced-code {
-  }
-  .code-text {
-    font-size: 0.9em;
-    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-      monospace;
-  }
-  .code-mark {
-    opacity: 0.5;
-  }
-  .inline-code {
-    font-size: 0.9em;
-    outline: 1px solid #ffffff36;
-    display: inline-block;
-    padding: 0 5px;
-    margin: 0 4px;
-    border-radius: 2px;
-  }
-  /* .inline-code:first-child {
-    margin-left: -5px;
-  } */
-
-  .cm-line.has-fenced-code {
-    border: solid 1px #ffffff36;
-    border-radius: 5px;
-  }
-  .cm-line.has-fenced-code + .cm-line.has-fenced-code {
-    border-top: none;
-    border-top-right-radius: 0;
-    border-top-left-radius: 0;
-  }
-  .cm-line.has-fenced-code:has(+ .cm-line.has-fenced-code) {
-    border-bottom: none;
-    border-bottom-right-radius: 0;
-    border-bottom-left-radius: 0;
-  }
-
-  /* Table */
-  .table {
-    color: white;
-  }
-  .cm-line:has(.table) {
-    background-color: #ffffff0a;
-  }
-  .table-header {
-    font-weight: bold;
-  }
-  .table-delimiter {
-    opacity: 0.5;
-  }
-
-  .html-tag * {
-    color: #2fbf00;
-  }
-  .comment-block {
-    opacity: 0.5;
-  }
-  .processing-instruction-block {
-    color: #2fbf00;
   }
 `;
 

@@ -13,6 +13,8 @@ body {
   /* Tiny bit nicer default for experiments.. should be overridden! */
   background-color: #121212;
   color: white;
+
+  overscroll-behavior: none;
 }
 
 code {

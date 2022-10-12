@@ -1,11 +1,5 @@
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import {
-  HighlightStyle,
-  indentUnit,
-  syntaxHighlighting,
-  syntaxTree,
-} from "@codemirror/language";
-import { tags } from "@lezer/highlight";
+import { indentUnit, syntaxTree } from "@codemirror/language";
 
 import {
   EditorState,
@@ -17,6 +11,7 @@ import {
   StateEffect,
   StateEffectType,
   MapMode,
+  Text,
 } from "@codemirror/state";
 import {
   Decoration,
@@ -34,19 +29,231 @@ import React from "react";
 import emoji from "node-emoji";
 
 import { IonIcon } from "@ionic/react";
-import {
-  codeOutline,
-  eyeOutline,
-  eye,
-  planetOutline,
-  textOutline,
-} from "ionicons/icons";
+import { eyeOutline, eye } from "ionicons/icons";
+import { TreeCursor } from "@lezer/common";
+
+let markdown_styling_base_theme = EditorView.baseTheme({
+  "&": {
+    "--accent-color": "rgba(200, 0, 0)",
+    "accent-color": "var(--accent-color)",
+  },
+  "h1, h2, h3, h4, h5, h6": {
+    display: "inline-block",
+  },
+  h1: {
+    "font-size": "1.5em",
+    ".cm-line:has(&)": {
+      "margin-top": `0.2em`,
+      "margin-bottom": `0.3em`,
+    },
+  },
+  h2: {
+    "font-size": "1.3em",
+    ".cm-line:has(&)": {
+      "margin-top": `0.2em`,
+      "margin-bottom": `0.2em`,
+    },
+  },
+  h3: {
+    "font-size": "1.1em",
+    ".cm-line:has(&)": {
+      "margin-top": `0.2em`,
+      "margin-bottom": `0.1em`,
+    },
+  },
+
+  ".header-mark": {
+    "font-variant-numeric": "tabular-nums",
+    "margin-left": "calc(-1.8em - 5px)",
+    opacity: 0.3,
+    "font-size": "0.8em",
+    display: "inline-block",
+    "&.header-mark-h1": {
+      "margin-right": "5px",
+      "margin-left": "calc(-1.8em - 6px)",
+    },
+    "&.header-mark-h2": {
+      "margin-right": "7px",
+    },
+    "&.header-mark-h3": {
+      "margin-right": "9px",
+    },
+    "&.header-mark-h4": {
+      "margin-right": "10px",
+    },
+    "&.header-mark-h5": {
+      "margin-right": "11px",
+    },
+    "&.header-mark-h6": {
+      "margin-right": "12px",
+    },
+  },
+
+  ".link-mark": {
+    opacity: 0.5,
+  },
+  ".link-mark, .link-mark .link": {
+    color: "white",
+  },
+  ".link": {
+    color: "var(--accent-color)",
+  },
+  ".url, .url .link": {
+    color: "white",
+    opacity: 0.5,
+  },
+
+  ".cm-line.list-item:has(.list-mark)": {
+    "margin-left": "-1em",
+  },
+  ".cm-line.order-list-item:has(.list-mark)": {
+    "margin-left": "-1em",
+  },
+  ".cm-line.list-item:not(:has(.list-mark))": {
+    /* Most likely need to tweak this for other em's */
+    /* "margin-left": "5px", */
+  },
+  ".cm-line.list-item": {
+    "margin-top": "0.3em",
+    /* "margin-bottom": "0.3em", */
+  },
+  ".cm-line.list-item + .cm-line.list-item": {
+    "margin-top": "0",
+  },
+
+  ".list-mark": {
+    color: "transparent",
+    width: "1em",
+    display: "inline-block",
+  },
+  ".list-item:not(:has(.task-marker)) .list-mark::before": {
+    content: '"-"',
+    position: "absolute",
+    /* top: 0; */
+    transform: "translateY(-4px)",
+    "font-size": "1.2em",
+    color: "var(--accent-color)",
+  },
+  ".order-list-item:not(:has(.task-marker)) .list-mark::before": {
+    content: "unset",
+  },
+  ".order-list-item:not(:has(.task-marker)) .list-mark": {
+    color: "var(--accent-color)",
+  },
+  ".task-marker": {
+    "margin-left": "-25px",
+  },
+  ".hr": {
+    "border-top": "1px solid rgba(255, 255, 255, 0.2)",
+    display: "inline-block",
+    width: "100%",
+    "vertical-align": "middle",
+  },
+
+  ".quote-mark": {
+    color: "transparent",
+    "font-size": "0",
+    display: "inline-block",
+    position: "relative",
+  },
+  ".blockquote": {
+    position: "relative",
+  },
+  ".blockquote::before": {
+    content: '""',
+    position: "absolute",
+    "margin-left": "0.2em",
+    "pointer-events": "none",
+    "font-size": "1.2em",
+    "background-color": "rgba(200, 0, 0)",
+    width: "0.16em",
+    top: "0",
+    bottom: "0",
+    left: "-0.6em",
+  },
+  ".emoji": {
+    color: "var(--accent-color)",
+    "font-style": "italic",
+  },
+
+  ".fenced-code": {},
+  ".code-text": {
+    "font-size": "0.9em",
+    "font-family":
+      "source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace",
+  },
+  ".code-mark": {
+    opacity: "0.5",
+  },
+  ".inline-code": {
+    "font-size": "0.9em",
+    outline: "1px solid #ffffff36",
+    display: "inline-block",
+    padding: "0 5px",
+    margin: "0 4px",
+    "border-radius": "2px",
+  },
+  ".cm-line.has-fenced-code": {
+    border: "solid 1px #ffffff36",
+    "border-radius": "5px",
+  },
+  ".cm-line.has-fenced-code + .cm-line.has-fenced-code": {
+    "border-top": "none",
+    "border-top-right-radius": "0",
+    "border-top-left-radius": "0",
+  },
+  ".cm-line.has-fenced-code:has(+ .cm-line.has-fenced-code)": {
+    "border-bottom": "none",
+    "border-bottom-right-radius": "0",
+    "border-bottom-left-radius": "0",
+  },
+
+  ".table": {
+    color: "white",
+  },
+  ".cm-line:has(.table)": {
+    "background-color": "#ffffff0a",
+  },
+  ".table-header": {
+    "font-weight": "bold",
+  },
+  ".table-delimiter": {
+    opacity: "0.5",
+  },
+  ".html-tag *": {
+    color: "#2fbf00",
+  },
+  ".comment-block": {
+    opacity: "0.5",
+  },
+  ".processing-instruction-block": {
+    color: "#2fbf00",
+  },
+});
 
 class EZRange extends RangeValue {
   eq() {
     return true;
   }
 }
+
+/** @param {(context: { cursor: TreeCursor, mutable_decorations: Range<Decoration>[], doc: Text }) => void | boolean} fn */
+let DecorationsFromTree = (fn) => {
+  return EditorView.decorations.compute(["doc"], (state) => {
+    let tree = syntaxTree(state);
+
+    /** @type {Range<Decoration>[]} */
+    let decorations = [];
+    iterate_with_cursor({
+      tree,
+      enter: (/** @type {any} */ cursor) => {
+        return fn({ cursor, mutable_decorations: decorations, doc: state.doc });
+      },
+    });
+
+    return Decoration.set(decorations);
+  });
+};
 
 let headers = {
   ATXHeading1: "h1",
@@ -131,23 +338,6 @@ let insert_around_command = (str) => (view) => {
 };
 
 let my_markdown_keymap = keymap.of([
-  {
-    key: "Mod-l",
-    run: (view) => {
-      // TODO Doing two synchonous view.dispatch'es crashes my state stuff...
-      // .... Well, good I know that it does I guess
-      // NOTE Not anymore!! Fixed???
-      let { from, to } = view.state.selection.main;
-      view.dispatch({
-        changes: { from: from, to: to, insert: "CRASH" },
-      });
-      view.dispatch({
-        changes: { from: from, to: to, insert: "MORE CRASH" },
-      });
-      return true;
-    },
-  },
-
   {
     key: "Mod-b",
     run: (view) => {
@@ -327,6 +517,25 @@ let html_demo_statefield = StateField.define({
 });
 
 let html_preview_extensions = [
+  EditorView.baseTheme({
+    /* I apply this to the line because else the line will stay high, making
+     the code look really fragile */
+    ".cm-line:has(.html)": {
+      "font-size": "0.8em",
+      color: "#2fbf00",
+    },
+    ".html-previous-toggle": {
+      position: "absolute",
+      transform: "translateX(-100%) translateX(-10px) translateY(5px)",
+      "font-size": "0.8em",
+      color: "#2fbf00",
+      opacity: "0.5",
+    },
+    ".html-previous-toggle:hover": {
+      opacity: "1",
+      cursor: "pointer",
+    },
+  }),
   html_blocks_facet.compute(["doc"], (state) => {
     let tree = syntaxTree(state);
     let ranges = [];
@@ -386,7 +595,7 @@ let html_preview_extensions = [
           );
           decorations.push(
             Decoration.mark({
-              tagName: "code",
+              tagName: "span",
               class: "html",
             }).range(range.from, range.to)
           );
@@ -423,8 +632,56 @@ let markdown_mark_to_decoration = {
   StrikethroughMark: Decoration.mark({ class: "strikethrough-mark" }),
   LinkMark: Decoration.mark({ class: "link-mark" }),
 };
+let markdown_inline_decorations = {
+  Emphasis: "emphasis",
+  Strikethrough: "strikethrough",
+  StrongEmphasis: "strong-emphasis",
+  Link: "link",
+  URL: "url",
+};
+let markdown_inline_decorations_extension = [
+  EditorView.baseTheme({
+    ".emphasis-mark": {
+      opacity: "0.5",
+      "letter-spacing": "-0.1em",
+      transform: "translateX(-0.05em)",
+    },
+    ".strikethrough-mark": {
+      "text-decoration": "line-through",
+      "text-decoration-color": "transparent",
+      opacity: "0.5",
+    },
 
-let filter_selection_in_atomic_range = EditorState.changeFilter;
+    ".strikethrough": {
+      "text-decoration": "line-through",
+    },
+    ".emphasis": {
+      "font-style": "italic",
+    },
+    ".strong-emphasis": {
+      "font-weight": "bold",
+    },
+  }),
+  // These are separate because they need "lower precedence" so they don't "slice" the bigger elements:
+  // `*sad*` would become `<em><mark>*</mark>sad</em><mark><em>*</em></mark>` (confusing)
+  // instead of `<em><mark>*</mark>sad<mark>*</mark></em>` (normal)
+  DecorationsFromTree(({ cursor, mutable_decorations }) => {
+    if (cursor.name in markdown_mark_to_decoration) {
+      mutable_decorations.push(
+        markdown_mark_to_decoration[cursor.name].range(cursor.from, cursor.to)
+      );
+    }
+  }),
+  DecorationsFromTree(({ cursor, mutable_decorations }) => {
+    if (cursor.name in markdown_inline_decorations) {
+      mutable_decorations.push(
+        Decoration.mark({
+          class: markdown_inline_decorations[cursor.name],
+        }).range(cursor.from, cursor.to)
+      );
+    }
+  }),
+];
 
 let search_block_or_inline_decorations = ({
   cursor,
@@ -571,33 +828,34 @@ let search_block_or_inline_decorations = ({
   }
 };
 
+// Show ⏎ at the end of `  ` (two spaces) lines
+let show_hard_breaks = [
+  EditorView.baseTheme({
+    ".hard-break::after": {
+      content: '"⏎"',
+      color: "rgba(255, 255, 255, 0.2)",
+    },
+  }),
+  DecorationsFromTree(({ cursor, mutable_decorations }) => {
+    if (cursor.name === "HardBreak") {
+      mutable_decorations.push(
+        Decoration.mark({
+          class: "hard-break",
+        }).range(cursor.from, cursor.to)
+      );
+    }
+  }),
+];
+
 export let basic_markdown_setup = [
+  markdown_styling_base_theme,
+
   EditorState.tabSize.of(4),
   indentUnit.of("\t"),
   placeholder("The rest is still unwritten..."),
   markdown({ addKeymap: false, base: markdownLanguage }),
 
-  // These are separate because they need "lower precedence" so they don't "slice" the bigger elements:
-  // `*sad*` would become `<em><mark>*</mark>sad</em><mark><em>*</em></mark>`
-  // instead of `<em><mark>*</mark>sad<mark>*</mark></em>`
-  EditorView.decorations.compute(["doc"], (state) => {
-    let tree = syntaxTree(state);
-    let decorations = [];
-    iterate_with_cursor({
-      tree,
-      enter: (cursor) => {
-        if (cursor.name in markdown_mark_to_decoration) {
-          decorations.push(
-            markdown_mark_to_decoration[cursor.name].range(
-              cursor.from,
-              cursor.to
-            )
-          );
-        }
-      },
-    });
-    return Decoration.set(decorations, true);
-  }),
+  markdown_inline_decorations_extension,
 
   EditorView.decorations.compute(["doc"], (state) => {
     let tree = syntaxTree(state);
@@ -691,13 +949,6 @@ export let basic_markdown_setup = [
           );
         }
 
-        if (cursor.name === "HardBreak") {
-          decorations.push(
-            Decoration.mark({
-              class: "hard-break",
-            }).range(cursor.from, cursor.to)
-          );
-        }
         if (cursor.name === "InlineCode") {
           decorations.push(
             Decoration.mark({
@@ -713,43 +964,6 @@ export let basic_markdown_setup = [
               cursor.from,
               cursor.to + (extra_space ? 1 : 0)
             )
-          );
-        }
-
-        if (cursor.name === "Emphasis") {
-          decorations.push(
-            Decoration.mark({
-              class: "emphasis",
-            }).range(cursor.from, cursor.to)
-          );
-        }
-        if (cursor.name === "Strikethrough") {
-          decorations.push(
-            Decoration.mark({
-              class: "strikethrough",
-            }).range(cursor.from, cursor.to)
-          );
-        }
-        if (cursor.name === "StrongEmphasis") {
-          decorations.push(
-            Decoration.mark({
-              class: "strong-emphasis",
-            }).range(cursor.from, cursor.to)
-          );
-        }
-
-        if (cursor.name === "Link") {
-          decorations.push(
-            Decoration.mark({
-              class: "link",
-            }).range(cursor.from, cursor.to)
-          );
-        }
-        if (cursor.name === "URL") {
-          decorations.push(
-            Decoration.mark({
-              class: "url",
-            }).range(cursor.from, cursor.to)
           );
         }
 
@@ -835,11 +1049,6 @@ export let basic_markdown_setup = [
               new EZRange()
             );
           } else {
-            console.log(`cursor:`, cursor);
-            console.log(
-              `state.doc.sliceString(cursor.to, cursor.to + 1):`,
-              `"${state.doc.sliceString(cursor.to, cursor.to + 1)}"`
-            );
             if (state.doc.sliceString(cursor.to, cursor.to + 1) !== " ") return;
             ranges.add(cursor.from, cursor.to + 1, new EZRange());
             // This is just one character anyway, so no need to make it atomic
@@ -850,6 +1059,8 @@ export let basic_markdown_setup = [
     });
     return ranges.finish();
   }),
+
+  show_hard_breaks,
 
   my_markdown_keymap,
   keymap.of([
