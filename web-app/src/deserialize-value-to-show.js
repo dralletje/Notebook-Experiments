@@ -85,6 +85,8 @@ export let deserialize = (index, heap, result_heap = {}) => {
       result_heap
     );
     return md(strings, ...interpolations);
+  } else if (result.type === "@ecmascript/promise") {
+    return Promise.resolve();
   } else {
     return { $cant_deserialize: result };
   }

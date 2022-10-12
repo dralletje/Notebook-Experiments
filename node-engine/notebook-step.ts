@@ -3,6 +3,7 @@ import { mapValues, omit, compact, without } from "lodash-es";
 import fetch from "node-fetch";
 import domain from "domain";
 import { html, md } from "./html.js";
+import { resolve } from "import-meta-resolve";
 
 import {
   cells_to_dag,
@@ -14,7 +15,6 @@ import {
   topological_sort,
 } from "./dag-things.js";
 
-import { run_in_environment } from "../cell-environment/src/__cell_environment.js";
 import { parse_cell } from "./parse-cell.js";
 import serialize from "./serialize.js";
 import { Engine, Notebook } from "./node-engine.js";
@@ -178,7 +178,7 @@ let notebook_to_graph_cell = (notebook: Notebook): GraphCell[] => {
 
 export let notebook_step = async (
   engine: Engine,
-  notebook: Notebook,
+  { filename, notebook }: { filename: string; notebook: Notebook },
   onChange: (mutate: (engine: Engine) => void) => void
 ) => {
   let graph_cells = notebook_to_graph_cell(notebook);
@@ -294,9 +294,14 @@ export let notebook_step = async (
     });
     inputs.signal = abort_controller.signal;
 
+    let url = new URL(`../cell-environment/src/${filename}`, import.meta.url);
     inputs.__meta__ = {
       is_in_notebook: true,
-      url: new URL(`../cell-environment/${notebook.filename}`, import.meta.url),
+      url: url,
+      import: async (specifier: any) => {
+        let what_to_import = await resolve(specifier, url.toString());
+        return await import(what_to_import);
+      },
     };
 
     inputs.fetch = fetch;
@@ -321,10 +326,7 @@ export let notebook_step = async (
     let result = await cell_domain.run(async () => {
       try {
         let inputs_array = Object.entries(inputs);
-        let fn = run_in_environment(
-          inputs_array.map((x) => x[0]),
-          code
-        );
+        let fn = new Function(...inputs_array.map((x) => x[0]), code);
 
         let result = await fn(...inputs_array.map((x) => x[1]));
 

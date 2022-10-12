@@ -364,6 +364,14 @@ export default (entry, context) => {
           return id;
         }
 
+        if (obj instanceof Promise) {
+          let id = heap.length;
+          heap.push({
+            type: "@ecmascript/promise",
+          });
+          return id;
+        }
+
         if (obj instanceof context.Map) {
           return encounterSetOrMap(obj, "map");
         }

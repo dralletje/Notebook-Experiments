@@ -84,6 +84,7 @@ export type Cell = {
 };
 
 let run_notebook = async (
+  filename: string,
   notebook_ref: { current: Notebook },
   engine: Engine,
   onChange: (engine: Engine) => void
@@ -118,11 +119,15 @@ let run_notebook = async (
       }
     }
 
-    await notebook_step(engine, notebook_ref.current, (fn) => {
-      did_change = true;
-      fn(engine);
-      onChange_debounced(engine);
-    });
+    await notebook_step(
+      engine,
+      { filename: filename, notebook: notebook_ref.current },
+      (fn) => {
+        did_change = true;
+        fn(engine);
+        onChange_debounced(engine);
+      }
+    );
     onChange_debounced(engine);
   }
 };
@@ -193,12 +198,17 @@ io.on("connection", (socket) => {
     if (engine.is_busy) return;
     engine.is_busy = true;
 
-    await run_notebook(workspace_ref[notebook.filename], engine, (engine) => {
-      socket.emit("engine", {
-        filename: notebook.filename,
-        engine: engine_to_json(engine),
-      });
-    });
+    await run_notebook(
+      notebook.filename,
+      workspace_ref[notebook.filename],
+      engine,
+      (engine) => {
+        socket.emit("engine", {
+          filename: notebook.filename,
+          engine: engine_to_json(engine),
+        });
+      }
+    );
     engine.is_busy = false;
   });
 

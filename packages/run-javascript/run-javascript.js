@@ -99,6 +99,12 @@ export function transform(ast) {
         path.replaceWith(path.node.declaration);
       }
     },
+    Import(path) {
+      path.replaceWith(
+        // @ts-ignore
+        t.memberExpression(t.identifier("__meta__"), t.identifier("import"))
+      );
+    },
   });
 
   for (let directive of ast.program.directives) {
