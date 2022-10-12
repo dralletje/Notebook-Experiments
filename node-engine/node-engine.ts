@@ -225,7 +225,7 @@ io.on("connection", (socket) => {
     for (let [filename, engine] of Object.entries(engines)) {
       workspace_ref[filename].current = empty_notebook();
       if (!engine.is_busy) {
-        run_notebook({ current: empty_notebook() }, engine, () => {});
+        run_notebook(filename, { current: empty_notebook() }, engine, () => {});
       }
     }
   });

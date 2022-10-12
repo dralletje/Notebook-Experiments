@@ -650,7 +650,7 @@ let AAAAA = styled.div`
 let PlaceInsideExpression = ({ expression, children }) => {
   let state = React.useMemo(() => {
     return EditorState.create({
-      doc: expression,
+      doc: expression ?? "__RESULT_PLACEHOLDER__",
       extensions: [
         EditorState.tabSize.of(4),
         indentUnit.of("\t"),
@@ -799,13 +799,9 @@ export let Cell = ({
     >
       <InspectorHoverBackground>
         <InspectorContainer>
-          {result_deserialized.name ? (
-            <PlaceInsideExpression expression={result_deserialized.name}>
-              <Inspector value={result_deserialized} />
-            </PlaceInsideExpression>
-          ) : (
+          <PlaceInsideExpression expression={result_deserialized.name}>
             <Inspector value={result_deserialized} />
-          )}
+          </PlaceInsideExpression>
         </InspectorContainer>
       </InspectorHoverBackground>
 
