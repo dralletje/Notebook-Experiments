@@ -1,7 +1,7 @@
 import React from "react";
 
 import { io, Socket } from "socket.io-client";
-import { CellList, LastCreatedCells } from "./Notebook";
+import { CellList } from "./Notebook";
 import styled from "styled-components";
 import { deserialize } from "./deserialize-value-to-show";
 
@@ -277,7 +277,6 @@ export function File({ state, onChange }) {
         <AppStyle>
           <CellList
             viewupdate={viewupdate}
-            notebook_view={viewupdate.view}
             notebook={notebook}
             engine={engine}
           />

@@ -1,29 +1,13 @@
 import React from "react";
-import "./App.css";
-import { produce } from "immer";
-import { mutate, readonly, useMutateable } from "use-immer-store";
-
-import { io, Socket } from "socket.io-client";
 import { CellList } from "./Notebook";
-import styled from "styled-components";
-import { deserialize } from "./deserialize-value-to-show";
-
-import dot from "@observablehq/graphviz";
-import { IonIcon } from "@ionic/react";
-import {
-  gitNetworkOutline,
-  iceCreamOutline,
-  pizzaOutline,
-  terminalOutline,
-} from "ionicons/icons";
-import { EditorState, Facet, StateField } from "@codemirror/state";
+import { EditorState } from "@codemirror/state";
 import {
   CellEditorStatesField,
   CellIdFacet,
   CellMetaField,
   editor_state_for_cell,
   nested_cell_states_basics,
-  useNotebookviewWithExtensions,
+  useViewUpdate,
 } from "./NotebookEditor";
 import { useRealMemo } from "use-real-memo";
 import {
@@ -36,13 +20,12 @@ import {
   shared_history,
   historyKeymap,
 } from "./packages/codemirror-nexus/codemirror-shared-history";
-import { isEqual, mapValues, sortBy } from "lodash";
+import { isEqual, mapValues } from "lodash";
 import {
   CellIdOrder,
   cell_movement_extension_default,
 } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
-import { ShowKeysPressed } from "./ShowKeys";
 import { SelectionArea } from "./selection-area/SelectionArea";
 
 let try_json = (str) => {
@@ -96,37 +79,42 @@ export let MetaNotebook = () => {
             return editor_state_for_cell(cell, editorstate);
           }),
           transactions_to_send_to_cells: [],
+          has_active_selection: {},
         };
       }),
     [CellEditorStatesField]
   );
 
-  let { state, dispatch } = useNotebookviewWithExtensions({
-    extensions: [
-      // expand_cell_effects_that_area_actually_meant_for_the_nexus,
+  let [notebook_state, set_notebook_state] = React.useState(
+    EditorState.create({
+      extensions: [
+        // expand_cell_effects_that_area_actually_meant_for_the_nexus,
 
-      initial_notebook,
-      nested_cell_states_basics,
+        initial_notebook,
+        nested_cell_states_basics,
 
-      notebook_keymap,
+        notebook_keymap,
 
-      SelectedCellsField,
-      cell_id_order_from_notebook_facet,
+        SelectedCellsField,
+        cell_id_order_from_notebook_facet,
 
-      cell_movement_extension_default,
-      selected_cells_keymap,
+        cell_movement_extension_default,
+        selected_cells_keymap,
 
-      // // blur_cells_when_selecting,
-      // keep_track_of_last_created_cells_extension,
+        // // blur_cells_when_selecting,
+        // keep_track_of_last_created_cells_extension,
 
-      // This works so smooth omg
-      useRealMemo(() => [shared_history(), keymap.of(historyKeymap)], []),
+        // This works so smooth omg
+        useRealMemo(() => [shared_history(), keymap.of(historyKeymap)], []),
 
-      // just_for_kicks_extension
-    ],
-  });
+        // just_for_kicks_extension
+      ],
+    })
+  );
 
-  let cell_editor_states = state.field(CellEditorStatesField);
+  let viewupdate = useViewUpdate(notebook_state, set_notebook_state);
+
+  let cell_editor_states = viewupdate.state.field(CellEditorStatesField);
 
   let notebook = React.useMemo(() => {
     return /** @type {import("./notebook-types").Notebook} */ ({
@@ -141,42 +129,7 @@ export let MetaNotebook = () => {
     });
   }, [cell_editor_states]);
 
-  /** @type {import("./NotebookEditor").NotebookView} */
-  let notebook_view = { state: state, dispatch: dispatch };
-
-  // let [engine, set_engine] = React.useState({ cylinders: {} });
-  // /** @type {React.MutableRefObject<Socket<any, any>>} */
-  // let socketio_ref = React.useRef(/** @type {any} */ (null));
-  // React.useEffect(() => {
-  //   let socket = io("http://localhost:3099");
-
-  //   socket.on("engine", (engine) => {
-  //     set_engine(engine);
-  //   });
-  //   socketio_ref.current = socket;
-
-  //   return () => {
-  //     socket.close();
-  //   };
-  // }, []);
-
-  // React.useEffect(() => {
-  //   let socket = socketio_ref.current;
-  //   let fn = () => {
-  //     socket.emit("notebook", notebook);
-  //   };
-  //   socket.on("connect", fn);
-  //   return () => {
-  //     socket.off("connect", fn);
-  //   };
-  // }, [notebook]);
-
-  // React.useEffect(() => {
-  //   let socket = socketio_ref.current;
-  //   socket.emit("notebook", notebook);
-  // }, [notebook]);
-
-  let selected_cells = notebook_view.state.field(SelectedCellsField);
+  let selected_cells = viewupdate.state.field(SelectedCellsField);
 
   return (
     <div
@@ -199,7 +152,7 @@ export let MetaNotebook = () => {
       <SelectionArea
         on_selection={(new_selected_cells) => {
           if (!isEqual(new_selected_cells, selected_cells)) {
-            notebook_view.dispatch({
+            viewupdate.view.dispatch({
               effects: SelectCellsEffect.of(new_selected_cells),
             });
           }
@@ -223,7 +176,7 @@ export let MetaNotebook = () => {
           }}
         >
           <CellList
-            notebook_view={notebook_view}
+            viewupdate={viewupdate}
             notebook={notebook}
             engine={{ cylinders: {} }}
           />

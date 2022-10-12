@@ -1,16 +1,10 @@
 import React from "react";
 import styled from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
-import {
-  EditorSelection,
-  EditorState,
-  StateField,
-  Transaction,
-} from "@codemirror/state";
-import { EditorView, keymap, ViewPlugin } from "@codemirror/view";
+import { StateField } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { Inspector } from "./Inspector";
 import { compact, isEqual } from "lodash";
-import { v4 as uuidv4 } from "uuid";
 
 import { cell_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
 import { deserialize } from "./deserialize-value-to-show";
@@ -31,8 +25,7 @@ import {
 
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
 import { basic_javascript_setup } from "./codemirror-javascript-setup";
-import { useDidJustHotReload, useRealMemo } from "use-real-memo";
-import { SelectCellsEffect, SelectedCellsField } from "./cell-selection";
+import { SelectedCellsField } from "./cell-selection";
 import {
   AddCellEffect,
   CellDispatchEffect,
@@ -41,7 +34,6 @@ import {
   CellIdFacet,
   CellTypeFacet,
   empty_cell,
-  FromCellTransactionEffect,
   MoveCellEffect,
   MutateCellMetaEffect,
   RemoveCellEffect,
@@ -84,16 +76,6 @@ let CellHasSelectionPlugin = [
     })
   ),
 ];
-
-// ViewPlugin.define((cell_editor_view) => {
-//   return {
-//     update(update) {
-//     },
-//     destroy() {
-//       // off();
-//     },
-//   };
-// });
 
 export let EditorStyled = styled.div`
   background-color: rgba(0, 0, 0, 0.4);
@@ -304,21 +286,20 @@ export let LastCreatedCells = StateField.define({
  * @param {{
  *  notebook: import("./notebook-types").Notebook,
  *  engine: import("./notebook-types").EngineShadow,
- *  notebook_view: import("./NotebookEditor").NotebookView,
  *  viewupdate: import("./NotebookEditor").ViewUpdate,
  * }} props
  */
-export let CellList = ({ notebook, engine, notebook_view, viewupdate }) => {
+export let CellList = ({ notebook, engine, viewupdate }) => {
+  let nexus_editorview = viewupdate.view;
+
   /**
    * Keep track of what cells are just created by the users,
    * so we can animate them in 🤩
    */
   let last_created_cells =
-    notebook_view.state.field(LastCreatedCells, false) ?? [];
+    nexus_editorview.state.field(LastCreatedCells, false) ?? [];
 
-  let nexus_editorview = notebook_view;
-
-  let selected_cells = notebook_view.state.field(SelectedCellsField);
+  let selected_cells = nexus_editorview.state.field(SelectedCellsField);
 
   return (
     <React.Fragment>
@@ -389,7 +370,7 @@ export let CellList = ({ notebook, engine, notebook_view, viewupdate }) => {
                               />
                             ),
                             onClick: () => {
-                              notebook_view.dispatch({
+                              nexus_editorview.dispatch({
                                 effects: CellDispatchEffect.of({
                                   cell_id: cell.id,
                                   transaction: {
@@ -409,7 +390,7 @@ export let CellList = ({ notebook, engine, notebook_view, viewupdate }) => {
                           }}
                           {...provided.dragHandleProps}
                           onClick={() => {
-                            notebook_view.dispatch({
+                            nexus_editorview.dispatch({
                               effects: CellDispatchEffect.of({
                                 cell_id: cell.id,
                                 transaction: {
@@ -423,7 +404,7 @@ export let CellList = ({ notebook, engine, notebook_view, viewupdate }) => {
                           className="drag-handle"
                         />
                       </ContextMenuWrapper>
-                      {notebook_view.state
+                      {nexus_editorview.state
                         .field(CellEditorStatesField)
                         .cells[cell.id].facet(CellTypeFacet) === "text" ? (
                         <TextCell
@@ -635,10 +616,12 @@ export let Cell = ({
           {
             clipPath: `inset(100% 0 0 0)`,
             transform: "translateY(-100%)",
+            opacity: 0,
           },
           {
             clipPath: `inset(0 0 0 0)`,
             transform: "translateY(0%)",
+            opacity: 1,
           },
         ],
         {
