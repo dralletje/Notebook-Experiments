@@ -9,12 +9,16 @@ import {
   CellMetaField,
   CellTypeFacet,
   empty_cell,
+  MergeCellFromBelowEffect,
   NexusEffect,
   RemoveCellEffect,
   RunCellEffect,
   RunIfChangedCellEffect,
 } from "../../NotebookEditor";
-import { MoveToCellAboveEffect } from "./codemirror-cell-movement";
+import {
+  MoveToCellAboveEffect,
+  MoveToCellBelowEffect,
+} from "./codemirror-cell-movement";
 import { format_with_prettier } from "../../format-javascript-with-prettier";
 
 export let notebook_keymap = keymap.of([
@@ -101,6 +105,57 @@ export let cell_keymap = Prec.high(
       },
     },
     {
+      // If we press enter while the previous two lines are empty, we want to add a new cell/split this cell
+      key: "Enter",
+      run: ({ state, dispatch }) => {
+        if (!state.selection.main.empty) return false;
+        let cursor = state.selection.main.from;
+
+        let cell_id = state.facet(CellIdFacet);
+
+        // TODO Should just not apply this to text cells to begin with 🤷‍♀️ but cba
+        if (state.facet(CellTypeFacet) === "text") return false;
+
+        let current_line = state.doc.lineAt(cursor);
+        if (current_line.number === 1)
+          // Can't split the from line
+          return false;
+        let previous_line = state.doc.line(current_line.number - 1);
+
+        if (previous_line.text.trim() !== "") return false;
+
+        let new_cell = {
+          ...empty_cell(),
+          unsaved_code: state.doc.sliceString(cursor, state.doc.length),
+        };
+
+        // TODO Need two dispatches, because my Nexus can't handle a mix of NexusEffects and CellDispatchEffects in one transaction...
+        // .... So need something for this! Maybe make CellEditorStatesField look for the NexusEffects directly?
+        // .... Then Nexus effects can ONLY be used to modify the cell states... but what else is there?
+        // .... There might be later, so maybe NexusEffect should have a sibling called BroadcastEffect,
+        // .... Where a NexusEffect is actually for the nexus "completely" separate from the cell states, 🤔,
+        // .... and a BroadcastEffect is for the cell states only.
+        dispatch({
+          changes: {
+            from: Math.max(previous_line.from - 1, 0),
+            to: state.doc.length,
+            insert: "",
+          },
+          effects: [
+            NexusEffect.of(
+              AddCellEffect.of({
+                index: { after: cell_id },
+                cell: new_cell,
+              })
+            ),
+            // MoveToCellBelowEffect.of({ start: "begin" }),
+          ],
+        });
+        dispatch({ effects: MoveToCellBelowEffect.of({ start: "begin" }) });
+        return true;
+      },
+    },
+    {
       key: "Mod-Enter",
       run: (view) => {
         let cell_id = view.state.facet(CellIdFacet);
@@ -124,13 +179,13 @@ export let cell_keymap = Prec.high(
       key: "Backspace",
       run: (view) => {
         let cell_id = view.state.facet(CellIdFacet);
-        if (view.state.doc.length === 0) {
+        if (!view.state.selection.main.empty) return false;
+
+        if (view.state.selection.main.from === 0) {
           view.dispatch({
             effects: [
               // Focus on previous cell
-              MoveToCellAboveEffect.of({ start: "end" }),
-              // Remove cell
-              NexusEffect.of(RemoveCellEffect.of({ cell_id: cell_id })),
+              NexusEffect.of(MergeCellFromBelowEffect.of({ cell_id: cell_id })),
             ],
           });
           return true;

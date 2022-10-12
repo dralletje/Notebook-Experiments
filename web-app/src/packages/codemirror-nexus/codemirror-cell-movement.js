@@ -93,6 +93,8 @@ let delegate_moves_to_relative_cells = EditorState.transactionExtender.of(
           if (cell_effect.is(MoveToCellBelowEffect)) {
             let { start } = cell_effect.value;
 
+            console.log("Heyooo");
+
             let cell_index = cell_order.indexOf(cell_id);
             if (cell_order[cell_index + 1] == null) {
               console.log(`Can't move down`);

@@ -1,12 +1,11 @@
 import React from "react";
 
 import { io, Socket } from "socket.io-client";
-import { CellList } from "./Notebook";
 import styled from "styled-components";
-import { deserialize } from "./deserialize-value-to-show";
-
 import dot from "@observablehq/graphviz";
 import { IonIcon } from "@ionic/react";
+import { runScopeHandlers } from "@codemirror/view";
+import { isEqual, mapValues, sortBy } from "lodash";
 import {
   gitNetworkOutline,
   iceCreamOutline,
@@ -14,8 +13,10 @@ import {
   terminalOutline,
 } from "ionicons/icons";
 import { EditorState, Facet } from "@codemirror/state";
+
 import {
   CellEditorStatesField,
+  CellHasSelectionField,
   CellIdFacet,
   CellMetaField,
   CellTypeFacet,
@@ -23,12 +24,12 @@ import {
   useViewUpdate,
 } from "./NotebookEditor";
 import { SelectCellsEffect, SelectedCellsField } from "./cell-selection";
-import { runScopeHandlers } from "@codemirror/view";
-import { isEqual, mapValues, sortBy } from "lodash";
 import { CellIdOrder } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { MetaNotebook } from "./MetaNotebook";
 import { SelectionArea } from "./selection-area/SelectionArea";
 import { NotebookFilename, NotebookId } from "./notebook-types";
+import { CellList } from "./Notebook";
+import { deserialize } from "./deserialize-value-to-show";
 
 // let worker = create_worker();
 // console.log(`worker:`, worker);
@@ -286,6 +287,12 @@ export function File({ state, onChange, socket }) {
   );
 
   let selected_cells = viewupdate.state.field(SelectedCellsField);
+
+  let cell_that_has_selection = Object.values(
+    viewupdate.state.field(CellEditorStatesField).cells
+  )
+    .find((x) => x.field(CellHasSelectionField))
+    ?.facet(CellIdFacet);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>

@@ -89,7 +89,7 @@ export let basic_javascript_setup = [
     },
   ]),
   keymap.of(defaultKeymap),
-  drawSelection(),
+  drawSelection({ cursorBlinkRate: 0 }),
 
   awesome_line_wrapping,
 ];

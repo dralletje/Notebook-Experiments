@@ -10,7 +10,7 @@ import {
   StateEffectType,
 } from "@codemirror/state";
 import { Cell, CellId } from "./notebook-types";
-import immer from "immer";
+import immer, { original } from "immer";
 import { useDidJustHotReload, useRealMemo } from "use-real-memo";
 import React from "react";
 import { compact, takeWhile, zip, remove, without } from "lodash";
@@ -345,6 +345,10 @@ let add_single_cell_when_all_cells_are_removed =
     }
   });
 
+export let MergeCellFromBelowEffect = StateEffect.define<{
+  cell_id: CellId;
+}>();
+
 export let CellEditorStatesField = StateField.define<{
   cell_order: Array<CellId>;
   cells: { [key: CellId]: EditorState };
@@ -374,6 +378,9 @@ export let CellEditorStatesField = StateField.define<{
         cell_order,
         transactions_to_send_to_cells: _transactions_to_send_to_cells,
       } = state;
+
+      // TODO This should always be present anyway?
+      state.has_active_selection ??= {};
 
       // Tell typescript it doesn't need to care about WritableDraft >_>
       let cells = _cells as any as { [key: CellId]: EditorState };
@@ -433,7 +440,7 @@ export let CellEditorStatesField = StateField.define<{
 
           if (cell_state == null) {
             // prettier-ignore
-            console.warn(`CellDispatchEffect for Cell(${cell_id}) but no cell state exists`);
+            console.log(`⚠️ CellDispatchEffect for Cell(${cell_id}) but no cell state exists`);
             continue;
           }
 
@@ -514,17 +521,63 @@ export let CellEditorStatesField = StateField.define<{
             cells[cell_id] = transaction.state;
           }
         }
+
+        // TODO Very good contender for cellTransactionsForState:
+        // Also TODO, work with history?
+        // Honestly, not sure how to handle stuff like this yet...
+        // `cellTransactionsForState` and `invertcellTransactionsForState`?
+        if (effect.is(MergeCellFromBelowEffect)) {
+          let { cell_id: cell_below_id } = effect.value;
+          let cell_below_index = cell_order.indexOf(cell_below_id);
+          if (cell_below_index === -1) {
+            throw new Error(
+              `MergeCellFromBelowEffect: cell_below_id not found`
+            );
+          }
+          let cell_above_id = cell_order[cell_below_index - 1];
+          if (cell_above_id == null) {
+            console.log(`⚠️ MergeCellFromBelowEffect: no cell above`);
+            // Remove cell below
+            delete cells[cell_below_id];
+            cell_order.splice(cell_order.indexOf(cell_below_id), 1);
+            continue;
+          }
+
+          // Add text to cell above, and set selection to beginning of the new text
+          let cell_above = cells[cell_above_id];
+          let cell_below = cells[cell_below_id];
+          let transaction = cell_above.update({
+            changes: {
+              from: cell_above.doc.length,
+              to: cell_above.doc.length,
+              insert: "\n\n" + cell_below.doc.toString(),
+            },
+            selection: { anchor: cell_above.doc.length + 2 },
+          });
+          transactions_to_send_to_cells.push(transaction);
+          cells[cell_above_id] = transaction.state;
+
+          // Remove cell below
+          delete cells[cell_below_id];
+          cell_order.splice(cell_order.indexOf(cell_below_id), 1);
+        }
       }
 
-      // Go through all transactions to find out what cells
-      state.has_active_selection ??= {};
       for (let transaction of transactions_to_send_to_cells) {
         if (transaction.selection != null) {
+          // for (let effect of transaction.effects) {
+          //   if (effect.is(CellHasSelectionEffect)) {
+          //     state.has_active_selection  = {
+          //       [transaction.startState.facet(CellIdFacet)]: true,
+          //     };
+          //   }
+
           state.has_active_selection = {
             [transaction.startState.facet(CellIdFacet)]: true,
           };
         }
       }
+
       for (let cell_id of cell_order) {
         if (state.has_active_selection[cell_id]) {
           let cell = cells[cell_id];

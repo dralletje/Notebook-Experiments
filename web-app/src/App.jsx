@@ -206,7 +206,9 @@ function App() {
     /** @type {Workspace | null} */ (null)
   );
 
-  let [open_file, set_open_file] = React.useState("app.js");
+  let [open_file, set_open_file] = React.useState(
+    /** @type {string | null} */ (null)
+  );
 
   let socket = useSocket();
 
@@ -220,6 +222,13 @@ function App() {
 
   if (workspace == null) {
     return <div>Hi</div>;
+  }
+
+  if (open_file == null) {
+    let first_file = Object.keys(workspace.files)[0];
+    if (first_file != null) {
+      set_open_file(first_file);
+    }
   }
 
   return (
@@ -255,19 +264,24 @@ function App() {
           </FileTab>
         ))}
       </div>
-      <File
-        key={open_file}
-        socket={socket}
-        state={workspace.files[open_file].state}
-        onChange={(state) => {
-          set_workspace(
-            produce((workspace) => {
-              // @ts-ignore
-              workspace.files[open_file].state = state;
-            })
-          );
-        }}
-      />
+
+      {open_file == null ? (
+        <div></div>
+      ) : (
+        <File
+          key={open_file}
+          socket={socket}
+          state={workspace.files[open_file].state}
+          onChange={(state) => {
+            set_workspace(
+              produce((workspace) => {
+                // @ts-ignore
+                workspace.files[open_file].state = state;
+              })
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

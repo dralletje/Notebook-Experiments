@@ -2,7 +2,7 @@ import React from "react";
 import styled from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import { EditorState, StateField } from "@codemirror/state";
-import { Decoration, EditorView } from "@codemirror/view";
+import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
 import { compact, isEqual } from "lodash";
 import { shallowEqualObjects } from "shallow-equal";
 
@@ -75,6 +75,24 @@ let CellHasSelectionPlugin = [
     let has_selection = view.state.field(CellHasSelectionField);
     return { class: has_selection ? "has-selection" : "" };
   }),
+  ViewPlugin.define((view) => {
+    let has_selection = view.state.field(CellHasSelectionField);
+    if (has_selection === true) {
+      view.requestMeasure();
+      view.focus();
+    }
+
+    return {
+      update: (update) => {
+        let had_selection = update.startState.field(CellHasSelectionField);
+        let has_selection = update.state.field(CellHasSelectionField);
+        if (had_selection !== has_selection && has_selection === true) {
+          update.view.requestMeasure();
+          update.view.focus();
+        }
+      },
+    };
+  }),
   EditorView.styleModule.of(
     new StyleModule({
       ".cm-editor:not(.has-selection) .cm-selectionBackground": {
@@ -122,6 +140,10 @@ let CellStyle = styled.div`
     .cm-editor {
       border: solid 1px #ffffff14;
     }
+  }
+
+  &.force-unfolded .cell-editor {
+    opacity: 0.7;
   }
 
   position: relative;
@@ -351,12 +373,20 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
           }}
         >
           <AddButton
+            data-can-start-selection={false}
             onClick={() => {
+              let new_cell = empty_cell();
               nexus_editorview.dispatch({
-                effects: AddCellEffect.of({
-                  index: 0,
-                  cell: empty_cell(),
-                }),
+                effects: [
+                  AddCellEffect.of({
+                    index: 0,
+                    cell: new_cell,
+                  }),
+                  CellDispatchEffect.of({
+                    cell_id: new_cell.id,
+                    transaction: { selection: { anchor: 0 } },
+                  }),
+                ],
               });
             }}
           >
@@ -370,7 +400,12 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
             <React.Fragment key={cell.id}>
               <Draggable draggableId={cell.id} index={index}>
                 {(provided, snapshot) => (
-                  <Flipped flipId={cell.id}>
+                  <Flipped
+                    translate
+                    // Scale animation screws with codemirrors cursor calculations :/
+                    scale={false}
+                    flipId={cell.id}
+                  >
                     <CellContainer
                       data-can-start-selection={false}
                       ref={provided.innerRef}
@@ -489,11 +524,18 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                       ),
                       onClick: () => {
                         let my_index = notebook.cell_order.indexOf(cell.id);
+                        let new_cell = empty_cell();
                         nexus_editorview.dispatch({
-                          effects: AddCellEffect.of({
-                            index: my_index + 1,
-                            cell: empty_cell(),
-                          }),
+                          effects: [
+                            AddCellEffect.of({
+                              index: my_index + 1,
+                              cell: new_cell,
+                            }),
+                            CellDispatchEffect.of({
+                              cell_id: new_cell.id,
+                              transaction: { selection: { anchor: 0 } },
+                            }),
+                          ],
                         });
                       },
                     },
@@ -506,11 +548,18 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                       ),
                       onClick: () => {
                         let my_index = notebook.cell_order.indexOf(cell.id);
+                        let new_cell = empty_cell("text");
                         nexus_editorview.dispatch({
-                          effects: AddCellEffect.of({
-                            index: my_index + 1,
-                            cell: empty_cell("text"),
-                          }),
+                          effects: [
+                            AddCellEffect.of({
+                              index: my_index + 1,
+                              cell: new_cell,
+                            }),
+                            CellDispatchEffect.of({
+                              cell_id: new_cell.id,
+                              transaction: { selection: { anchor: 0 } },
+                            }),
+                          ],
                         });
                       },
                     },
@@ -521,11 +570,18 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                     onClick={() => {
                       console.log("Hi");
                       let my_index = notebook.cell_order.indexOf(cell.id);
+                      let new_cell = empty_cell();
                       nexus_editorview.dispatch({
-                        effects: AddCellEffect.of({
-                          index: my_index + 1,
-                          cell: empty_cell(),
-                        }),
+                        effects: [
+                          AddCellEffect.of({
+                            index: my_index + 1,
+                            cell: new_cell,
+                          }),
+                          CellDispatchEffect.of({
+                            cell_id: new_cell.id,
+                            transaction: { selection: { anchor: 0 } },
+                          }),
+                        ],
                       });
                     }}
                   >
@@ -550,9 +606,9 @@ export let NestedCodemirror = React.forwardRef(
     },
     /** @type {import("react").ForwardedRef<EditorView>} */ _ref
   ) => {
-    let initial_editor_state = React.useRef(
-      viewupdate.startState.field(CellEditorStatesField).cells[cell_id]
-    ).current;
+    let initial_editor_state = React.useMemo(() => {
+      return viewupdate.startState.field(CellEditorStatesField).cells[cell_id];
+    }, []);
 
     // prettier-ignore
     let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
@@ -576,8 +632,14 @@ export let NestedCodemirror = React.forwardRef(
       });
 
       let transaction_for_this_cell = [];
+      let current_state = editorview_ref.current.state;
       for (let transaction of cell_transactions) {
         if (transaction.startState.facet(CellIdFacet) == cell_id) {
+          if (transaction.startState !== current_state) {
+            continue;
+          }
+
+          current_state = transaction.state;
           transaction_for_this_cell.push(transaction);
         }
       }
@@ -759,19 +821,17 @@ export let Cell = ({
   let cell_wrapper_ref = React.useRef(/** @type {any} */ (null));
   React.useEffect(() => {
     if (did_just_get_created) {
-      // TODO This should be in extensions some way
-      editorview_ref.current.focus();
       cell_wrapper_ref.current.animate(
         [
           {
             clipPath: `inset(100% 0 0 0)`,
             transform: "translateY(-100%)",
-            opacity: 0,
+            // opacity: 0,
           },
           {
             clipPath: `inset(0 0 0 0)`,
             transform: "translateY(0%)",
-            opacity: 1,
+            // opacity: 1,
           },
         ],
         {
@@ -780,6 +840,24 @@ export let Cell = ({
       );
     }
   }, []);
+
+  let [is_focused, set_is_focused] = React.useState(false);
+  let set_is_focused_extension = React.useMemo(() => {
+    return EditorView.domEventHandlers({
+      focus: () => {
+        set_is_focused(true);
+      },
+      blur: () => {
+        set_is_focused(false);
+      },
+    });
+  }, [set_is_focused]);
+
+  // NOTE Can also use CellHasSelectionField, but that will keep the cell open
+  // .... when I click somewhere else... but it now closes abruptly... hmmmm
+  // let folded = state.field(CellHasSelectionField) ? false : cell.folded;
+  let folded = is_focused ? false : cell.folded;
+  let forced_unfolded = cell.folded && is_focused;
 
   return (
     <CellStyle
@@ -792,7 +870,8 @@ export let Cell = ({
           "pending",
         cylinder.result?.type === "throw" && "error",
         cylinder.result?.type === "return" && "success",
-        cell.folded && "folded",
+        folded && "folded",
+        forced_unfolded && "force-unfolded",
         cell.unsaved_code !== cell.code && "modified",
         is_selected && "selected",
       ]).join(" ")}
@@ -806,9 +885,10 @@ export let Cell = ({
       </InspectorHoverBackground>
 
       <EditorStyled
+        className="cell-editor"
         style={{
-          height: cell.folded ? 0 : undefined,
-          marginTop: cell.folded ? 0 : undefined,
+          height: folded ? 0 : undefined,
+          marginTop: folded ? 0 : undefined,
         }}
       >
         <NestedCodemirror
@@ -822,8 +902,11 @@ export let Cell = ({
           />
           <Extension key="cell_keymap" extension={cell_keymap} />
 
-          <Extension extension={CellHasSelectionPlugin} key="oof" />
-
+          <Extension key="oof" extension={CellHasSelectionPlugin} />
+          <Extension
+            key="set_is_focused_extension"
+            extension={set_is_focused_extension}
+          />
           {/* <Extension extension={codemirror_interactive} /> */}
           {/* <Extension extension={debug_syntax_plugin} /> */}
           {/* <Extension extension={inline_notebooks_extension} /> */}
@@ -871,7 +954,6 @@ let TextCell = ({ cell_id, is_selected, did_just_get_created, viewupdate }) => {
   let cell_wrapper_ref = React.useRef(/** @type {any} */ (null));
   React.useEffect(() => {
     if (did_just_get_created) {
-      // editorview_ref.current.focus();
       cell_wrapper_ref.current.animate(
         [
           {
@@ -894,7 +976,7 @@ let TextCell = ({ cell_id, is_selected, did_just_get_created, viewupdate }) => {
     <TextCellStyle
       ref={cell_wrapper_ref}
       data-cell-id={cell_id}
-      className={compact([is_selected && "selected"]).join(" ")}
+      className={compact([is_selected && "selected", "cell-editor"]).join(" ")}
     >
       <NestedCodemirror
         ref={editorview_ref}
