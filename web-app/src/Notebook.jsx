@@ -1,8 +1,8 @@
 import React from "react";
 import styled from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
-import { StateField } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { EditorState, StateField } from "@codemirror/state";
+import { Decoration, EditorView } from "@codemirror/view";
 import { compact, isEqual } from "lodash";
 import { shallowEqualObjects } from "shallow-equal";
 
@@ -25,7 +25,10 @@ import {
 } from "ionicons/icons";
 
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
-import { basic_javascript_setup } from "./codemirror-javascript-setup";
+import {
+  basic_javascript_setup,
+  syntax_colors,
+} from "./codemirror-javascript-setup";
 import { SelectedCellsField } from "./cell-selection";
 import {
   AddCellEffect,
@@ -43,6 +46,9 @@ import {
 } from "./NotebookEditor";
 import { basic_markdown_setup } from "./basic-markdown-setup";
 import { StyleModule } from "style-mod";
+import { indentUnit, syntaxHighlighting } from "@codemirror/language";
+import { javascript } from "@codemirror/lang-javascript";
+import { ReactWidget } from "react-codemirror-widget";
 
 let CellContainer = styled.div`
   display: flex;
@@ -56,8 +62,8 @@ let CellContainer = styled.div`
 let InspectorHoverBackground = styled.div``;
 
 let InspectorContainer = styled.div`
-  padding-left: calc(16px + 4px);
-  padding-right: 16px;
+  /* padding-left: calc(16px + 4px);
+  padding-right: 16px; */
   overflow-y: auto;
 
   font-size: 16px;
@@ -570,6 +576,56 @@ export let NestedCodemirror = React.forwardRef(
   }
 );
 
+let AAAAA = styled.div`
+  & .cm-editor {
+    border: none !important;
+  }
+`;
+let PlaceInsideExpression = ({ expression, children }) => {
+  let [first, last] = expression.split("__RESULT_PLACEHOLDER__");
+
+  let state = React.useMemo(() => {
+    return EditorState.create({
+      doc: expression,
+      extensions: [
+        EditorState.tabSize.of(4),
+        indentUnit.of("\t"),
+        syntaxHighlighting(syntax_colors),
+        javascript(),
+        EditorView.editable.of(false),
+      ],
+    });
+  }, [expression]);
+
+  let replace_placeholder = React.useMemo(() => {
+    return EditorView.decorations.compute(["doc"], (state) => {
+      let placeholder_index = state.doc
+        .toString()
+        .indexOf("__RESULT_PLACEHOLDER__");
+      console.log(`placeholder_index:`, placeholder_index);
+      if (placeholder_index >= 0) {
+        return Decoration.set([
+          Decoration.replace({
+            widget: new ReactWidget(children),
+          }).range(
+            placeholder_index,
+            placeholder_index + "__RESULT_PLACEHOLDER__".length
+          ),
+        ]);
+      }
+      return Decoration.set([]);
+    });
+  }, [children]);
+
+  return (
+    <AAAAA>
+      <CodeMirror state={state} style={{ border: "none" }}>
+        <Extension extension={replace_placeholder} />
+      </CodeMirror>
+    </AAAAA>
+  );
+};
+
 /**
  * @param {{
  *  cell_id: import("./notebook-types").CellId,
@@ -664,15 +720,13 @@ export let Cell = ({
     >
       <InspectorHoverBackground>
         <InspectorContainer>
-          {result_deserialized.name && (
-            <span>
-              <span style={{ color: "#afb7d3", fontWeight: "700" }}>
-                {result_deserialized.name}
-              </span>
-              <span>{" = "}</span>
-            </span>
+          {result_deserialized.name ? (
+            <PlaceInsideExpression expression={result_deserialized.name}>
+              <Inspector value={result_deserialized} />
+            </PlaceInsideExpression>
+          ) : (
+            <Inspector value={result_deserialized} />
           )}
-          <Inspector value={result_deserialized} />
         </InspectorContainer>
       </InspectorHoverBackground>
 

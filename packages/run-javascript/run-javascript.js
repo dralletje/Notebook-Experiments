@@ -86,6 +86,8 @@ export function transform_code(code, { filename }) {
   };
 }
 
+let RESULT_PLACEHOLDER = t.identifier("__RESULT_PLACEHOLDER__");
+
 export function transform(ast) {
   traverse(ast, {
     MetaProperty(path) {
@@ -106,33 +108,6 @@ export function transform(ast) {
   }
   // Add "use strict" directive
   ast.program.directives = [t.directive(t.directiveLiteral("use strict"))];
-
-  ast.program.body = ast.program.body.map((statement) => {
-    if (statement.type === "ImportDeclaration") {
-      let { source, specifiers } = statement;
-      return t.variableDeclaration("const", [
-        t.variableDeclarator(
-          t.objectPattern(
-            specifiers.map((specifier) => {
-              if (specifier.type === "ImportDefaultSpecifier") {
-                return t.objectProperty(
-                  t.identifier("default"),
-                  t.identifier(specifier.local.name)
-                );
-              } else if (specifier.type === "ImportNamespaceSpecifier") {
-                return t.restProperty(t.identifier(specifier.local.name));
-              } else {
-                return t.objectProperty(specifier.imported, specifier.local);
-              }
-            })
-          ),
-          t.awaitExpression(t.callExpression(t.import(), [source]))
-        ),
-      ]);
-    } else {
-      return statement;
-    }
-  });
 
   let accidental_globals = [];
   for (let statement of ast.program.body) {
@@ -179,18 +154,29 @@ export function transform(ast) {
     );
   };
 
-  let result_name = null;
+  let result_ast = null;
   ast.program.body = ast.program.body.flatMap((statement, index) => {
     if (index === ast.program.body.length - 1) {
       if (statement.type === "FunctionDeclaration") {
-        result_name = statement.id.name;
-        return [statement, return_with_default(t.identifier(result_name))];
+        result_ast = t.assignmentExpression(
+          "=",
+          t.identifier(statement.id.name),
+          RESULT_PLACEHOLDER
+        );
+        return [
+          statement,
+          return_with_default(t.identifier(statement.id.name)),
+        ];
       } else if (statement.type === "ExpressionStatement") {
         if (
           statement.expression.type === "AssignmentExpression" &&
           statement.expression.left.type === "Identifier"
         ) {
-          result_name = statement.expression.left.name;
+          result_ast = t.assignmentExpression(
+            "=",
+            t.identifier(statement.expression.left.name),
+            RESULT_PLACEHOLDER
+          );
           return [
             statement,
             return_with_default(t.identifier(statement.expression.left.name)),
@@ -205,7 +191,11 @@ export function transform(ast) {
         let left_hand_side = statement.declarations[0].id;
 
         if (left_hand_side.type === "Identifier") {
-          result_name = statement.declarations[0].id.name;
+          result_ast = t.assignmentExpression(
+            "=",
+            t.identifier(statement.declarations[0].id.name),
+            RESULT_PLACEHOLDER
+          );
           return [
             statement,
             return_with_default(
@@ -217,9 +207,20 @@ export function transform(ast) {
           // .... but I want to return `{ new_a: new_a }` (the original name is irrelevant)
           return [statement, return_with_default(left_hand_side)];
         }
-      } else if (statement.type === "ExportNamedDeclaration") {
+      } else if (
+        statement.type === "ExportNamedDeclaration" &&
+        statement.declaration == null
+      ) {
         // We strip out the export statement, because that won't work inside a function 🤷‍♀️
         // TODO Maybe do record the exports some way?
+        // let xsss = t.exportSpecifier(RESULT_PLACEHOLDER, RESULT_PLACEHOLDER);
+        result_ast = t.exportNamedDeclaration(null, [
+          {
+            type: "ExportSpecifier",
+            exported: RESULT_PLACEHOLDER,
+            local: RESULT_PLACEHOLDER,
+          },
+        ]);
         return [
           return_with_default(
             t.objectExpression(
@@ -229,11 +230,65 @@ export function transform(ast) {
             )
           ),
         ];
+      } else if (statement.type === "ImportDeclaration") {
+        result_ast = t.importDeclaration(
+          [t.importDefaultSpecifier(RESULT_PLACEHOLDER)],
+          statement.source
+        );
+
+        let { source, specifiers } = statement;
+        return [
+          statement,
+          return_with_default(
+            t.objectExpression(
+              specifiers.map((specifier) => {
+                if (specifier.type === "ImportDefaultSpecifier") {
+                  return t.objectProperty(
+                    t.identifier(specifier.local.name),
+                    t.identifier(specifier.local.name)
+                  );
+                } else if (specifier.type === "ImportNamespaceSpecifier") {
+                  return t.objectProperty(specifier.local, specifier.local);
+                } else {
+                  return t.objectProperty(specifier.local, specifier.local);
+                }
+              })
+            )
+          ),
+        ];
       } else {
         throw new Error(`Couldn't 'return-ify' "${print(statement).code}"`);
       }
     }
     return statement;
+  });
+
+  // Transform `import X from "X"` to `const X = import("X")`
+  ast.program.body = ast.program.body.map((statement) => {
+    if (statement.type === "ImportDeclaration") {
+      let { source, specifiers } = statement;
+      return t.variableDeclaration("const", [
+        t.variableDeclarator(
+          t.objectPattern(
+            specifiers.map((specifier) => {
+              if (specifier.type === "ImportDefaultSpecifier") {
+                return t.objectProperty(
+                  t.identifier("default"),
+                  t.identifier(specifier.local.name)
+                );
+              } else if (specifier.type === "ImportNamespaceSpecifier") {
+                return t.restProperty(t.identifier(specifier.local.name));
+              } else {
+                return t.objectProperty(specifier.imported, specifier.local);
+              }
+            })
+          ),
+          t.awaitExpression(t.callExpression(t.import(), [source]))
+        ),
+      ]);
+    } else {
+      return statement;
+    }
   });
 
   // Wrap the whole thing in an async function like
@@ -246,6 +301,6 @@ export function transform(ast) {
     ast: ast,
     created_names,
     consumed_names,
-    last_created_name: result_name,
+    last_created_name: result_ast != null ? prettyPrint(result_ast).code : null,
   };
 }
