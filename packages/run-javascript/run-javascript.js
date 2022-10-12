@@ -34,6 +34,9 @@ let btoa = (string) => {
 export function transform_code(code, { filename }) {
   let without_typescript = transformSync(code, {
     filename: "file.ts",
+    parserOpts: {
+      allowUndeclaredExports: true,
+    },
     presets: [[preset, { onlyRemoveTypeImports: true }]],
   });
   /** @type {string} */
@@ -46,6 +49,7 @@ export function transform_code(code, { filename }) {
         return parseBabel(input, {
           ...options,
           plugins: ["typescript", "jsx"],
+          allowUndeclaredExports: true,
         });
       },
     },
@@ -213,6 +217,18 @@ export function transform(ast) {
           // .... but I want to return `{ new_a: new_a }` (the original name is irrelevant)
           return [statement, return_with_default(left_hand_side)];
         }
+      } else if (statement.type === "ExportNamedDeclaration") {
+        // We strip out the export statement, because that won't work inside a function 🤷‍♀️
+        // TODO Maybe do record the exports some way?
+        return [
+          return_with_default(
+            t.objectExpression(
+              statement.specifiers.map((specifier) => {
+                return t.objectProperty(specifier.exported, specifier.local);
+              })
+            )
+          ),
+        ];
       } else {
         throw new Error(`Couldn't 'return-ify' "${print(statement).code}"`);
       }

@@ -6,12 +6,13 @@
   "main": "node-engine.js",
   "scripts": {
     "start": "nodemon --ext \"js,ts\" --watch ../packages/run-javascript --watch . --exec \"ts-node --esm -T ./node-engine.ts\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "ts-node --esm -T ./tests/tests.ts"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@babel/traverse": "^7.18.11",
+    "@iarna/toml": "^2.2.5",
     "body-parser": "^1.20.0",
     "chalk": "^5.0.1",
     "cors": "^2.8.5",

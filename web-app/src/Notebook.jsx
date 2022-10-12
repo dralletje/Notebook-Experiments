@@ -3,9 +3,10 @@ import styled from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import { StateField } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { Inspector } from "./Inspector";
 import { compact, isEqual } from "lodash";
+import { shallowEqualObjects } from "shallow-equal";
 
+import { Inspector } from "./Inspector";
 import { cell_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
 import { deserialize } from "./deserialize-value-to-show";
 
@@ -32,6 +33,7 @@ import {
   CellEditorStatesField,
   CellHasSelectionField,
   CellIdFacet,
+  CellMetaField,
   CellTypeFacet,
   empty_cell,
   MoveCellEffect,
@@ -191,7 +193,7 @@ let CellStyle = styled.div`
   }
 `;
 
-let engine_cell_from_notebook_cell = (cell) => {
+let engine_cell_from_notebook_cell = () => {
   return {
     last_run: -Infinity,
     result: null,
@@ -407,20 +409,21 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                       {nexus_editorview.state
                         .field(CellEditorStatesField)
                         .cells[cell.id].facet(CellTypeFacet) === "text" ? (
-                        <TextCell
+                        <TextCellMemo
                           cell={cell}
                           viewupdate={viewupdate}
                           is_selected={selected_cells.includes(cell.id)}
+                          cell_id={cell.id}
                           did_just_get_created={last_created_cells.includes(
                             cell.id
                           )}
                         />
                       ) : (
-                        <Cell
-                          cell={cell}
+                        <CellMemo
                           viewupdate={viewupdate}
                           cylinder={engine.cylinders[cell.id]}
                           is_selected={selected_cells.includes(cell.id)}
+                          cell_id={cell.id}
                           did_just_get_created={last_created_cells.includes(
                             cell.id
                           )}
@@ -569,7 +572,7 @@ export let NestedCodemirror = React.forwardRef(
 
 /**
  * @param {{
- *  cell: import("./notebook-types").Cell,
+ *  cell_id: import("./notebook-types").CellId,
  *  cylinder: import("./notebook-types").CylinderShadow,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
@@ -577,12 +580,24 @@ export let NestedCodemirror = React.forwardRef(
  * }} props
  */
 export let Cell = ({
-  cell,
-  cylinder = engine_cell_from_notebook_cell(cell),
+  cell_id,
+  cylinder = engine_cell_from_notebook_cell(),
   is_selected,
   did_just_get_created,
   viewupdate,
 }) => {
+  let state = viewupdate.state.field(CellEditorStatesField).cells[cell_id];
+  let type = state.facet(CellTypeFacet);
+  let cell = {
+    id: cell_id,
+    unsaved_code: state.doc.toString(),
+    ...state.field(CellMetaField),
+    type: type,
+
+    // Uhhhh TODO??
+    ...(type === "text" ? { code: state.doc.toString() } : {}),
+  };
+
   // prettier-ignore
   let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
 
@@ -690,6 +705,27 @@ export let Cell = ({
   );
 };
 
+// Not sure if this is useful at all, as the `Cell` is a very small component at the moment...
+let CellMemo = React.memo(
+  Cell,
+  (
+    {
+      viewupdate: old_viewupdate,
+      cylinder: old_cylinder,
+      cell_id: old_cell_id,
+      ...old_props
+    },
+    { viewupdate: next_viewupdate, cylinder, cell_id, ...next_props }
+  ) => {
+    return (
+      shallowEqualObjects(old_props, next_props) &&
+      old_viewupdate.state.field(CellEditorStatesField).cells[cell_id] ===
+        next_viewupdate.state.field(CellEditorStatesField).cells[cell_id] &&
+      isEqual(old_cylinder, cylinder)
+    );
+  }
+);
+
 let asd = [
   EditorView.domEventHandlers({
     focus: (view, event) => {
@@ -701,18 +737,14 @@ let asd = [
 
 /**
  * @param {{
+ *  cell_id: import("./notebook-types").CellId,
  *  cell: import("./notebook-types").Cell,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
  *  viewupdate: ViewUpdate,
  * }} props
  */
-export let TextCell = ({
-  cell,
-  is_selected,
-  did_just_get_created,
-  viewupdate,
-}) => {
+let TextCell = ({ cell_id, is_selected, did_just_get_created, viewupdate }) => {
   // prettier-ignore
   let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
 
@@ -742,15 +774,12 @@ export let TextCell = ({
   return (
     <TextCellStyle
       ref={cell_wrapper_ref}
-      data-cell-id={cell.id}
-      className={compact([
-        cell.unsaved_code !== cell.code && "modified",
-        is_selected && "selected",
-      ]).join(" ")}
+      data-cell-id={cell_id}
+      className={compact([is_selected && "selected"]).join(" ")}
     >
       <NestedCodemirror
         ref={editorview_ref}
-        cell_id={cell.id}
+        cell_id={cell_id}
         viewupdate={viewupdate}
       >
         <Extension key="markdown-setup" extension={basic_markdown_setup} />
@@ -761,6 +790,21 @@ export let TextCell = ({
     </TextCellStyle>
   );
 };
+
+// Idk
+let TextCellMemo = React.memo(
+  TextCell,
+  (
+    { viewupdate: old_viewupdate, cell_id: old_cell_id, ...old_props },
+    { viewupdate: next_viewupdate, cell_id, ...next_props }
+  ) => {
+    return (
+      shallowEqualObjects(old_props, next_props) &&
+      old_viewupdate.state.field(CellEditorStatesField).cells[cell_id] ===
+        next_viewupdate.state.field(CellEditorStatesField).cells[cell_id]
+    );
+  }
+);
 
 let TextCellStyle = styled.div`
   flex: 1 1 0px;

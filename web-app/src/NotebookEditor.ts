@@ -293,7 +293,7 @@ export let editor_state_for_cell = (cell: Cell, nexus_state: EditorState) => {
   let extensions = nexus_state.facet(CellPlugin);
 
   return EditorState.create({
-    doc: cell.unsaved_code,
+    doc: cell.unsaved_code ?? cell.code,
     extensions: [
       CellIdFacet.of(cell.id),
       CellMetaField.init(() => ({

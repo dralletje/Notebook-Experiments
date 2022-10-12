@@ -13,7 +13,7 @@ import {
   pizzaOutline,
   terminalOutline,
 } from "ionicons/icons";
-import { Facet } from "@codemirror/state";
+import { EditorState, Facet } from "@codemirror/state";
 import {
   CellEditorStatesField,
   CellIdFacet,
@@ -28,6 +28,7 @@ import { isEqual, mapValues, sortBy } from "lodash";
 import { CellIdOrder } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { MetaNotebook } from "./MetaNotebook";
 import { SelectionArea } from "./selection-area/SelectionArea";
+import { NotebookFilename, NotebookId } from "./notebook-types";
 
 // let worker = create_worker();
 // console.log(`worker:`, worker);
@@ -174,20 +175,66 @@ let UpdateLocalStorage = updateListener.of((viewupdate) => {
   );
 });
 
-export function File({ state, onChange }) {
+/**
+ * @param {{ filename: string, notebook: import("./notebook-types").NotebookSerialized }} notebook
+ * @param {Socket} socket
+ * @returns {import("./notebook-types").EngineShadow}
+ */
+let useEngine = (notebook, socket) => {
+  let [engine, set_engine] = React.useState({ cylinders: {} });
+  React.useEffect(() => {
+    socket.on("engine", ({ filename, engine }) => {
+      if (filename === notebook.filename) {
+        set_engine(engine);
+      }
+    });
+    socket;
+  }, []);
+
+  React.useEffect(() => {
+    let fn = () => {
+      socket.emit("notebook", notebook);
+    };
+    socket.on("connect", fn);
+    return () => {
+      socket.off("connect", fn);
+    };
+  }, [notebook, socket]);
+
+  React.useEffect(() => {
+    socket.emit("notebook", notebook);
+  }, [notebook, socket]);
+
+  return engine;
+};
+
+/**
+ * @param {{
+ *  state: EditorState,
+ *  onChange: (state: EditorState) => void,
+ *  socket: Socket
+ * }} props
+ */
+export function File({ state, onChange, socket }) {
   let viewupdate = useViewUpdate(state, onChange);
 
   let cell_editor_states = state.field(CellEditorStatesField);
 
   let notebook = React.useMemo(() => {
     return /** @type {import("./notebook-types").Notebook} */ ({
+      id: state.facet(NotebookId),
+      filename: state.facet(NotebookFilename),
       cell_order: cell_editor_states.cell_order,
       cells: mapValues(cell_editor_states.cells, (cell_state) => {
+        let type = cell_state.facet(CellTypeFacet);
         return {
           id: cell_state.facet(CellIdFacet),
           unsaved_code: cell_state.doc.toString(),
           ...cell_state.field(CellMetaField),
-          type: cell_state.facet(CellTypeFacet),
+          type: type,
+
+          // Uhhhh TODO??
+          ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
         };
       }),
     });
@@ -216,37 +263,14 @@ export function File({ state, onChange }) {
     };
   }, [viewupdate.view]);
 
-  let [engine, set_engine] = React.useState({ cylinders: {} });
-  /** @type {React.MutableRefObject<Socket<any, any>>} */
-  let socketio_ref = React.useRef(/** @type {any} */ (null));
-  React.useEffect(() => {
-    let socket = io("http://localhost:3099");
-
-    socket.on("engine", (engine) => {
-      set_engine(engine);
-    });
-    socketio_ref.current = socket;
-
-    return () => {
-      socket.close();
+  let notebook_with_filename = React.useMemo(() => {
+    return {
+      filename: state.facet(NotebookFilename),
+      notebook: notebook,
     };
-  }, []);
+  }, [notebook, state.facet(NotebookFilename)]);
 
-  React.useEffect(() => {
-    let socket = socketio_ref.current;
-    let fn = () => {
-      socket.emit("notebook", notebook);
-    };
-    socket.on("connect", fn);
-    return () => {
-      socket.off("connect", fn);
-    };
-  }, [notebook]);
-
-  React.useEffect(() => {
-    let socket = socketio_ref.current;
-    socket.emit("notebook", notebook);
-  }, [notebook]);
+  let engine = useEngine(notebook_with_filename, socket);
 
   let [open_tab, set_open_tab] = React.useState(
     /** @type {null | "graph" | "dependencies" | "shell" | "meta"} */

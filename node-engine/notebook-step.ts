@@ -14,7 +14,7 @@ import {
   topological_sort,
 } from "./dag-things.js";
 
-import { run_in_environment } from "../cell-environment/cell-environment.js";
+import { run_in_environment } from "../cell-environment/src/__cell_environment.js";
 import { parse_cell } from "./parse-cell.js";
 import serialize from "./serialize.js";
 import { Engine, Notebook } from "./node-engine.js";
@@ -40,6 +40,13 @@ let create_callback_collector = () => {
       }
     },
   };
+};
+
+export let topological_sort_notebook = (notebook: Notebook) => {
+  let graph_cells = notebook_to_graph_cell(notebook);
+  let dag = expand_dag(cells_to_dag(graph_cells));
+  let sorted = topological_sort(dag);
+  return sorted.map((id) => notebook.cells[id]);
 };
 
 let cells_that_need_running = (notebook: Notebook, engine: Engine) => {
@@ -289,7 +296,7 @@ export let notebook_step = async (
 
     inputs.__meta__ = {
       is_in_notebook: true,
-      url: new URL("../cell-environment/cell-environment.js", import.meta.url),
+      url: new URL(`../cell-environment/${notebook.filename}`, import.meta.url),
     };
 
     inputs.fetch = fetch;
@@ -318,8 +325,6 @@ export let notebook_step = async (
           inputs_array.map((x) => x[0]),
           code
         );
-
-        console.log(fn);
 
         let result = await fn(...inputs_array.map((x) => x[1]));
 

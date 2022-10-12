@@ -1,3 +1,5 @@
+import { Facet } from "@codemirror/state";
+
 export type EngineShadow = {
   cylinders: { [id: string]: CylinderShadow };
 };
@@ -42,3 +44,10 @@ export type Cell = {
   is_waiting?: boolean;
   folded?: boolean;
 };
+
+export let NotebookFilename = Facet.define<string, string>({
+  combine: (a) => a[0],
+});
+export let NotebookId = Facet.define<string, string>({
+  combine: (a) => a[0],
+});

@@ -2,13 +2,16 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import { Server } from "socket.io";
-import http from "http";
+import http from "node:http";
 import chalk from "chalk";
 
 import { mapValues, throttle } from "lodash-es";
 
 import serialize from "./serialize.js";
-import { notebook_step } from "./notebook-step.js";
+import { notebook_step, topological_sort_notebook } from "./notebook-step.js";
+import { load_notebook, save_notebook } from "./save-and-load-notebook-file.js";
+
+import { readdir } from "node:fs/promises";
 
 const app = express();
 app.use(cors());
@@ -41,6 +44,7 @@ export type Engine = {
   cylinders: { [cell_id: CellId]: Cylinder };
   internal_run_counter: number;
   dag: { [key: CellId]: DAGElement };
+  is_busy: boolean;
 };
 
 export type Cylinder = {
@@ -56,7 +60,17 @@ export type Cylinder = {
   invalidation_token: { call: () => Promise<any> };
 };
 
-export type Notebook = { cells: { [key: CellId]: Cell }; cell_order: CellId[] };
+export type Notebook = {
+  cells: { [key: CellId]: Cell };
+  cell_order: CellId[];
+};
+
+export type Workspace = {
+  files: { [filename: string]: { filename: string; notebook: Notebook } };
+};
+export type WorkspaceEngine = {
+  files: { [filename: string]: Engine };
+};
 
 export type Cell = {
   code: string;
@@ -122,31 +136,75 @@ let engine_to_json = (engine) => {
   };
 };
 
+let empty_notebook = (): Notebook => ({
+  cells: {},
+  cell_order: [],
+});
+
+let DIRECTORY = `../cell-environment/src`;
+
 io.on("connection", (socket) => {
   let is_busy = false;
-  let notebook_ref: { current: Notebook } = {
-    current: { cells: {}, cell_order: [] },
-  };
+  let workspace_ref: { [filename: string]: { current: Notebook } } = {};
 
-  let engine: Engine = { cylinders: {}, internal_run_counter: 1, dag: {} };
+  let engines: { [filename: string]: Engine } = {};
+
+  socket.on("load-workspace-from-directory", async () => {
+    let files = await readdir(DIRECTORY);
+    let workspace: Workspace = {
+      files: {},
+    };
+    for (let file of files) {
+      if (file === "__cell_environment.js") continue;
+      if (file.endsWith(".js") || file.endsWith(".ts")) {
+        workspace.files[file] = await load_notebook(DIRECTORY, file);
+      }
+    }
+    socket.emit("load-workspace-from-directory", workspace);
+  });
 
   socket.on("notebook", async (notebook) => {
-    notebook_ref.current = notebook;
-    if (is_busy) return;
-
-    is_busy = true;
-    await run_notebook(notebook_ref, engine, (engine) => {
-      socket.emit("engine", engine_to_json(engine));
+    save_notebook(notebook, DIRECTORY).catch((error) => {
+      console.error(chalk.bold.red(`Error saving notebook`));
+      console.error(error);
     });
-    is_busy = false;
+
+    workspace_ref[notebook.filename] = { current: notebook.notebook };
+    engines[notebook.filename] ??= {
+      cylinders: {},
+      internal_run_counter: 1,
+      dag: {},
+      is_busy: false,
+    };
+    let engine = engines[notebook.filename];
+
+    if (engine.is_busy) return;
+    engine.is_busy = true;
+
+    await run_notebook(workspace_ref[notebook.filename], engine, (engine) => {
+      socket.emit("engine", {
+        filename: notebook.filename,
+        engine: engine_to_json(engine),
+      });
+    });
+    engine.is_busy = false;
   });
+
+  // socket.on("save-workspace", async (workspace: Workspace) => {
+  //   for (let [filename, notebook] of Object.entries(workspace.files)) {
+  //     save_notebook(notebook, filename);
+  //   }
+  // });
 
   // Run notebook with all cells removed on disconnect
   socket.on("disconnect", () => {
     console.log(chalk.green.bold`DISCONNECTED`);
-    notebook_ref.current = { cells: {}, cell_order: [] };
-    if (!is_busy) {
-      run_notebook(notebook_ref, engine, () => {});
+
+    for (let [filename, engine] of Object.entries(engines)) {
+      workspace_ref[filename].current = empty_notebook();
+      if (!engine.is_busy) {
+        run_notebook({ current: empty_notebook() }, engine, () => {});
+      }
     }
   });
 });

@@ -31,6 +31,7 @@ import {
 import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
 import { blur_stuff } from "./blur-stuff";
 import { File } from "./File";
+import { NotebookFilename, NotebookId } from "./notebook-types";
 
 // let worker = create_worker();
 // console.log(`worker:`, worker);
@@ -83,45 +84,8 @@ let JustForKicksFacet = Facet.define({});
  * }} files
  */
 
-/** @param {{ workspace: Workspace }} props */
-let useEngine = ({ workspace }) => {
-  let [engine, set_engine] = React.useState({ cylinders: {} });
-  /** @type {React.MutableRefObject<Socket<any, any>>} */
-  let socketio_ref = React.useRef(/** @type {any} */ (null));
-  React.useEffect(() => {
-    let socket = io("http://localhost:3099");
-
-    socket.on("engine", (engine) => {
-      set_engine(engine);
-    });
-    socketio_ref.current = socket;
-
-    return () => {
-      socket.close();
-    };
-  }, []);
-
-  React.useEffect(() => {
-    let socket = socketio_ref.current;
-    let fn = () => {
-      socket.emit("workspace", workspace);
-    };
-    socket.on("connect", fn);
-    return () => {
-      socket.off("connect", fn);
-    };
-  }, [workspace]);
-
-  React.useEffect(() => {
-    let socket = socketio_ref.current;
-    socket.emit("workspace", workspace);
-  }, [workspace]);
-
-  return engine;
-};
-
-/** @param {import("./notebook-types").NotebookSerialized} notebook */
-let notebook_to_state = (notebook) => {
+/** @param {{ filename: string, notebook: import("./notebook-types").NotebookSerialized}} notebook */
+let notebook_to_state = ({ filename, notebook }) => {
   let notebook_state = CellEditorStatesField.init((editorstate) => {
     return {
       cell_order: notebook.cell_order,
@@ -151,9 +115,41 @@ let notebook_to_state = (notebook) => {
       // This works so smooth omg
       [shared_history(), keymap.of(historyKeymap)],
 
+      NotebookId.of(notebook.id),
+      NotebookFilename.of(filename),
+
       // just_for_kicks_extension
       // UpdateLocalStorage,
     ],
+  });
+};
+
+let useSocket = () => {
+  let socket = React.useMemo(() => {
+    return io("http://localhost:3099", {
+      autoConnect: false,
+    });
+  }, []);
+  React.useEffect(() => {
+    if (!socket.connected) {
+      socket.connect();
+    }
+    return () => {
+      socket.close();
+    };
+  }, [socket]);
+  return socket;
+};
+
+let serialized_workspace_to_workspace = (serialized) => {
+  return /** @type {Workspace} */ ({
+    id: serialized.id,
+    files: mapValues(serialized.files, (file) => {
+      return {
+        filename: file.filename,
+        state: notebook_to_state(file),
+      };
+    }),
   });
 };
 
@@ -197,9 +193,9 @@ function App() {
           },
         },
         "thing.js": {
-          filename: "app.js",
+          filename: "thing.js",
           notebook: {
-            id: "1",
+            id: "3",
             cell_order: ["1", "2", "3"],
             cells: {
               1: {
@@ -230,20 +226,29 @@ function App() {
       },
     };
 
-    return /** @type {Workspace} */ ({
-      id: plain.id,
-      files: mapValues(plain.files, (file) => {
-        return {
-          filename: file.filename,
-          state: notebook_to_state(file.notebook),
-        };
-      }),
+    return serialized_workspace_to_workspace(plain);
+  }, []);
+
+  // let [workspace, set_workspace] = React.useState(initial_workspace);
+  let [workspace, set_workspace] = React.useState(
+    /** @type {Workspace | null} */ (null)
+  );
+
+  let [open_file, set_open_file] = React.useState("app.js");
+
+  let socket = useSocket();
+
+  React.useEffect(() => {
+    socket.emit("load-workspace-from-directory");
+    socket.once("load-workspace-from-directory", (workspace) => {
+      console.log(`workspace:`, workspace);
+      set_workspace(serialized_workspace_to_workspace(workspace));
     });
   }, []);
 
-  let [workspace, set_workspace] = React.useState(initial_workspace);
-
-  let [open_file, set_open_file] = React.useState("app.js");
+  if (workspace == null) {
+    return <div>Hi</div>;
+  }
 
   return (
     <div
@@ -267,10 +272,12 @@ function App() {
       </div>
       <File
         key={open_file}
+        socket={socket}
         state={workspace.files[open_file].state}
         onChange={(state) => {
           set_workspace(
             produce((workspace) => {
+              // @ts-ignore
               workspace.files[open_file].state = state;
             })
           );
