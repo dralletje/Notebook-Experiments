@@ -67,7 +67,11 @@ let InspectorContainer = styled.div`
   overflow-y: auto;
 
   font-size: 16px;
-  min-height: 24px;
+  /* min-height: 24px; */
+
+  .folded & {
+    min-height: 24px;
+  }
 `;
 
 let CellHasSelectionPlugin = [
@@ -680,32 +684,34 @@ let AAAAA = styled.div`
     padding-bottom: 0px;
   }
 
-  & .sticky-left {
+  & .sticky-left,
+  & .sticky-right {
     position: sticky;
-    left: 4px;
-
     &::before {
       content: "";
       position: absolute;
       inset: 0;
       z-index: -1;
 
+      /* So want the sticky stuff to float above the text that will scroll underneath,
+         but because the background color changes when dragging, I found that backdrop-filter
+         is... the easiest? LOL  */
+      /* background-color: hsl(0deg 0% 7%); */
+      backdrop-filter: blur(100px);
+    }
+  }
+  & .sticky-left {
+    position: sticky;
+    left: 4px;
+    &::before {
       left: -4px;
-      background-color: hsl(0deg 0% 7%);
     }
   }
   & .sticky-right {
     position: sticky;
-    right: 2px;
-
+    right: 8px;
     &::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-
-      right: -2px;
-      background-color: hsl(0deg 0% 7%);
+      right: -8px;
     }
   }
 `;
@@ -757,6 +763,10 @@ let PlaceInsideExpression = ({ expression, children }) => {
       return Decoration.set([]);
     });
   }, [children]);
+
+  if (expression == null && children == null) {
+    return null;
+  }
 
   return (
     <AAAAA>
@@ -879,7 +889,10 @@ export let Cell = ({
       <InspectorHoverBackground>
         <InspectorContainer>
           <PlaceInsideExpression expression={result_deserialized.name}>
-            <Inspector value={result_deserialized} />
+            {result_deserialized.type === "return" &&
+            result_deserialized.value === undefined ? null : (
+              <Inspector value={result_deserialized} />
+            )}
           </PlaceInsideExpression>
         </InspectorContainer>
       </InspectorHoverBackground>

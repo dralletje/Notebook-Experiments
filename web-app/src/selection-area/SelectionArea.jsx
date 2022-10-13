@@ -218,8 +218,11 @@ export const SelectionArea = ({ on_selection, children }) => {
               position: "absolute",
               background: "rgba(40, 78, 189, 0.24)",
               outline: "rgba(255, 255, 255, 0.1) solid 1px",
-              zIndex: 1000000, // Yes, really
-              top: Math.min(selection.start.y, selection.end.y),
+              // zIndex: 1000000, // Yes, really
+              // window.scrollY is not reactive ofcourse,
+              // but on scroll we update the selection anyway
+              top:
+                Math.min(selection.start.y, selection.end.y) - window.scrollY,
               left: Math.min(selection.start.x, selection.end.x),
               width: Math.abs(selection.start.x - selection.end.x),
               height: Math.abs(selection.start.y - selection.end.y),

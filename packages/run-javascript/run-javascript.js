@@ -146,10 +146,12 @@ export function transform(ast) {
   ast.program.body = ast.program.body.flatMap((statement, index) => {
     if (index === ast.program.body.length - 1) {
       if (statement.type === "FunctionDeclaration") {
-        result_ast = t.assignmentExpression(
-          "=",
-          t.identifier(statement.id.name),
-          RESULT_PLACEHOLDER
+        result_ast = t.functionDeclaration(
+          statement.id,
+          statement.params,
+          t.blockStatement([]),
+          // t.blockStatement([t.expressionStatement(RESULT_PLACEHOLDER)]),
+          statement.generator
         );
         return [
           statement,
@@ -337,7 +339,10 @@ export function transform(ast) {
     consumed_names,
     last_created_name:
       result_ast != null
-        ? remove_semicolon(prettyPrint(result_ast).code)
+        ? remove_semicolon(prettyPrint(result_ast).code).replaceAll(
+            /\n */g,
+            " "
+          )
         : null,
   };
 }

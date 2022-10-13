@@ -2,6 +2,7 @@ import React from "react";
 import styled from "styled-components";
 import { Inspector as BasicInspector } from "inspector-x-react";
 import "@observablehq/inspector/src/style.css";
+import { isEqual } from "lodash";
 
 let InspectorStyle = styled.div`
   --syntax_normal: #848484;

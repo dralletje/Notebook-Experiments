@@ -41,14 +41,18 @@ export class ReactWidget extends WidgetType {
     );
     span[codemirror_view_symbol] = view;
     span[react_root_symbol] = root;
-    span[element_key_symbol] = this.element.key;
+    span[element_key_symbol] = this.element?.key;
     return span;
   }
 
   updateDOM(dom) {
     if (dom[react_root_symbol] == null) return false;
     if (dom[codemirror_view_symbol] == null) return false;
-    if (dom[element_key_symbol] !== this.element.key) return false;
+    if (
+      this.element.key == null ||
+      dom[element_key_symbol] !== this.element.key
+    )
+      return false;
 
     dom[react_root_symbol].render(
       createElement(
