@@ -349,12 +349,15 @@ export let MergeCellFromBelowEffect = StateEffect.define<{
   cell_id: CellId;
 }>();
 
+export let BlurAllCells = StateEffect.define<void>();
+
 export let CellEditorStatesField = StateField.define<{
   cell_order: Array<CellId>;
   cells: { [key: CellId]: EditorState };
   /** So... I need this separate from the EditorState's selection,
-   *  because EditorState.selection can't be empty/inactive */
-  has_active_selection: { [key: CellId]: boolean };
+   *  because EditorState.selection can't be empty/inactive
+   *  ALSO: Screw multiple selections (for now) */
+  cell_with_current_selection: CellId | null;
 
   /** Necessary because the cells views need to be updated with the transactions
    *  🤩 Needs no cell_id because the emitter is on the transaction state 🤩 */
@@ -364,7 +367,7 @@ export let CellEditorStatesField = StateField.define<{
     return {
       cell_order: [],
       cells: {},
-      has_active_selection: {},
+      cell_with_current_selection: null,
 
       transactions_to_send_to_cells: [],
     };
@@ -378,9 +381,6 @@ export let CellEditorStatesField = StateField.define<{
         cell_order,
         transactions_to_send_to_cells: _transactions_to_send_to_cells,
       } = state;
-
-      // TODO This should always be present anyway?
-      state.has_active_selection ??= {};
 
       // Tell typescript it doesn't need to care about WritableDraft >_>
       let cells = _cells as any as { [key: CellId]: EditorState };
@@ -563,23 +563,26 @@ export let CellEditorStatesField = StateField.define<{
         }
       }
 
+      // TODO Ideally we don't use `.selection` but make it more explicit...
       for (let transaction of transactions_to_send_to_cells) {
         if (transaction.selection != null) {
-          // for (let effect of transaction.effects) {
-          //   if (effect.is(CellHasSelectionEffect)) {
-          //     state.has_active_selection  = {
-          //       [transaction.startState.facet(CellIdFacet)]: true,
-          //     };
-          //   }
+          state.cell_with_current_selection =
+            transaction.startState.facet(CellIdFacet);
+        }
+      }
 
-          state.has_active_selection = {
-            [transaction.startState.facet(CellIdFacet)]: true,
-          };
+      // "Hack" to make BlurAllCells work
+      // TODO Ideally we do this "together" with the other effects,
+      // .... because in an edge case there might be an explicit selection
+      // .... "after" the BlurAllCells effect, and we'd want to respect that
+      for (let effect of transaction.effects) {
+        if (effect.is(BlurAllCells)) {
+          state.cell_with_current_selection = null;
         }
       }
 
       for (let cell_id of cell_order) {
-        if (state.has_active_selection[cell_id]) {
+        if (state.cell_with_current_selection === cell_id) {
           let cell = cells[cell_id];
           if (!cell.field(CellHasSelectionField)) {
             let transaction = cell.update({

@@ -29,7 +29,6 @@ import {
   cell_movement_extension_default,
 } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
-import { blur_stuff } from "./blur-stuff";
 import { File } from "./File";
 import { NotebookFilename, NotebookId } from "./notebook-types";
 
@@ -83,7 +82,7 @@ let notebook_to_state = ({ filename, notebook }) => {
         return editor_state_for_cell(cell, editorstate);
       }),
       transactions_to_send_to_cells: [],
-      has_active_selection: {},
+      cell_with_current_selection: null,
     };
   });
   return EditorState.create({
@@ -99,8 +98,6 @@ let notebook_to_state = ({ filename, notebook }) => {
       cell_movement_extension_default,
       selected_cells_keymap,
       LastCreatedCells,
-
-      blur_stuff,
 
       // This works so smooth omg
       [shared_history(), keymap.of(historyKeymap)],

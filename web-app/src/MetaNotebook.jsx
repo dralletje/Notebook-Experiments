@@ -79,7 +79,7 @@ export let MetaNotebook = () => {
             return editor_state_for_cell(cell, editorstate);
           }),
           transactions_to_send_to_cells: [],
-          has_active_selection: {},
+          cell_with_current_selection: null,
         };
       }),
     [CellEditorStatesField]

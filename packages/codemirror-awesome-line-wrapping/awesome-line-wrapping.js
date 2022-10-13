@@ -11,12 +11,154 @@
  * so THEN I can add the markers in the decorations statefield.
  */
 
-import { StateEffect, StateField } from "@codemirror/state";
+import { Facet, StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
 import { range } from "lodash";
-import { createElement } from "react";
-import { ReactWidget } from "react-codemirror-widget";
 
+/**
+ * Use this to prevent soft-wrapping from going all the way to the right
+ * and creating a MONSTER of a line, 1-character-wide, 80 lines high...
+ * To disable use `MaxIdentationSpacesFacet.of(Infinity)`
+ * @type {Facet<number, number>}
+ */
+let MaxIdentationSpacesFacet = Facet.define({
+  combine: (values) => values[0],
+});
+
+let line_wrapping_decorations = StateField.define({
+  create() {
+    return Decoration.none;
+  },
+  update(deco, tr) {
+    let indent_limit = tr.state.facet(MaxIdentationSpacesFacet) ?? 40;
+
+    let tabSize = tr.state.tabSize;
+    let previous = tr.startState.field(extra_cycle_character_width, false) ?? {
+      measuredSpaceWidth: null,
+      defaultCharacterWidth: null,
+    };
+    let previous_space_width =
+      previous.measuredSpaceWidth ?? previous.defaultCharacterWidth;
+    let { measuredSpaceWidth, defaultCharacterWidth } = tr.state.field(
+      extra_cycle_character_width,
+      false
+    ) ?? { measuredSpaceWidth: null, defaultCharacterWidth: null };
+    let space_width = measuredSpaceWidth ?? defaultCharacterWidth;
+
+    if (space_width == null) return Decoration.none;
+    if (
+      !tr.docChanged &&
+      deco !== Decoration.none &&
+      previous_space_width === space_width
+    )
+      return deco;
+
+    let decorations = [];
+
+    // TODO? Only apply to visible lines? Wouldn't that screw stuff up??
+    // TODO? Don't create new decorations when a line hasn't changed?
+    for (let i of range(0, tr.state.doc.lines)) {
+      let line = tr.state.doc.line(i + 1);
+      if (line.length === 0) continue;
+
+      let indented_tabs = 0;
+      let indented_spaces = 0;
+      let indented_spaces_after_a_tab = 0;
+      for (let ch of line.text) {
+        // Stop counting after indent limit, because that way all the following code is easier 😅
+        if (indented_tabs * tabSize + indented_spaces >= indent_limit) break;
+
+        if (ch === "\t") {
+          // Tabs after spaces that aren't a multiple of tabSize are ignored
+          if (indented_spaces % tabSize !== 0) break;
+          indented_tabs++;
+        } else if (ch === " ") {
+          if (indented_tabs > 0) {
+            indented_spaces_after_a_tab++;
+          } else {
+            indented_spaces++;
+          }
+        } else {
+          break;
+        }
+      }
+      // TODO? It still breaks when there is a tab and then an amount of spaces
+      // ..... that is smaller than the tab size. No idea how to fix, but for now
+      // ..... I only care about multiples of tabsize
+      // ..... (Works in Safari, breaks in Chrome and Firefox)
+      // ..... I guess there is some relation between `text-indent` and `tab-size`? But I don't know what it is.
+      indented_spaces =
+        indented_spaces +
+        (indented_spaces_after_a_tab - (indented_spaces_after_a_tab % tabSize));
+
+      let indent_in_spaces = indented_tabs * tabSize + indented_spaces;
+      let offset = indent_in_spaces * space_width;
+
+      let linerwapper = Decoration.line({
+        attributes: {
+          // Also tried with providing the indent_limit in css form,
+          // but not as much luck yet
+          // style: `--indented: min(${offset}px, ${indent_limit});`,
+          style: `--indented: ${offset}px;`,
+          class: "awesome-wrapping-plugin-the-line",
+        },
+      });
+      // Need to push before the tabs one else codemirror gets madddd
+      decorations.push(linerwapper.range(line.from, line.from));
+
+      if (indent_in_spaces !== 0) {
+        decorations.push(
+          Decoration.mark({
+            class: "awesome-wrapping-plugin-the-tabs",
+          }).range(line.from, line.from + (indented_tabs + indented_spaces))
+        );
+      }
+      // NOTE: Small cool thingy that replaces "superflous" tabs with the "⇥ " character,
+      // ..... But not yet sure how to make this work perfect with possible tabs/spaces mixed
+      // ..... So leaving it out for now
+      // if (characters_that_are_actually_there > indent_in_spaces) {
+      //   for (let i of range(indent_in_spaces, indented_tabs)) {
+      //     decorations.push(
+      //       Decoration.replace({
+      //         widget: new ReactWidget(
+      //           createElement("span", { style: { opacity: 0.2 } }, "⇥ ")
+      //         ),
+      //         block: false,
+      //       }).range(line.from + i, line.from + i + 1)
+      //     );
+      //   }
+      // }
+    }
+    return Decoration.set(decorations);
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+let base_theme = EditorView.baseTheme({
+  ".awesome-wrapping-plugin-the-line": {
+    "--correction": 0,
+    "margin-left": "calc(var(--indented))",
+    "text-indent": "calc(-1 * var(--indented))",
+  },
+  ".awesome-wrapping-plugin-the-line > *": {
+    /* text-indent apparently cascades... which I think is pretty stupid but this is the fix */
+    "text-indent": "initial",
+  },
+  ".awesome-wrapping-plugin-the-tabs": {
+    /* So FOR SOME REASON text-ident is kinda buggy
+        but that gets fixed with inline-block...  
+        But that brought some other problems...
+        But margin-left: -1px seems to also do the trick?? */
+    /* display: inline-block; */
+    whiteSpace: "pre",
+    verticalAlign: "top",
+    marginLeft: "-1px",
+  },
+});
+
+// All the stuff to get the character width inside the state field:
+// Could use the css `ch` as well, but feels... wrong? Less versatile?
+// (I'm also using codemirror sometimes for non-monospace editors)
 /** @type {any} */
 const CharacterWidthEffect = StateEffect.define({});
 const extra_cycle_character_width = StateField.define({
@@ -34,7 +176,6 @@ const extra_cycle_character_width = StateField.define({
     return value;
   },
 });
-
 let character_width_listener = EditorView.updateListener.of((viewupdate) => {
   let width = viewupdate.view.defaultCharacterWidth;
   let { defaultCharacterWidth } = viewupdate.view.state.field(
@@ -65,165 +206,6 @@ let character_width_listener = EditorView.updateListener.of((viewupdate) => {
       ],
     });
   }
-});
-
-let ARBITRARY_INDENT_LINE_WRAP_LIMIT = 8;
-let line_wrapping_decorations = StateField.define({
-  create() {
-    return Decoration.none;
-  },
-  update(deco, tr) {
-    // let tabSize = tr.state.tabSize
-    let tabSize = 4;
-    let previous = tr.startState.field(extra_cycle_character_width, false) ?? {
-      measuredSpaceWidth: null,
-      defaultCharacterWidth: null,
-    };
-    let previous_space_width =
-      previous.measuredSpaceWidth ?? previous.defaultCharacterWidth;
-    let { measuredSpaceWidth, defaultCharacterWidth } = tr.state.field(
-      extra_cycle_character_width,
-      false
-    ) ?? { measuredSpaceWidth: null, defaultCharacterWidth: null };
-    let space_width = measuredSpaceWidth ?? defaultCharacterWidth;
-
-    if (space_width == null) return Decoration.none;
-    if (
-      !tr.docChanged &&
-      deco !== Decoration.none &&
-      previous_space_width === space_width
-    )
-      return deco;
-
-    let decorations = [];
-
-    // TODO? Only apply to visible lines? Wouldn't that screw stuff up??
-    // TODO? Don't create new decorations when a line hasn't changed?
-    for (let i of range(0, tr.state.doc.lines)) {
-      let line = tr.state.doc.line(i + 1);
-      if (line.length === 0) continue;
-
-      let indented_tabs = 0;
-      for (let ch of line.text) {
-        if (ch === "\t") {
-          indented_tabs++;
-          // For now I ignore spaces... because they are weird... and stupid!
-          // } else if (ch === " ") {
-          //     indented_chars = indented_chars + 1
-          //     indented_text_characters++
-        } else {
-          break;
-        }
-      }
-
-      const characters_to_count = Math.min(
-        indented_tabs,
-        ARBITRARY_INDENT_LINE_WRAP_LIMIT
-      );
-      const offset = characters_to_count * tabSize * space_width;
-
-      const linerwapper = Decoration.line({
-        attributes: {
-          // style: rules.cssText,
-          style: `--indented: ${offset}px;`,
-          class: "awesome-wrapping-plugin-the-line",
-        },
-      });
-      // Need to push before the tabs one else codemirror gets madddd
-      decorations.push(linerwapper.range(line.from, line.from));
-
-      if (characters_to_count !== 0) {
-        decorations.push(
-          Decoration.mark({
-            class: "awesome-wrapping-plugin-the-tabs",
-          }).range(line.from, line.from + characters_to_count)
-        );
-      }
-      if (indented_tabs > characters_to_count) {
-        for (let i of range(characters_to_count, indented_tabs)) {
-          decorations.push(
-            Decoration.replace({
-              widget: new ReactWidget(
-                createElement("span", { style: { opacity: 0.2 } }, "⇥ ")
-              ),
-              block: false,
-            }).range(line.from + i, line.from + i + 1)
-          );
-        }
-      }
-
-      // let tabs_in_front = Math.min(line.text.match(/^\t*/)[0].length) * tabSize
-
-      // TODO? Cache the CSSStyleDeclaration?
-      // This is used when we don't use a css class, but we do need a css class because
-      // text-indent normally cascades, and we have to prevent that.
-      // const rules = document.createElement("span").style
-      // rules.setProperty("--idented", `${offset}px`)
-      // rules.setProperty("text-indent", "calc(-1 * var(--idented) - 1px)") // I have no idea why, but without the - 1px it behaves weirdly periodically
-      // rules.setProperty("padding-left", "calc(var(--idented) + var(--cm-left-padding, 4px))")
-    }
-    return Decoration.set(decorations);
-  },
-  provide: (f) => EditorView.decorations.from(f),
-});
-
-// Add this back in
-// let dont_break_before_spaces_matcher = new MatchDecorator({
-//     regexp: /[^ \t]+[ \t]+/g,
-//     decoration: Decoration.mark({
-//         class: "indentation-so-dont-break",
-//     }),
-// })
-
-let identation_so_dont_break_marker = Decoration.mark({
-  class: "indentation-so-dont-break",
-});
-
-let dont_break_before_spaces = StateField.define({
-  create() {
-    return Decoration.none;
-  },
-  update(deco, tr) {
-    let decorations = [];
-    let pos = 0;
-    for (const line of tr.newDoc) {
-      for (const match of /** @type{string} */ (line).matchAll(
-        /[^ \t]+([ \t]|$)+/g
-      )) {
-        if (match.index == null || match.index === 0) continue; // Sneaky negative lookbehind
-        decorations.push(
-          identation_so_dont_break_marker.range(
-            pos + match.index,
-            pos + match.index + match[0].length
-          )
-        );
-      }
-    }
-    return Decoration.set(decorations, true);
-  },
-  provide: (f) => EditorView.decorations.from(f),
-});
-
-let base_theme = EditorView.baseTheme({
-  ".awesome-wrapping-plugin-the-line": {
-    "--correction": 0,
-    "margin-left": "calc(var(--indented))",
-    "text-indent": "calc(-1 * var(--indented))",
-  },
-  ".awesome-wrapping-plugin-the-line > *": {
-    /* text-indent apparently cascades... which I think is pretty stupid but this is the fix */
-    "text-indent": "initial",
-  },
-  ".awesome-wrapping-plugin-the-tabs": {
-    /* So FOR SOME REASON text-ident is kinda buggy
-        but that gets fixed with inline-block...  
-        But that brought some other problems...
-        But margin-left: -1px seems to also do the trick?? */
-    /* display: inline-block; */
-    whiteSpace: "pre",
-    verticalAlign: "top",
-    marginLeft: "-1px",
-  },
 });
 
 export let awesome_line_wrapping = [

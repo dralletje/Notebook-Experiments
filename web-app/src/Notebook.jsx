@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import { EditorState, StateField } from "@codemirror/state";
 import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
-import { compact, isEqual } from "lodash";
+import { compact, isEqual, range } from "lodash";
 import { shallowEqualObjects } from "shallow-equal";
 
 import { Inspector } from "./Inspector";
@@ -82,17 +82,32 @@ let CellHasSelectionPlugin = [
   ViewPlugin.define((view) => {
     let has_selection = view.state.field(CellHasSelectionField);
     if (has_selection === true) {
-      view.requestMeasure();
-      view.focus();
+      Promise.resolve().then(() => {
+        // Make sure the editor isn't removed yet :O
+        if (view.dom.isConnected) {
+          console.log("Initial focus...");
+          view.focus();
+        }
+      });
     }
 
     return {
       update: (update) => {
         let had_selection = update.startState.field(CellHasSelectionField);
-        let has_selection = update.state.field(CellHasSelectionField);
-        if (had_selection !== has_selection && has_selection === true) {
-          update.view.requestMeasure();
-          update.view.focus();
+        let needs_selection = update.state.field(CellHasSelectionField);
+        if (had_selection !== needs_selection) {
+          let has_focus = view.dom.contains(document.activeElement);
+          if (has_focus === needs_selection) return;
+
+          if (needs_selection) {
+            console.log("Focussing...");
+            update.view.focus();
+          } else {
+            console.log(
+              "Explicitly blurring (and getting rid of the selection)"
+            );
+            update.view.dom.blur();
+          }
         }
       },
     };
@@ -135,8 +150,7 @@ let CellStyle = styled.div`
     }
     & ${InspectorContainer} {
       transition: all 1s ease-in-out;
-      opacity: 0.5;
-      filter: blur(1px);
+      /* opacity: 0.3; */
     }
   }
 
@@ -657,14 +671,23 @@ export let NestedCodemirror = React.forwardRef(
         state={initial_editor_state}
         ref={editorview_ref}
         dispatch={(transactions, editorview) => {
-          viewupdate.view.dispatch({
-            effects: transactions.map((tr) =>
-              CellDispatchEffect.of({
+          // viewupdate.view.dispatch({
+          //   effects: transactions.map((tr) =>
+          //     CellDispatchEffect.of({
+          //       cell_id: cell_id,
+          //       transaction: tr,
+          //     })
+          //   ),
+          // });
+          viewupdate.view.dispatch(
+            ...transactions.map((tr) => ({
+              annotations: tr.annotations,
+              effects: CellDispatchEffect.of({
                 cell_id: cell_id,
                 transaction: tr,
-              })
-            ),
-          });
+              }),
+            }))
+          );
         }}
       >
         {children}
@@ -673,109 +696,31 @@ export let NestedCodemirror = React.forwardRef(
   }
 );
 
-let AAAAA = styled.div`
-  & .cm-editor {
-    border: none !important;
+/** @param {Selection | null} selection */
+function* ranges(selection) {
+  if (selection === null) return;
+  for (let index of range(0, selection.rangeCount)) {
+    yield selection.getRangeAt(index);
   }
-  & .cm-scroller {
-    padding-bottom: 8px;
-  }
-  .folded & .cm-scroller {
-    padding-bottom: 0px;
-  }
-
-  & .sticky-left,
-  & .sticky-right {
-    position: sticky;
-    &::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-
-      /* So want the sticky stuff to float above the text that will scroll underneath,
-         but because the background color changes when dragging, I found that backdrop-filter
-         is... the easiest? LOL  */
-      /* background-color: hsl(0deg 0% 7%); */
-      backdrop-filter: blur(100px);
-    }
-  }
-  & .sticky-left {
-    position: sticky;
-    left: 4px;
-    &::before {
-      left: -4px;
-    }
-  }
-  & .sticky-right {
-    position: sticky;
-    right: 8px;
-    &::before {
-      right: -8px;
-    }
-  }
-`;
-let PlaceInsideExpression = ({ expression, children }) => {
-  let state = React.useMemo(() => {
-    return EditorState.create({
-      doc: expression ?? "__RESULT_PLACEHOLDER__",
-      extensions: [
-        EditorState.tabSize.of(4),
-        indentUnit.of("\t"),
-        syntaxHighlighting(syntax_colors),
-        javascript(),
-        EditorView.editable.of(false),
-      ],
-    });
-  }, [expression]);
-
-  let replace_placeholder = React.useMemo(() => {
-    return EditorView.decorations.compute(["doc"], (state) => {
-      let placeholder_index = state.doc
-        .toString()
-        .indexOf("__RESULT_PLACEHOLDER__");
-
-      if (placeholder_index >= 0) {
-        return Decoration.set(
-          compact([
-            placeholder_index === 0
-              ? null
-              : Decoration.mark({ class: "sticky-left" }).range(
-                  0,
-                  placeholder_index
-                ),
-            Decoration.replace({
-              widget: new ReactWidget(children),
-            }).range(
-              placeholder_index,
-              placeholder_index + "__RESULT_PLACEHOLDER__".length
-            ),
-            placeholder_index + "__RESULT_PLACEHOLDER__".length ===
-            state.doc.length
-              ? null
-              : Decoration.mark({ class: "sticky-right" }).range(
-                  placeholder_index + "__RESULT_PLACEHOLDER__".length,
-                  state.doc.length
-                ),
-          ])
-        );
+}
+// Been scratching my head over this,
+// but there is a difference between `focus` and `selection` it turns out...
+// So as an experiment I now remove the selections in the editor when the editor loses focus.
+// TODO Add this to the text editor as well
+// TODO Make this a "default" behavior for the editor? Maybe even add to CodeMirror?
+let remove_selection_on_blur_extension = EditorView.domEventHandlers({
+  blur: (event, view) => {
+    let selection = document.getSelection();
+    for (let selection_range of ranges(selection)) {
+      if (
+        view.dom.contains(selection_range.startContainer) ||
+        view.dom.contains(selection_range.endContainer)
+      ) {
+        selection?.removeRange(selection_range);
       }
-      return Decoration.set([]);
-    });
-  }, [children]);
-
-  if (expression == null && children == null) {
-    return null;
-  }
-
-  return (
-    <AAAAA>
-      <CodeMirror state={state} style={{ border: "none" }}>
-        <Extension extension={replace_placeholder} />
-      </CodeMirror>
-    </AAAAA>
-  );
-};
+    }
+  },
+});
 
 /**
  * @param {{
@@ -808,25 +753,6 @@ export let Cell = ({
   // prettier-ignore
   let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
 
-  let result_deserialized = React.useMemo(() => {
-    if (cylinder?.result?.type === "return") {
-      return {
-        type: cylinder.result.type,
-        name: cylinder.result.name,
-        value: deserialize(0, cylinder.result.value),
-      };
-    } else if (cylinder?.result?.type === "throw") {
-      return {
-        // Because observable inspector doesn't show the stack trace when it is a thrown value?
-        // But we need to make our own custom error interface anyway (after we fix sourcemaps? Sighh)
-        type: "return",
-        value: deserialize(0, cylinder.result.value),
-      };
-    } else {
-      return { type: "pending" };
-    }
-  }, [cylinder?.result]);
-
   /** @type {import("react").MutableRefObject<HTMLDivElement>} */
   let cell_wrapper_ref = React.useRef(/** @type {any} */ (null));
   React.useEffect(() => {
@@ -857,7 +783,7 @@ export let Cell = ({
       focus: () => {
         set_is_focused(true);
       },
-      blur: () => {
+      blur: (event, view) => {
         set_is_focused(false);
       },
     });
@@ -888,12 +814,7 @@ export let Cell = ({
     >
       <InspectorHoverBackground>
         <InspectorContainer>
-          <PlaceInsideExpression expression={result_deserialized.name}>
-            {result_deserialized.type === "return" &&
-            result_deserialized.value === undefined ? null : (
-              <Inspector value={result_deserialized} />
-            )}
-          </PlaceInsideExpression>
+          <Inspector value={cylinder?.result} />
         </InspectorContainer>
       </InspectorHoverBackground>
 
@@ -919,6 +840,10 @@ export let Cell = ({
           <Extension
             key="set_is_focused_extension"
             extension={set_is_focused_extension}
+          />
+          <Extension
+            key="remove_selection_on_blur_extension"
+            extension={remove_selection_on_blur_extension}
           />
           {/* <Extension extension={codemirror_interactive} /> */}
           {/* <Extension extension={debug_syntax_plugin} /> */}

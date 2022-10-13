@@ -15,6 +15,7 @@ import {
 import { EditorState, Facet } from "@codemirror/state";
 
 import {
+  BlurAllCells,
   CellEditorStatesField,
   CellHasSelectionField,
   CellIdFacet,
@@ -300,7 +301,10 @@ export function File({ state, onChange, socket }) {
         on_selection={(new_selected_cells) => {
           if (!isEqual(new_selected_cells, selected_cells)) {
             viewupdate.view.dispatch({
-              effects: SelectCellsEffect.of(new_selected_cells),
+              effects: [
+                SelectCellsEffect.of(new_selected_cells),
+                BlurAllCells.of(),
+              ],
             });
           }
         }}

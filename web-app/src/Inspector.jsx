@@ -2,7 +2,15 @@ import React from "react";
 import styled from "styled-components";
 import { Inspector as BasicInspector } from "inspector-x-react";
 import "@observablehq/inspector/src/style.css";
-import { isEqual } from "lodash";
+import { compact, isEqual } from "lodash";
+import { deserialize } from "./deserialize-value-to-show";
+import { CodeMirror, Extension } from "codemirror-x-react";
+import { EditorState } from "@codemirror/state";
+import { indentUnit, syntaxHighlighting } from "@codemirror/language";
+import { syntax_colors } from "./codemirror-javascript-setup";
+import { javascript } from "@codemirror/lang-javascript";
+import { Decoration, EditorView } from "@codemirror/view";
+import { ReactWidget } from "react-codemirror-widget";
 
 let InspectorStyle = styled.div`
   --syntax_normal: #848484;
@@ -59,10 +67,142 @@ let InspectorStyle = styled.div`
   }
 `;
 
-export let Inspector = ({ value }) => {
+let AAAAA = styled.div`
+  & .cm-editor {
+    border: none !important;
+  }
+  & .cm-scroller {
+    padding-bottom: 8px;
+  }
+  .folded & .cm-scroller {
+    padding-bottom: 0px;
+  }
+
+  & .sticky-left,
+  & .sticky-right {
+    position: sticky;
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+
+      /* So want the sticky stuff to float above the text that will scroll underneath,
+         but because the background color changes when dragging, I found that backdrop-filter
+         is... the easiest? LOL  */
+      /* background-color: hsl(0deg 0% 7%); */
+      backdrop-filter: blur(100px);
+    }
+  }
+  & .sticky-left {
+    position: sticky;
+    left: 4px;
+    &::before {
+      left: -4px;
+    }
+  }
+  & .sticky-right {
+    position: sticky;
+    right: 8px;
+    &::before {
+      right: -8px;
+    }
+  }
+`;
+let PlaceInsideExpression = ({ expression, children }) => {
+  let state = React.useMemo(() => {
+    return EditorState.create({
+      doc: expression ?? "__RESULT_PLACEHOLDER__",
+      extensions: [
+        EditorState.tabSize.of(4),
+        indentUnit.of("\t"),
+        syntaxHighlighting(syntax_colors),
+        javascript(),
+        EditorView.editable.of(false),
+      ],
+    });
+  }, [expression]);
+
+  let replace_placeholder = React.useMemo(() => {
+    return EditorView.decorations.compute(["doc"], (state) => {
+      let placeholder_index = state.doc
+        .toString()
+        .indexOf("__RESULT_PLACEHOLDER__");
+
+      if (placeholder_index >= 0) {
+        return Decoration.set(
+          compact([
+            placeholder_index === 0
+              ? null
+              : Decoration.mark({ class: "sticky-left" }).range(
+                  0,
+                  placeholder_index
+                ),
+            Decoration.replace({
+              widget: new ReactWidget(children),
+            }).range(
+              placeholder_index,
+              placeholder_index + "__RESULT_PLACEHOLDER__".length
+            ),
+            placeholder_index + "__RESULT_PLACEHOLDER__".length ===
+            state.doc.length
+              ? null
+              : Decoration.mark({ class: "sticky-right" }).range(
+                  placeholder_index + "__RESULT_PLACEHOLDER__".length,
+                  state.doc.length
+                ),
+          ])
+        );
+      }
+      return Decoration.set([]);
+    });
+  }, [children]);
+
+  if (expression == null && children == null) {
+    return null;
+  }
+
   return (
-    <InspectorStyle>
-      <BasicInspector value={value} />
-    </InspectorStyle>
+    <AAAAA>
+      <CodeMirror state={state} style={{ border: "none" }}>
+        <Extension extension={replace_placeholder} />
+      </CodeMirror>
+    </AAAAA>
   );
 };
+
+export let InspectorNoMemo = ({ value }) => {
+  let result_deserialized = React.useMemo(() => {
+    if (value?.type === "return") {
+      return {
+        type: /** @type {const} */ ("return"),
+        name: value.name,
+        value: deserialize(0, value.value),
+      };
+    } else if (value?.type === "throw") {
+      return {
+        // Because observable inspector doesn't show the stack trace when it is a thrown value?
+        // But we need to make our own custom error interface anyway (after we fix sourcemaps? Sighh)
+        type: /** @type {const} */ ("return"),
+        value: deserialize(0, value.value),
+      };
+    } else {
+      return { type: /** @type {const} */ ("pending") };
+    }
+  }, [value]);
+
+  return (
+    <PlaceInsideExpression expression={value?.name}>
+      {result_deserialized.type === "return" &&
+      result_deserialized.value === undefined ? null : (
+        <InspectorStyle>
+          <BasicInspector value={result_deserialized} />
+        </InspectorStyle>
+      )}
+    </PlaceInsideExpression>
+  );
+};
+
+export let Inspector = React.memo(InspectorNoMemo, (a, b) => {
+  return isEqual(a.value, b.value);
+});

@@ -12,6 +12,7 @@ import {
   StateEffectType,
   MapMode,
   Text,
+  EditorSelection,
 } from "@codemirror/state";
 import {
   Decoration,
@@ -33,9 +34,10 @@ import { eyeOutline, eye } from "ionicons/icons";
 import { TreeCursor } from "@lezer/common";
 
 let markdown_styling_base_theme = EditorView.baseTheme({
-  "&": {
+  "& .cm-content": {
     "--accent-color": "rgba(200, 0, 0)",
     "accent-color": "var(--accent-color)",
+    color: "white",
   },
   "h1, h2, h3, h4, h5, h6": {
     display: "inline-block",
@@ -339,10 +341,17 @@ let insert_around_command = (str) => (view) => {
 
 let my_markdown_keymap = keymap.of([
   {
+    // TODO Add this for italic and strikethrough
     key: "Mod-b",
     run: (view) => {
       let { from, to } = view.state.selection.main;
-      if (from === to) return false;
+      if (view.state.selection.main.empty) {
+        view.dispatch({
+          changes: { from: from, to: to, insert: "****" },
+          selection: EditorSelection.single(from + 2),
+        });
+        return true;
+      }
 
       if (
         view.state.doc.sliceString(from - 2, from) === "**" &&

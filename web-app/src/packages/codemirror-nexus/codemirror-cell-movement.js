@@ -197,6 +197,7 @@ let viewplugin_for_cell = CellPlugin.of(
             });
           }
 
+          console.log("FORCE FOCUS");
           view.focus();
         }
 
@@ -233,6 +234,7 @@ let viewplugin_for_cell = CellPlugin.of(
             });
           }
 
+          console.log("FORCE FOCUS");
           view.focus();
         }
       }

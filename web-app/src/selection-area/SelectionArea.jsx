@@ -209,6 +209,7 @@ export const SelectionArea = ({ on_selection, children }) => {
           style={{
             position: "fixed",
             inset: 0,
+            overflow: "hidden",
           }}
         />
 
@@ -268,7 +269,7 @@ let SimpleDialog = ({ open, children }) => {
     } else {
       ref.current.close();
       // Dialog.close() wants to move focus back to whatever had focus before,
-      // Where I don't want that!!
+      // but I don't want that!!
       // @ts-ignore
       document.activeElement?.blur?.();
     }

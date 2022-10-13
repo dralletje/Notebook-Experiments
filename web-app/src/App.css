@@ -1,6 +1,8 @@
 :root {
+  --syntax-dimmed: #a2a273a3;
+
   /* code highlighting */
-  --cm-editor-text-color: #ffe9fc;
+  --cm-editor-text-color: var(--syntax-dimmed);
   --cm-comment-color: #464646;
   --cm-atom-color: hsl(8deg 72% 62%);
   --cm-number-color: #00ca5a;
@@ -12,8 +14,8 @@
   --cm-macro-color: #82b38b;
   --cm-builtin-color: #5ed37f;
   --cm-function-color: #f99b15;
-  --cm-type-color: hsl(51deg 32% 44%);
-  --cm-bracket-color: #a2a273;
+  --cm-type-color: #68368f;
+  --cm-bracket-color: var(--syntax-dimmed);
   --cm-tag-color: #ef6155;
   --cm-link-color: #815ba4;
   --cm-error-bg-color: #ef6155;

@@ -31,8 +31,6 @@ export let notebook_keymap = keymap.of([
       let notebook = state.field(CellEditorStatesField);
       let selected_cells = state.field(SelectedCellsField);
 
-      console.log(`selected_cells:`, selected_cells);
-
       let cells = selected_cells.map((cell_id) => notebook.cells[cell_id]);
 
       let selected_code_cells = cells.filter(
@@ -41,16 +39,13 @@ export let notebook_keymap = keymap.of([
 
       if (selected_code_cells.length === 0) return false;
 
+      let COMMENT_REGEX = /^([\t ]*)(\/\/ ?)/;
+
       // Go though all lines in every cell and check if they all start with `//`
       let all_lines_start_with_comment = selected_code_cells.every((cell) => {
         let lines = Array.from(cell.doc.iterLines());
-        return lines.every((line) => line.startsWith("//"));
+        return lines.every((line) => COMMENT_REGEX.test(line));
       });
-
-      console.log(
-        `all_lines_start_with_comment:`,
-        all_lines_start_with_comment
-      );
 
       if (all_lines_start_with_comment) {
         // Remove `//` from all lines in all selected cells
@@ -61,11 +56,13 @@ export let notebook_keymap = keymap.of([
               transaction: {
                 changes: range(1, cell.doc.lines + 1).map((line_number) => {
                   let line = cell.doc.line(line_number);
+                  let [_, spaces, part_to_remove] =
+                    /** @type {RegExpExecArray} */ (
+                      COMMENT_REGEX.exec(line.text)
+                    );
                   return {
-                    from: line.from,
-                    to: line.text.startsWith("// ")
-                      ? line.from + 3
-                      : line.from + 2,
+                    from: line.from + spaces.length,
+                    to: line.from + spaces.length + part_to_remove.length,
                     insert: "",
                   };
                 }),
@@ -94,12 +91,6 @@ export let notebook_keymap = keymap.of([
       }
 
       return true;
-
-      // dispatch({
-      //   effects: selected_cells.flatMap(cell_id => {
-      //     toggleComment
-      //   })
-      // })
     },
   },
   {
