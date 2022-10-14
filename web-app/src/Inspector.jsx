@@ -5,7 +5,7 @@ import "@observablehq/inspector/src/style.css";
 import { compact, isEqual } from "lodash";
 import { deserialize } from "./deserialize-value-to-show";
 import { CodeMirror, Extension } from "codemirror-x-react";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Prec } from "@codemirror/state";
 import { indentUnit, syntaxHighlighting } from "@codemirror/language";
 import { javascript_syntax_highlighting } from "./codemirror-javascript-setup";
 import { javascript } from "@codemirror/lang-javascript";
@@ -14,16 +14,16 @@ import { ReactWidget } from "react-codemirror-widget";
 
 let InspectorStyle = styled.div`
   --syntax_normal: #848484;
-  --syntax_comment: #a9b0bc;
-  --syntax_number: #20a5ba;
-  --syntax_keyword: #c30771;
+  --syntax_comment: #747474;
+  --syntax_number: #00ca5a;
+  --syntax_keyword: #008c85; /* Or white? */
   --syntax_atom: #10a778;
-  --syntax_string: #008ec4;
+  --syntax_string: #00ca5a;
   --syntax_error: #ffbedc;
   --syntax_unknown_variable: #838383;
-  --syntax_known_variable: #005f87;
+  --syntax_known_variable: #ff7a6f;
   --syntax_matchbracket: #20bbfc;
-  --syntax_key: #6636b4;
+  --syntax_key: #f91515;
 
   display: contents;
 
@@ -123,38 +123,40 @@ let PlaceInsideExpression = ({ expression, children }) => {
   }, [expression]);
 
   let replace_placeholder = React.useMemo(() => {
-    return EditorView.decorations.compute(["doc"], (state) => {
-      let placeholder_index = state.doc
-        .toString()
-        .indexOf("__RESULT_PLACEHOLDER__");
+    return Prec.lowest(
+      EditorView.decorations.compute(["doc"], (state) => {
+        let placeholder_index = state.doc
+          .toString()
+          .indexOf("__RESULT_PLACEHOLDER__");
 
-      if (placeholder_index >= 0) {
-        return Decoration.set(
-          compact([
-            placeholder_index === 0
-              ? null
-              : Decoration.mark({ class: "sticky-left" }).range(
-                  0,
-                  placeholder_index
-                ),
-            Decoration.replace({
-              widget: new ReactWidget(children),
-            }).range(
-              placeholder_index,
-              placeholder_index + "__RESULT_PLACEHOLDER__".length
-            ),
-            placeholder_index + "__RESULT_PLACEHOLDER__".length ===
-            state.doc.length
-              ? null
-              : Decoration.mark({ class: "sticky-right" }).range(
-                  placeholder_index + "__RESULT_PLACEHOLDER__".length,
-                  state.doc.length
-                ),
-          ])
-        );
-      }
-      return Decoration.set([]);
-    });
+        if (placeholder_index >= 0) {
+          return Decoration.set(
+            compact([
+              placeholder_index === 0
+                ? null
+                : Decoration.mark({ class: "sticky-left" }).range(
+                    0,
+                    placeholder_index
+                  ),
+              Decoration.replace({
+                widget: new ReactWidget(children),
+              }).range(
+                placeholder_index,
+                placeholder_index + "__RESULT_PLACEHOLDER__".length
+              ),
+              placeholder_index + "__RESULT_PLACEHOLDER__".length ===
+              state.doc.length
+                ? null
+                : Decoration.mark({ class: "sticky-right" }).range(
+                    placeholder_index + "__RESULT_PLACEHOLDER__".length,
+                    state.doc.length
+                  ),
+            ])
+          );
+        }
+        return Decoration.set([]);
+      })
+    );
   }, [children]);
 
   if (expression == null && children == null) {
@@ -168,6 +170,22 @@ let PlaceInsideExpression = ({ expression, children }) => {
       </CodeMirror>
     </AAAAA>
   );
+};
+
+/** @param {{ node: Node }} props */
+let Render = ({ node }) => {
+  let ref = React.useRef(null);
+
+  React.useLayoutEffect(() => {
+    // @ts-ignore
+    let element = /** @type {HTMLElement} */ (ref.current);
+    element.appendChild(node);
+    return () => {
+      element.removeChild(node);
+    };
+  }, [node]);
+
+  return <div ref={ref} />;
 };
 
 export let InspectorNoMemo = ({ value }) => {
@@ -189,6 +207,13 @@ export let InspectorNoMemo = ({ value }) => {
       return { type: /** @type {const} */ ("pending") };
     }
   }, [value]);
+
+  if (
+    result_deserialized.type === "return" &&
+    result_deserialized.value instanceof Node
+  ) {
+    return <Render node={result_deserialized.value} />;
+  }
 
   return (
     <PlaceInsideExpression expression={value?.name}>

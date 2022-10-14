@@ -10,6 +10,7 @@ import {
   CellEditorStatesField,
   CellIdFacet,
   CellMetaField,
+  CellPlugin,
   CellTypeFacet,
   editor_state_for_cell,
   nested_cell_states_basics,
@@ -18,7 +19,7 @@ import {
 } from "./NotebookEditor";
 import { useRealMemo } from "use-real-memo";
 import { SelectedCellsField, selected_cells_keymap } from "./cell-selection";
-import { keymap, runScopeHandlers } from "@codemirror/view";
+import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
 import {
   shared_history,
   historyKeymap,
@@ -104,6 +105,10 @@ let notebook_to_state = ({ filename, notebook }) => {
 
       NotebookId.of(notebook.id),
       NotebookFilename.of(filename),
+
+      CellPlugin.of(
+        EditorView.scrollMargins.of(() => ({ top: 100, bottom: 100 }))
+      ),
 
       // just_for_kicks_extension
       // UpdateLocalStorage,

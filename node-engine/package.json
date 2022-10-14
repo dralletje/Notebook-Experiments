@@ -21,6 +21,8 @@
     "import-meta-resolve": "^2.1.0",
     "lodash-es": "^4.17.21",
     "node-fetch": "^3.2.10",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "socket.io": "^4.5.1",
     "stack-trace-anynode": "^1.0.0-pre3",
     "stacktrace-js": "^2.0.2",

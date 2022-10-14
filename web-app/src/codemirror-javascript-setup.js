@@ -12,12 +12,8 @@ import {
 } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 
-import { EditorState, Prec } from "@codemirror/state";
-import {
-  javascript,
-  javascriptLanguage,
-  tsxLanguage,
-} from "@codemirror/lang-javascript";
+import { EditorSelection, EditorState, Prec } from "@codemirror/state";
+import { javascriptLanguage, tsxLanguage } from "@codemirror/lang-javascript";
 import {
   Decoration,
   drawSelection,
@@ -29,13 +25,17 @@ import { defaultKeymap, indentLess, indentMore } from "@codemirror/commands";
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
 import { StyleModule } from "style-mod";
 import { closeBrackets } from "@codemirror/autocomplete";
-import { highlightSelectionMatches } from "@codemirror/search";
+import {
+  highlightSelectionMatches,
+  selectNextOccurrence,
+} from "@codemirror/search";
 
 import { styleTags, tags as t } from "@lezer/highlight";
 import { DecorationsFromTree } from "./basic-markdown-setup";
 
 export const customJsHighlight = styleTags({
   Equals: t.definitionOperator,
+  "JSXAttribute/JSXIdentifier": t.attributeName,
   "JSXAttribute/Equals": t.punctuation,
   // I need to override JSXMemberEpxression.JSXIdentifier for my whole decoration trick
   "JSXMemberExpression/JSXIdentifier": t.special(t.tagName),
@@ -141,7 +141,7 @@ const syntax_colors = HighlightStyle.define(
     { tag: tags.logicOperator, class: "important" },
     // TODO Maybe make `!` even more emphasized? Make sure it is hard to miss
     // !
-    { tag: t.special(t.logicOperator), class: "very-important" },
+    { tag: tags.special(t.logicOperator), class: "very-important" },
     // export import
     { tag: tags.moduleKeyword, class: "important" },
     // if else while break continue
@@ -154,6 +154,7 @@ const syntax_colors = HighlightStyle.define(
     { tag: tags.attributeValue, class: "literal" },
     { tag: tags.angleBracket, class: "boring" },
     { tag: tags.attributeName, class: "property" },
+    { tag: tags.special(tags.tagName), class: "variable" },
 
     // Ideally tags.standard(tags.tagName) would work, but it doesn't....
     // Still putting it here just for kicks, but lezer doesn't differentiate between builtin tags and Component names...
@@ -162,7 +163,7 @@ const syntax_colors = HighlightStyle.define(
     // and I "clear" `tags.tagName` here so that it doesn't get styled as a variable
     { tag: tags.tagName, class: "" },
     // But I do need the variables inside `JSXMemberExpression` to get styled so...
-    { tag: t.special(t.tagName), class: "variable" },
+    { tag: tags.special(tags.tagName), class: "variable" },
   ],
   {
     // all: { color: `var(--cm-editor-text-color)` },
@@ -186,8 +187,12 @@ let lowercase_jsx_identifiers = DecorationsFromTree(
       // but I don't want to style the insides like literal so I stop digging.
       return false;
     }
+    if (cursor.node.parent?.name === "JSXAttribute") {
+      return;
+    }
 
     if (cursor.name === "JSXIdentifier") {
+      console.log("???", mutable_decorations);
       let text = doc.sliceString(cursor.from, cursor.to);
       if (text[0] === text[0].toLowerCase()) {
         mutable_decorations.push(
@@ -198,7 +203,7 @@ let lowercase_jsx_identifiers = DecorationsFromTree(
       } else {
         mutable_decorations.push(
           Decoration.mark({
-            class: "literal",
+            class: "variable",
           }).range(cursor.from, cursor.to)
         );
       }
@@ -253,6 +258,7 @@ let wtf_is_this = [
 
       if (property?.name !== "PropertyName") return;
       if (property.nextSibling != null) return;
+      if (property.firstChild != null) return;
 
       mutable_decorations.push(
         Decoration.mark({
@@ -270,6 +276,7 @@ let wtf_is_this = [
 
       if (property?.name !== "PropertyDefinition") return;
       if (property.nextSibling != null) return;
+      if (property.firstChild != null) return;
 
       mutable_decorations.push(
         Decoration.mark({
@@ -284,11 +291,11 @@ let wtf_is_this = [
 ];
 
 export let javascript_syntax_highlighting = [
+  Prec.lowest(wtf_is_this),
   syntaxHighlighting(syntax_colors),
   EditorView.styleModule.of(syntax_classes),
   my_javascript_parser,
-  wtf_is_this,
-  Prec.lowest(lowercase_jsx_identifiers),
+  lowercase_jsx_identifiers,
 ];
 
 export let basic_javascript_setup = [
@@ -305,6 +312,37 @@ export let basic_javascript_setup = [
       key: "Tab",
       run: indentMore,
       shift: indentLess,
+    },
+    {
+      key: "Mod-d",
+      run: selectNextOccurrence,
+      shift: ({ state, dispatch }) => {
+        if (state.selection.ranges.length === 1) return false;
+
+        // So funny thing, the index "before" (might wrap around) the mainIndex is the one you just selected
+        // @ts-ignore
+        let just_selected = state.selection.ranges.at(
+          state.selection.mainIndex - 1
+        );
+
+        let new_ranges = state.selection.ranges.filter(
+          (x) => x !== just_selected
+        );
+        let new_main_index = new_ranges.indexOf(state.selection.main);
+
+        let previous_selected = new_ranges.at(state.selection.mainIndex - 1);
+
+        console.log(`new_ranges:`, new_ranges);
+        dispatch({
+          selection: EditorSelection.create(new_ranges, new_main_index),
+          effects:
+            previous_selected == null
+              ? []
+              : EditorView.scrollIntoView(previous_selected.from),
+        });
+        return true;
+      },
+      preventDefault: true,
     },
   ]),
   keymap.of(defaultKeymap),

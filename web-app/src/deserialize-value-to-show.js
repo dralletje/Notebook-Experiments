@@ -1,13 +1,17 @@
 import { html } from "htl";
 import { md } from "md-literal";
 
-let create_function_with_name_and_body = (name, body) => {
+let create_function_with_name_and_body = (
+  name,
+  body,
+  modifier = "function"
+) => {
   try {
-    return new Function(`return function ${name}(){ ${body} }`)();
+    return new Function(`return ${modifier} ${name}(){ ${body} }`)();
   } catch (e) {
     try {
       return new Function(
-        `return function ${name}(){ /* Couldn't set function body */ }`
+        `return ${modifier} ${name}(){ /* Couldn't set function body */ }`
       )();
     } catch (e) {
       return () => {};
@@ -85,8 +89,28 @@ export let deserialize = (index, heap, result_heap = {}) => {
       result_heap
     );
     return md(strings, ...interpolations);
+  } else if (result.type === "@ecmascript/class") {
+    // TODO This is cool and all, but actually doesn't show anything
+    // .... because observable inspector is lame
+    let my_class = class {};
+    for (let [key, serialized] of result.statics) {
+      try {
+        my_class[key] = deserialize(serialized, heap, result_heap);
+      } catch {}
+    }
+    return my_class;
+  } else if (result.type === "@ecmascript/async-function") {
+    return create_function_with_name_and_body(
+      result.value.name,
+      result.value.body,
+      "async function"
+    );
   } else if (result.type === "@ecmascript/promise") {
     return Promise.resolve();
+  } else if (result.type === "text/html") {
+    let div = document.createElement("div");
+    div.innerHTML = result.value;
+    return div;
   } else {
     return { $cant_deserialize: result };
   }

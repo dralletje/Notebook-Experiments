@@ -1,5 +1,5 @@
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { indentUnit, syntaxTree } from "@codemirror/language";
+import { indentUnit, syntaxTree, Language } from "@codemirror/language";
 
 import {
   EditorState,
@@ -241,8 +241,14 @@ class EZRange extends RangeValue {
 
 /** @param {(context: { cursor: TreeCursor, mutable_decorations: Range<Decoration>[], doc: Text }) => void | boolean} fn */
 export let DecorationsFromTree = (fn) => {
-  return EditorView.decorations.compute(["doc"], (state) => {
-    let tree = syntaxTree(state);
+  // TODO Must have good reasons to make `Language.state` private, but o well
+  // @ts-ignore
+  let LanguageField = Language.state;
+  return EditorView.decorations.compute([LanguageField], (state) => {
+    // Move verbose way to write `let tree = syntaxTree(state);` but I'm untethered now
+    let language_state = state.field(LanguageField, false);
+    if (language_state == null) return Decoration.set([]);
+    let tree = language_state.tree;
 
     /** @type {Range<Decoration>[]} */
     let decorations = [];

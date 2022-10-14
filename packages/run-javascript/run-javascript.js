@@ -157,7 +157,17 @@ export function transform(ast) {
   let result_ast = null;
   ast.program.body = ast.program.body.flatMap((statement, index) => {
     if (index === ast.program.body.length - 1) {
-      if (statement.type === "FunctionDeclaration") {
+      if (statement.type === "ClassDeclaration") {
+        result_ast = t.classDeclaration(
+          statement.id,
+          t.classBody([t.classProperty(RESULT_PLACEHOLDER, null)]),
+          statement.superClass
+        );
+        // Would love to send something back, but it would just show `f()`
+        // so my `result_ast` is cooler in every way for now
+        // (We can get the static and prototype keys later with Object.getOwnPropertyNames)
+        return [statement, return_with_default(statement.id)];
+      } else if (statement.type === "FunctionDeclaration") {
         result_ast = t.functionDeclaration(
           statement.id,
           statement.params,

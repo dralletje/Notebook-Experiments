@@ -1,3 +1,5 @@
+import React from "react";
+import * as ReactDOM from "react-dom/server";
 import { HTML_MIME_SYMBOL, MARKDOWN_MIME_SYMBOL } from "./html.js";
 
 const typedArrTypes = [
@@ -12,6 +14,13 @@ const typedArrTypes = [
   "Float64Array",
 ];
 
+let toString = Function.prototype.toString;
+let TYPE_ASYNC = { prefix: "async ƒ" };
+let TYPE_ASYNC_GENERATOR = { prefix: "async ƒ*" };
+let TYPE_CLASS = { prefix: "class" };
+let TYPE_FUNCTION = { prefix: "ƒ" };
+let TYPE_GENERATOR = { prefix: "ƒ*" };
+
 /**
  * @returns {import("./node-engine").Serialized}
  */
@@ -19,10 +28,66 @@ export default (entry, context) => {
   const m = new Map();
   const heap = [];
 
+  function encounterClass(_class) {
+    const found = m.get(_class);
+    if (typeof found === "number") {
+      return found;
+    }
+    const id = heap.length;
+    m.set(_class, id);
+
+    let ref_array = [];
+    heap.push({
+      type: "@ecmascript/class",
+      name: _class.name,
+      statics: ref_array,
+    });
+
+    for (let key of Object.getOwnPropertyNames(_class)) {
+      let value = _class[key];
+      ref_array.push([key, serializeValue(value)]);
+    }
+
+    return id;
+  }
+
   function encounterFunction(func) {
     const found = m.get(func);
     if (typeof found === "number") {
       return found;
+    }
+
+    let stringified = toString.call(func);
+    let type = null;
+    switch (func.constructor && func.constructor.name) {
+      case "AsyncFunction":
+        type = TYPE_ASYNC;
+        break;
+      case "AsyncGeneratorFunction":
+        type = TYPE_ASYNC_GENERATOR;
+        break;
+      case "GeneratorFunction":
+        type = TYPE_GENERATOR;
+        break;
+      default:
+        type = /^class\b/.test(stringified) ? TYPE_CLASS : TYPE_FUNCTION;
+        break;
+    }
+
+    if (type === TYPE_CLASS) {
+      return encounterClass(func);
+    }
+
+    if (type === TYPE_ASYNC) {
+      const id = heap.length;
+      m.set(func, id);
+      const value = {
+        name: func.name,
+        body: Function.prototype.toString.call(func),
+        proto: Object.getPrototypeOf(func).constructor.name,
+      };
+      heap.push({ type: "@ecmascript/async-function", value });
+      return id;
     }
 
     const id = heap.length;
@@ -364,10 +429,22 @@ export default (entry, context) => {
           return id;
         }
 
+        // DRAL ADDITION
         if (obj instanceof Promise) {
           let id = heap.length;
           heap.push({
             type: "@ecmascript/promise",
+          });
+          return id;
+        }
+
+        // DRAL ADDITION
+        if (React.isValidElement(obj)) {
+          let id = heap.length;
+          let html = ReactDOM.renderToString(obj);
+          heap.push({
+            type: "text/html",
+            value: html,
           });
           return id;
         }
