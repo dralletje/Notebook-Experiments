@@ -5,6 +5,7 @@ import traverse1, { NodePath } from "@babel/traverse";
 import { compact, without } from "lodash-es";
 import { transformSync } from "@babel/core";
 import preset from "@babel/preset-typescript";
+import preset_react from "@babel/preset-react";
 
 let t = builders;
 /** @type {typeof traverse1} */
@@ -37,7 +38,18 @@ export function transform_code(code, { filename }) {
     parserOpts: {
       allowUndeclaredExports: true,
     },
-    presets: [[preset, { onlyRemoveTypeImports: true }]],
+    presets: [
+      [
+        preset,
+        { isTSX: true, allExtensions: true, onlyRemoveTypeImports: true },
+      ],
+      [
+        preset_react,
+        {
+          runtime: "classic",
+        },
+      ],
+    ],
   });
   /** @type {string} */
   let without_typescript_code = /** @type {any} */ (without_typescript?.code);
@@ -179,25 +191,10 @@ export function transform(ast) {
         statement.declarations.length === 1
       ) {
         let left_hand_side = statement.declarations[0].id;
-
-        if (left_hand_side.type === "Identifier") {
-          result_ast = t.variableDeclaration(statement.kind, [
-            t.variableDeclarator(
-              t.identifier(left_hand_side.name),
-              RESULT_PLACEHOLDER
-            ),
-          ]);
-          return [
-            statement,
-            return_with_default(
-              t.identifier(statement.declarations[0].id.name)
-            ),
-          ];
-        } else {
-          // TODO For the code `let { a: new_a } = c`, this will return `{ a: new_a }`,
-          // .... but I want to return `{ new_a: new_a }` (the original name is irrelevant)
-          return [statement, return_with_default(left_hand_side)];
-        }
+        result_ast = t.variableDeclaration(statement.kind, [
+          t.variableDeclarator(left_hand_side, RESULT_PLACEHOLDER),
+        ]);
+        return [statement, return_with_default(left_hand_side)];
       } else if (statement.type === "ExportNamedDeclaration") {
         if (statement.declaration == null) {
           // export { a, b, c }
@@ -275,7 +272,16 @@ export function transform(ast) {
           ];
         }
       } else {
-        throw new Error(`Couldn't 'return-ify' "${print(statement).code}"`);
+        return [
+          statement,
+          return_with_default(
+            t.newExpression(t.identifier("Error"), [
+              t.stringLiteral(
+                `Couldn't 'return-ify' "${statement.type}" statement`
+              ),
+            ])
+          ),
+        ];
       }
     }
     return statement;

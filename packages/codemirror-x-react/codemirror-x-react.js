@@ -62,7 +62,7 @@ let Container = styled.div`
   @media (prefers-color-scheme: dark) {
     & .cm-selectionMatch {
       background: none !important;
-      text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+      text-shadow: 0 0 13px rgb(255 255 255);
     }
   }
 

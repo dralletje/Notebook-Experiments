@@ -25,10 +25,7 @@ import {
 } from "ionicons/icons";
 
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
-import {
-  basic_javascript_setup,
-  syntax_colors,
-} from "./codemirror-javascript-setup";
+import { basic_javascript_setup } from "./codemirror-javascript-setup";
 import { SelectedCellsField } from "./cell-selection";
 import {
   AddCellEffect,
@@ -74,6 +71,8 @@ let InspectorContainer = styled.div`
   }
 `;
 
+// TODO Move to NotebookEditor
+// .... (Should be part of multi-cell stuff)
 let CellHasSelectionPlugin = [
   EditorView.editorAttributes.of((view) => {
     let has_selection = view.state.field(CellHasSelectionField);
@@ -85,7 +84,6 @@ let CellHasSelectionPlugin = [
       Promise.resolve().then(() => {
         // Make sure the editor isn't removed yet :O
         if (view.dom.isConnected) {
-          console.log("Initial focus...");
           view.focus();
         }
       });
@@ -100,12 +98,8 @@ let CellHasSelectionPlugin = [
           if (has_focus === needs_selection) return;
 
           if (needs_selection) {
-            console.log("Focussing...");
             update.view.focus();
           } else {
-            console.log(
-              "Explicitly blurring (and getting rid of the selection)"
-            );
             update.view.dom.blur();
           }
         }
@@ -146,7 +140,7 @@ let CellStyle = styled.div`
   }
   &.modified {
     & ${EditorStyled} {
-      background-color: rgb(33 28 19);
+      background-color: rgb(24 21 15);
     }
     & ${InspectorContainer} {
       transition: all 1s ease-in-out;
@@ -586,7 +580,6 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                   <AddButton
                     data-can-start-selection={false}
                     onClick={() => {
-                      console.log("Hi");
                       let my_index = notebook.cell_order.indexOf(cell.id);
                       let new_cell = empty_cell();
                       nexus_editorview.dispatch({
@@ -846,7 +839,7 @@ export let Cell = ({
             extension={remove_selection_on_blur_extension}
           />
           {/* <Extension extension={codemirror_interactive} /> */}
-          {/* <Extension extension={debug_syntax_plugin} /> */}
+          <Extension extension={debug_syntax_plugin} />
           {/* <Extension extension={inline_notebooks_extension} /> */}
         </NestedCodemirror>
       </EditorStyled>

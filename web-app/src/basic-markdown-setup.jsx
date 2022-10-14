@@ -240,7 +240,7 @@ class EZRange extends RangeValue {
 }
 
 /** @param {(context: { cursor: TreeCursor, mutable_decorations: Range<Decoration>[], doc: Text }) => void | boolean} fn */
-let DecorationsFromTree = (fn) => {
+export let DecorationsFromTree = (fn) => {
   return EditorView.decorations.compute(["doc"], (state) => {
     let tree = syntaxTree(state);
 

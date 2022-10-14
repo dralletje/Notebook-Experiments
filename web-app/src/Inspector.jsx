@@ -7,7 +7,7 @@ import { deserialize } from "./deserialize-value-to-show";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import { EditorState } from "@codemirror/state";
 import { indentUnit, syntaxHighlighting } from "@codemirror/language";
-import { syntax_colors } from "./codemirror-javascript-setup";
+import { javascript_syntax_highlighting } from "./codemirror-javascript-setup";
 import { javascript } from "@codemirror/lang-javascript";
 import { Decoration, EditorView } from "@codemirror/view";
 import { ReactWidget } from "react-codemirror-widget";
@@ -116,8 +116,7 @@ let PlaceInsideExpression = ({ expression, children }) => {
       extensions: [
         EditorState.tabSize.of(4),
         indentUnit.of("\t"),
-        syntaxHighlighting(syntax_colors),
-        javascript(),
+        javascript_syntax_highlighting,
         EditorView.editable.of(false),
       ],
     });

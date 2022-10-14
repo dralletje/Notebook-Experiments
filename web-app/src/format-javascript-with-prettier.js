@@ -15,7 +15,7 @@ export let format_with_prettier = ({ code, cursor }) => {
     parser: "typescript",
     plugins: [prettier_typescript_parser],
     printWidth: 60,
-    tabWidth: 4,
+    tabWidth: 2,
     semi: false,
     cursorOffset: cursor,
     useTabs: true,

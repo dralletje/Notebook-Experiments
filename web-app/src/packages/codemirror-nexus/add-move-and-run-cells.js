@@ -99,8 +99,6 @@ export let notebook_keymap = keymap.of([
       let notebook = state.field(CellEditorStatesField);
       let now = Date.now(); // Just in case map takes a lot of time ??
 
-      console.log("AWESOME");
-
       let changed_cells = notebook.cell_order.filter((cell_id) => {
         let cell = notebook.cells[cell_id];
         if (cell.facet(CellTypeFacet) === "text") return false;
@@ -182,6 +180,9 @@ export let cell_keymap = Prec.high(
         if (!state.selection.main.empty) return false;
         let cursor = state.selection.main.from;
 
+        // TODO Check if we are "outside" anything in the syntax tree
+        // .... (Or allow blocks maybe? But not incomplete, nor inside strings or objects etc)
+
         let cell_id = state.facet(CellIdFacet);
 
         // TODO Should just not apply this to text cells to begin with 🤷‍♀️ but cba
@@ -191,6 +192,12 @@ export let cell_keymap = Prec.high(
         if (current_line.number === 1)
           // Can't split the from line
           return false;
+        if (
+          current_line.text.slice(0, cursor - current_line.from).trim() !== ""
+        )
+          // Can't split if there is text before the cursor
+          return false;
+
         let previous_line = state.doc.line(current_line.number - 1);
 
         if (previous_line.text.trim() !== "") return false;

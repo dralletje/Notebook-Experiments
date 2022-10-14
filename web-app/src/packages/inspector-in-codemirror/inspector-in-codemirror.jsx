@@ -259,7 +259,7 @@ export let ValueEditor = ({}) => {
 //       <CodeMirror editor_state={editor_state}>
 //         <Extension extension={javascript()} />
 
-//         <Extension extension={syntaxHighlighting(syntax_colors)} />
+//         <Extension extension={syntax_colors} />
 //         <Extension extension={debug_syntax_plugin} />
 //         <Extension extension={hide_heap_references_extension} />
 //         <Extension extension={EditorView.editable.of(false)} />

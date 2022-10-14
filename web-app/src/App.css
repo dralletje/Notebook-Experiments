@@ -1,9 +1,10 @@
 :root {
-  --syntax-dimmed: #a2a273a3;
+  --syntax-dimmed: #008c85;
+  --syntax-important: white;
 
   /* code highlighting */
   --cm-editor-text-color: var(--syntax-dimmed);
-  --cm-comment-color: #464646;
+  --cm-comment-color: #747474;
   --cm-atom-color: hsl(8deg 72% 62%);
   --cm-number-color: #00ca5a;
   --cm-property-color: #f99b15;
