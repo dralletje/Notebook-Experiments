@@ -1,8 +1,8 @@
 {
-  "name": "run-javascript",
+  "name": "@dral/dralbook-transform-javascript",
   "version": "1.0.0",
   "description": "",
-  "main": "run-javascript.js",
+  "main": "transform-javascript.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

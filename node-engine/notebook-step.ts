@@ -162,8 +162,8 @@ let notebook_to_graph_cell = (notebook: Notebook): GraphCell[] => {
       if ("output" in parsed) {
         return {
           id: cell_id,
-          exports: parsed.output.created_names,
-          imports: parsed.output.consumed_names,
+          exports: parsed.output.meta.created_names,
+          imports: parsed.output.meta.consumed_names,
         };
       } else {
         return {
@@ -263,7 +263,31 @@ export let notebook_step = async (
       return;
     }
 
-    let { code, consumed_names, last_created_name } = parsed.output;
+    let {
+      code,
+      meta: { consumed_names, last_created_name, has_top_level_return },
+    } = parsed.output;
+
+    if (has_top_level_return) {
+      onChange((engine) => {
+        engine.cylinders[key] = {
+          ...engine.cylinders[key],
+          last_run: cell.last_run,
+          result: {
+            type: "throw",
+            value: serialize(
+              new Error("Top level return statements are not allowed"),
+              global
+            ),
+          },
+          running: false,
+          upstream_cells: [],
+          variables: {},
+        };
+      });
+      return;
+    }
+
     console.log(chalk.blue.bold`RUNNING CODE:`);
     console.log(chalk.blue(code));
 

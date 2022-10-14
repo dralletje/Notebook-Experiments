@@ -178,7 +178,6 @@ export let CodeMirror = React.forwardRef(
     // but codemirror doesn't allow changing it afterwards so we
     // need to trick codemirror by creating a proxy function,
     // so we can still collect effects before the editorview is created.
-
     let dispatch_proxy = useEvent(
       /**
        * @param {import("@codemirror/state").TransactionSpec[] | [import("@codemirror/state").Transaction]} transactions
@@ -215,8 +214,32 @@ export let CodeMirror = React.forwardRef(
       };
     }, [dom_node_ref, state]);
 
+    let set_dom_node_ref_and_create_editorview = (ref) => {
+      dom_node_ref.current = ref;
+
+      // I create the edtorview here, because I need `editorview_ref.current` to be set ASAP,
+      // not sure why, but running it in the `useLayoutEffect` above doesn't make it work with `useImperativeHandle` quick enough.
+      if (editorview_ref.current == null) {
+        let editorview = new EditorView({
+          state: state,
+          parent: ref,
+        });
+        // NOTE: HACKY
+        // Overrides the dispatch method, because I need access to the dispatched TransactionSpec's,
+        // instead of getting the spec already applied to the current state in the form of a Transaction.
+        // The reason is that I don't update the state immediately (I stay in sync with React),
+        // but `view.dispatch` will update the state immediately...
+        // I hope this doesn't break anything? Hehehe
+        /** @param {import("@codemirror/state").TransactionSpec[] | [import("@codemirror/state").Transaction]} transactions */
+        editorview.dispatch = (...transactions) => {
+          dispatch_proxy(transactions, editorview);
+        };
+        editorview_ref.current = editorview;
+      }
+    };
+
     // return (
-    //   <Container {...props} ref={dom_node_ref}>
+    //   <Container {...props} ref={set_dom_node_ref_and_create_editorview}>
     //     <codemirror_editorview_context.Provider value={dispatch_ref}>
     //       {children}
     //     </codemirror_editorview_context.Provider>
@@ -227,27 +250,7 @@ export let CodeMirror = React.forwardRef(
       Container,
       {
         ...props,
-        ref: (ref) => {
-          dom_node_ref.current = ref;
-          if (editorview_ref.current == null) {
-            let editorview = new EditorView({
-              state: state,
-              parent: ref,
-              // root: root,
-            });
-            // NOTE: HACKY
-            // Overrides the dispatch method, because I need access to the dispatched TransactionSpec's,
-            // instead of getting the spec already applied to the current state in the form of a Transaction.
-            // The reason is that I don't update the state immediately (I stay in sync with React),
-            // but `view.dispatch` will update the state immediately...
-            // I hope this doesn't break anything? Hehehe
-            /** @param {import("@codemirror/state").TransactionSpec[] | [import("@codemirror/state").Transaction]} transactions */
-            editorview.dispatch = (...transactions) => {
-              dispatch_proxy(transactions, editorview);
-            };
-            editorview_ref.current = editorview;
-          }
-        },
+        ref: set_dom_node_ref_and_create_editorview,
       },
       React.createElement(
         codemirror_editorview_context.Provider,
@@ -275,8 +278,6 @@ export let Extension = ({
   let extension = useMemo(() => extension_unmemod, deps);
 
   useLayoutEffect(() => {
-    // TODO Maybe make this not use dispatch, but something specifically for
-    // .... adding extensions the first time? So codemirror doesn't get all these StateEffect.appendConfig's?
     dispatch({
       effects: StateEffect.appendConfig.of(compartment.of(extension)),
     });

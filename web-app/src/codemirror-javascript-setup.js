@@ -60,6 +60,8 @@ export const customJsHighlight = styleTags({
   'String/"\\""': t.punctuation,
 });
 
+let VARIABLE_COLOR = "rgb(255 130 41)";
+
 let syntax_classes = new StyleModule({
   ".very-important": {
     color: "white",
@@ -77,11 +79,11 @@ let syntax_classes = new StyleModule({
     color: "#f91515",
   },
   ".variable": {
-    color: "#ff7a6f",
+    color: VARIABLE_COLOR,
     fontWeight: 700,
   },
   ".literal": {
-    color: "#00ca5a",
+    color: "#00a7ca",
   },
   ".comment": {
     color: "#747474",
@@ -192,7 +194,6 @@ let lowercase_jsx_identifiers = DecorationsFromTree(
     }
 
     if (cursor.name === "JSXIdentifier") {
-      console.log("???", mutable_decorations);
       let text = doc.sliceString(cursor.from, cursor.to);
       if (text[0] === text[0].toLowerCase()) {
         mutable_decorations.push(
@@ -237,7 +238,7 @@ let wtf_is_this = [
       },
       ".property-in-variable-out::before": {
         "clip-path": "polygon(0 70%, 100% 35%, 100% 100%, 0% 100%)",
-        color: "#ff7a6f",
+        color: VARIABLE_COLOR,
         "z-index": 1000,
       },
       ".variable-in-property-out": {
@@ -246,7 +247,7 @@ let wtf_is_this = [
       },
       ".variable-in-property-out::before": {
         "clip-path": "polygon(0 0, 100% 0, 100% 35%, 0 70%)",
-        color: "#ff7a6f",
+        color: VARIABLE_COLOR,
         "z-index": 1000,
       },
     })

@@ -165,7 +165,7 @@ io.on("connection", (socket) => {
     };
     for (let file of files) {
       if (file === "__cell_environment.js") continue;
-      if (file.endsWith(".js") || file.endsWith(".ts")) {
+      if (/\.(t|j)sx?$/.test(file)) {
         try {
           workspace.files[file] = await load_notebook(DIRECTORY, file);
         } catch (error) {

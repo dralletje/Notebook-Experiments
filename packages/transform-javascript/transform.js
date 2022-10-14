@@ -1,146 +1,34 @@
-import { parse, print, types, prettyPrint } from "recast";
-import { builders, Type } from "ast-types";
-import { parse as parseBabel } from "@babel/parser";
-import traverse1, { NodePath } from "@babel/traverse";
-import { compact, without } from "lodash-es";
-import { transformSync } from "@babel/core";
-import preset from "@babel/preset-typescript";
-import preset_react from "@babel/preset-react";
+import { prettyPrint } from "recast";
+import * as t from "@babel/types";
+import { without } from "lodash-es";
 
-let t = builders;
-/** @type {typeof traverse1} */
-let traverse = /** @type {any} */ (traverse1).default ?? traverse1;
+import { traverse, get_scope } from "./babel-helpers.js";
 
-let get_scope = (ast) => {
-  /** @type {NodePath<any>} */
-  let program_path = /** @type {any} */ (null);
-  traverse(ast, {
-    Program(path) {
-      program_path = path;
-    },
-  });
-  let scope = program_path.scope;
-  return scope;
-};
-
-let btoa = (string) => {
-  let buff = Buffer.from(string);
-  return buff.toString("base64");
-};
-
-/**
- * @param {string} code
- * @param {{ filename: string }} options
- */
-export function transform_code(code, { filename }) {
-  let without_typescript = transformSync(code, {
-    filename: "file.ts",
-    parserOpts: {
-      allowUndeclaredExports: true,
-    },
-    presets: [
-      [
-        preset,
-        { isTSX: true, allExtensions: true, onlyRemoveTypeImports: true },
-      ],
-      [
-        preset_react,
-        {
-          runtime: "classic",
-        },
-      ],
-    ],
-  });
-  /** @type {string} */
-  let without_typescript_code = /** @type {any} */ (without_typescript?.code);
-
-  // /** @type {ReturnType<parseBabel>} */
-  const unmodified_ast = parse(without_typescript_code, {
-    parser: {
-      parse: (input, options) => {
-        return parseBabel(input, {
-          ...options,
-          plugins: ["typescript", "jsx"],
-          allowUndeclaredExports: true,
-        });
-      },
-    },
-    // tabWidth: 0,
-    sourceFileName: filename,
-  });
-
-  let { ast, consumed_names, created_names, last_created_name } =
-    transform(unmodified_ast);
-
-  // TODO Want to use print() here, but it screws up template strings:
-  // .... `
-  // .... hi
-  // .... `
-  // .... becomes
-  // ....     `
-  // ....     hi
-  // ....     `
-  // .... which is very wrong
-  let result = prettyPrint(ast, {
-    tabWidth: 0,
-    sourceMapName: "map.json",
-  });
-
-  // let source_map = "data:text/plain;base64," + btoa(JSON.stringify(result.map));
-  // let full_code = `${result.code}\n//# sourceMappingURL=${source_map}\n//# sourceURL=${filename}`;
-  let full_code = result.code;
-  return {
-    map: result.map,
-    code: full_code,
-    created_names,
-    consumed_names,
-    last_created_name,
-  };
-}
+// let t = builders;
 
 let RESULT_PLACEHOLDER = t.identifier("__RESULT_PLACEHOLDER__");
 
-export function transform(ast) {
-  for (let directive of ast.program.directives) {
-    ast.program.body.unshift(
-      t.expressionStatement(t.stringLiteral(directive.value.value))
-    );
-  }
-  // Add "use strict" directive
-  ast.program.directives = [t.directive(t.directiveLiteral("use strict"))];
-
-  let accidental_globals = [];
-  for (let statement of ast.program.body) {
-    if (statement.type === "ExpressionStatement") {
-      if (statement.expression.type === "AssignmentExpression") {
-        // TODO Work for all patterns
-        if (statement.expression.left.type === "Identifier") {
-          accidental_globals.push(statement.expression.left.name);
-        }
+let get_has_top_level_return = (ast) => {
+  let has_top_level_return = false;
+  traverse(ast, {
+    ReturnStatement(path) {
+      // Check if this statement is inside a function
+      let parent_function = path.getFunctionParent();
+      if (parent_function) {
+        // If it is, good
+      } else {
+        has_top_level_return = true;
       }
-    }
-  }
-  // Prepend variable declaration to the top of the program
-  if (accidental_globals.length > 0) {
-    ast.program.body.unshift(
-      t.variableDeclaration(
-        "let",
-        accidental_globals.map((name) =>
-          t.variableDeclarator(t.identifier(name), null)
-        )
-      )
-    );
-  }
+    },
+  });
+  return has_top_level_return;
+};
 
-  let scope = get_scope(ast);
-  // TODO scope.getAllBindings?
-  let created_names = [...Object.keys(scope.bindings), ...accidental_globals];
-  let consumed_names = without(
-    // @ts-ignore
-    Object.keys(scope.globals),
-    ...accidental_globals
-  );
-
+/**
+ * @param {import("./babel-helpers").AST} ast
+ * @param {string[]} created_names
+ */
+let fix_return_and_get_result_ast = (ast, created_names) => {
   let properties_to_return = created_names.map((name) => {
     return t.objectProperty(t.identifier(name), t.identifier(name));
   });
@@ -160,25 +48,24 @@ export function transform(ast) {
       if (statement.type === "ClassDeclaration") {
         result_ast = t.classDeclaration(
           statement.id,
-          t.classBody([t.classProperty(RESULT_PLACEHOLDER, null)]),
-          statement.superClass
+          statement.superClass,
+          t.classBody([t.classProperty(RESULT_PLACEHOLDER, null)])
         );
         // Would love to send something back, but it would just show `f()`
         // so my `result_ast` is cooler in every way for now
         // (We can get the static and prototype keys later with Object.getOwnPropertyNames)
         return [statement, return_with_default(statement.id)];
       } else if (statement.type === "FunctionDeclaration") {
+        console.log(`statement:`, statement);
         result_ast = t.functionDeclaration(
           statement.id,
           statement.params,
           t.blockStatement([]),
           // t.blockStatement([t.expressionStatement(RESULT_PLACEHOLDER)]),
-          statement.generator
+          statement.generator,
+          statement.async
         );
-        return [
-          statement,
-          return_with_default(t.identifier(statement.id.name)),
-        ];
+        return [statement, return_with_default(statement.id)];
       } else if (statement.type === "ExpressionStatement") {
         if (
           statement.expression.type === "AssignmentExpression" &&
@@ -219,7 +106,18 @@ export function transform(ast) {
             return_with_default(
               t.objectExpression(
                 statement.specifiers.map((specifier) => {
-                  return t.objectProperty(specifier.exported, specifier.local);
+                  if (specifier.type === "ExportSpecifier") {
+                    return t.objectProperty(
+                      specifier.exported,
+                      specifier.local
+                    );
+                  } else {
+                    // TODO Not sure what to do here
+                    return t.objectProperty(
+                      specifier.exported,
+                      t.identifier("undefined")
+                    );
+                  }
                 })
               )
             ),
@@ -296,6 +194,52 @@ export function transform(ast) {
     }
     return statement;
   });
+};
+
+/** @param {import("./babel-helpers").AST} ast */
+export function transform(ast) {
+  for (let directive of ast.program.directives) {
+    ast.program.body.unshift(
+      t.expressionStatement(t.stringLiteral(directive.value.value))
+    );
+  }
+  // Add "use strict" directive
+  ast.program.directives = [t.directive(t.directiveLiteral("use strict"))];
+
+  let accidental_globals = [];
+  for (let statement of ast.program.body) {
+    if (statement.type === "ExpressionStatement") {
+      if (statement.expression.type === "AssignmentExpression") {
+        // TODO Work for all patterns
+        if (statement.expression.left.type === "Identifier") {
+          accidental_globals.push(statement.expression.left.name);
+        }
+      }
+    }
+  }
+  // Prepend variable declaration to the top of the program
+  if (accidental_globals.length > 0) {
+    ast.program.body.unshift(
+      t.variableDeclaration(
+        "let",
+        accidental_globals.map((name) =>
+          t.variableDeclarator(t.identifier(name), null)
+        )
+      )
+    );
+  }
+
+  let scope = get_scope(ast);
+  // TODO scope.getAllBindings?
+  let created_names = [...Object.keys(scope.bindings), ...accidental_globals];
+  let consumed_names = without(
+    // @ts-ignore
+    Object.keys(scope.globals),
+    ...accidental_globals
+  );
+  let has_top_level_return = get_has_top_level_return(ast);
+
+  let result_ast = fix_return_and_get_result_ast(ast, created_names);
 
   // Transform `import X from "X"` to `const X = import("X")`
   ast.program.body = ast.program.body.map((statement) => {
@@ -311,7 +255,7 @@ export function transform(ast) {
                   t.identifier(specifier.local.name)
                 );
               } else if (specifier.type === "ImportNamespaceSpecifier") {
-                return t.restProperty(t.identifier(specifier.local.name));
+                return t.restElement(t.identifier(specifier.local.name));
               } else {
                 return t.objectProperty(specifier.imported, specifier.local);
               }
@@ -326,18 +270,19 @@ export function transform(ast) {
   });
 
   traverse(ast, {
+    // Change `import.meta.X` to `__meta__.X`
     MetaProperty(path) {
-      // @ts-ignore
       path.replaceWith(t.identifier("__meta__"));
     },
+    // Remove `export ...` statements (or rather, get rid of the export part)
     ExportNamedDeclaration(path) {
       if (path.node.declaration) {
         path.replaceWith(path.node.declaration);
       }
     },
+    // Change `import("x")` to `__meta__.import("x")`
     Import(path) {
       path.replaceWith(
-        // @ts-ignore
         t.memberExpression(t.identifier("__meta__"), t.identifier("import"))
       );
     },
@@ -351,15 +296,18 @@ export function transform(ast) {
   ast.program.body = [t.returnStatement(t.callExpression(func, []))];
   return {
     ast: ast,
-    created_names,
-    consumed_names,
-    last_created_name:
-      result_ast != null
-        ? remove_semicolon(prettyPrint(result_ast).code).replaceAll(
-            /\n */g,
-            " "
-          )
-        : null,
+    meta: {
+      has_top_level_return: has_top_level_return,
+      created_names,
+      consumed_names,
+      last_created_name:
+        result_ast != null
+          ? remove_semicolon(prettyPrint(result_ast).code).replaceAll(
+              /\n */g,
+              " "
+            )
+          : null,
+    },
   };
 }
 

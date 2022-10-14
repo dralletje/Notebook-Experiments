@@ -1,17 +1,20 @@
 import chalk from "chalk";
 import { Cell } from "./node-engine";
 
-import { transform_code } from "run-javascript";
+import { transform_code } from "@dral/dralbook-transform-javascript";
 
 type ParsedCell =
   | {
       input: string;
       output: {
         code: string;
-        consumed_names: string[];
-        created_names: string[];
-        last_created_name?: string;
         map: any;
+        meta: {
+          consumed_names: string[];
+          created_names: string[];
+          last_created_name?: string;
+          has_top_level_return: boolean;
+        };
       };
     }
   | {
@@ -21,18 +24,20 @@ type ParsedCell =
 
 let parse_cell_not_memo = (cell: Cell): ParsedCell => {
   try {
-    let { code, consumed_names, created_names, last_created_name, map } =
-      transform_code(cell.code, {
-        filename: `${cell.id}.js`,
-      });
+    let { code, meta, map } = transform_code(cell.code, {
+      filename: `${cell.id}.js`,
+    });
     return {
       input: cell.code,
       output: {
         code,
         map,
-        consumed_names,
-        created_names,
-        last_created_name,
+        meta: {
+          consumed_names: meta.consumed_names,
+          created_names: meta.created_names,
+          last_created_name: meta.last_created_name,
+          has_top_level_return: meta.has_top_level_return,
+        },
       },
     };
   } catch (error) {

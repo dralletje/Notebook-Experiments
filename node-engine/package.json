@@ -5,7 +5,7 @@
   "type": "module",
   "main": "node-engine.js",
   "scripts": {
-    "start": "nodemon --ext \"js,ts\" --watch ../packages/run-javascript --watch . --exec \"ts-node --esm -T ./node-engine.ts\"",
+    "start": "nodemon --ext \"js,ts\" --watch ../packages/transform-javascript --watch . --exec \"ts-node --esm -T ./node-engine.ts\"",
     "test": "ts-node --esm -T ./tests/tests.ts"
   },
   "author": "",

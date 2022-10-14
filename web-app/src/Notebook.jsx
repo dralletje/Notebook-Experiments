@@ -1,14 +1,13 @@
 import React from "react";
 import styled from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
-import { EditorState, StateField } from "@codemirror/state";
-import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
+import { StateField } from "@codemirror/state";
+import { EditorView, ViewPlugin } from "@codemirror/view";
 import { compact, isEqual, range } from "lodash";
 import { shallowEqualObjects } from "shallow-equal";
 
 import { Inspector } from "./Inspector";
 import { cell_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
-import { deserialize } from "./deserialize-value-to-show";
 
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
@@ -43,9 +42,6 @@ import {
 } from "./NotebookEditor";
 import { basic_markdown_setup } from "./basic-markdown-setup";
 import { StyleModule } from "style-mod";
-import { indentUnit, syntaxHighlighting } from "@codemirror/language";
-import { javascript } from "@codemirror/lang-javascript";
-import { ReactWidget } from "react-codemirror-widget";
 
 let CellContainer = styled.div`
   display: flex;
