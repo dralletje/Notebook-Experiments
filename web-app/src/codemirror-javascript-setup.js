@@ -32,6 +32,7 @@ import {
 
 import { styleTags, tags as t } from "@lezer/highlight";
 import { DecorationsFromTree } from "./basic-markdown-setup";
+import { iterate_over_cursor } from "dral-lezer-helpers";
 
 export const customJsHighlight = styleTags({
   Equals: t.definitionOperator,
@@ -40,8 +41,19 @@ export const customJsHighlight = styleTags({
   // I need to override JSXMemberEpxression.JSXIdentifier for my whole decoration trick
   "JSXMemberExpression/JSXIdentifier": t.special(t.tagName),
 
+  // Make `import { x as y } from "z"` treat `x` as a property and `y` as a variable
+  "ImportGroup/VariableName": t.propertyName,
+  "ImportGroup/VariableDefinition": t.variableName,
+  "ExportGroup/VariableName": t.variableName,
+
+  "ImportDeclaration/type": t.moduleKeyword,
+
   // TODO Make this... a little bit more beautiful than just BAM HERE TYPE
-  "TypeAliasDeclaration/...": t.typeName,
+  // "TypeAliasDeclaration/...": t.typeName,
+  "TypeAliasDeclaration/...": t.special(t.typeName),
+  "TypeAnnotation/...": t.special(t.typeName),
+  "ParameterizedType/...": t.typeName,
+  TypeName: t.typeName,
 
   // TODO So this one is odd:
   // .... lezer/javascript currently thinks that for `class X extends Y`, `Y` is a `TypeName`
@@ -61,6 +73,7 @@ export const customJsHighlight = styleTags({
 });
 
 let VARIABLE_COLOR = "rgb(255 130 41)";
+let PROPERTY_COLOR = "#d01212";
 
 let syntax_classes = new StyleModule({
   ".very-important": {
@@ -76,7 +89,7 @@ let syntax_classes = new StyleModule({
   },
 
   ".property": {
-    color: "#f91515",
+    color: PROPERTY_COLOR,
   },
   ".variable": {
     color: VARIABLE_COLOR,
@@ -91,8 +104,40 @@ let syntax_classes = new StyleModule({
   },
 });
 
+let color_type_imports_like_other_type_stuff = DecorationsFromTree(
+  ({ cursor, mutable_decorations }) => {
+    if (cursor.name === "ImportDeclaration") {
+      let type = cursor.node.getChild("type");
+      if (type != null) {
+        mutable_decorations.push(
+          Decoration.mark({
+            style: "opacity: 0.7",
+            class: "type-stuff",
+          }).range(cursor.from, cursor.to)
+        );
+        iterate_over_cursor({
+          // @ts-ignore
+          cursor: cursor,
+          enter: (cursor) => {
+            if (cursor.name === "VariableDefinition")
+              mutable_decorations.push(
+                Decoration.mark({
+                  class: "type-name",
+                  style: "color: black",
+                }).range(cursor.from, cursor.to)
+              );
+          },
+        });
+        return false;
+      }
+    }
+  }
+);
+
 const syntax_colors = HighlightStyle.define(
   [
+    { tag: tags.special(tags.typeName), opacity: 0.7 },
+
     { tag: tags.string, class: "literal" },
     { tag: tags.bool, class: "literal", fontWeight: 700 },
     { tag: tags.number, class: "literal" },
@@ -212,10 +257,9 @@ let lowercase_jsx_identifiers = DecorationsFromTree(
   }
 );
 
-// TODO Can't currently distinguish between `x` in `{ x: y } = z` and `{ x } = z` :(
-// .... (I want the former to be a `PatternProperty` and the latter to be a `VariableName`,
-// .... but they're both `PatternProperty` right now)
-// .... Guess this one NEEDS decorations?
+// I want scope variables to be orange, and properties/external names to be red...
+// But sometimes you have shorthand properties like `{ a }` which are both, so I have a cool decoration.
+// Involves A LOT of lezer tree walking, and some css shenanigans, but it works!
 let wtf_is_this = [
   EditorView.styleModule.of(
     new StyleModule({
@@ -249,6 +293,12 @@ let wtf_is_this = [
         "clip-path": "polygon(0 0, 100% 0, 100% 35%, 0 70%)",
         color: VARIABLE_COLOR,
         "z-index": 1000,
+      },
+
+      // Not pretty, but only way I can force the property color...
+      // (without having another more high precedence decorator)
+      ".force-property, .force-property *": {
+        color: `${PROPERTY_COLOR} !important`,
       },
     })
   ),
@@ -288,6 +338,129 @@ let wtf_is_this = [
         }).range(property.from, property.to)
       );
     }
+
+    // Figured that `import { x } from "y"` also has this property/variable duality...
+    // So more cool colors LETS GO
+    if (cursor.name === "ImportGroup") {
+      if (cursor.firstChild()) {
+        try {
+          // @ts-ignore skip to "{"
+          if (cursor.name === "{") cursor.nextSibling();
+
+          do {
+            // @ts-ignore
+            if (cursor.name === "VariableDefinition") {
+              let from = cursor.from;
+              let to = cursor.to;
+
+              // Is the next node "," or EOF?
+              let did_move = cursor.nextSibling();
+              if (!did_move || cursor.name === "," || cursor.name === "}") {
+                mutable_decorations.push(
+                  Decoration.mark({
+                    class: `force-property property-in-variable-out before-stick-to-text`,
+                    attributes: {
+                      "data-text": doc.sliceString(from, to),
+                    },
+                  }).range(from, to)
+                );
+              }
+            }
+            // @ts-ignore skip to ","
+            while (cursor.name !== "," && cursor.nextSibling()) {}
+          } while (cursor.nextSibling());
+        } finally {
+          cursor.lastChild();
+        }
+      }
+      return false;
+    }
+
+    // export { x }
+    if (cursor.name === "ExportGroup") {
+      if (cursor.firstChild()) {
+        try {
+          // @ts-ignore skip to "{"
+          if (cursor.name === "{") cursor.nextSibling();
+          do {
+            // @ts-ignore
+            if (cursor.name === "VariableName") {
+              let from = cursor.from;
+              let to = cursor.to;
+
+              // Is the next node "," or EOF?
+              let did_move = cursor.nextSibling();
+              if (!did_move || cursor.name === "," || cursor.name === "}") {
+                mutable_decorations.push(
+                  Decoration.mark({
+                    class: `force-property variable-in-property-out before-stick-to-text`,
+                    attributes: {
+                      "data-text": doc.sliceString(from, to),
+                    },
+                  }).range(from, to)
+                );
+              }
+            }
+
+            // lezer/javascript doesn't give me a way to style `x` and `y` in `export { x as y }` separately...
+            // So I have to do this hacky thing
+            while (
+              // @ts-ignore
+              cursor.name !== "," &&
+              // @ts-ignore
+              cursor.name !== "VariableName" &&
+              cursor.nextSibling()
+            ) {}
+            // @ts-ignore
+            if (cursor.name === "VariableName") {
+              mutable_decorations.push(
+                Decoration.mark({
+                  class: `force-property`,
+                }).range(cursor.from, cursor.to)
+              );
+            }
+
+            // @ts-ignore Skip to next ","
+            while (cursor.name !== "," && cursor.nextSibling()) {}
+          } while (cursor.nextSibling());
+        } finally {
+          cursor.lastChild();
+        }
+      }
+    }
+
+    // Turns out, `export let x = 10` is ALSO a property/variable duality
+    // ExportDeclaration/VariableDeclaration/VariableDefinition
+    if (cursor.name === "ExportDeclaration" && cursor.firstChild()) {
+      try {
+        do {
+          // @ts-ignore
+          if (cursor.name === "VariableDeclaration" && cursor.firstChild()) {
+            try {
+              do {
+                // @ts-ignore
+                if (cursor.name === "VariableDefinition") {
+                  if (cursor.from !== cursor.to) {
+                    mutable_decorations.push(
+                      Decoration.mark({
+                        class: `force-property variable-in-property-out before-stick-to-text`,
+                        attributes: {
+                          "data-text": doc.sliceString(cursor.from, cursor.to),
+                        },
+                      }).range(cursor.from, cursor.to)
+                    );
+                  }
+                }
+              } while (cursor.nextSibling());
+            } finally {
+              cursor.parent();
+            }
+          }
+        } while (cursor.nextSibling());
+      } finally {
+        cursor.parent();
+      }
+    }
   }),
 ];
 
@@ -297,6 +470,7 @@ export let javascript_syntax_highlighting = [
   EditorView.styleModule.of(syntax_classes),
   my_javascript_parser,
   lowercase_jsx_identifiers,
+  color_type_imports_like_other_type_stuff,
 ];
 
 export let basic_javascript_setup = [

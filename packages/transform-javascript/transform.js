@@ -93,6 +93,12 @@ let fix_return_and_get_result_ast = (ast, created_names) => {
         return [statement, return_with_default(left_hand_side)];
       } else if (statement.type === "ExportNamedDeclaration") {
         if (statement.declaration == null) {
+          // Because typescript will replace type exports/imports with `export {}` (to be a module)
+          // I'm not going to show these at all, even if you really want to 😈
+          if (statement.specifiers.length === 0) {
+            return [];
+          }
+
           // export { a, b, c }
           result_ast = t.exportNamedDeclaration(null, [
             {
@@ -193,6 +199,8 @@ let fix_return_and_get_result_ast = (ast, created_names) => {
     }
     return statement;
   });
+
+  return result_ast;
 };
 
 /** @param {import("./babel-helpers").AST} ast */
