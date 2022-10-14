@@ -4,6 +4,7 @@ import cors from "cors";
 import { Server } from "socket.io";
 import http from "node:http";
 import chalk from "chalk";
+import { join } from "node:path";
 
 import { mapValues, throttle } from "lodash-es";
 
@@ -15,7 +16,7 @@ import {
   save_notebook,
 } from "./save-and-load-notebook-file.js";
 
-import { readdir } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 
 const app = express();
 app.use(cors());
@@ -132,6 +133,27 @@ let run_notebook = async (
   }
 };
 
+let read_all_files = async (path: string) => {
+  let files = [];
+  let read_files_and_add = async (relative: string) => {
+    let scanned = await readdir(join(path, relative));
+
+    for (let file of scanned) {
+      let full_path = join(relative, file);
+      let stat_result = await stat(join(path, full_path));
+      if (stat_result.isDirectory()) {
+        await read_files_and_add(full_path);
+      } else {
+        files.push(full_path);
+      }
+    }
+  };
+
+  await read_files_and_add("");
+
+  return files;
+};
+
 let engine_to_json = (engine) => {
   return {
     cylinders: mapValues(engine.cylinders, (cylinder) => ({
@@ -159,12 +181,12 @@ io.on("connection", (socket) => {
   let engines: { [filename: string]: Engine } = {};
 
   socket.on("load-workspace-from-directory", async () => {
-    let files = await readdir(DIRECTORY);
+    let files = await read_all_files(DIRECTORY);
     let workspace: Workspace = {
       files: {},
     };
+
     for (let file of files) {
-      if (file === "__cell_environment.js") continue;
       if (/\.(t|j)sx?$/.test(file)) {
         try {
           workspace.files[file] = await load_notebook(DIRECTORY, file);
@@ -175,6 +197,8 @@ io.on("connection", (socket) => {
             throw error;
           }
         }
+      } else {
+        // Show other files too?
       }
     }
     socket.emit("load-workspace-from-directory", workspace);

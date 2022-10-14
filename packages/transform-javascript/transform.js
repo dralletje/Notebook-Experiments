@@ -56,7 +56,6 @@ let fix_return_and_get_result_ast = (ast, created_names) => {
         // (We can get the static and prototype keys later with Object.getOwnPropertyNames)
         return [statement, return_with_default(statement.id)];
       } else if (statement.type === "FunctionDeclaration") {
-        console.log(`statement:`, statement);
         result_ast = t.functionDeclaration(
           statement.id,
           statement.params,

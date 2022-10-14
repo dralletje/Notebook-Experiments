@@ -223,7 +223,7 @@ function App() {
   }, []);
 
   if (workspace == null) {
-    return <div>Hi</div>;
+    return <div></div>;
   }
 
   if (open_file == null) {
@@ -271,6 +271,7 @@ function App() {
         <div></div>
       ) : (
         <File
+          files={workspace.files}
           key={open_file}
           socket={socket}
           state={workspace.files[open_file].state}

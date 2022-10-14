@@ -1,4 +1,4 @@
-import { compact, mapValues, sortBy, uniq } from "lodash-es";
+import { mapValues } from "lodash-es";
 import { CellId } from "./node-engine";
 
 type VariableName = string;

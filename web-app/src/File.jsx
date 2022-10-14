@@ -9,6 +9,7 @@ import { isEqual, mapValues, sortBy } from "lodash";
 import {
   gitNetworkOutline,
   iceCreamOutline,
+  imagesOutline,
   pizzaOutline,
   terminalOutline,
 } from "ionicons/icons";
@@ -31,6 +32,7 @@ import { SelectionArea } from "./selection-area/SelectionArea";
 import { NotebookFilename, NotebookId } from "./notebook-types";
 import { CellList } from "./Notebook";
 import { deserialize } from "./deserialize-value-to-show";
+import { FilesTab, files_to_directory } from "./tabs/Files/Files.jsx";
 
 // let worker = create_worker();
 // console.log(`worker:`, worker);
@@ -214,10 +216,11 @@ let useEngine = (notebook, socket) => {
  * @param {{
  *  state: EditorState,
  *  onChange: (state: EditorState) => void,
- *  socket: Socket
+ *  socket: Socket,
+ *  files: { [filename: string]: { filename: string } },
  * }} props
  */
-export function File({ state, onChange, socket }) {
+export function File({ state, onChange, socket, files, onFileClick }) {
   let viewupdate = useViewUpdate(state, onChange);
 
   let cell_editor_states = state.field(CellEditorStatesField);
@@ -275,7 +278,7 @@ export function File({ state, onChange, socket }) {
   let engine = useEngine(notebook_with_filename, socket);
 
   let [open_tab, set_open_tab] = React.useState(
-    /** @type {null | "graph" | "dependencies" | "shell" | "meta"} */
+    /** @type {null | "graph" | "dependencies" | "shell" | "meta" | "files"} */
     (null)
   );
 
@@ -322,15 +325,20 @@ export function File({ state, onChange, socket }) {
       {open_tab != null && (
         <div
           style={{
-            width: 400,
-            backgroundColor: "rgb(45 21 29)",
-            height: "100vh",
+            flex: "0 0 300px",
+            height: "calc(100vh - 50px)",
             position: "sticky",
-            top: 0,
+            top: 50,
+
+            backgroundColor: "rgb(45 21 29)",
             display: "flex",
             flexDirection: "column",
+            overflow: "auto",
           }}
         >
+          {open_tab === "files" && (
+            <FilesTab filesystem={files_to_directory(files)} />
+          )}
           {open_tab === "graph" && <GraphTab dag={dag} />}
           {open_tab === "dependencies" && <DependenciesTab />}
           {open_tab === "shell" && <ShellTab />}
@@ -340,11 +348,11 @@ export function File({ state, onChange, socket }) {
       <div
         style={{
           flex: "0 0 50px",
-          backgroundColor: "rgba(0,0,0,.4)",
           height: "calc(100vh - 50px)",
           position: "sticky",
           top: 50,
 
+          backgroundColor: "rgba(0,0,0,.4)",
           display: "flex",
           flexDirection: "column",
           alignItems: "stretch",
@@ -352,6 +360,16 @@ export function File({ state, onChange, socket }) {
           paddingBottom: 32,
         }}
       >
+        <MyButton
+          className={open_tab === "files" ? "active" : ""}
+          onClick={() => {
+            set_open_tab((x) => (x === "files" ? null : "files"));
+          }}
+        >
+          <IonIcon icon={imagesOutline} />
+          files
+        </MyButton>
+
         <MyButton
           className={open_tab === "graph" ? "active" : ""}
           onClick={() => {
