@@ -46,6 +46,20 @@ export const customJsHighlight = styleTags({
   "ImportGroup/VariableDefinition": t.variableName,
   "ExportGroup/VariableName": t.variableName,
 
+  // ???
+  VariableName: t.variableName,
+  "CallExpression/VariableName TaggedTemplateExpression/VariableName":
+    t.function(t.variableName),
+  VariableDefinition: t.definition(t.variableName),
+  Label: t.labelName,
+  PropertyName: t.propertyName,
+  PrivatePropertyName: t.special(t.propertyName),
+  "CallExpression/MemberExpression/PropertyName": t.function(t.propertyName),
+  "FunctionDeclaration/VariableDefinition": t.function(
+    t.definition(t.variableName)
+  ),
+  "ClassDeclaration/VariableDefinition": t.definition(t.className),
+
   "ImportDeclaration/type": t.moduleKeyword,
 
   // TODO Make this... a little bit more beautiful than just BAM HERE TYPE
