@@ -7,6 +7,7 @@ import App from "./App";
 import { enablePatches } from "immer";
 
 // import { App } from "./experiments/use-memo-after-hot-reload/use-memo-after-hot-reload";
+// import { App } from "./experiments/lezer-playground/lezer-playground.jsx";
 
 enablePatches();
 

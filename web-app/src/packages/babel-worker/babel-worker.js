@@ -13,6 +13,13 @@ export let create_worker = () => {
 
 let request_id_counter = 1;
 
+class ErrorFromWorker extends Error {
+  constructor(message, stack) {
+    super(message);
+    this.stack = stack;
+  }
+}
+
 /**
  * @param {Worker} worker
  * @param {import("./worker").Message} message
@@ -27,9 +34,22 @@ export let post_message = async (worker, message) => {
   return await new Promise((resolve, reject) => {
     let handle = (message) => {
       if (message.data.request_id === request_id) {
+        console.log(`message:`, message.data);
         worker.removeEventListener("message", handle);
         // worker.removeEventListener("error", handle);
-        resolve(message.data.result);
+
+        if (message.data.type === "success") {
+          resolve(message.data.result);
+        } else if (message.data.type === "error") {
+          reject(
+            new ErrorFromWorker(
+              message.data.error.message,
+              message.data.error.stack
+            )
+          );
+        } else {
+          reject(new Error("Unknown message type"));
+        }
       }
     };
     worker.addEventListener("message", handle);

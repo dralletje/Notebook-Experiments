@@ -1,11 +1,8 @@
-import { parse, print, types, prettyPrint } from "recast";
-import { builders, Type } from "ast-types";
+import { parse, prettyPrint } from "recast";
+import { builders } from "ast-types";
 import { parse as parseBabel } from "@babel/parser";
-import { compact, without } from "lodash-es";
 
 import { remove_typescript_and_transform_jsx } from "./remove_typescript_and_transform_jsx.js";
-import { traverse } from "./babel-helpers.js";
-import { get_scope } from "./get-scope.js";
 import { transform } from "./transform.js";
 
 let t = builders;

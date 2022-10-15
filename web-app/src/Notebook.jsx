@@ -41,7 +41,6 @@ import {
   ViewUpdate,
 } from "./NotebookEditor";
 import { basic_markdown_setup } from "./basic-markdown-setup";
-import { StyleModule } from "style-mod";
 
 let CellContainer = styled.div`
   display: flex;
@@ -102,14 +101,12 @@ let CellHasSelectionPlugin = [
       },
     };
   }),
-  EditorView.styleModule.of(
-    new StyleModule({
-      ".cm-editor:not(.has-selection) .cm-selectionBackground": {
-        // Need to figure out what precedence I should give this thing so I don't need !important
-        background: "none !important",
-      },
-    })
-  ),
+  EditorView.theme({
+    ".cm-editor:not(.has-selection) .cm-selectionBackground": {
+      // Need to figure out what precedence I should give this thing so I don't need !important
+      background: "none !important",
+    },
+  }),
 ];
 
 export let EditorStyled = styled.div`

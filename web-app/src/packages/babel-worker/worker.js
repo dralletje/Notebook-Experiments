@@ -1,14 +1,19 @@
 import { compact } from "lodash";
 import * as x from "@babel/core";
 
-import { transform_code } from "run-javascript";
-
-console.log(`x:`, x);
+import { transform_code } from "@dral/dralbook-transform-javascript";
 
 let commands = {
   /** @param {{ code: string }} data */
   "transform-code": async ({ code }) => {
-    return transform_code(code, { filename: "worker.js" });
+    try {
+      return transform_code(code, { filename: "worker.js" });
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error(error.message);
+      }
+      throw error;
+    }
   },
   /** @param {{ notebook: import("../../notebook-types").Notebook }} data */
   "notebook-to-file": async ({ notebook }) => {
@@ -74,10 +79,16 @@ self.onmessage = async (event) => {
       console.log("result:", result);
       postMessage({
         request_id: event.data.request_id,
+        type: "success",
         result,
       });
     } catch (error) {
       console.log(`error:`, error);
+      postMessage({
+        request_id: event.data.request_id,
+        type: "error",
+        error: { message: error.message, stack: error.stack },
+      });
     } finally {
       console.groupEnd();
     }

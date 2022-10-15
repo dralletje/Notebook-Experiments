@@ -23,7 +23,6 @@ import {
 } from "@codemirror/view";
 import { defaultKeymap, indentLess, indentMore } from "@codemirror/commands";
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
-import { StyleModule } from "style-mod";
 import { closeBrackets } from "@codemirror/autocomplete";
 import {
   highlightSelectionMatches,
@@ -89,7 +88,7 @@ export const customJsHighlight = styleTags({
 let VARIABLE_COLOR = "rgb(255 130 41)";
 let PROPERTY_COLOR = "#d01212";
 
-let syntax_classes = new StyleModule({
+let syntax_classes = EditorView.theme({
   ".very-important": {
     color: "white",
     fontWeight: 700,
@@ -275,47 +274,45 @@ let lowercase_jsx_identifiers = DecorationsFromTree(
 // But sometimes you have shorthand properties like `{ a }` which are both, so I have a cool decoration.
 // Involves A LOT of lezer tree walking, and some css shenanigans, but it works!
 let wtf_is_this = [
-  EditorView.styleModule.of(
-    new StyleModule({
-      // More generic class that will make sure the text is overlaid on the original text
-      ".before-stick-to-text::before": {
-        // Need this to prevent any text-color or other text stuff to bleed through
-        all: `initial`,
-        font: `inherit`,
+  EditorView.theme({
+    // More generic class that will make sure the text is overlaid on the original text
+    ".before-stick-to-text::before": {
+      // Need this to prevent any text-color or other text stuff to bleed through
+      all: `initial`,
+      font: `inherit`,
 
-        "pointer-events": "none",
-        content: "attr(data-text)",
-        position: `absolute`,
-        left: "0px",
-        bottom: "-2px",
-      },
+      "pointer-events": "none",
+      content: "attr(data-text)",
+      position: `absolute`,
+      left: "0px",
+      bottom: "-2px",
+    },
 
-      ".property-in-variable-out": {
-        position: "relative",
-        fontWeight: "bold",
-      },
-      ".property-in-variable-out::before": {
-        "clip-path": "polygon(0 70%, 100% 35%, 100% 100%, 0% 100%)",
-        color: VARIABLE_COLOR,
-        "z-index": 1000,
-      },
-      ".variable-in-property-out": {
-        position: "relative",
-        fontWeight: "bold",
-      },
-      ".variable-in-property-out::before": {
-        "clip-path": "polygon(0 0, 100% 0, 100% 35%, 0 70%)",
-        color: VARIABLE_COLOR,
-        "z-index": 1000,
-      },
+    ".property-in-variable-out": {
+      position: "relative",
+      fontWeight: "bold",
+    },
+    ".property-in-variable-out::before": {
+      "clip-path": "polygon(0 70%, 100% 35%, 100% 100%, 0% 100%)",
+      color: VARIABLE_COLOR,
+      "z-index": 1000,
+    },
+    ".variable-in-property-out": {
+      position: "relative",
+      fontWeight: "bold",
+    },
+    ".variable-in-property-out::before": {
+      "clip-path": "polygon(0 0, 100% 0, 100% 35%, 0 70%)",
+      color: VARIABLE_COLOR,
+      "z-index": 1000,
+    },
 
-      // Not pretty, but only way I can force the property color...
-      // (without having another more high precedence decorator)
-      ".force-property, .force-property *": {
-        color: `${PROPERTY_COLOR} !important`,
-      },
-    })
-  ),
+    // Not pretty, but only way I can force the property color...
+    // (without having another more high precedence decorator)
+    ".force-property, .force-property *": {
+      color: `${PROPERTY_COLOR} !important`,
+    },
+  }),
   DecorationsFromTree(({ cursor, mutable_decorations, doc }) => {
     if (cursor.name === "PatternProperty") {
       let node = cursor.node;
@@ -384,10 +381,9 @@ let wtf_is_this = [
             while (cursor.name !== "," && cursor.nextSibling()) {}
           } while (cursor.nextSibling());
         } finally {
-          cursor.lastChild();
+          cursor.parent();
         }
       }
-      return false;
     }
 
     // export { x }
@@ -438,7 +434,7 @@ let wtf_is_this = [
             while (cursor.name !== "," && cursor.nextSibling()) {}
           } while (cursor.nextSibling());
         } finally {
-          cursor.lastChild();
+          cursor.parent();
         }
       }
     }
@@ -481,7 +477,7 @@ let wtf_is_this = [
 export let javascript_syntax_highlighting = [
   Prec.lowest(wtf_is_this),
   syntaxHighlighting(syntax_colors),
-  EditorView.styleModule.of(syntax_classes),
+  syntax_classes,
   my_javascript_parser,
   lowercase_jsx_identifiers,
   color_type_imports_like_other_type_stuff,

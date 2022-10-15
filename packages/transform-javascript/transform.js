@@ -26,13 +26,9 @@ let get_has_top_level_return = (ast) => {
 
 /**
  * @param {import("./babel-helpers").AST} ast
- * @param {string[]} created_names
+ * @param {import("@babel/types").ObjectProperty[]} properties_to_return
  */
-let fix_return_and_get_result_ast = (ast, created_names) => {
-  let properties_to_return = created_names.map((name) => {
-    return t.objectProperty(t.identifier(name), t.identifier(name));
-  });
-
+let fix_return_and_get_result_ast = (ast, properties_to_return) => {
   let return_with_default = (_default) => {
     return t.returnStatement(
       t.objectExpression([
@@ -203,6 +199,62 @@ let fix_return_and_get_result_ast = (ast, created_names) => {
   return result_ast;
 };
 
+/** @param {import("@babel/core").Node} ast */
+let to_string = (ast) => {
+  if (ast.type === "Identifier") {
+    return ast.name;
+  } else {
+    throw new Error(`AAAAaa ${ast.type}`);
+  }
+};
+
+/**
+ * @param {import("./babel-helpers").AST} ast
+ * @returns {{ [exported_as: string]: string }}
+ */
+let get_exported = (ast) => {
+  /** @type {{ [exported_as: string]: string }} */
+  let exported = {};
+  traverse(ast, {
+    ExportNamedDeclaration({ node }) {
+      if (node.declaration != null) {
+        // export let x = 10
+        if (node.declaration.type === "VariableDeclaration") {
+          for (let declaration of node.declaration.declarations) {
+            exported[to_string(declaration.id)] = to_string(declaration.id);
+          }
+        } else {
+          throw new Error(
+            `Expected a VariableDeclaration but got a "${node.declaration.type}"`
+          );
+        }
+      }
+
+      for (let specifier of node.specifiers) {
+        if (specifier.type === "ExportSpecifier") {
+          exported[to_string(specifier.exported)] = to_string(specifier.local);
+        } else {
+          throw new Error(
+            `Expected an ExportSpecifier but got a "${specifier.type}"`
+          );
+        }
+      }
+    },
+    ExportDefaultDeclaration({ node }) {
+      // prettier-ignore
+      throw new Error("Not implemented: Need to rewrite default exports to first a variable, then export that...");
+      if (node.declaration.type === "Identifier") {
+        exported["default"] = to_string(node.declaration);
+      } else {
+        throw new Error(
+          `Expected an Identifier but got a "${node.declaration.type}"`
+        );
+      }
+    },
+  });
+  return exported;
+};
+
 /** @param {import("./babel-helpers").AST} ast */
 export function transform(ast) {
   for (let directive of ast.program.directives) {
@@ -245,8 +297,26 @@ export function transform(ast) {
     ...accidental_globals
   );
   let has_top_level_return = get_has_top_level_return(ast);
+  let exported = get_exported(ast);
 
-  let result_ast = fix_return_and_get_result_ast(ast, created_names);
+  let result_ast = fix_return_and_get_result_ast(ast, [
+    ...created_names.map((name) => {
+      return t.objectProperty(t.identifier(name), t.identifier(name));
+    }),
+    t.objectProperty(
+      // Can use normal prohibited names because they'll never be variable names
+      // (TODO Should also just put created_names in a separate property...)
+      t.identifier("export"),
+      t.objectExpression(
+        Object.entries(exported).map(([exported_as, local_name]) => {
+          return t.objectProperty(
+            t.identifier(exported_as),
+            t.identifier(local_name)
+          );
+        })
+      )
+    ),
+  ]);
 
   // Transform `import X from "X"` to `const X = import("X")`
   ast.program.body = ast.program.body.map((statement) => {

@@ -1,0 +1,63 @@
+export let DEFAULT_TO_PARSE = `
+Script(
+  ExpressionStatement(
+    CallExpression(
+      VariableName,
+      ArgList(
+        "(",
+        CallExpression(
+          VariableName,
+          ArgList(
+            "(",
+            VariableName,
+            ",",
+            CallExpression(
+              VariableName,
+              ArgList(
+                "(",
+                VariableName,
+                ",",
+                NewExpression(
+                  new,
+                  VariableName,
+                  ArgList("(", ")")
+                ),
+                ",",
+                NewExpression(
+                  new,
+                  VariableName,
+                  ArgList("(", ")")
+                ),
+                ",",
+                CallExpression(
+                  VariableName,
+                  ArgList(
+                    "(",
+                    VariableName,
+                    ",",
+                    NewExpression(
+                      "new",
+                      VariableName,
+                      ArgList("(", ")")
+                    ),
+                    ")"
+                  )
+                ),
+                ")"
+              )
+            ),
+            ")"
+          )
+        ),
+        ",",
+        NewExpression(
+          new,
+          VariableName,
+          ArgList("(", ")")
+        ),
+        ")"
+      )
+    )
+  )
+)
+`.trim();
