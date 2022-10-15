@@ -86,7 +86,6 @@ export const customJsHighlight = styleTags({
 });
 
 let VARIABLE_COLOR = "rgb(255 130 41)";
-let PROPERTY_COLOR = "#d01212";
 
 let syntax_classes = EditorView.theme({
   ".very-important": {
@@ -102,7 +101,7 @@ let syntax_classes = EditorView.theme({
   },
 
   ".property": {
-    color: PROPERTY_COLOR,
+    color: "#d01212",
   },
   ".variable": {
     color: VARIABLE_COLOR,
@@ -147,88 +146,94 @@ let color_type_imports_like_other_type_stuff = DecorationsFromTree(
   }
 );
 
-const syntax_colors = HighlightStyle.define(
-  [
-    { tag: tags.special(tags.typeName), opacity: 0.7 },
+const syntax_colors = syntaxHighlighting(
+  HighlightStyle.define(
+    [
+      { tag: tags.special(tags.typeName), opacity: 0.7 },
 
-    { tag: tags.string, class: "literal" },
-    { tag: tags.bool, class: "literal", fontWeight: 700 },
-    { tag: tags.number, class: "literal" },
-    { tag: tags.literal, class: "literal", fontWeight: 700 },
-    { tag: tags.null, class: "literal" },
+      { tag: tags.string, class: "literal" },
+      { tag: tags.bool, class: "literal", fontWeight: 700 },
+      { tag: tags.number, class: "literal" },
+      { tag: tags.literal, class: "literal", fontWeight: 700 },
+      { tag: tags.null, class: "literal" },
 
-    { tag: tags.keyword, class: "boring" },
+      { tag: tags.keyword, class: "boring" },
 
-    { tag: tags.variableName, class: "variable" },
-    { tag: tags.className, class: "variable" },
-    { tag: tags.propertyName, class: "property" },
-    { tag: tags.comment, class: "comment" },
+      { tag: tags.variableName, class: "variable" },
+      { tag: tags.className, class: "variable" },
+      { tag: tags.propertyName, class: "property" },
+      { tag: tags.comment, class: "comment" },
 
-    { tag: tags.special(tags.brace), fontWeight: 700 },
+      { tag: tags.special(tags.brace), fontWeight: 700 },
 
-    // super
-    { tag: tags.atom, class: "important" },
-    // this
-    { tag: tags.self, class: "important" },
+      // super
+      { tag: tags.atom, class: "important" },
+      // this
+      { tag: tags.self, class: "important" },
 
-    // { tag: tags.property, color: "#48b685" },
-    // { tag: tags.attribute, color: "#48b685" },
-    // { tag: tags.variable2, color: "#06b6ef" },
-    { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
+      // { tag: tags.property, color: "#48b685" },
+      // { tag: tags.attribute, color: "#48b685" },
+      // { tag: tags.variable2, color: "#06b6ef" },
+      {
+        tag: tags.typeName,
+        color: "var(--cm-type-color)",
+        fontStyle: "italic",
+      },
 
-    // ,
-    { tag: tags.punctuation, class: "boring" },
+      // ,
+      { tag: tags.punctuation, class: "boring" },
 
-    // =
-    { tag: tags.definitionOperator, class: "very-important" },
-    // =>
-    { tag: tags.function(tags.punctuation), class: "very-important" },
-    // += -= *= /= ??=
-    { tag: tags.updateOperator, class: "important" },
+      // =
+      { tag: tags.definitionOperator, class: "very-important" },
+      // =>
+      { tag: tags.function(tags.punctuation), class: "very-important" },
+      // += -= *= /= ??=
+      { tag: tags.updateOperator, class: "important" },
 
-    { tag: tags.bracket, class: "boring" },
-    { tag: tags.brace, class: "boring" },
+      { tag: tags.bracket, class: "boring" },
+      { tag: tags.brace, class: "boring" },
 
-    // Catch all for operators
-    { tag: tags.operator, class: "important" },
-    // .
-    { tag: tags.derefOperator, class: "boring" },
-    // + - * /
-    { tag: tags.arithmeticOperator, class: "important" },
-    // === !==
-    { tag: tags.compareOperator, class: "important" },
-    // && ||
-    { tag: tags.logicOperator, class: "important" },
-    // TODO Maybe make `!` even more emphasized? Make sure it is hard to miss
-    // !
-    { tag: tags.special(t.logicOperator), class: "very-important" },
-    // export import
-    { tag: tags.moduleKeyword, class: "important" },
-    // if else while break continue
-    { tag: tags.controlKeyword, class: "very-important" },
-    // ? :
-    { tag: tags.controlOperator, class: "very-important" },
+      // Catch all for operators
+      { tag: tags.operator, class: "important" },
+      // .
+      { tag: tags.derefOperator, class: "boring" },
+      // + - * /
+      { tag: tags.arithmeticOperator, class: "important" },
+      // === !==
+      { tag: tags.compareOperator, class: "important" },
+      // && ||
+      { tag: tags.logicOperator, class: "important" },
+      // TODO Maybe make `!` even more emphasized? Make sure it is hard to miss
+      // !
+      { tag: tags.special(t.logicOperator), class: "very-important" },
+      // export import
+      { tag: tags.moduleKeyword, class: "important" },
+      // if else while break continue
+      { tag: tags.controlKeyword, class: "very-important" },
+      // ? :
+      { tag: tags.controlOperator, class: "very-important" },
 
-    // JSX
-    { tag: tags.content, class: "literal" },
-    { tag: tags.attributeValue, class: "literal" },
-    { tag: tags.angleBracket, class: "boring" },
-    { tag: tags.attributeName, class: "property" },
-    { tag: tags.special(tags.tagName), class: "variable" },
+      // JSX
+      { tag: tags.content, class: "literal" },
+      { tag: tags.attributeValue, class: "literal" },
+      { tag: tags.angleBracket, class: "boring" },
+      { tag: tags.attributeName, class: "property" },
+      { tag: tags.special(tags.tagName), class: "variable" },
 
-    // Ideally tags.standard(tags.tagName) would work, but it doesn't....
-    // Still putting it here just for kicks, but lezer doesn't differentiate between builtin tags and Component names...
-    { tag: tags.standard(tags.tagName), class: "literal" },
-    // So instead I handle this manually with decorations in `lowercase_jsx_identifiers`,
-    // and I "clear" `tags.tagName` here so that it doesn't get styled as a variable
-    { tag: tags.tagName, class: "" },
-    // But I do need the variables inside `JSXMemberExpression` to get styled so...
-    { tag: tags.special(tags.tagName), class: "variable" },
-  ],
-  {
-    // all: { color: `var(--cm-editor-text-color)` },
-    scope: javascriptLanguage,
-  }
+      // Ideally tags.standard(tags.tagName) would work, but it doesn't....
+      // Still putting it here just for kicks, but lezer doesn't differentiate between builtin tags and Component names...
+      { tag: tags.standard(tags.tagName), class: "literal" },
+      // So instead I handle this manually with decorations in `lowercase_jsx_identifiers`,
+      // and I "clear" `tags.tagName` here so that it doesn't get styled as a variable
+      { tag: tags.tagName, class: "" },
+      // But I do need the variables inside `JSXMemberExpression` to get styled so...
+      { tag: tags.special(tags.tagName), class: "variable" },
+    ],
+    {
+      // all: { color: `var(--cm-editor-text-color)` },
+      scope: javascriptLanguage,
+    }
+  )
 );
 
 let my_javascript_parser = new LanguageSupport(
@@ -276,7 +281,7 @@ let lowercase_jsx_identifiers = DecorationsFromTree(
 let wtf_is_this = [
   EditorView.theme({
     // More generic class that will make sure the text is overlaid on the original text
-    ".before-stick-to-text::before": {
+    ".before-stick-to-text::after": {
       // Need this to prevent any text-color or other text stuff to bleed through
       all: `initial`,
       font: `inherit`,
@@ -292,7 +297,7 @@ let wtf_is_this = [
       position: "relative",
       fontWeight: "bold",
     },
-    ".property-in-variable-out::before": {
+    ".property-in-variable-out::after": {
       "clip-path": "polygon(0 70%, 100% 35%, 100% 100%, 0% 100%)",
       color: VARIABLE_COLOR,
       "z-index": 1000,
@@ -301,7 +306,7 @@ let wtf_is_this = [
       position: "relative",
       fontWeight: "bold",
     },
-    ".variable-in-property-out::before": {
+    ".variable-in-property-out::after": {
       "clip-path": "polygon(0 0, 100% 0, 100% 35%, 0 70%)",
       color: VARIABLE_COLOR,
       "z-index": 1000,
@@ -310,7 +315,9 @@ let wtf_is_this = [
     // Not pretty, but only way I can force the property color...
     // (without having another more high precedence decorator)
     ".force-property, .force-property *": {
-      color: `${PROPERTY_COLOR} !important`,
+      // Slightly darker than .property { color }, because
+      // it will likely be bold (always?) and that makes it too bright
+      color: "#b30f0f !important",
     },
   }),
   DecorationsFromTree(({ cursor, mutable_decorations, doc }) => {
@@ -476,7 +483,7 @@ let wtf_is_this = [
 
 export let javascript_syntax_highlighting = [
   Prec.lowest(wtf_is_this),
-  syntaxHighlighting(syntax_colors),
+  syntax_colors,
   syntax_classes,
   my_javascript_parser,
   lowercase_jsx_identifiers,
@@ -517,7 +524,6 @@ export let basic_javascript_setup = [
 
         let previous_selected = new_ranges.at(state.selection.mainIndex - 1);
 
-        console.log(`new_ranges:`, new_ranges);
         dispatch({
           selection: EditorSelection.create(new_ranges, new_main_index),
           effects:

@@ -1,11 +1,9 @@
 import React from "react";
 import styled from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
-import { lezer } from "@codemirror/lang-lezer";
+import { lezerLanguage } from "@codemirror/lang-lezer";
 
-import { buildParser } from "@dral/lezer-generator";
 import { EditorState, Prec } from "@codemirror/state";
-import { LRParser } from "@lezer/lr";
 import {
   Decoration,
   drawSelection,
@@ -13,11 +11,14 @@ import {
   gutter,
   GutterMarker,
   keymap,
-  lineNumbers,
   placeholder,
 } from "@codemirror/view";
 import {
   bracketMatching,
+  codeFolding,
+  foldGutter,
+  foldInside,
+  foldNodeProp,
   HighlightStyle,
   LanguageSupport,
   LRLanguage,
@@ -31,6 +32,7 @@ import {
   searchKeymap,
 } from "@codemirror/search";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { LRParser } from "@lezer/lr";
 
 import { format_with_prettier } from "../../format-javascript-with-prettier.js";
 import {
@@ -41,36 +43,65 @@ import { DecorationsFromTree } from "../../basic-markdown-setup.jsx";
 
 import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
 import { DEFAULT_TO_PARSE } from "./default-to-parse.js";
-import {
-  create_worker,
-  post_message,
-} from "../../packages/babel-worker/babel-worker.js";
+import { BabelWorker } from "../../packages/babel-worker/babel-worker.js";
+
+import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
+import { javascript, javascriptLanguage } from "@codemirror/lang-javascript";
 
 import "../../App.css";
-import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
+import { LezerGeneratorWorker } from "../../packages/lezer-generator-worker/lezer-generator-worker.js";
+import { IonIcon } from "@ionic/react";
+import { bonfire, bonfireOutline } from "ionicons/icons";
+import usePath from "react-use-path";
 
-let VARIABLE_COLOR = "rgb(255 130 41)";
-let PROPERTY_COLOR = "#d01212";
+import "./App.css";
 
-let syntax_classes = EditorView.theme({
+let lezerStyleTags = styleTags({
+  LineComment: t.lineComment,
+  BlockComment: t.blockComment,
+  AnyChar: t.character,
+  Literal: t.string,
+  "tokens from grammar as empty prop extend specialize": t.keyword,
+  "@top @left @right @cut @external": t.modifier,
+  "@precedence @tokens @context @dialects @skip @detectDelim @conflict":
+    t.definitionKeyword,
+  "@extend @specialize": t.operatorKeyword,
+  "CharSet InvertedCharSet": t.regexp,
+  CharClass: t.atom,
+  RuleName: t.variableName,
+  "RuleDeclaration/RuleName InlineRule/RuleName TokensBody/RuleName":
+    t.definition(t.variableName),
+  PrecedenceName: t.labelName,
+  Name: t.name,
+  "( )": t.paren,
+  "[ ]": t.squareBracket,
+  "{ }": t.brace,
+  '"!" ~ "*" + ? |': t.operator,
+  "=": t.punctuation,
+
+  "Call/RuleName": t.function(t.variableName),
+  "PrecedenceMarker!": t.className,
+  "Prop/AtName": t.propertyName,
+  propSource: t.keyword,
+});
+
+let lezer_syntax_classes = EditorView.theme({
   ".very-important": {
-    color: "white",
+    color: "#947eff",
     fontWeight: 700,
   },
   ".important": {
-    color: "white",
+    color: "#947eff",
   },
   ".boring": {
-    // color: "#008c85",
-    color: "#787878",
+    color: "#6a3e7d",
   },
 
   ".property": {
-    color: PROPERTY_COLOR,
+    color: "#cb00d7",
   },
   ".variable": {
-    color: VARIABLE_COLOR,
-    fontWeight: 700,
+    color: "#7229ff",
   },
   ".literal": {
     color: "#00a7ca",
@@ -81,7 +112,38 @@ let syntax_classes = EditorView.theme({
   },
 });
 
-let lezer_extension = lezer();
+let lezer_result_syntax_classes = EditorView.theme({
+  ".very-important": {
+    color: "#ffb4fb",
+    fontWeight: 700,
+  },
+  ".important": {
+    color: "#ffb4fb",
+  },
+  ".boring": {
+    color: "#2c402d",
+  },
+
+  ".property": {
+    color: "#cb00d7",
+  },
+  ".variable": {
+    color: "#0d6801",
+  },
+  ".literal": {
+    color: "#00c66d",
+  },
+  ".comment": {
+    color: "#747474",
+    fontStyle: "italic",
+  },
+});
+
+let lezer_extension = new LanguageSupport(
+  lezerLanguage.configure({
+    props: [lezerStyleTags],
+  })
+);
 let lezer_highlight = syntaxHighlighting(
   HighlightStyle.define([
     { tag: t.lineComment, class: "comment" },
@@ -90,20 +152,34 @@ let lezer_highlight = syntaxHighlighting(
     { tag: t.string, class: "literal" },
     { tag: t.keyword, class: "important" },
     { tag: t.modifier, class: "green" },
-    { tag: t.definitionKeyword, class: "important" },
+    { tag: t.definitionKeyword, class: "very-important" },
     { tag: t.operatorKeyword, class: "important" },
     { tag: t.regexp, class: "literal" },
     { tag: t.atom, class: "literal" },
     { tag: t.variableName, class: "variable" },
     { tag: t.definition(t.variableName), class: "variable" },
-    { tag: t.labelName, class: "property" },
     { tag: t.name, class: "variable" },
     { tag: t.paren, class: "boring" },
     { tag: t.squareBracket, class: "boring" },
     { tag: t.brace, class: "boring" },
     { tag: t.operator, class: "very-important" },
+
+    { tag: t.labelName, class: "property" },
+    { tag: t.function(t.variableName), class: "variable" },
+
+    { tag: t.propertyName, class: "property" },
+    { tag: t.className, class: "property" },
+    { tag: t.modifier, class: "very-important" },
+    { tag: t.punctuation, class: "boring" },
   ])
 );
+
+let subtle_gutter = EditorView.theme({
+  ".cm-gutters": {
+    "background-color": "transparent",
+    "border-right": "none",
+  },
+});
 
 class DotGutter extends GutterMarker {
   constructor(/** @type {number} */ line) {
@@ -119,11 +195,10 @@ class DotGutter extends GutterMarker {
   }
 }
 
-let base_extensions = [
+let dot_gutter = [
   EditorView.theme({
     ".cm-gutters": {
       "background-color": "transparent",
-      color: "#6c6c6c",
       "border-right": "none",
     },
     ".dot-gutter": {
@@ -139,14 +214,20 @@ let base_extensions = [
   gutter({
     lineMarker: () => new DotGutter(),
   }),
+];
+
+let base_extensions = [
+  subtle_gutter,
+  dot_gutter,
 
   // Make awesome line wrapping indent wrapped lines a liiiiitle bit (1 character) more than the first line
-  EditorView.theme({
-    ".awesome-wrapping-plugin-the-line": {
-      "margin-left": "calc(var(--indented) + 1ch)",
-      "text-indent": "calc(-1 * var(--indented) - 1ch)",
-    },
-  }),
+  // TODO Doesn't seem to work in result editor... (actually shifts every line by 1 character? Weird)
+  // EditorView.theme({
+  //   ".awesome-wrapping-plugin-the-line": {
+  //     "margin-left": "calc(var(--indented) + 1ch)",
+  //     "text-indent": "calc(-1 * var(--indented) - 1ch)",
+  //   },
+  // }),
 
   EditorState.tabSize.of(2),
   placeholder("The rest is still unwritten..."),
@@ -155,7 +236,6 @@ let base_extensions = [
   highlightSelectionMatches(),
   keymap.of(defaultKeymap),
   drawSelection({ cursorBlinkRate: 0 }),
-  EditorView.lineWrapping,
 
   search({
     caseSensitive: false,
@@ -166,20 +246,23 @@ let base_extensions = [
   history(),
   keymap.of(historyKeymap),
   keymap.of(searchKeymap),
-
-  EditorView.lineWrapping,
-  awesome_line_wrapping,
-
-  // EditorView.theme({
-  //   ".cm-line": {
-  //     "margin-left": "1ch",
-  //     "text-indent": "-1ch",
-  //   },
-  // }),
 ];
 
-/** @param {{ doc: string, onChange: (str: string) => void }} props */
-export let LezerEditor = ({ doc, onChange }) => {
+let position_from_error = (error) => {
+  let position_stuff = error?.message?.match?.(/^[^(]* \((\d+):(\d+)\)$/);
+
+  if (position_stuff) {
+    let [_, _line, _column] = position_stuff;
+    let line = Number(_line);
+    let column = Number(_column);
+    return { line, column };
+  } else {
+    return null;
+  }
+};
+
+/** @param {{ doc: string, onChange: (str: string) => void, result: ExecutionResult<any> }} props */
+export let LezerEditor = ({ doc, onChange, result }) => {
   let initial_editor_state = React.useMemo(() => {
     return EditorState.create({
       doc,
@@ -195,12 +278,32 @@ export let LezerEditor = ({ doc, onChange }) => {
     });
   }, [onChange]);
 
+  let error_extension = React.useMemo(() => {
+    if (result instanceof Failure) {
+      let position = position_from_error(result.value);
+      if (position) {
+        let { line, column } = position;
+        return EditorView.decorations.of((view) => {
+          let line_start = view.state.doc.line(line).from;
+          return Decoration.set(
+            Decoration.mark({
+              class: "programming-error-oops",
+            }).range(line_start + column, line_start + column + 1)
+          );
+        });
+      }
+    }
+    return [];
+  }, [result]);
+
   return (
     <CodeMirror state={initial_editor_state}>
       <Extension extension={lezer_extension} />
       <Extension extension={on_change_extension} />
-      <Extension extension={syntax_classes} />
+      <Extension extension={lezer_syntax_classes} />
       <Extension extension={lezer_highlight} />
+      <Extension extension={awesome_line_wrapping} />
+      <Extension extension={error_extension} />
     </CodeMirror>
   );
 };
@@ -234,7 +337,7 @@ export let JavascriptStuffEditor = ({ doc, onChange }) => {
  * @param {{
  *  doc: string,
  *  onChange: (str: string) => void,
- *  parser: LRParser | null,
+ *  parser: import("@lezer/lr").LRParser | null,
  *  js_stuff: ExecutionResult<{
  *    tags: import("@lezer/common").NodePropSource,
  *    extensions: import("@codemirror/state").Extension[],
@@ -248,7 +351,7 @@ export let WhatToParseEditor = ({ doc, onChange, parser, js_stuff }) => {
     });
   }, []);
 
-  let js_result = just_success(js_stuff);
+  let js_result = js_stuff.or(null);
 
   let parser_extension = React.useMemo(() => {
     if (parser) {
@@ -291,16 +394,40 @@ export let WhatToParseEditor = ({ doc, onChange, parser, js_stuff }) => {
   }
 
   return (
-    <div style={{ height: "100%", position: "relative" }}>
-      <CodeMirror state={initial_editor_state}>
-        <Extension extension={on_change_extension} />
-        <Extension extension={parser_extension} />
-        <Extension extension={custom_extensions} />
-        <Extension extension={exceptionSinkExtension} />
-      </CodeMirror>
-    </div>
+    <CodeMirror state={initial_editor_state}>
+      <Extension extension={on_change_extension} />
+      <Extension extension={parser_extension} />
+      <Extension extension={custom_extensions} />
+      <Extension extension={exceptionSinkExtension} />
+      <Extension extension={awesome_line_wrapping} />
+    </CodeMirror>
   );
 };
+
+let ErrorBox = styled.div`
+  color: rgb(181 181 181);
+  background-color: #420000;
+  padding: 8px;
+  padding-top: 0px;
+  max-height: 50%;
+  overflow: auto;
+  font-size: 16px;
+
+  h1 {
+    padding-top: 8px;
+    padding-bottom: 4px;
+    font-weight: bold;
+    font-size: 12px;
+    background-color: #420000;
+
+    position: sticky;
+    top: 0px;
+  }
+
+  pre {
+    white-space: pre-wrap;
+  }
+`;
 
 /**
  * @extends {React.Component<Parameters<WhatToParseEditor>[0]>}
@@ -317,9 +444,10 @@ class WhatToParseEditorWithErrorBoundary extends React.Component {
   }
 
   render() {
-    let error = this.state.error;
+    let { error } = this.state;
     let should_still_error =
-      error != null && this.last_js_stuff == this.props.js_stuff;
+      (error != null && this.last_js_stuff == this.props.js_stuff) ||
+      this.props.js_stuff instanceof Failure;
     let js_stuff = should_still_error ? Failure.of(error) : this.props.js_stuff;
 
     if (!should_still_error) {
@@ -329,26 +457,39 @@ class WhatToParseEditorWithErrorBoundary extends React.Component {
       }
     }
 
-    console.log(`this.props:`, this.props);
+    let error_to_show = should_still_error
+      ? this.props.js_stuff instanceof Failure
+        ? this.props.js_stuff.value
+        : error
+      : null;
 
     return (
-      <div style={{ height: "100%", position: "relative" }}>
-        <WhatToParseEditor {...this.props} js_stuff={js_stuff} />
-        {should_still_error && (
-          <div
-            style={{
-              color: "#d01212",
-              position: "absolute",
-              bottom: 8,
-              right: 8,
-              padding: 16,
-            }}
-          >
-            <b>Plugin Crashed</b>
-            {/* @ts-ignore */}
-            <pre>{error.message}</pre>
-          </div>
-        )}
+      <div
+        style={{
+          height: "100%",
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <WhatToParseEditor {...this.props} js_stuff={js_stuff} />
+        </div>
+
+        {error_to_show &&
+          (this.props.js_stuff instanceof Failure ? (
+            <ErrorBox>
+              <h1>error running javascript</h1>
+              {/* @ts-ignore */}
+              <pre>{this.props.js_stuff.value.message}</pre>
+            </ErrorBox>
+          ) : (
+            <ErrorBox>
+              <h1>editor/extension crashed</h1>
+              {/* @ts-ignore */}
+              <pre>{error_to_show.message}</pre>
+            </ErrorBox>
+          ))}
       </div>
     );
   }
@@ -362,7 +503,7 @@ let cursor_to_js = (cursor) => {
   } else if (cursor.type.isAnonymous) {
     code += `"${cursor.name}"`;
   } else {
-    if (/^[a-zA-Z_$][a-zA-Z_$0-9]*$/.test(cursor.name)) {
+    if (/^[A-Z_$][a-zA-Z_$0-9]*$/.test(cursor.name)) {
       code += cursor.name;
     } else {
       code += `"${cursor.name}"`;
@@ -397,49 +538,143 @@ let Decorate_New_Error = Prec.highest(
   })
 );
 
-/**
- * @template T
- * @param {ExecutionResult<T>} result
- */
-let just_success = (result) => {
-  if (result instanceof Success) {
-    return result.value;
-  } else {
-    return null;
-  }
-};
+let lezer_as_javascript_plugins = [
+  new LanguageSupport(
+    javascriptLanguage.configure({
+      props: [
+        foldNodeProp.add({
+          ArgList: foldInside,
+        }),
+      ],
+    })
+  ),
+  codeFolding(),
+  foldGutter({}),
+  lezer_result_syntax_classes,
+  syntaxHighlighting(
+    HighlightStyle.define([
+      { tag: t.special(t.typeName), opacity: 0.7 },
+
+      { tag: t.string, class: "literal" },
+      { tag: t.bool, class: "literal", fontWeight: 700 },
+      { tag: t.number, class: "literal" },
+      { tag: t.literal, class: "literal", fontWeight: 700 },
+      { tag: t.null, class: "literal" },
+
+      { tag: t.keyword, class: "boring" },
+
+      { tag: t.variableName, class: "variable" },
+      { tag: t.className, class: "variable" },
+      { tag: t.propertyName, class: "property" },
+      { tag: t.comment, class: "comment" },
+
+      { tag: t.special(t.brace), fontWeight: 700 },
+
+      // super
+      { tag: t.atom, class: "important" },
+      // this
+      { tag: t.self, class: "important" },
+
+      // { tag: t.property, color: "#48b685" },
+      // { tag: t.attribute, color: "#48b685" },
+      // { tag: t.variable2, color: "#06b6ef" },
+      {
+        tag: t.typeName,
+        color: "var(--cm-type-color)",
+        fontStyle: "italic",
+      },
+
+      // ,
+      { tag: t.punctuation, class: "boring" },
+
+      // =
+      { tag: t.definitionOperator, class: "very-important" },
+      // =>
+      { tag: t.function(t.punctuation), class: "very-important" },
+      // += -= *= /= ??=
+      { tag: t.updateOperator, class: "important" },
+
+      { tag: t.bracket, class: "boring" },
+      { tag: t.brace, class: "boring" },
+
+      // Catch all for operators
+      { tag: t.operator, class: "important" },
+      // .
+      { tag: t.derefOperator, class: "boring" },
+      // + - * /
+      { tag: t.arithmeticOperator, class: "important" },
+      // === !==
+      { tag: t.compareOperator, class: "important" },
+      // && ||
+      { tag: t.logicOperator, class: "important" },
+      // TODO Maybe make `!` even more emphasized? Make sure it is hard to miss
+      // !
+      { tag: t.special(t.logicOperator), class: "very-important" },
+      // export import
+      { tag: t.moduleKeyword, class: "important" },
+      // if else while break continue
+      { tag: t.controlKeyword, class: "very-important" },
+      // ? :
+      { tag: t.controlOperator, class: "very-important" },
+
+      // JSX
+      { tag: t.content, class: "literal" },
+      { tag: t.attributeValue, class: "literal" },
+      { tag: t.angleBracket, class: "boring" },
+      { tag: t.attributeName, class: "property" },
+      { tag: t.special(t.tagName), class: "variable" },
+
+      // Ideally t.standard(t.tagName) would work, but it doesn't....
+      // Still putting it here just for kicks, but lezer doesn't differentiate between builtin t and Component names...
+      { tag: t.standard(t.tagName), class: "literal" },
+      // So instead I handle this manually with decorations in `lowercase_jsx_identifiers`,
+      // and I "clear" `t.tagName` here so that it doesn't get styled as a variable
+      { tag: t.tagName, class: "" },
+      // But I do need the variables inside `JSXMemberExpression` to get styled so...
+      { tag: t.special(t.tagName), class: "variable" },
+    ])
+  ),
+];
 
 /**
  * @param {{
  *  code_to_parse: string,
- *  parser: LRParser,
+ *  parser: import("@lezer/lr").LRParser,
  * }} props
  */
 export let ParsedResultEditor = ({ code_to_parse, parser }) => {
   let parsed = React.useMemo(() => {
-    return parser.parse(code_to_parse);
+    console.log(`parser.parse:`, parser.parse);
+    try {
+      return Success.of(parser.parse(code_to_parse));
+    } catch (error) {
+      return Failure.of(error);
+    }
   }, [parser, code_to_parse]);
 
   let parsed_as_json = React.useMemo(() => {
-    // @ts-ignore
-    let str = cursor_to_js(parsed.cursor());
-    try {
-      return Success.of(
-        format_with_prettier({
+    return parsed.map((tree) => {
+      let str = cursor_to_js(tree.cursor());
+      try {
+        return format_with_prettier({
           code: str,
           cursor: 0,
-        }).formatted
-      );
-    } catch (error) {
-      console.log(`error:`, error);
-      return Success.of(str);
-    }
+        }).formatted;
+      } catch (error) {
+        console.log(`error:`, error);
+        return str;
+      }
+    });
   }, [parsed]).or(code_to_parse);
 
   let initial_editor_state = React.useMemo(() => {
     return EditorState.create({
       doc: parsed_as_json,
-      extensions: [base_extensions, EditorView.editable.of(false)],
+      extensions: [
+        base_extensions,
+        EditorView.editable.of(false),
+        lezer_as_javascript_plugins,
+      ],
     });
   }, []);
 
@@ -460,6 +695,7 @@ export let ParsedResultEditor = ({ code_to_parse, parser }) => {
     <CodeMirror ref={codemirror_ref} state={initial_editor_state}>
       <Extension extension={Decorate_New_Error} />
       <Extension extension={debug_syntax_plugin} />
+      <Extension extension={lezer_result_syntax_classes} />
       <Extension extension={javascript_syntax_highlighting} />
     </CodeMirror>
   );
@@ -484,18 +720,25 @@ Node { Name argument_list? }
 `.trim();
 
 /**
+ * TODO Bind run_cell_code not to code,
+ * .... but a mystical "parsed cell" type that comes
+ * .... from transform-javascript?
+ *
  * @param {string} code
  * @param {{ [argument: string]: any }} globals
+ * @return {Promise<{
+ *  export: { [key: string]: any },
+ * }>}
  */
-let get_cell_run_function = (code, globals) => {
+let run_cell_code = async (code, globals) => {
   let f = new Function(...Object.keys(globals), code);
-  return () => f(...Object.values(globals));
+  return await f(...Object.values(globals));
 };
 
 /**
  * @template T
  * @typedef ExecutionResult
- * @type {Success<T> | Failure | Loading}
+ * @type {Success<T> | Failure<T> | Loading<T>}
  */
 
 /**
@@ -508,16 +751,28 @@ class Success {
   /**
    * @template R
    * @param {(value: T) => R} f
-   * @returns {Success<R> | Failure}
+   * @returns {ExecutionResult<R>}
    */
   map(f) {
     try {
       return new Success(f(this.value));
     } catch (error) {
-      console.log(`error:`, error);
-      return new Failure(error);
+      if (error instanceof Failure) {
+        return new Failure();
+      } else if (error instanceof Loading) {
+        return new Loading();
+      } else {
+        return new Failure(error);
+      }
     }
   }
+  /**
+   * @returns {T}
+   */
+  get() {
+    return this.value;
+  }
+
   /**
    * @template T
    * @param {T} value
@@ -530,34 +785,68 @@ class Success {
     return new Success(value);
   }
 }
+/**
+ * @template T
+ */
 class Failure {
   constructor(value) {
     this.value = value;
   }
   /**
-   * @template T
-   * @param {T} value
+   * @template R
+   * @param {R} value
    */
   or(value) {
     return value;
   }
+  /**
+   * @returns {never}
+   */
+  get() {
+    throw this.value;
+  }
+  /**
+   * @template R
+   * @param {(value: T) => R} f
+   * @returns {Failure<R>}
+   */
   map(f) {
-    return this;
+    return new Failure(this.value);
   }
   static of(value) {
     return new Failure(value);
   }
 }
+/**
+ * @template T
+ */
 class Loading {
-  map(f) {
-    return this;
+  /**
+   * @param {Promise<T>} [promise]
+   */
+  constructor(promise) {
+    this.promise = promise;
   }
   /**
-   * @template T
-   * @param {T} value
+   * @template R
+   * @param {(value: T) => R} f
+   * @returns {Loading<R>}
+   */
+  map(f) {
+    return new Loading(this.promise?.then(f));
+  }
+  /**
+   * @template R
+   * @param {R} value
    */
   or(value) {
     return value;
+  }
+  /**
+   * @returns {never}
+   */
+  get() {
+    throw this;
   }
   static of() {
     return new Loading();
@@ -575,7 +864,25 @@ export let tags = styleTags({
 
 /**
  * @template T
- * @param {() => Promise<T>} fn
+ * @param {ExecutionResult<T>} execution
+ */
+let flattenExecution = (execution) => {
+  if (execution instanceof Success) {
+    if (execution.value instanceof Success) {
+      return flattenExecution(execution.value);
+    } else if (execution.value instanceof Failure) {
+      return execution.value;
+    } else if (execution.value instanceof Loading) {
+      return execution.value;
+    }
+  } else {
+    return execution;
+  }
+};
+
+/**
+ * @template T
+ * @param {(abort_signal: AbortSignal) => Promise<T>} fn
  * @param {any[]} deps
  * @returns {ExecutionResult<T>}
  */
@@ -585,10 +892,38 @@ let usePromise = (fn, deps) => {
   );
 
   React.useEffect(() => {
-    fn().then(
-      (value) => set_value(Success.of(value)),
-      (error) => set_value(Failure.of(error))
-    );
+    let cancelled = false;
+    let abort_controller = new AbortController();
+
+    set_value(Loading.of());
+    Promise.resolve().then(async () => {
+      try {
+        let value = await fn(abort_controller.signal);
+        if (cancelled) return;
+
+        if (value instanceof Loading) {
+          // Already loading yeh
+        }
+        set_value(value instanceof Failure ? value : Success.of(value));
+      } catch (error) {
+        if (cancelled) return;
+
+        if (error instanceof Failure) {
+          set_value(error);
+        } else if (error instanceof Loading) {
+          // No set needed, because we're already loading
+        } else {
+          set_value(Failure.of(error));
+        }
+      } finally {
+        abort_controller.abort();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      abort_controller.abort();
+    };
   }, deps);
 
   return value;
@@ -614,26 +949,29 @@ class ScopedStorage {
   set(value) {
     localStorage.setItem(this.key, JSON.stringify(value));
   }
-}
 
-let storage = {
-  parser_code: new ScopedStorage("lezer-playground.parser_code"),
-  javascript_stuff: new ScopedStorage("lezer-playground.javascript_stuff"),
-  code_to_parse: new ScopedStorage("lezer-playground.code_to_parse"),
-};
+  child(/** @type {string} */ key) {
+    return new ScopedStorage(`${this.key}.${key}`);
+  }
+}
 
 let useScopedStorage = (
   /** @type {ScopedStorage} */ storage,
   default_value
 ) => {
-  let [value, set_value] = React.useState(storage.get() ?? default_value);
+  // TODO I totally assume `storage` doesn't change and I'm okay with that
+
+  let initial_storage = React.useMemo(() => {
+    return storage.get();
+  }, []);
+  let [value, set_value] = React.useState(initial_storage ?? default_value);
 
   let set_value_and_store = React.useCallback(
     (value) => {
       set_value(value);
       storage.set(value);
     },
-    [storage]
+    [set_value]
   );
 
   return [value, set_value_and_store];
@@ -646,11 +984,11 @@ let GeneralEditorStyles = styled.div`
 
   & .cm-scroller {
     /* padding-left: 16px; */
-    padding-right: 16px;
   }
   & .cm-content {
     padding-top: 8px !important;
     padding-bottom: 8px !important;
+    padding-right: 16px;
   }
 
   & .cm-panels {
@@ -658,11 +996,25 @@ let GeneralEditorStyles = styled.div`
   }
 `;
 
+let NOISE_BACKGROUND = new URL(
+  "./noise-backgrounds/asfalt-light.png",
+  import.meta.url
+).href;
 let PaneStyle = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border-radius: 4px;
+
+  .cm-content,
+  .cm-gutters {
+    background-size: 50px 50px;
+    background-image: url("${NOISE_BACKGROUND}");
+
+    &.cm-gutters {
+      background-position: right;
+    }
+  }
 `;
 
 let PaneHeader = styled.div`
@@ -671,8 +1023,14 @@ let PaneHeader = styled.div`
   padding-left: 18px;
   padding-right: 18px;
   font-weight: bold;
-  background-color: #300000;
   font-size: 12px;
+
+  background-color: #ffffff17;
+  color: #ffffff75;
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 `;
 
 let Pane = ({ children, header, ...props }) => {
@@ -689,59 +1047,26 @@ let AppGrid = styled.div`
   width: 100vw;
   height: 100vh;
   border: solid 8px black;
+  background-color: black;
 
   display: grid;
   grid-template: 
-    "lezer-editor      ↑ what-to-parse-editor " minmax(0, 1fr)
-    " ←                █                    → " 8px
-    "javascript-stuff  ↓       parsed-result  " minmax(0, 1fr)
+    "what-to-parse-editor  ↑       parsed-result " minmax(0, 1fr)
+    " ←                    █                  →  " 8px
+    "lezer-editor          ↓   javascript-stuff  " minmax(0, 1fr)
     / 1fr 8px 1fr;
 `;
 
-export let App = () => {
-  let [parser_code, set_parser_code] = useScopedStorage(
-    storage.parser_code,
-    DEFAULT_PARSER_CODE
+/**
+ * @template {Worker} T
+ * @param {() => T} create_worker
+ * @param {any[]} deps
+ * @returns {T | null}
+ */
+let useWorker = (create_worker, deps) => {
+  let [worker, set_worker] = React.useState(
+    /** @type {T} */ (/** @type {any} */ (null))
   );
-
-  let [code_to_parse, set_code_to_parse] = useScopedStorage(
-    storage.code_to_parse,
-    DEFAULT_TO_PARSE
-  );
-
-  let [javascript_stuff, set_javascript_stuff] = useScopedStorage(
-    storage.javascript_stuff,
-    DEFAULT_JAVASCRIPT_STUFF
-  );
-
-  let parser = React.useMemo(() => {
-    try {
-      return Success.of(buildParser(parser_code));
-    } catch (error) {
-      return Failure.of(error);
-    }
-  }, [parser_code]);
-
-  let lezer_on_change = React.useCallback(
-    (str) => {
-      set_parser_code(str);
-    },
-    [set_parser_code]
-  );
-  let code_to_parse_on_change = React.useCallback(
-    (str) => {
-      set_code_to_parse(str);
-    },
-    [set_code_to_parse]
-  );
-  let javascript_stuff_on_change = React.useCallback(
-    (str) => {
-      set_javascript_stuff(str);
-    },
-    [set_javascript_stuff]
-  );
-
-  let [worker, set_worker] = React.useState(/** @type {any} */ (null));
   React.useEffect(() => {
     let worker = create_worker();
 
@@ -750,102 +1075,337 @@ export let App = () => {
     return () => {
       worker.terminate();
     };
-  }, [create_worker]);
+  }, deps);
+  return worker;
+};
 
-  let javascript_parsed = usePromise(async () => {
-    if (worker != null) {
-      return await post_message(worker, {
-        type: "transform-code",
-        data: { code: javascript_stuff },
+/**
+ * @template {Worker} T
+ * @param {() => T} create_worker
+ * @param {any[]} deps
+ * @returns {(signal: AbortSignal) => T}
+ */
+let useWorkerPool = (create_worker, deps) => {
+  let workers_ref = React.useRef(new Set());
+
+  React.useEffect(() => {
+    return () => {
+      for (let worker of workers_ref.current) {
+        worker.terminate();
+      }
+    };
+  }, []);
+
+  let get_worker = React.useCallback(
+    (/** @type {AbortSignal} */ abort_signal) => {
+      let worker = create_worker();
+      workers_ref.current.add(worker);
+
+      abort_signal.addEventListener("abort", () => {
+        worker.terminate();
+        workers_ref.current.delete(worker);
       });
-    } else {
-      return Loading.of();
+
+      return worker;
+    },
+    []
+  );
+
+  return get_worker;
+};
+
+let LoadingRingThing = styled.div`
+  --size: 1em;
+  --px: calc(var(--size) / 80);
+
+  & {
+    display: inline-block;
+    position: relative;
+    width: calc(80 * var(--px));
+    height: calc(80 * var(--px));
+  }
+  &:after {
+    content: " ";
+    display: block;
+    border-radius: 50%;
+    width: 0;
+    height: 0;
+    margin: calc(8 * var(--px));
+    box-sizing: border-box;
+    border: calc(32 * var(--px)) solid currentColor;
+    border-color: currentColor transparent currentColor transparent;
+    animation: lds-hourglass 1.2s infinite;
+  }
+  @keyframes lds-hourglass {
+    0% {
+      transform: rotate(0);
+      animation-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19);
     }
-  }, [worker, javascript_stuff]);
+    50% {
+      transform: rotate(900deg);
+      animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+    }
+    100% {
+      transform: rotate(1800deg);
+    }
+  }
+`;
 
-  let javascript_fn = React.useMemo(() => {
-    return javascript_parsed.map((parsed) => {
-      let import_map = {
-        "@lezer/highlight": () => import("@lezer/highlight"),
-        "@codemirror/language": () => import("@codemirror/language"),
-        "@codemirror/view": () => import("@codemirror/view"),
-        "@codemirror/state": () => import("@codemirror/state"),
-        "style-mod": () => import("style-mod"),
-      };
+/**
+ * @param {{
+ *  title: string,
+ *  process?: ExecutionResult<any> | null,
+ * }} props
+ */
+let PaneTab = ({ title, process = null }) => {
+  let ERROR_COLOR = "rgb(133 0 0)";
+  return (
+    <>
+      <span
+        style={{ color: process instanceof Failure ? ERROR_COLOR : undefined }}
+      >
+        {title}
+      </span>
+      {process instanceof Loading && (
+        <>
+          <div style={{ minWidth: 8 }} />
+          <LoadingRingThing />
+        </>
+      )}
+      {process instanceof Failure && (
+        <>
+          <div style={{ minWidth: 8 }} />
+          <IonIcon icon={bonfire} style={{ color: ERROR_COLOR }} />
+        </>
+      )}
+    </>
+  );
+};
 
-      return get_cell_run_function(parsed.code, {
-        styleTags,
-        __meta__: {
-          url: new URL(
-            "./lezer-playground.js",
-            window.location.href
-          ).toString(),
-          import: (specifier) => {
-            let fn = import_map[specifier];
-            if (fn == null) return import(specifier);
-            return fn();
-          },
-        },
+/**
+ * @template T
+ * @param {ExecutionResult<T>} result
+ */
+let useMemoizeSuccess = (result) => {
+  let value_ref = React.useRef(result);
+
+  if (result instanceof Success || result instanceof Failure) {
+    value_ref.current = result;
+  }
+
+  return value_ref.current;
+};
+
+export let App = () => {
+  const [path, setPath] = usePath();
+
+  return <Editor project_name={path.path} />;
+};
+
+/** @param {{ project_name: string }} props */
+export let Editor = ({ project_name }) => {
+  let main_scope = new ScopedStorage("lezer-playground").child(project_name);
+
+  let [parser_code, set_parser_code] = useScopedStorage(
+    main_scope.child("parser_code"),
+    DEFAULT_PARSER_CODE
+  );
+  let [code_to_parse, set_code_to_parse] = useScopedStorage(
+    main_scope.child("javascript_stuff"),
+    DEFAULT_TO_PARSE
+  );
+  let [javascript_stuff, set_javascript_stuff] = useScopedStorage(
+    main_scope.child("code_to_parse"),
+    DEFAULT_JAVASCRIPT_STUFF
+  );
+  let lezer_on_change = React.useCallback(
+    (str) => set_parser_code(str),
+    [set_parser_code]
+  );
+  let code_to_parse_on_change = React.useCallback(
+    (str) => set_code_to_parse(str),
+    [set_code_to_parse]
+  );
+  let javascript_stuff_on_change = React.useCallback(
+    (str) => set_javascript_stuff(str),
+    [set_javascript_stuff]
+  );
+
+  let babel_worker = useWorker(() => new BabelWorker(), []);
+  let get_lezer_worker = useWorkerPool(() => new LezerGeneratorWorker(), []);
+
+  let generated_parser_code = usePromise(
+    async (signal) => {
+      // Build the parser file first
+      return await get_lezer_worker(signal).request("build-parser", {
+        code: parser_code,
       });
+    },
+    [parser_code, get_lezer_worker]
+  );
+
+  let result = usePromise(async () => {
+    if (babel_worker == null) {
+      throw Loading.of();
+    }
+
+    let { terms: terms_code_raw, parser: parser_code_raw } =
+      generated_parser_code.get();
+
+    let terms_code = await babel_worker.request("transform-code", {
+      code: terms_code_raw,
     });
-  }, [javascript_parsed]);
 
-  let javascript_result = React.useMemo(() => {
-    return javascript_fn.map((fn) => fn()) ?? null;
-  }, [javascript_fn]);
+    // Run the terms file
+    let terms = await run_cell_code(terms_code.code, {});
 
-  let js_stuff = usePromise(async () => {
-    if (javascript_result instanceof Success) {
-      return await javascript_result.value;
-    } else if (javascript_result instanceof Failure) {
-      throw javascript_result.value;
-    } else {
-      return Loading.of();
-    }
-  }, [javascript_result]);
+    // Run the javascript file,
+    // with the terms file as a possible import
+    let our_javascript_code = await babel_worker.request("transform-code", {
+      code: javascript_stuff,
+    });
+    let import_map = {
+      "@lezer/highlight": () => import("@lezer/highlight"),
+      "@codemirror/language": () => import("@codemirror/language"),
+      "@codemirror/view": () => import("@codemirror/view"),
+      "@codemirror/state": () => import("@codemirror/state"),
+      "style-mod": () => import("style-mod"),
+      "@lezer/lr": () => import("@lezer/lr"),
+      "./parser.terms.js": () => terms.export,
+    };
+    let javascript_result = await run_cell_code(our_javascript_code.code, {
+      styleTags,
+      __meta__: {
+        url: new URL("./lezer-playground.js", window.location.href).toString(),
+        import: (specifier) => {
+          let fn = import_map[specifier];
+          if (fn == null) return import(specifier);
+          return fn();
+        },
+      },
+    });
+
+    /**
+     * @type {{
+     *  tags: import("@lezer/common").NodePropSource,
+     *  extensions: import("@codemirror/state").Extension[],
+     * }}
+     */
+    let exported_from_js = /** @type {any} */ (javascript_result.export);
+
+    let code_i_can_run = await babel_worker.request("transform-code", {
+      code: parser_code_raw,
+    });
+
+    console.log(`code_i_can_run:`, code_i_can_run);
+
+    let parser_result = await run_cell_code(code_i_can_run.code, {
+      styleTags,
+      __meta__: {
+        url: new URL("./lezer/parser.js", window.location.href).toString(),
+        import: (specifier, requested) => {
+          if (specifier === "@lezer/lr") {
+            return {
+              LRParser: { deserialize: (x) => x },
+            };
+          } else {
+            for (let request of requested) {
+              if (exported_from_js[request] == null) {
+                throw new Error(
+                  `Variable "${request}" not exported from "${specifier}"`
+                );
+              }
+            }
+            return exported_from_js;
+          }
+        },
+      },
+    });
+
+    return {
+      parser: LRParser.deserialize(parser_result.export.parser),
+      js_stuff: exported_from_js,
+    };
+  }, [generated_parser_code, get_lezer_worker, javascript_stuff]);
+
+  let parser = result.map((x) => x.parser);
+  let js_stuff = result.map((x) => x.js_stuff);
+
+  console.log(`js_stuff:`, js_stuff);
+
+  let parser_in_betweens = useMemoizeSuccess(parser);
 
   return (
-    <AppGrid
-      style={
-        {
-          // @ts-ignore
-          // "--top-imbalance": "100px",
+    <AppGrid>
+      <Pane
+        style={{ gridArea: "lezer-editor", backgroundColor: "rgb(0 6 80)" }}
+        header={
+          <PaneTab title="lezer grammar" process={generated_parser_code} />
         }
-      }
-    >
-      <Pane style={{ gridArea: "lezer-editor" }} header="Lezer Grammar">
+      >
         <GeneralEditorStyles>
-          <LezerEditor doc={parser_code} onChange={lezer_on_change} />
+          <LezerEditor
+            doc={parser_code}
+            onChange={lezer_on_change}
+            result={parser}
+          />
         </GeneralEditorStyles>
       </Pane>
 
-      <Pane style={{ gridArea: "what-to-parse-editor" }} header="Test Code">
+      <Pane
+        style={{ gridArea: "what-to-parse-editor", backgroundColor: "#0a0a0a" }}
+        header={
+          <>
+            <span>demo text</span>
+            <div style={{ minWidth: 8 }} />
+            {/* <LoadingRingThing /> */}
+          </>
+        }
+      >
         <GeneralEditorStyles>
           <WhatToParseEditorWithErrorBoundary
             doc={code_to_parse}
             onChange={code_to_parse_on_change}
             js_stuff={js_stuff}
-            parser={parser instanceof Success ? parser.value : null}
+            parser={
+              parser_in_betweens instanceof Success
+                ? parser_in_betweens.value
+                : null
+            }
           />
         </GeneralEditorStyles>
       </Pane>
 
-      <Pane style={{ gridArea: "parsed-result" }} header="Lezer Tree">
+      <Pane
+        style={{ gridArea: "parsed-result", backgroundColor: "#001107" }}
+        header={
+          <>
+            <span>lezer result tree</span>
+            <div style={{ minWidth: 8 }} />
+            {/* <LoadingRingThing /> */}
+          </>
+        }
+      >
         <GeneralEditorStyles>
-          {parser instanceof Success ? (
+          {parser_in_betweens instanceof Success ? (
             <ParsedResultEditor
+              parser={parser_in_betweens.value}
               code_to_parse={code_to_parse}
-              parser={parser.value}
             />
-          ) : (
-            <pre style={{ color: "red", padding: 8 }}>
-              {parser.value.toString()}
+          ) : parser_in_betweens instanceof Failure ? (
+            <pre style={{ color: "red", whiteSpace: "pre-wrap", padding: 8 }}>
+              {parser_in_betweens.value.toString()}
             </pre>
+          ) : (
+            <pre style={{ color: "yellow", padding: 8 }}>Loading</pre>
           )}
         </GeneralEditorStyles>
       </Pane>
 
-      <Pane style={{ gridArea: "javascript-stuff" }} header="Javascript Code">
+      <Pane
+        style={{ gridArea: "javascript-stuff" }}
+        header={<PaneTab title="javascript stuff" process={js_stuff} />}
+      >
         <GeneralEditorStyles>
           <JavascriptStuffEditor
             doc={javascript_stuff}
@@ -863,26 +1423,6 @@ export let App = () => {
           }}
         />
       ))}
-
-      {js_stuff instanceof Failure && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            right: 0,
-            maxWidth: "70%",
-            backgroundColor: "#d01212",
-            overflow: "auto",
-            padding: 16,
-          }}
-        >
-          <pre>{js_stuff.value.message}</pre>
-          <details>
-            <summary style={{ alignSelf: "flex-end" }}>Show Stacktrace</summary>
-            <pre>{js_stuff.value.stack}</pre>
-          </details>
-        </div>
-      )}
     </AppGrid>
   );
 };

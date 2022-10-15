@@ -39,6 +39,7 @@
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.2.0",
     "react-flip-toolkit": "^7.0.16",
+    "react-use-path": "^0.3.1",
     "recast": "^0.21.2",
     "shallow-equal": "^1.2.1",
     "socket.io-client": "^4.5.1",

@@ -1,6 +1,6 @@
 import { prettyPrint } from "recast";
 import * as t from "@babel/types";
-import { without } from "lodash-es";
+import { compact, without } from "lodash-es";
 
 import { traverse, get_scope } from "./babel-helpers.js";
 
@@ -322,23 +322,48 @@ export function transform(ast) {
   ast.program.body = ast.program.body.map((statement) => {
     if (statement.type === "ImportDeclaration") {
       let { source, specifiers } = statement;
+
+      let requested_variables = compact(
+        specifiers.map((specifier) => {
+          if (specifier.type === "ImportDefaultSpecifier") {
+            return "default";
+          } else if (specifier.type === "ImportNamespaceSpecifier") {
+            // Eh
+          } else {
+            return to_string(specifier.imported);
+          }
+        })
+      );
+
       return t.variableDeclaration("const", [
         t.variableDeclarator(
           t.objectPattern(
             specifiers.map((specifier) => {
               if (specifier.type === "ImportDefaultSpecifier") {
+                // import X from "X"
                 return t.objectProperty(
                   t.identifier("default"),
                   t.identifier(specifier.local.name)
                 );
               } else if (specifier.type === "ImportNamespaceSpecifier") {
+                // import * as X from "X"
                 return t.restElement(t.identifier(specifier.local.name));
               } else {
+                // import { X } from "X"
                 return t.objectProperty(specifier.imported, specifier.local);
               }
             })
           ),
-          t.awaitExpression(t.callExpression(t.import(), [source]))
+          t.awaitExpression(
+            t.callExpression(t.import(), [
+              source,
+
+              // Also provide the requested variables so we can error when they aren't there
+              t.arrayExpression(
+                requested_variables.map((x) => t.stringLiteral(x))
+              ),
+            ])
+          )
         ),
       ]);
     } else {
