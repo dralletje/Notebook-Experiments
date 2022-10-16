@@ -1,17 +1,22 @@
 import React from "react";
 import styled from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
-import { lezerLanguage } from "@codemirror/lang-lezer";
-
-import { EditorState, Prec } from "@codemirror/state";
+import { produce } from "immer";
+import {
+  EditorState,
+  Facet,
+  Prec,
+  StateEffect,
+  StateEffectType,
+  StateField,
+} from "@codemirror/state";
 import {
   Decoration,
   drawSelection,
   EditorView,
-  gutter,
-  GutterMarker,
   keymap,
   placeholder,
+  ViewPlugin,
 } from "@codemirror/view";
 import {
   bracketMatching,
@@ -23,6 +28,7 @@ import {
   LanguageSupport,
   LRLanguage,
   syntaxHighlighting,
+  syntaxTree,
 } from "@codemirror/language";
 import { styleTags, tags as t } from "@lezer/highlight";
 import { closeBrackets } from "@codemirror/autocomplete";
@@ -34,7 +40,6 @@ import {
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { LRParser } from "@lezer/lr";
 
-import { format_with_prettier } from "../../format-javascript-with-prettier.js";
 import {
   basic_javascript_setup,
   javascript_syntax_highlighting,
@@ -42,7 +47,11 @@ import {
 import { DecorationsFromTree } from "../../basic-markdown-setup.jsx";
 
 import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
-import { DEFAULT_TO_PARSE } from "./default-to-parse.js";
+import {
+  DEFAULT_JAVASCRIPT_STUFF,
+  DEFAULT_PARSER_CODE,
+  DEFAULT_TO_PARSE,
+} from "./default-field-codes.js";
 import { BabelWorker } from "../../packages/babel-worker/babel-worker.js";
 
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
@@ -55,169 +64,27 @@ import { bonfire, bonfireOutline } from "ionicons/icons";
 import usePath from "react-use-path";
 
 import "./App.css";
+import { cursor_to_javascript } from "./cursor-to-javascript.js";
+import {
+  Failure,
+  Loading,
+  Success,
+  useMemoizeSuccess,
+  usePromise,
+} from "./use/OperationMonadBullshit.js";
+import { useWorker, useWorkerPool } from "./use/useWorker.js";
+import { ScopedStorage, useScopedStorage } from "./use/scoped-storage.js";
+import { dot_gutter } from "./codemirror-dot-gutter.js";
+import { lezer_syntax_extensions } from "./editors/lezer-editor.js";
+import { ReactWidget, useEditorView } from "react-codemirror-widget";
 
-let lezerStyleTags = styleTags({
-  LineComment: t.lineComment,
-  BlockComment: t.blockComment,
-  AnyChar: t.character,
-  Literal: t.string,
-  "tokens from grammar as empty prop extend specialize": t.keyword,
-  "@top @left @right @cut @external": t.modifier,
-  "@precedence @tokens @context @dialects @skip @detectDelim @conflict":
-    t.definitionKeyword,
-  "@extend @specialize": t.operatorKeyword,
-  "CharSet InvertedCharSet": t.regexp,
-  CharClass: t.atom,
-  RuleName: t.variableName,
-  "RuleDeclaration/RuleName InlineRule/RuleName TokensBody/RuleName":
-    t.definition(t.variableName),
-  PrecedenceName: t.labelName,
-  Name: t.name,
-  "( )": t.paren,
-  "[ ]": t.squareBracket,
-  "{ }": t.brace,
-  '"!" ~ "*" + ? |': t.operator,
-  "=": t.punctuation,
-
-  "Call/RuleName": t.function(t.variableName),
-  "PrecedenceMarker!": t.className,
-  "Prop/AtName": t.propertyName,
-  propSource: t.keyword,
-});
-
-let lezer_syntax_classes = EditorView.theme({
-  ".very-important": {
-    color: "#947eff",
-    fontWeight: 700,
-  },
-  ".important": {
-    color: "#947eff",
-  },
-  ".boring": {
-    color: "#6a3e7d",
-  },
-
-  ".property": {
-    color: "#cb00d7",
-  },
-  ".variable": {
-    color: "#7229ff",
-  },
-  ".literal": {
-    color: "#00a7ca",
-  },
-  ".comment": {
-    color: "#747474",
-    fontStyle: "italic",
-  },
-});
-
-let lezer_result_syntax_classes = EditorView.theme({
-  ".very-important": {
-    color: "#ffb4fb",
-    fontWeight: 700,
-  },
-  ".important": {
-    color: "#ffb4fb",
-  },
-  ".boring": {
-    color: "#2c402d",
-  },
-
-  ".property": {
-    color: "#cb00d7",
-  },
-  ".variable": {
-    color: "#0d6801",
-  },
-  ".literal": {
-    color: "#00c66d",
-  },
-  ".comment": {
-    color: "#747474",
-    fontStyle: "italic",
-  },
-});
-
-let lezer_extension = new LanguageSupport(
-  lezerLanguage.configure({
-    props: [lezerStyleTags],
-  })
-);
-let lezer_highlight = syntaxHighlighting(
-  HighlightStyle.define([
-    { tag: t.lineComment, class: "comment" },
-    { tag: t.blockComment, class: "comment" },
-    { tag: t.character, class: "literal" },
-    { tag: t.string, class: "literal" },
-    { tag: t.keyword, class: "important" },
-    { tag: t.modifier, class: "green" },
-    { tag: t.definitionKeyword, class: "very-important" },
-    { tag: t.operatorKeyword, class: "important" },
-    { tag: t.regexp, class: "literal" },
-    { tag: t.atom, class: "literal" },
-    { tag: t.variableName, class: "variable" },
-    { tag: t.definition(t.variableName), class: "variable" },
-    { tag: t.name, class: "variable" },
-    { tag: t.paren, class: "boring" },
-    { tag: t.squareBracket, class: "boring" },
-    { tag: t.brace, class: "boring" },
-    { tag: t.operator, class: "very-important" },
-
-    { tag: t.labelName, class: "property" },
-    { tag: t.function(t.variableName), class: "variable" },
-
-    { tag: t.propertyName, class: "property" },
-    { tag: t.className, class: "property" },
-    { tag: t.modifier, class: "very-important" },
-    { tag: t.punctuation, class: "boring" },
-  ])
-);
-
-let subtle_gutter = EditorView.theme({
-  ".cm-gutters": {
-    "background-color": "transparent",
-    "border-right": "none",
-  },
-});
-
-class DotGutter extends GutterMarker {
-  constructor(/** @type {number} */ line) {
-    super();
-  }
-  eq() {
-    return true;
-  }
-  toDOM() {
-    let dom = document.createElement("div");
-    dom.className = "dot-gutter";
-    return dom;
-  }
-}
-
-let dot_gutter = [
-  EditorView.theme({
-    ".cm-gutters": {
-      "background-color": "transparent",
-      "border-right": "none",
-    },
-    ".dot-gutter": {
-      "margin-top": "10px",
-      width: "5px",
-      height: "5px",
-      "margin-left": "6px",
-      "margin-right": "6px",
-      "background-color": "#ffffff17",
-      "border-radius": "3px",
-    },
-  }),
-  gutter({
-    lineMarker: () => new DotGutter(),
-  }),
-];
+/**
+ * @template T
+ * @typedef ExecutionResult
+ * @type {import("./use/OperationMonadBullshit.js").ExecutionResult<T>}
+ */
 
 let base_extensions = [
-  subtle_gutter,
   dot_gutter,
 
   // Make awesome line wrapping indent wrapped lines a liiiiitle bit (1 character) more than the first line
@@ -298,10 +165,8 @@ export let LezerEditor = ({ doc, onChange, result }) => {
 
   return (
     <CodeMirror state={initial_editor_state}>
-      <Extension extension={lezer_extension} />
+      <Extension extension={lezer_syntax_extensions} />
       <Extension extension={on_change_extension} />
-      <Extension extension={lezer_syntax_classes} />
-      <Extension extension={lezer_highlight} />
       <Extension extension={awesome_line_wrapping} />
       <Extension extension={error_extension} />
     </CodeMirror>
@@ -359,7 +224,6 @@ export let WhatToParseEditor = ({ doc, onChange, parser, js_stuff }) => {
         // @ts-ignore
         parser: parser,
       });
-      console.log(`language:`, language);
       return new LanguageSupport(
         language.configure({
           props: js_result?.tags == null ? [] : [js_result?.tags],
@@ -400,6 +264,8 @@ export let WhatToParseEditor = ({ doc, onChange, parser, js_stuff }) => {
       <Extension extension={custom_extensions} />
       <Extension extension={exceptionSinkExtension} />
       <Extension extension={awesome_line_wrapping} />
+
+      <Extension extension={let_me_know_what_node_i_clicked} />
     </CodeMirror>
   );
 };
@@ -495,36 +361,6 @@ class WhatToParseEditorWithErrorBoundary extends React.Component {
   }
 }
 
-/** @param {import("lezer-template").TreeCursor} cursor */
-let cursor_to_js = (cursor) => {
-  let code = "";
-  if (cursor.type.isError) {
-    code += `new Error`;
-  } else if (cursor.type.isAnonymous) {
-    code += `"${cursor.name}"`;
-  } else {
-    if (/^[A-Z_$][a-zA-Z_$0-9]*$/.test(cursor.name)) {
-      code += cursor.name;
-    } else {
-      code += `"${cursor.name}"`;
-    }
-  }
-
-  if (cursor.firstChild()) {
-    code += "(";
-    try {
-      do {
-        code += cursor_to_js(cursor) + ", ";
-      } while (cursor.nextSibling());
-    } finally {
-      cursor.parent();
-    }
-    code += `)`;
-  }
-
-  return code;
-};
-
 let Decorate_New_Error = Prec.highest(
   DecorationsFromTree(({ cursor, mutable_decorations }) => {
     if (cursor.name === "NewExpression") {
@@ -538,100 +374,431 @@ let Decorate_New_Error = Prec.highest(
   })
 );
 
+let lezer_result_syntax_classes = EditorView.theme({
+  ".very-important": { color: "#ffb4fb", fontWeight: 700 },
+  ".important": { color: "#ffb4fb" },
+  ".boring": { color: "#2c402d" },
+  ".property": { color: "#cb00d7" },
+  ".variable": { color: "#0d6801" },
+  ".literal": { color: "#00c66d" },
+  ".comment": { color: "#747474", fontStyle: "italic" },
+});
+
+let fold_style = EditorView.theme({
+  ".fold-me-daddy:not(.folded)": {
+    cursor: "pointer",
+    "&:hover": {
+      "text-decoration": "underline",
+      "text-decoration-thickness": "3px",
+    },
+  },
+  ".folded": {
+    color: "#0d6801",
+    opacity: "0.7",
+    cursor: "pointer",
+  },
+  ".ellipsis": {
+    "font-weight": "bold",
+    color: "#8b8b8b",
+  },
+});
+
+/////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////
+import { SingleEventEmitter } from "single-event-emitter";
+import { iterate_over_cursor } from "dral-lezer-helpers";
+import { range } from "lodash";
+/**
+ * @typedef TreePosition
+ * @type {number[]}
+ */
+/** @type {SingleEventEmitter<TreePosition | null>} */
+let open_specific_node_emitter = new SingleEventEmitter();
+/**
+ * @param {import("@lezer/common").TreeCursor} cursor
+ * @param {[number, number]} position
+ */
+let cursor_to_tree_position = (cursor, [from, to]) => {
+  // if (from !== to) {
+  //   to = to + 1;
+  // }
+  let positions = [];
+  parent: do {
+    let index = 0;
+    do {
+      if (cursor.from <= from && to <= cursor.to) {
+        // Very hacky way to make sure that if we are at the end of a node,
+        // and there is no next node right next to it,
+        // we want to select that node.
+        // HOWEVER, if there
+        if (cursor.to === to) {
+          if (cursor.nextSibling()) {
+            if (cursor.from === to && from === to) {
+              positions.push(index + 1);
+              continue parent;
+            } else {
+              cursor.prevSibling();
+              positions.push(index);
+              continue parent;
+            }
+          } else {
+            positions.push(index);
+            continue parent;
+          }
+        }
+
+        positions.push(index);
+        continue parent;
+      }
+      index++;
+    } while (cursor.nextSibling());
+    // throw new Error("Can't find position in tree");
+    break;
+  } while (cursor.firstChild());
+  return positions;
+};
+/**
+ * @param {import("@lezer/common").TreeCursor} cursor
+ * @param {TreePosition} position
+ * @return {[number, number][]}
+ */
+let tree_position_to_cursor = (cursor, position) => {
+  if (position.length === 0) {
+    // TODO Error?
+    return [[cursor.from, cursor.to]];
+  }
+
+  /** @type {[number, number][]} */
+  let rendered_positions = [];
+
+  cursor.firstChild();
+  cursor.firstChild();
+  parent: for (let index of position.slice(0, -1)) {
+    let current_index = 0;
+    do {
+      if (index === current_index) {
+        cursor.firstChild(); // Go into CallExpression, on VariableName
+        rendered_positions.push([cursor.from, cursor.to]);
+        cursor.nextSibling(); // Onto ArgList
+        cursor.firstChild(); // Enter ArgList
+        cursor.nextSibling(); // Skip "("
+        continue parent;
+      }
+      current_index++;
+      // Skip current node and the "," after it
+    } while (cursor.nextSibling() && cursor.nextSibling());
+    console.log("AAAA");
+  }
+
+  // @ts-ignore
+  for (let _ of range(0, position.at(-1))) {
+    cursor.nextSibling();
+    cursor.nextSibling();
+  }
+  rendered_positions.push([cursor.from, cursor.to]);
+  return rendered_positions;
+};
+let let_me_know_what_node_i_clicked = [
+  EditorView.updateListener.of((update) => {
+    if (update.selectionSet) {
+      let tree = syntaxTree(update.state);
+      let cursor = tree.cursor();
+      let positions = cursor_to_tree_position(cursor, [
+        update.state.selection.main.from,
+        update.state.selection.main.to,
+      ]);
+      open_specific_node_emitter.emit(positions);
+    }
+  }),
+  EditorView.domEventHandlers({
+    blur: (view) => {
+      open_specific_node_emitter.emit(null);
+    },
+  }),
+];
+/** @type {StateEffectType<TreePosition | null>} */
+let OpenPositionEffect = StateEffect.define();
+let what_to_focus = StateField.define({
+  create() {
+    return /** @type {readonly [number, number][] | null} */ (null);
+  },
+  update(value, tr) {
+    for (let effect of tr.effects) {
+      if (effect.is(OpenPositionEffect)) {
+        if (effect.value == null) {
+          return null;
+        }
+
+        let positions = tree_position_to_cursor(
+          syntaxTree(tr.state).cursor(),
+          effect.value
+        );
+        return positions;
+      }
+    }
+    return value;
+  },
+});
+let all_this_just_to_click = [
+  ViewPlugin.define((view) => {
+    let handle = (position) => {
+      view.dispatch({
+        effects: OpenPositionEffect.of(position),
+      });
+    };
+    open_specific_node_emitter.on(handle);
+    return {
+      destroy() {
+        open_specific_node_emitter.off(handle);
+      },
+    };
+  }),
+  what_to_focus,
+  EditorView.theme({
+    ".FOCUSSED": {
+      filter: "brightness(2)",
+    },
+    ".VERY-FOCUSSED": {
+      filter: "brightness(4)",
+    },
+  }),
+  // Very hacky way to say "JUST FOCUS ON THIS NOW EH"
+  // (The selected element wouldn't )
+  EditorView.domEventHandlers({
+    dblclick: () => {
+      // @ts-ignore
+      document.activeElement?.blur?.();
+    },
+  }),
+  EditorView.decorations.compute([what_to_focus], (state) => {
+    let focus_thing = state.field(what_to_focus);
+    if (focus_thing == null) {
+      return Decoration.none;
+    } else {
+      let parents = focus_thing.slice(0, -1);
+      let last = focus_thing.at(-1);
+
+      let decorations = [];
+      for (let [from, to] of parents) {
+        decorations.push(
+          Decoration.mark({
+            class: "FOCUSSED",
+          }).range(from, to)
+        );
+      }
+
+      if (last) {
+        decorations.push(
+          Decoration.mark({
+            class: "VERY-FOCUSSED",
+          }).range(last[0], last[1])
+        );
+      }
+      return Decoration.set(decorations);
+    }
+  }),
+  EditorView.updateListener.of((update) => {
+    let plllt = update.state.field(what_to_focus);
+    if (update.startState.field(what_to_focus) !== plllt && plllt !== null) {
+      console.log(`plllt:`, plllt);
+      let x = plllt.at(-1)?.[0];
+      if (x != null) {
+        update.view.dispatch({
+          effects: [
+            EditorView.scrollIntoView(x, { y: "center", x: "nearest" }),
+          ],
+        });
+      }
+    }
+  }),
+];
+/////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////
+
+/** @type {StateEffectType<{ from: number, to: number }>} */
+let FoldEffect = StateEffect.define();
+/** @type {StateEffectType<{ from: number, to: number }>} */
+let UnfoldEffect = StateEffect.define();
+let what_to_fold = StateField.define({
+  create() {
+    return /** @type {Array<[from: number, to: number]>} */ ([]);
+  },
+  update(value, tr) {
+    if (tr.docChanged) {
+      return [];
+    }
+    let focusmehhh = tr.state.field(what_to_focus);
+    if (
+      focusmehhh !== tr.startState.field(what_to_focus) &&
+      focusmehhh != null
+    ) {
+      let folds = tr.state.facet(AllFoldsFacet);
+      // @ts-ignore
+      let [from, to] = focusmehhh.at(-1);
+      let new_folds = folds
+        .filter((x) => {
+          return to < x.fold_from || x.fold_to < from;
+        })
+        .map((x) => [x.fold_from, x.fold_to]);
+      return new_folds;
+    }
+
+    return produce(value, (value) => {
+      for (let effect of tr.effects) {
+        if (effect.is(FoldEffect)) {
+          value.push([effect.value.from, effect.value.to]);
+        }
+        if (effect.is(UnfoldEffect)) {
+          let index = value.findIndex(
+            ([from, to]) => from === effect.value.from && to === effect.value.to
+          );
+          if (index !== -1) {
+            value.splice(index, 1);
+          }
+        }
+      }
+    });
+  },
+  // provide: (value) => EditorView.decorations.from(value, (value) => Decoration.none)
+});
+
+let FoldedRegion = ({ from, to }) => {
+  let view = useEditorView();
+  let str = view.state.doc
+    .sliceString(from, to)
+    .trim()
+    // @ts-ignore
+    .replaceAll(/\([\s ]+/g, "(")
+    .replaceAll(/[\s ]+\)/g, ")")
+    .replaceAll(/[\s ]+/g, " ");
+
+  return (
+    <span
+      className="folded"
+      data-from={from}
+      data-to={to}
+      onClick={() => {
+        view.dispatch({
+          effects: UnfoldEffect.of({ from, to }),
+        });
+      }}
+    >
+      {str.length > 20 ? (
+        <>
+          {str.slice(0, 20)}
+          <span className="ellipsis">{" … "}</span>
+          {str.slice(-20)}
+        </>
+      ) : (
+        str
+      )}
+    </span>
+  );
+};
+
+let AllFoldsFacet = Facet.define({
+  combine: (values) => values[0],
+});
+
 let lezer_as_javascript_plugins = [
   new LanguageSupport(
     javascriptLanguage.configure({
-      props: [
-        foldNodeProp.add({
-          ArgList: foldInside,
-        }),
-      ],
+      props: [foldNodeProp.add({ ArgList: foldInside })],
     })
   ),
   codeFolding(),
-  foldGutter({}),
+  what_to_fold,
+  fold_style,
+  AllFoldsFacet.compute(["doc"], (state) => {
+    let cursor = syntaxTree(state).cursor();
+    let ranges = [];
+    iterate_over_cursor({
+      cursor: cursor,
+      enter: (cursor) => {
+        if (cursor.name === "CallExpression") {
+          let node = cursor.node;
+          let callee = node.firstChild;
+          let arg_list = node.getChild("ArgList");
+
+          if (callee == null || arg_list == null) return;
+
+          ranges.push({
+            from: callee.from,
+            to: callee.to,
+            fold_from: arg_list.from + 1,
+            fold_to: arg_list.to - 1,
+          });
+        }
+      },
+    });
+    return ranges;
+  }),
+  all_this_just_to_click,
+  EditorView.decorations.compute([what_to_fold], (state) => {
+    let folds = state.field(what_to_fold);
+    // TODO I could still preserve syntax highlighting?
+    // .... https://codemirror.net/docs/ref/#language.highlightingFor
+    return Decoration.set(
+      folds.map(([from, to]) => {
+        return Decoration.replace({
+          widget: new ReactWidget(<FoldedRegion from={from} to={to} />),
+        }).range(from, to);
+      }),
+      true
+    );
+  }),
+  EditorView.decorations.compute([AllFoldsFacet], (state) => {
+    // I wanted this to work with the foldNodeProps, but I find that complex and blablabla
+    // so imma try without it 😁
+    let all_folds = state.facet(AllFoldsFacet);
+    return Decoration.set(
+      all_folds.map((fold) =>
+        Decoration.mark({
+          attributes: {
+            style: "cursor: pointer",
+            "data-from": String(fold.fold_from),
+            "data-to": String(fold.fold_to),
+            class: "fold-me-daddy",
+          },
+        }).range(fold.from, fold.to)
+      )
+    );
+  }),
+  EditorView.domEventHandlers({
+    click: (event, view) => {
+      if (!(event.target instanceof HTMLElement)) return;
+
+      let parent = event.target.closest(".fold-me-daddy");
+      if (parent == null) return;
+
+      let from = parent.getAttribute("data-from");
+      let to = parent.getAttribute("data-to");
+      if (from == null && to == null) return;
+      let from_num = Number(from);
+      let to_num = Number(to);
+      if (
+        view.state
+          .field(what_to_fold)
+          .some(([from, to]) => from === from_num && to === to_num)
+      ) {
+        view.dispatch({
+          effects: [UnfoldEffect.of({ from: from_num, to: to_num })],
+        });
+      } else {
+        view.dispatch({
+          effects: [FoldEffect.of({ from: from_num, to: to_num })],
+        });
+      }
+    },
+  }),
   lezer_result_syntax_classes,
   syntaxHighlighting(
     HighlightStyle.define([
-      { tag: t.special(t.typeName), opacity: 0.7 },
-
       { tag: t.string, class: "literal" },
-      { tag: t.bool, class: "literal", fontWeight: 700 },
-      { tag: t.number, class: "literal" },
-      { tag: t.literal, class: "literal", fontWeight: 700 },
-      { tag: t.null, class: "literal" },
-
-      { tag: t.keyword, class: "boring" },
-
       { tag: t.variableName, class: "variable" },
-      { tag: t.className, class: "variable" },
-      { tag: t.propertyName, class: "property" },
-      { tag: t.comment, class: "comment" },
-
-      { tag: t.special(t.brace), fontWeight: 700 },
-
-      // super
-      { tag: t.atom, class: "important" },
-      // this
-      { tag: t.self, class: "important" },
-
-      // { tag: t.property, color: "#48b685" },
-      // { tag: t.attribute, color: "#48b685" },
-      // { tag: t.variable2, color: "#06b6ef" },
-      {
-        tag: t.typeName,
-        color: "var(--cm-type-color)",
-        fontStyle: "italic",
-      },
-
-      // ,
       { tag: t.punctuation, class: "boring" },
-
-      // =
-      { tag: t.definitionOperator, class: "very-important" },
-      // =>
-      { tag: t.function(t.punctuation), class: "very-important" },
-      // += -= *= /= ??=
-      { tag: t.updateOperator, class: "important" },
-
-      { tag: t.bracket, class: "boring" },
-      { tag: t.brace, class: "boring" },
-
-      // Catch all for operators
-      { tag: t.operator, class: "important" },
-      // .
-      { tag: t.derefOperator, class: "boring" },
-      // + - * /
-      { tag: t.arithmeticOperator, class: "important" },
-      // === !==
-      { tag: t.compareOperator, class: "important" },
-      // && ||
-      { tag: t.logicOperator, class: "important" },
-      // TODO Maybe make `!` even more emphasized? Make sure it is hard to miss
-      // !
-      { tag: t.special(t.logicOperator), class: "very-important" },
-      // export import
-      { tag: t.moduleKeyword, class: "important" },
-      // if else while break continue
-      { tag: t.controlKeyword, class: "very-important" },
-      // ? :
-      { tag: t.controlOperator, class: "very-important" },
-
-      // JSX
-      { tag: t.content, class: "literal" },
-      { tag: t.attributeValue, class: "literal" },
-      { tag: t.angleBracket, class: "boring" },
-      { tag: t.attributeName, class: "property" },
-      { tag: t.special(t.tagName), class: "variable" },
-
-      // Ideally t.standard(t.tagName) would work, but it doesn't....
-      // Still putting it here just for kicks, but lezer doesn't differentiate between builtin t and Component names...
-      { tag: t.standard(t.tagName), class: "literal" },
-      // So instead I handle this manually with decorations in `lowercase_jsx_identifiers`,
-      // and I "clear" `t.tagName` here so that it doesn't get styled as a variable
-      { tag: t.tagName, class: "" },
-      // But I do need the variables inside `JSXMemberExpression` to get styled so...
-      { tag: t.special(t.tagName), class: "variable" },
     ])
   ),
 ];
@@ -643,33 +810,18 @@ let lezer_as_javascript_plugins = [
  * }} props
  */
 export let ParsedResultEditor = ({ code_to_parse, parser }) => {
-  let parsed = React.useMemo(() => {
-    console.log(`parser.parse:`, parser.parse);
+  let parsed_as_js = React.useMemo(() => {
     try {
-      return Success.of(parser.parse(code_to_parse));
+      let tree = parser.parse(code_to_parse);
+      return cursor_to_javascript(tree.cursor());
     } catch (error) {
-      return Failure.of(error);
+      return error.message;
     }
   }, [parser, code_to_parse]);
 
-  let parsed_as_json = React.useMemo(() => {
-    return parsed.map((tree) => {
-      let str = cursor_to_js(tree.cursor());
-      try {
-        return format_with_prettier({
-          code: str,
-          cursor: 0,
-        }).formatted;
-      } catch (error) {
-        console.log(`error:`, error);
-        return str;
-      }
-    });
-  }, [parsed]).or(code_to_parse);
-
   let initial_editor_state = React.useMemo(() => {
     return EditorState.create({
-      doc: parsed_as_json,
+      doc: parsed_as_js,
       extensions: [
         base_extensions,
         EditorView.editable.of(false),
@@ -686,10 +838,10 @@ export let ParsedResultEditor = ({ code_to_parse, parser }) => {
       changes: {
         from: 0,
         to: codemirror_ref.current.state.doc.length,
-        insert: parsed_as_json,
+        insert: parsed_as_js,
       },
     });
-  }, [parsed_as_json]);
+  }, [parsed_as_js]);
 
   return (
     <CodeMirror ref={codemirror_ref} state={initial_editor_state}>
@@ -700,24 +852,6 @@ export let ParsedResultEditor = ({ code_to_parse, parser }) => {
     </CodeMirror>
   );
 };
-
-let DEFAULT_PARSER_CODE = `
-@top Program { node }
-
-Fatal { "⚠" argument_list? }
-argument_list { "(" node ("," node)* ")" }
-node { Fatal | Node | String }
-Node { Name argument_list? }
-
-@skip { spaces | newline }
-
-@tokens {
-  Name { @asciiLetter+ }
-  String { '"' (![\\\\\\n"] | "\\\\" _)* '"' }
-  newline { $[\\r\\n] }
-  spaces { " "+ }
-}
-`.trim();
 
 /**
  * TODO Bind run_cell_code not to code,
@@ -733,248 +867,6 @@ Node { Name argument_list? }
 let run_cell_code = async (code, globals) => {
   let f = new Function(...Object.keys(globals), code);
   return await f(...Object.values(globals));
-};
-
-/**
- * @template T
- * @typedef ExecutionResult
- * @type {Success<T> | Failure<T> | Loading<T>}
- */
-
-/**
- * @template T
- */
-class Success {
-  constructor(/** @type {T} */ value) {
-    this.value = value;
-  }
-  /**
-   * @template R
-   * @param {(value: T) => R} f
-   * @returns {ExecutionResult<R>}
-   */
-  map(f) {
-    try {
-      return new Success(f(this.value));
-    } catch (error) {
-      if (error instanceof Failure) {
-        return new Failure();
-      } else if (error instanceof Loading) {
-        return new Loading();
-      } else {
-        return new Failure(error);
-      }
-    }
-  }
-  /**
-   * @returns {T}
-   */
-  get() {
-    return this.value;
-  }
-
-  /**
-   * @template T
-   * @param {T} value
-   */
-  or(value) {
-    return this.value;
-  }
-  /** @template T */
-  static of(/** @type {T} */ value) {
-    return new Success(value);
-  }
-}
-/**
- * @template T
- */
-class Failure {
-  constructor(value) {
-    this.value = value;
-  }
-  /**
-   * @template R
-   * @param {R} value
-   */
-  or(value) {
-    return value;
-  }
-  /**
-   * @returns {never}
-   */
-  get() {
-    throw this.value;
-  }
-  /**
-   * @template R
-   * @param {(value: T) => R} f
-   * @returns {Failure<R>}
-   */
-  map(f) {
-    return new Failure(this.value);
-  }
-  static of(value) {
-    return new Failure(value);
-  }
-}
-/**
- * @template T
- */
-class Loading {
-  /**
-   * @param {Promise<T>} [promise]
-   */
-  constructor(promise) {
-    this.promise = promise;
-  }
-  /**
-   * @template R
-   * @param {(value: T) => R} f
-   * @returns {Loading<R>}
-   */
-  map(f) {
-    return new Loading(this.promise?.then(f));
-  }
-  /**
-   * @template R
-   * @param {R} value
-   */
-  or(value) {
-    return value;
-  }
-  /**
-   * @returns {never}
-   */
-  get() {
-    throw this;
-  }
-  static of() {
-    return new Loading();
-  }
-}
-
-let DEFAULT_JAVASCRIPT_STUFF = `
-import { styleTags, tags as t } from "@lezer/highlight";
-
-export let tags = styleTags({
-  Fatal: t.attributeName,
-  String: t.string,
-});
-`.trim();
-
-/**
- * @template T
- * @param {ExecutionResult<T>} execution
- */
-let flattenExecution = (execution) => {
-  if (execution instanceof Success) {
-    if (execution.value instanceof Success) {
-      return flattenExecution(execution.value);
-    } else if (execution.value instanceof Failure) {
-      return execution.value;
-    } else if (execution.value instanceof Loading) {
-      return execution.value;
-    }
-  } else {
-    return execution;
-  }
-};
-
-/**
- * @template T
- * @param {(abort_signal: AbortSignal) => Promise<T>} fn
- * @param {any[]} deps
- * @returns {ExecutionResult<T>}
- */
-let usePromise = (fn, deps) => {
-  let [value, set_value] = React.useState(
-    /** @type {ExecutionResult<T>} */ (Loading.of())
-  );
-
-  React.useEffect(() => {
-    let cancelled = false;
-    let abort_controller = new AbortController();
-
-    set_value(Loading.of());
-    Promise.resolve().then(async () => {
-      try {
-        let value = await fn(abort_controller.signal);
-        if (cancelled) return;
-
-        if (value instanceof Loading) {
-          // Already loading yeh
-        }
-        set_value(value instanceof Failure ? value : Success.of(value));
-      } catch (error) {
-        if (cancelled) return;
-
-        if (error instanceof Failure) {
-          set_value(error);
-        } else if (error instanceof Loading) {
-          // No set needed, because we're already loading
-        } else {
-          set_value(Failure.of(error));
-        }
-      } finally {
-        abort_controller.abort();
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      abort_controller.abort();
-    };
-  }, deps);
-
-  return value;
-};
-
-class ScopedStorage {
-  constructor(/** @type {string} */ key) {
-    this.key = key;
-  }
-  get() {
-    try {
-      let string_value = localStorage.getItem(this.key);
-      if (string_value == null) {
-        return string_value;
-      } else {
-        return JSON.parse(string_value);
-      }
-    } catch (error) {
-      return null;
-    }
-  }
-
-  set(value) {
-    localStorage.setItem(this.key, JSON.stringify(value));
-  }
-
-  child(/** @type {string} */ key) {
-    return new ScopedStorage(`${this.key}.${key}`);
-  }
-}
-
-let useScopedStorage = (
-  /** @type {ScopedStorage} */ storage,
-  default_value
-) => {
-  // TODO I totally assume `storage` doesn't change and I'm okay with that
-
-  let initial_storage = React.useMemo(() => {
-    return storage.get();
-  }, []);
-  let [value, set_value] = React.useState(initial_storage ?? default_value);
-
-  let set_value_and_store = React.useCallback(
-    (value) => {
-      set_value(value);
-      storage.set(value);
-    },
-    [set_value]
-  );
-
-  return [value, set_value_and_store];
 };
 
 let GeneralEditorStyles = styled.div`
@@ -1057,63 +949,7 @@ let AppGrid = styled.div`
     / 1fr 8px 1fr;
 `;
 
-/**
- * @template {Worker} T
- * @param {() => T} create_worker
- * @param {any[]} deps
- * @returns {T | null}
- */
-let useWorker = (create_worker, deps) => {
-  let [worker, set_worker] = React.useState(
-    /** @type {T} */ (/** @type {any} */ (null))
-  );
-  React.useEffect(() => {
-    let worker = create_worker();
-
-    set_worker(worker);
-
-    return () => {
-      worker.terminate();
-    };
-  }, deps);
-  return worker;
-};
-
-/**
- * @template {Worker} T
- * @param {() => T} create_worker
- * @param {any[]} deps
- * @returns {(signal: AbortSignal) => T}
- */
-let useWorkerPool = (create_worker, deps) => {
-  let workers_ref = React.useRef(new Set());
-
-  React.useEffect(() => {
-    return () => {
-      for (let worker of workers_ref.current) {
-        worker.terminate();
-      }
-    };
-  }, []);
-
-  let get_worker = React.useCallback(
-    (/** @type {AbortSignal} */ abort_signal) => {
-      let worker = create_worker();
-      workers_ref.current.add(worker);
-
-      abort_signal.addEventListener("abort", () => {
-        worker.terminate();
-        workers_ref.current.delete(worker);
-      });
-
-      return worker;
-    },
-    []
-  );
-
-  return get_worker;
-};
-
+// Thanks, https://loading.io/css/
 let LoadingRingThing = styled.div`
   --size: 1em;
   --px: calc(var(--size) / 80);
@@ -1182,20 +1018,6 @@ let PaneTab = ({ title, process = null }) => {
   );
 };
 
-/**
- * @template T
- * @param {ExecutionResult<T>} result
- */
-let useMemoizeSuccess = (result) => {
-  let value_ref = React.useRef(result);
-
-  if (result instanceof Success || result instanceof Failure) {
-    value_ref.current = result;
-  }
-
-  return value_ref.current;
-};
-
 export let App = () => {
   const [path, setPath] = usePath();
 
@@ -1203,7 +1025,7 @@ export let App = () => {
 };
 
 /** @param {{ project_name: string }} props */
-export let Editor = ({ project_name }) => {
+let Editor = ({ project_name }) => {
   let main_scope = new ScopedStorage("lezer-playground").child(project_name);
 
   let [parser_code, set_parser_code] = useScopedStorage(
@@ -1232,7 +1054,7 @@ export let Editor = ({ project_name }) => {
   );
 
   let babel_worker = useWorker(() => new BabelWorker(), []);
-  let get_lezer_worker = useWorkerPool(() => new LezerGeneratorWorker(), []);
+  let get_lezer_worker = useWorkerPool(() => new LezerGeneratorWorker());
 
   let generated_parser_code = usePromise(
     async (signal) => {
@@ -1279,7 +1101,7 @@ export let Editor = ({ project_name }) => {
         url: new URL("./lezer-playground.js", window.location.href).toString(),
         import: (specifier) => {
           let fn = import_map[specifier];
-          if (fn == null) return import(specifier);
+          if (fn == null) return import(/* @vite-ignore */ specifier);
           return fn();
         },
       },
