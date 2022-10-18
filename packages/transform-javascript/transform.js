@@ -25,7 +25,7 @@ let get_has_top_level_return = (ast) => {
 };
 
 /**
- * @param {import("./babel-helpers").AST} ast
+ * @param {import("@babel/types").File} ast
  * @param {import("@babel/types").ObjectProperty[]} properties_to_return
  */
 let fix_return_and_get_result_ast = (ast, properties_to_return) => {
@@ -37,6 +37,11 @@ let fix_return_and_get_result_ast = (ast, properties_to_return) => {
       ])
     );
   };
+
+  if (ast.program.body.length === 0) {
+    ast.program.body.push(return_with_default(t.identifier("undefined")));
+    return null;
+  }
 
   let result_ast = null;
   ast.program.body = ast.program.body.flatMap((statement, index) => {
@@ -255,7 +260,7 @@ let get_exported = (ast) => {
   return exported;
 };
 
-/** @param {import("./babel-helpers").AST} ast */
+/** @param {import("@babel/types").File} ast */
 export function transform(ast) {
   for (let directive of ast.program.directives) {
     ast.program.body.unshift(

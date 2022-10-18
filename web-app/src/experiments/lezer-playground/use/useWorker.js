@@ -1,7 +1,12 @@
 import React from "react";
 
 /**
- * @template {Worker} T
+ * @typedef PoorMansWorker
+ * @type {{ terminate: () => void }}
+ */
+
+/**
+ * @template {PoorMansWorker} T
  * @param {() => T} create_worker
  * @param {any[]} deps
  * @returns {T | null}
@@ -23,7 +28,7 @@ export let useWorker = (create_worker, deps) => {
 };
 
 /**
- * @template {Worker} T
+ * @template {PoorMansWorker} T
  * @param {() => T} create_worker
  * @returns {(signal: AbortSignal) => T}
  */

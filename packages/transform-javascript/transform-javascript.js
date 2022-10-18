@@ -1,11 +1,8 @@
-import { parse, prettyPrint } from "recast";
-import { builders } from "ast-types";
+import { parse, prettyPrint, print } from "recast";
 import { parse as parseBabel } from "@babel/parser";
 
 import { remove_typescript_and_transform_jsx } from "./remove_typescript_and_transform_jsx.js";
 import { transform } from "./transform.js";
-
-let t = builders;
 
 let btoa = (string) => {
   let buff = Buffer.from(string);
@@ -17,23 +14,35 @@ let btoa = (string) => {
  * @param {{ filename: string }} options
  */
 export function transform_code(code, { filename }) {
-  let without_typescript = remove_typescript_and_transform_jsx(code);
-
-  /** @type {ReturnType<parseBabel>} */
-  let unmodified_ast = parse(without_typescript, {
+  /** @type {import("@babel/parser").ParseResult<import("@babel/types").File>} */
+  let unmodified_ast = parse(code, {
     parser: {
       parse: (input, options) => {
         return parseBabel(input, {
-          ...options,
-          plugins: ["typescript", "jsx"],
           allowUndeclaredExports: true,
           allowReturnOutsideFunction: true,
+          startLine: 1,
+          // So it really needs `tokens: true` to support jsx and that took me way too long to figure out
+          tokens: true,
+          plugins: [
+            "jsx",
+            [
+              "typescript",
+              {
+                // @ts-expect-error yes typescript, isTSX exists!!
+                isTSX: true,
+              },
+            ],
+          ],
+          sourceType: "module",
         });
       },
     },
-    // tabWidth: 0,
+    tabWidth: 2,
     sourceFileName: filename,
   });
+
+  let without_typescript = remove_typescript_and_transform_jsx(unmodified_ast);
 
   let {
     ast,
@@ -43,7 +52,7 @@ export function transform_code(code, { filename }) {
       last_created_name,
       has_top_level_return,
     },
-  } = transform(unmodified_ast);
+  } = transform(without_typescript);
 
   // TODO Want to use print() here, but it screws up template strings:
   // .... `
@@ -58,12 +67,15 @@ export function transform_code(code, { filename }) {
     tabWidth: 0,
     sourceMapName: "map.json",
   });
+  // let result = print(ast, {});
 
   // let source_map = "data:text/plain;base64," + btoa(JSON.stringify(result.map));
   // let full_code = `${result.code}\n//# sourceMappingURL=${source_map}\n//# sourceURL=${filename}`;
   let full_code = result.code;
+
   return {
-    map: result.map,
+    // map: result.map,
+    map: null,
     code: full_code,
     meta: {
       created_names,

@@ -12,10 +12,12 @@
   "dependencies": {
     "@babel/core": "^7.19.3",
     "@babel/parser": "^7.18.11",
+    "@babel/plugin-transform-react-jsx": "^7.19.0",
+    "@babel/plugin-transform-typescript": "^7.19.3",
     "@babel/preset-react": "^7.18.6",
     "@babel/preset-typescript": "^7.18.6",
     "@babel/traverse": "^7.18.11",
-    "ast-types": "^0.14.2",
+    "@babel/types": "^7.19.4",
     "lodash-es": "^4.17.21",
     "recast": "^0.21.2",
     "strip-color": "^0.1.0"

@@ -1,6 +1,5 @@
 import React from "react";
 import styled from "styled-components";
-import { CodeMirror, Extension } from "codemirror-x-react";
 import { produce } from "immer";
 import {
   EditorState,
@@ -21,9 +20,6 @@ import {
 import {
   bracketMatching,
   codeFolding,
-  foldGutter,
-  foldInside,
-  foldNodeProp,
   HighlightStyle,
   LanguageSupport,
   LRLanguage,
@@ -39,31 +35,27 @@ import {
 } from "@codemirror/search";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { LRParser } from "@lezer/lr";
+import { IonIcon } from "@ionic/react";
+import { bonfire, bonfireOutline } from "ionicons/icons";
+import usePath from "react-use-path";
+import { javascriptLanguage } from "@codemirror/lang-javascript";
 
+import { CodeMirror, Extension } from "codemirror-x-react";
+import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
+import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
+import { ReactWidget, useEditorView } from "react-codemirror-widget";
+import { LezerGeneratorWorker } from "@dral/lezer-generator-worker/lezer-generator-worker.js";
+import { TransformJavascriptWorker } from "@dral/dralbook-transform-javascript/worker/transform-javascript-worker.js";
+
+////////////////////
 import {
   basic_javascript_setup,
   javascript_syntax_highlighting,
 } from "../../codemirror-javascript-setup.js";
 import { DecorationsFromTree } from "../../basic-markdown-setup.jsx";
+////////////////////
 
-import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
-import {
-  DEFAULT_JAVASCRIPT_STUFF,
-  DEFAULT_PARSER_CODE,
-  DEFAULT_TO_PARSE,
-} from "./default-field-codes.js";
-import { BabelWorker } from "../../packages/babel-worker/babel-worker.js";
-
-import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
-import { javascript, javascriptLanguage } from "@codemirror/lang-javascript";
-
-import "../../App.css";
-import { LezerGeneratorWorker } from "../../packages/lezer-generator-worker/lezer-generator-worker.js";
-import { IonIcon } from "@ionic/react";
-import { bonfire, bonfireOutline } from "ionicons/icons";
-import usePath from "react-use-path";
-
-import "./App.css";
+import { lezer_syntax_extensions } from "./editors/lezer-editor.js";
 import { cursor_to_javascript } from "./cursor-to-javascript.js";
 import {
   Failure,
@@ -75,8 +67,12 @@ import {
 import { useWorker, useWorkerPool } from "./use/useWorker.js";
 import { ScopedStorage, useScopedStorage } from "./use/scoped-storage.js";
 import { dot_gutter } from "./codemirror-dot-gutter.js";
-import { lezer_syntax_extensions } from "./editors/lezer-editor.js";
-import { ReactWidget, useEditorView } from "react-codemirror-widget";
+import {
+  DEFAULT_JAVASCRIPT_STUFF,
+  DEFAULT_PARSER_CODE,
+  DEFAULT_TO_PARSE,
+} from "./default-field-codes.js";
+import "./App.css";
 
 /**
  * @template T
@@ -128,8 +124,8 @@ let position_from_error = (error) => {
   }
 };
 
-/** @param {{ doc: string, onChange: (str: string) => void, result: ExecutionResult<any> }} props */
-export let LezerEditor = ({ doc, onChange, result }) => {
+/** @param {{ doc: string, onChange: (str: string) => void, result: ExecutionResult<any>, error: Error? }} props */
+export let LezerEditor = ({ doc, onChange, result, error }) => {
   let initial_editor_state = React.useMemo(() => {
     return EditorState.create({
       doc,
@@ -146,22 +142,27 @@ export let LezerEditor = ({ doc, onChange, result }) => {
   }, [onChange]);
 
   let error_extension = React.useMemo(() => {
-    if (result instanceof Failure) {
-      let position = position_from_error(result.value);
+    if (error != null) {
+      let position = position_from_error(error);
       if (position) {
         let { line, column } = position;
         return EditorView.decorations.of((view) => {
-          let line_start = view.state.doc.line(line).from;
-          return Decoration.set(
-            Decoration.mark({
-              class: "programming-error-oops",
-            }).range(line_start + column, line_start + column + 1)
-          );
+          try {
+            let line_start = view.state.doc.line(line).from;
+            return Decoration.set(
+              Decoration.mark({
+                class: "programming-error-oops",
+              }).range(line_start + column, line_start + column + 1)
+            );
+          } catch (error) {
+            console.error("Derp:", error);
+            return Decoration.none;
+          }
         });
       }
     }
-    return [];
-  }, [result]);
+    return NO_EXTENSIONS;
+  }, [error]);
 
   return (
     <CodeMirror state={initial_editor_state}>
@@ -173,8 +174,8 @@ export let LezerEditor = ({ doc, onChange, result }) => {
   );
 };
 
-/** @param {{ doc: string, onChange: (str: string) => void }} props */
-export let JavascriptStuffEditor = ({ doc, onChange }) => {
+/** @param {{ doc: string, onChange: (str: string) => void, error: Error? }} props */
+export let JavascriptStuffEditor = ({ doc, onChange, error }) => {
   let initial_editor_state = React.useMemo(() => {
     return EditorState.create({
       doc,
@@ -190,13 +191,40 @@ export let JavascriptStuffEditor = ({ doc, onChange }) => {
     });
   }, [onChange]);
 
+  let error_extension = React.useMemo(() => {
+    if (error != null) {
+      let position = position_from_error(error);
+      if (position) {
+        let { line, column } = position;
+        return EditorView.decorations.of((view) => {
+          try {
+            let line_start = view.state.doc.line(line).from;
+            return Decoration.set(
+              Decoration.mark({
+                class: "programming-error-oops",
+              }).range(line_start + column, line_start + column + 1)
+            );
+          } catch (error) {
+            console.error("Derp:", error);
+            return Decoration.none;
+          }
+        });
+      }
+    }
+    return NO_EXTENSIONS;
+  }, [error]);
+
   return (
     <CodeMirror state={initial_editor_state}>
       <Extension extension={on_change_extension} />
       <Extension extension={basic_javascript_setup} />
+      <Extension extension={error_extension} />
     </CodeMirror>
   );
 };
+
+/** @type {Array<import("@codemirror/state").Extension>} */
+let NO_EXTENSIONS = [];
 
 /**
  * @param {{
@@ -204,7 +232,6 @@ export let JavascriptStuffEditor = ({ doc, onChange }) => {
  *  onChange: (str: string) => void,
  *  parser: import("@lezer/lr").LRParser | null,
  *  js_stuff: ExecutionResult<{
- *    tags: import("@lezer/common").NodePropSource,
  *    extensions: import("@codemirror/state").Extension[],
  *  }>
  * }} props */
@@ -224,15 +251,11 @@ export let WhatToParseEditor = ({ doc, onChange, parser, js_stuff }) => {
         // @ts-ignore
         parser: parser,
       });
-      return new LanguageSupport(
-        language.configure({
-          props: js_result?.tags == null ? [] : [js_result?.tags],
-        })
-      );
+      return new LanguageSupport(language);
     } else {
       return EditorView.updateListener.of(() => {});
     }
-  }, [parser, js_result?.tags]);
+  }, [parser]);
 
   let on_change_extension = React.useMemo(() => {
     return EditorView.updateListener.of((update) => {
@@ -242,9 +265,7 @@ export let WhatToParseEditor = ({ doc, onChange, parser, js_stuff }) => {
     });
   }, [onChange]);
 
-  let custom_extensions = React.useMemo(() => {
-    return js_result?.extensions ?? [];
-  }, [js_result?.extensions]);
+  let custom_extensions = js_result?.extensions ?? NO_EXTENSIONS;
 
   let [exception, set_exception] = React.useState(/** @type {any} */ (null));
   let exceptionSinkExtension = React.useMemo(() => {
@@ -296,38 +317,41 @@ let ErrorBox = styled.div`
 `;
 
 /**
- * @extends {React.Component<Parameters<WhatToParseEditor>[0]>}
+ * @extends {React.Component<Parameters<WhatToParseEditor>[0] & { errors: Array<{ title: string, error: Error }> }, { component_error: Error | null }>}
  */
 class WhatToParseEditorWithErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { error: null };
+    this.state = { component_error: null };
     this.last_js_stuff = props.js_stuff;
   }
 
   static getDerivedStateFromError(error) {
-    return { error };
+    return { component_error: error };
   }
 
   render() {
-    let { error } = this.state;
-    let should_still_error =
-      (error != null && this.last_js_stuff == this.props.js_stuff) ||
-      this.props.js_stuff instanceof Failure;
-    let js_stuff = should_still_error ? Failure.of(error) : this.props.js_stuff;
+    let { component_error } = this.state;
+    let { js_stuff, errors, ...props } = this.props;
 
-    if (!should_still_error) {
+    if (this.last_js_stuff != this.props.js_stuff) {
       this.last_js_stuff = this.props.js_stuff;
-      if (error != null) {
-        this.setState({ error: null });
+      if (component_error != null) {
+        this.setState({ component_error: null });
       }
     }
 
-    let error_to_show = should_still_error
-      ? this.props.js_stuff instanceof Failure
-        ? this.props.js_stuff.value
-        : error
-      : null;
+    let js_stuff_safe =
+      component_error != null || this.props.js_stuff instanceof Failure
+        ? Failure.of(new Error("Javascript stuff is not okay"))
+        : js_stuff;
+
+    let errors_with_component_error = [
+      ...errors,
+      ...(component_error != null
+        ? [{ title: "CodeMirror error", error: component_error }]
+        : []),
+    ];
 
     return (
       <div
@@ -339,23 +363,20 @@ class WhatToParseEditorWithErrorBoundary extends React.Component {
         }}
       >
         <div style={{ flex: 1, minHeight: 0 }}>
-          <WhatToParseEditor {...this.props} js_stuff={js_stuff} />
+          <WhatToParseEditor {...props} js_stuff={js_stuff_safe} />
         </div>
 
-        {error_to_show &&
-          (this.props.js_stuff instanceof Failure ? (
-            <ErrorBox>
-              <h1>error running javascript</h1>
-              {/* @ts-ignore */}
-              <pre>{this.props.js_stuff.value.message}</pre>
-            </ErrorBox>
-          ) : (
-            <ErrorBox>
-              <h1>editor/extension crashed</h1>
-              {/* @ts-ignore */}
-              <pre>{error_to_show.message}</pre>
-            </ErrorBox>
-          ))}
+        {errors_with_component_error.length > 0 && (
+          <ErrorBox>
+            {errors_with_component_error.map((error) => (
+              <>
+                <h1>{error.title}</h1>
+                {/* @ts-ignore */}
+                <pre>{error.error.message}</pre>
+              </>
+            ))}
+          </ErrorBox>
+        )}
       </div>
     );
   }
@@ -365,10 +386,7 @@ let Decorate_New_Error = Prec.highest(
   DecorationsFromTree(({ cursor, mutable_decorations }) => {
     if (cursor.name === "NewExpression") {
       mutable_decorations.push(
-        Decoration.mark({ attributes: { style: "color: red" } }).range(
-          cursor.from,
-          cursor.to
-        )
+        Decoration.mark({ class: "error" }).range(cursor.from, cursor.to)
       );
     }
   })
@@ -382,6 +400,7 @@ let lezer_result_syntax_classes = EditorView.theme({
   ".variable": { color: "#0d6801" },
   ".literal": { color: "#00c66d" },
   ".comment": { color: "#747474", fontStyle: "italic" },
+  ".error": { color: "#860101", fontStyle: "italic" },
 });
 
 let fold_style = EditorView.theme({
@@ -408,7 +427,7 @@ let fold_style = EditorView.theme({
 /////////////////////////////////////////////////////////////////
 import { SingleEventEmitter } from "single-event-emitter";
 import { iterate_over_cursor } from "dral-lezer-helpers";
-import { range } from "lodash";
+import { compact, range } from "lodash";
 /**
  * @typedef TreePosition
  * @type {number[]}
@@ -488,7 +507,7 @@ let tree_position_to_cursor = (cursor, position) => {
       current_index++;
       // Skip current node and the "," after it
     } while (cursor.nextSibling() && cursor.nextSibling());
-    console.log("AAAA");
+    throw new Error("couldn't find index in tree?");
   }
 
   // @ts-ignore
@@ -524,17 +543,43 @@ let what_to_focus = StateField.define({
     return /** @type {readonly [number, number][] | null} */ (null);
   },
   update(value, tr) {
+    // TODO Also "focus" on the node you click on:
+    // .... Currently does not work because it will also fold it's children >_>
+    // if (tr.selection) {
+    //   let cursor = syntaxTree(tr.state).cursorAt(tr.selection.main.head);
+    //   let positions = /** @type {[number, number][]} */ ([]);
+    //   do {
+    //     if (cursor.name === "VariableName") {
+    //       positions.push([cursor.from, cursor.to]);
+    //     }
+    //     if (cursor.name === "CallExpression") {
+    //       cursor.firstChild();
+    //       try {
+    //         positions.unshift([cursor.from, cursor.to]);
+    //       } finally {
+    //         cursor.parent();
+    //       }
+    //     }
+    //   } while (cursor.parent());
+    //   return positions;
+    // }
     for (let effect of tr.effects) {
       if (effect.is(OpenPositionEffect)) {
         if (effect.value == null) {
           return null;
         }
 
-        let positions = tree_position_to_cursor(
-          syntaxTree(tr.state).cursor(),
-          effect.value
-        );
-        return positions;
+        try {
+          let positions = tree_position_to_cursor(
+            syntaxTree(tr.state).cursor(),
+            effect.value
+          );
+          console.log(`positions:`, positions);
+          return positions;
+        } catch (error) {
+          // This isn't that important, so don't crash anything
+          console.error("Error in tree_position_to_cursor", error);
+        }
       }
     }
     return value;
@@ -600,8 +645,10 @@ let all_this_just_to_click = [
   }),
   EditorView.updateListener.of((update) => {
     let plllt = update.state.field(what_to_focus);
-    if (update.startState.field(what_to_focus) !== plllt && plllt !== null) {
-      console.log(`plllt:`, plllt);
+    if (
+      update.startState.field(what_to_focus, false) !== plllt &&
+      plllt !== null
+    ) {
       let x = plllt.at(-1)?.[0];
       if (x != null) {
         update.view.dispatch({
@@ -631,7 +678,7 @@ let what_to_fold = StateField.define({
     }
     let focusmehhh = tr.state.field(what_to_focus);
     if (
-      focusmehhh !== tr.startState.field(what_to_focus) &&
+      focusmehhh !== tr.startState.field(what_to_focus, false) &&
       focusmehhh != null
     ) {
       let folds = tr.state.facet(AllFoldsFacet);
@@ -685,7 +732,7 @@ let FoldedRegion = ({ from, to }) => {
         });
       }}
     >
-      {str.length > 20 ? (
+      {str.length > 40 ? (
         <>
           {str.slice(0, 20)}
           <span className="ellipsis">{" … "}</span>
@@ -703,12 +750,9 @@ let AllFoldsFacet = Facet.define({
 });
 
 let lezer_as_javascript_plugins = [
-  new LanguageSupport(
-    javascriptLanguage.configure({
-      props: [foldNodeProp.add({ ArgList: foldInside })],
-    })
-  ),
+  new LanguageSupport(javascriptLanguage),
   codeFolding(),
+  all_this_just_to_click,
   what_to_fold,
   fold_style,
   AllFoldsFacet.compute(["doc"], (state) => {
@@ -735,7 +779,6 @@ let lezer_as_javascript_plugins = [
     });
     return ranges;
   }),
-  all_this_just_to_click,
   EditorView.decorations.compute([what_to_fold], (state) => {
     let folds = state.field(what_to_fold);
     // TODO I could still preserve syntax highlighting?
@@ -743,7 +786,9 @@ let lezer_as_javascript_plugins = [
     return Decoration.set(
       folds.map(([from, to]) => {
         return Decoration.replace({
-          widget: new ReactWidget(<FoldedRegion from={from} to={to} />),
+          widget: new ReactWidget(
+            <FoldedRegion key={`${from}-${to}`} from={from} to={to} />
+          ),
         }).range(from, to);
       }),
       true
@@ -822,11 +867,7 @@ export let ParsedResultEditor = ({ code_to_parse, parser }) => {
   let initial_editor_state = React.useMemo(() => {
     return EditorState.create({
       doc: parsed_as_js,
-      extensions: [
-        base_extensions,
-        EditorView.editable.of(false),
-        lezer_as_javascript_plugins,
-      ],
+      extensions: [base_extensions],
     });
   }, []);
 
@@ -849,6 +890,8 @@ export let ParsedResultEditor = ({ code_to_parse, parser }) => {
       <Extension extension={debug_syntax_plugin} />
       <Extension extension={lezer_result_syntax_classes} />
       <Extension extension={javascript_syntax_highlighting} />
+      <Extension extension={lezer_as_javascript_plugins} />
+      <Extension extension={EditorView.editable.of(false)} deps={[]} />
     </CodeMirror>
   );
 };
@@ -990,30 +1033,34 @@ let LoadingRingThing = styled.div`
 /**
  * @param {{
  *  title: string,
- *  process?: ExecutionResult<any> | null,
+ *  process?: null | ExecutionResult<any> | Array<ExecutionResult<any>>,
  * }} props
  */
-let PaneTab = ({ title, process = null }) => {
+let PaneTab = ({ title, process }) => {
   let ERROR_COLOR = "rgb(133 0 0)";
+  let processes =
+    process == null ? [] : Array.isArray(process) ? process : [process];
+  let errors = processes.filter((p) => p instanceof Failure);
+  let loading = processes.find((p) => p instanceof Loading);
+
   return (
     <>
-      <span
-        style={{ color: process instanceof Failure ? ERROR_COLOR : undefined }}
-      >
+      <span style={{ color: errors.length !== 0 ? ERROR_COLOR : undefined }}>
         {title}
       </span>
-      {process instanceof Loading && (
+      {loading != null && (
         <>
           <div style={{ minWidth: 8 }} />
           <LoadingRingThing />
         </>
       )}
-      {process instanceof Failure && (
+      {/* Now slicing the first, gotta make sure I show all the errors but not too much though */}
+      {errors.slice(0, 1).map((error) => (
         <>
           <div style={{ minWidth: 8 }} />
           <IonIcon icon={bonfire} style={{ color: ERROR_COLOR }} />
         </>
-      )}
+      ))}
     </>
   );
 };
@@ -1022,6 +1069,24 @@ export let App = () => {
   const [path, setPath] = usePath();
 
   return <Editor project_name={path.path} />;
+};
+
+class TermsFileNotReadyError extends Error {
+  constructor() {
+    super("Terms file not ready");
+  }
+}
+
+/**
+ * @param {string[]} imported
+ * @param {any} mod
+ */
+let verify_imported = (imported, mod) => {
+  let invalid_imports = imported.filter((i) => !(i in mod));
+  if (invalid_imports.length > 0) {
+    throw new TypeError(`Module does not export ${invalid_imports.join(", ")}`);
+  }
+  return mod;
 };
 
 /** @param {{ project_name: string }} props */
@@ -1053,7 +1118,7 @@ let Editor = ({ project_name }) => {
     [set_javascript_stuff]
   );
 
-  let babel_worker = useWorker(() => new BabelWorker(), []);
+  let babel_worker = useWorker(() => new TransformJavascriptWorker(), []);
   let get_lezer_worker = useWorkerPool(() => new LezerGeneratorWorker());
 
   let generated_parser_code = usePromise(
@@ -1066,63 +1131,102 @@ let Editor = ({ project_name }) => {
     [parser_code, get_lezer_worker]
   );
 
-  let result = usePromise(async () => {
+  let terms_file_result = usePromise(
+    async (signal) => {
+      if (babel_worker == null) {
+        throw Loading.of();
+      }
+      if (generated_parser_code instanceof Failure) {
+        throw new Error("Failed to parser.terms.js");
+      }
+
+      let { terms: terms_code_raw, parser: parser_code_raw } =
+        generated_parser_code.get();
+
+      let terms_code = await babel_worker.request("transform-code", {
+        code: terms_code_raw,
+      });
+
+      // Run the terms file
+      return await run_cell_code(terms_code.code, {});
+    },
+    [generated_parser_code, babel_worker]
+  );
+
+  let javascript_result = usePromise(
+    async (signal) => {
+      if (babel_worker == null) {
+        throw Loading.of();
+      }
+
+      // Run the javascript file,
+      // with the terms file as a possible import
+      let our_javascript_code = await babel_worker.request("transform-code", {
+        code: javascript_stuff,
+      });
+      let import_map = {
+        "@lezer/highlight": () => import("@lezer/highlight"),
+        "@codemirror/language": () => import("@codemirror/language"),
+        "@codemirror/view": () => import("@codemirror/view"),
+        "@codemirror/state": () => import("@codemirror/state"),
+        "style-mod": () => import("style-mod"),
+        "@lezer/lr": () => import("@lezer/lr"),
+        "./parser.terms.js": async () => {
+          if (terms_file_result instanceof Failure) {
+            // prettier-ignore
+            throw new TypeError(`Failed to resolve module specifier './parser.terms.js'`);
+          }
+          if (terms_file_result instanceof Loading) {
+            throw new TermsFileNotReadyError();
+          }
+          return terms_file_result.get();
+        },
+      };
+
+      try {
+        let untyped_result = await run_cell_code(our_javascript_code.code, {
+          __meta__: {
+            // prettier-ignore
+            url: new URL("./lezer-playground.js", window.location.href).toString(),
+            import: async (specifier, imported) => {
+              let fn = import_map[specifier];
+              if (fn == null)
+                return verify_imported(
+                  imported,
+                  await import(/* @vite-ignore */ specifier)
+                );
+              return verify_imported(imported, await fn());
+            },
+          },
+        });
+        return /** @type {{ export: { extensions: Array<import("@codemirror/state").Extension> } }} */ (
+          untyped_result
+        );
+      } catch (error) {
+        if (error instanceof TermsFileNotReadyError) {
+          throw Loading.of();
+        } else {
+          throw error;
+        }
+      }
+    },
+    [terms_file_result, babel_worker, javascript_stuff, terms_file_result]
+  );
+
+  let parser = usePromise(async () => {
     if (babel_worker == null) {
       throw Loading.of();
     }
+    if (generated_parser_code instanceof Failure) {
+      throw new Error("Failed to generate parser");
+    }
 
-    let { terms: terms_code_raw, parser: parser_code_raw } =
-      generated_parser_code.get();
-
-    let terms_code = await babel_worker.request("transform-code", {
-      code: terms_code_raw,
-    });
-
-    // Run the terms file
-    let terms = await run_cell_code(terms_code.code, {});
-
-    // Run the javascript file,
-    // with the terms file as a possible import
-    let our_javascript_code = await babel_worker.request("transform-code", {
-      code: javascript_stuff,
-    });
-    let import_map = {
-      "@lezer/highlight": () => import("@lezer/highlight"),
-      "@codemirror/language": () => import("@codemirror/language"),
-      "@codemirror/view": () => import("@codemirror/view"),
-      "@codemirror/state": () => import("@codemirror/state"),
-      "style-mod": () => import("style-mod"),
-      "@lezer/lr": () => import("@lezer/lr"),
-      "./parser.terms.js": () => terms.export,
-    };
-    let javascript_result = await run_cell_code(our_javascript_code.code, {
-      styleTags,
-      __meta__: {
-        url: new URL("./lezer-playground.js", window.location.href).toString(),
-        import: (specifier) => {
-          let fn = import_map[specifier];
-          if (fn == null) return import(/* @vite-ignore */ specifier);
-          return fn();
-        },
-      },
-    });
-
-    /**
-     * @type {{
-     *  tags: import("@lezer/common").NodePropSource,
-     *  extensions: import("@codemirror/state").Extension[],
-     * }}
-     */
-    let exported_from_js = /** @type {any} */ (javascript_result.export);
+    let parser_code_raw = generated_parser_code.get().parser;
 
     let code_i_can_run = await babel_worker.request("transform-code", {
       code: parser_code_raw,
     });
-
-    console.log(`code_i_can_run:`, code_i_can_run);
-
     let parser_result = await run_cell_code(code_i_can_run.code, {
-      styleTags,
       __meta__: {
         url: new URL("./lezer/parser.js", window.location.href).toString(),
         import: (specifier, requested) => {
@@ -1131,11 +1235,18 @@ let Editor = ({ project_name }) => {
               LRParser: { deserialize: (x) => x },
             };
           } else {
+            if (javascript_result instanceof Failure) {
+              // prettier-ignore
+              throw new Error(`You are trying to import "${specifier}", but the javascript failed to run.`);
+            } else if (javascript_result instanceof Loading) {
+              // TODO Specific error?
+              throw new Error("Loading javascript");
+            }
+            let exported_from_js = javascript_result.get().export;
             for (let request of requested) {
               if (exported_from_js[request] == null) {
-                throw new Error(
-                  `Variable "${request}" not exported from "${specifier}"`
-                );
+                throw new Error(`Variable "${request}" not exported from "${specifier}".
+"${specifier}" is referenced in your lezer grammar, and in this playground that means it is imported from the "javascript stuff" file.`);
               }
             }
             return exported_from_js;
@@ -1144,29 +1255,34 @@ let Editor = ({ project_name }) => {
       },
     });
 
-    return {
-      parser: LRParser.deserialize(parser_result.export.parser),
-      js_stuff: exported_from_js,
-    };
-  }, [generated_parser_code, get_lezer_worker, javascript_stuff]);
+    return LRParser.deserialize(parser_result.export.parser);
+  }, [generated_parser_code, babel_worker, javascript_result]);
 
-  let parser = result.map((x) => x.parser);
-  let js_stuff = result.map((x) => x.js_stuff);
-
-  console.log(`js_stuff:`, js_stuff);
+  let js_stuff = React.useMemo(
+    () => javascript_result.map((x) => x.export),
+    [javascript_result]
+  );
 
   let parser_in_betweens = useMemoizeSuccess(parser);
 
   return (
     <AppGrid>
       <Pane
-        style={{ gridArea: "lezer-editor", backgroundColor: "rgb(0 6 80)" }}
+        style={{ gridArea: "lezer-editor", backgroundColor: "#010539" }}
         header={
-          <PaneTab title="lezer grammar" process={generated_parser_code} />
+          <PaneTab
+            title="lezer grammar"
+            process={[generated_parser_code, parser]}
+          />
         }
       >
         <GeneralEditorStyles>
           <LezerEditor
+            error={
+              generated_parser_code instanceof Failure
+                ? generated_parser_code.value
+                : null
+            }
             doc={parser_code}
             onChange={lezer_on_change}
             result={parser}
@@ -1188,10 +1304,25 @@ let Editor = ({ project_name }) => {
           <WhatToParseEditorWithErrorBoundary
             doc={code_to_parse}
             onChange={code_to_parse_on_change}
+            errors={compact([
+              generated_parser_code instanceof Failure
+                ? {
+                    title: "Lezer grammar error",
+                    error: generated_parser_code.value,
+                  }
+                : null,
+              js_stuff instanceof Failure
+                ? { title: "Javascript error", error: js_stuff.value }
+                : null,
+
+              parser instanceof Failure
+                ? { title: "Parser generation error", error: parser.value }
+                : null,
+            ])}
             js_stuff={js_stuff}
             parser={
               parser_in_betweens instanceof Success
-                ? parser_in_betweens.value
+                ? parser_in_betweens.get()
                 : null
             }
           />
@@ -1230,6 +1361,11 @@ let Editor = ({ project_name }) => {
       >
         <GeneralEditorStyles>
           <JavascriptStuffEditor
+            error={
+              javascript_result instanceof Failure
+                ? javascript_result.value
+                : null
+            }
             doc={javascript_stuff}
             onChange={javascript_stuff_on_change}
           />

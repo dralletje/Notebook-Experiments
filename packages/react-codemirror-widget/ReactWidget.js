@@ -7,7 +7,14 @@ export let EditorViewContext = createContext(
   /** @type {EditorView} */ (/** @type {any} */ (null))
 );
 
-export let useEditorView = () => useContext(EditorViewContext);
+export let useEditorView = () => {
+  let view = useContext(EditorViewContext);
+  if (view == null) {
+    // prettier-ignore
+    throw new Error(`EditorView is null in \`useEditorView\`, for some reason...`)
+  }
+  return view;
+};
 
 let codemirror_view_symbol = Symbol("Codemirror view");
 let react_root_symbol = Symbol("React root");
@@ -24,7 +31,6 @@ export class ReactWidget extends WidgetType {
   }
 
   eq(other) {
-    // TODO Maybe compare if it has the exact same element?
     return false;
   }
 

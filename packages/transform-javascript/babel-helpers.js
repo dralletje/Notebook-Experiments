@@ -22,7 +22,7 @@ export let clean_error = (error) => {
 };
 
 /**
- * @param {import("./babel-helpers").AST} ast
+ * @param {import("@babel/types").File} ast
  * @return {NodePath["scope"]}
  */
 export let get_scope = (ast) => {

@@ -29,7 +29,7 @@ export let dot_gutter = [
       height: "5px",
       "margin-left": "6px",
       "margin-right": "6px",
-      "background-color": "#ffffff17",
+      "background-color": "#ffffff38",
       "border-radius": "3px",
     },
   }),

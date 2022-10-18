@@ -114,6 +114,10 @@ let syntax_classes = EditorView.theme({
     color: "#747474",
     fontStyle: "italic",
   },
+  ".type": {
+    color: "#9a18ff",
+    fontStyle: "italic",
+  },
 });
 
 let color_type_imports_like_other_type_stuff = DecorationsFromTree(
@@ -176,8 +180,7 @@ const syntax_colors = syntaxHighlighting(
       // { tag: tags.variable2, color: "#06b6ef" },
       {
         tag: tags.typeName,
-        color: "var(--cm-type-color)",
-        fontStyle: "italic",
+        class: "type",
       },
 
       // ,
@@ -290,7 +293,7 @@ let wtf_is_this = [
       content: "attr(data-text)",
       position: `absolute`,
       left: "0px",
-      bottom: "-2px",
+      top: "-1.5px",
     },
 
     ".property-in-variable-out": {

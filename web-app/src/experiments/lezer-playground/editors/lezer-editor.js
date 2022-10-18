@@ -52,7 +52,7 @@ let lezer_syntax_classes = EditorView.theme({
     color: "#cb00d7",
   },
   ".variable": {
-    color: "#7229ff",
+    color: "#13a400",
   },
   ".literal": {
     color: "#00a7ca",
@@ -69,33 +69,38 @@ let lezer_extension = new LanguageSupport(
   })
 );
 let lezer_highlight = syntaxHighlighting(
-  HighlightStyle.define([
-    { tag: t.lineComment, class: "comment" },
-    { tag: t.blockComment, class: "comment" },
-    { tag: t.character, class: "literal" },
-    { tag: t.string, class: "literal" },
-    { tag: t.keyword, class: "important" },
-    { tag: t.modifier, class: "green" },
-    { tag: t.definitionKeyword, class: "very-important" },
-    { tag: t.operatorKeyword, class: "important" },
-    { tag: t.regexp, class: "literal" },
-    { tag: t.atom, class: "literal" },
-    { tag: t.variableName, class: "variable" },
-    { tag: t.definition(t.variableName), class: "variable" },
-    { tag: t.name, class: "variable" },
-    { tag: t.paren, class: "boring" },
-    { tag: t.squareBracket, class: "boring" },
-    { tag: t.brace, class: "boring" },
-    { tag: t.operator, class: "very-important" },
+  HighlightStyle.define(
+    [
+      { tag: t.lineComment, class: "comment" },
+      { tag: t.blockComment, class: "comment" },
+      { tag: t.character, class: "literal" },
+      { tag: t.string, class: "literal" },
+      { tag: t.keyword, class: "important" },
+      { tag: t.modifier, class: "green" },
+      { tag: t.definitionKeyword, class: "very-important" },
+      { tag: t.operatorKeyword, class: "important" },
+      { tag: t.regexp, class: "literal" },
+      { tag: t.atom, class: "literal" },
+      { tag: t.variableName, class: "variable" },
+      { tag: t.definition(t.variableName), class: "variable" },
+      { tag: t.name, class: "variable" },
+      { tag: t.paren, class: "boring" },
+      { tag: t.squareBracket, class: "boring" },
+      { tag: t.brace, class: "boring" },
+      { tag: t.operator, class: "very-important" },
 
-    { tag: t.labelName, class: "property" },
-    { tag: t.function(t.variableName), class: "variable" },
+      { tag: t.labelName, class: "property" },
+      { tag: t.function(t.variableName), class: "variable" },
 
-    { tag: t.propertyName, class: "property" },
-    { tag: t.className, class: "property" },
-    { tag: t.modifier, class: "very-important" },
-    { tag: t.punctuation, class: "boring" },
-  ])
+      { tag: t.propertyName, class: "property" },
+      { tag: t.className, class: "property" },
+      { tag: t.modifier, class: "very-important" },
+      { tag: t.punctuation, class: "boring" },
+    ],
+    {
+      all: { color: "#6a3e7d" },
+    }
+  )
 );
 
 export let lezer_syntax_extensions = [

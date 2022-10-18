@@ -1,0 +1,12 @@
+{
+  "name": "@dral/worker-typescript-magic",
+  "version": "1.0.0",
+  "description": "Typechecked workers.",
+  "main": "worker-typescript-magic.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

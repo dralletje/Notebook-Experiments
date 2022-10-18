@@ -1,34 +1,13 @@
 :root {
-  --syntax-dimmed: #008c85;
-  --syntax-important: white;
-
-  /* code highlighting */
-  --cm-editor-text-color: var(--syntax-dimmed);
-  --cm-comment-color: #747474;
-  --cm-atom-color: hsl(8deg 72% 62%);
-  --cm-number-color: #00ca5a;
-  --cm-property-color: #f99b15;
-  --cm-keyword-color: #ff7a6f;
-  --cm-string-color: #00ca5a;
-  --cm-var-color: #afb7d3;
-  --cm-var2-color: #06b6ef;
-  --cm-macro-color: #82b38b;
-  --cm-builtin-color: #5ed37f;
-  --cm-function-color: #f99b15;
-  --cm-type-color: #9a18ff;
-  --cm-bracket-color: var(--syntax-dimmed);
-  --cm-tag-color: #ef6155;
-  --cm-link-color: #815ba4;
-  --cm-error-bg-color: #ef6155;
-  --cm-error-color: #f7f7f7;
+  /* TODO Get this out of here, but still themable? IDK */
+  --cm-editor-text-color: #008c85;
   --cm-matchingBracket-color: white;
   --cm-matchingBracket-bg-color: #c58c237a;
   --cm-placeholder-text-color: rgb(255 255 255 / 20%);
-
   --cm-selection-background: hsl(215deg 64% 59% / 48%);
   --cm-selection-background-blurred: hsl(0deg 0% 59% / 30%);
 
-  color-scheme: light dark;
+  color-scheme: dark;
 }
 
 @keyframes opacity {
