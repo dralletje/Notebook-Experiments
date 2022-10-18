@@ -1,10 +1,11 @@
 import React from "react";
 import styled from "styled-components";
-import { produce } from "immer";
+import { produce, original } from "immer";
 import {
   EditorState,
   Facet,
   Prec,
+  Range,
   StateEffect,
   StateEffectType,
   StateField,
@@ -81,6 +82,7 @@ import "./App.css";
  */
 
 let base_extensions = [
+  EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
   dot_gutter,
 
   // Make awesome line wrapping indent wrapped lines a liiiiitle bit (1 character) more than the first line
@@ -412,8 +414,8 @@ let fold_style = EditorView.theme({
     },
   },
   ".folded": {
-    color: "#0d6801",
-    opacity: "0.7",
+    // color: "#0d6801",
+    opacity: "0.5",
     cursor: "pointer",
   },
   ".ellipsis": {
@@ -427,7 +429,7 @@ let fold_style = EditorView.theme({
 /////////////////////////////////////////////////////////////////
 import { SingleEventEmitter } from "single-event-emitter";
 import { iterate_over_cursor } from "dral-lezer-helpers";
-import { compact, range } from "lodash";
+import { compact, range, sortBy } from "lodash";
 /**
  * @typedef TreePosition
  * @type {number[]}
@@ -574,7 +576,6 @@ let what_to_focus = StateField.define({
             syntaxTree(tr.state).cursor(),
             effect.value
           );
-          console.log(`positions:`, positions);
           return positions;
         } catch (error) {
           // This isn't that important, so don't crash anything
@@ -653,7 +654,7 @@ let all_this_just_to_click = [
       if (x != null) {
         update.view.dispatch({
           effects: [
-            EditorView.scrollIntoView(x, { y: "center", x: "nearest" }),
+            EditorView.scrollIntoView(x, { y: "nearest", x: "nearest" }),
           ],
         });
       }
@@ -664,13 +665,18 @@ let all_this_just_to_click = [
 /////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////
 
+/**
+ * @typedef RangeTuple
+ * @type {readonly [number, number]}
+ */
+
 /** @type {StateEffectType<{ from: number, to: number }>} */
 let FoldEffect = StateEffect.define();
 /** @type {StateEffectType<{ from: number, to: number }>} */
 let UnfoldEffect = StateEffect.define();
 let what_to_fold = StateField.define({
   create() {
-    return /** @type {Array<[from: number, to: number]>} */ ([]);
+    return /** @type {Array<RangeTuple>} */ ([]);
   },
   update(value, tr) {
     if (tr.docChanged) {
@@ -688,14 +694,25 @@ let what_to_fold = StateField.define({
         .filter((x) => {
           return to < x.fold_from || x.fold_to < from;
         })
-        .map((x) => [x.fold_from, x.fold_to]);
+        .map((x) => /** @type {RangeTuple} */ ([x.fold_from, x.fold_to]));
       return new_folds;
+    }
+
+    if (tr.selection != null) {
+      let { main } = tr.selection;
+      return value.filter(([from, to]) => from > main.from && to < main.to);
     }
 
     return produce(value, (value) => {
       for (let effect of tr.effects) {
         if (effect.is(FoldEffect)) {
-          value.push([effect.value.from, effect.value.to]);
+          // Find index of where this fold would fit if sorted by `from`
+          let index = Math.max(
+            value.findIndex((x) => x[0] < effect.value.from) - 1,
+            0
+          );
+          value.splice(index, 0, [effect.value.from, effect.value.to]);
+          // value.push([effect.value.from, effect.value.to]);
         }
         if (effect.is(UnfoldEffect)) {
           let index = value.findIndex(
@@ -713,38 +730,34 @@ let what_to_fold = StateField.define({
 
 let FoldedRegion = ({ from, to }) => {
   let view = useEditorView();
-  let str = view.state.doc
-    .sliceString(from, to)
-    .trim()
-    // @ts-ignore
-    .replaceAll(/\([\s ]+/g, "(")
-    .replaceAll(/[\s ]+\)/g, ")")
-    .replaceAll(/[\s ]+/g, " ");
 
   return (
     <span
-      className="folded"
-      data-from={from}
-      data-to={to}
+      className="ellipsis"
+      // data-from={from}
+      // data-to={to}
       onClick={() => {
         view.dispatch({
           effects: UnfoldEffect.of({ from, to }),
         });
       }}
     >
-      {str.length > 40 ? (
-        <>
-          {str.slice(0, 20)}
-          <span className="ellipsis">{" … "}</span>
-          {str.slice(-20)}
-        </>
-      ) : (
-        str
-      )}
+      <span className="ellipsis">{" … "}</span>
     </span>
   );
 };
 
+/**
+ * @typedef FoldableCall
+ * @type {{
+ *  from: number,
+ *  to: number,
+ *  fold_from: number,
+ *  fold_to: number,
+ * }}
+ */
+
+/** @type {Facet<FoldableCall[], FoldableCall[]>} */
 let AllFoldsFacet = Facet.define({
   combine: (values) => values[0],
 });
@@ -757,6 +770,7 @@ let lezer_as_javascript_plugins = [
   fold_style,
   AllFoldsFacet.compute(["doc"], (state) => {
     let cursor = syntaxTree(state).cursor();
+    /** @type {FoldableCall[]} */
     let ranges = [];
     iterate_over_cursor({
       cursor: cursor,
@@ -781,18 +795,103 @@ let lezer_as_javascript_plugins = [
   }),
   EditorView.decorations.compute([what_to_fold], (state) => {
     let folds = state.field(what_to_fold);
-    // TODO I could still preserve syntax highlighting?
-    // .... https://codemirror.net/docs/ref/#language.highlightingFor
-    return Decoration.set(
-      folds.map(([from, to]) => {
-        return Decoration.replace({
-          widget: new ReactWidget(
-            <FoldedRegion key={`${from}-${to}`} from={from} to={to} />
-          ),
-        }).range(from, to);
-      }),
-      true
-    );
+    let decorations = /** @type {Array<Range<Decoration>>} */ ([]);
+
+    let did_fold = /** @type {Array<[from: number, to: number]>} */ ([]);
+    for (let [from, to] of folds) {
+      if (did_fold.some(([f, t]) => f <= from && to <= t)) {
+        continue;
+      }
+      did_fold.push([from, to]);
+      decorations.push(Decoration.mark({ class: "folded" }).range(from, to));
+
+      // Find first 20 characters without counting tabs, newlines and spaces
+      let text = state.sliceDoc(from, to);
+      let character_to_show_in_front = 0;
+      let without_spaces_count = 0;
+      for (let index of range(0, text.length)) {
+        let char = text[index];
+        if (char === " " || char === "\t" || char === "\n") {
+          continue;
+        }
+        without_spaces_count += 1;
+
+        if (without_spaces_count > 20) {
+          character_to_show_in_front = index;
+          break;
+        }
+      }
+
+      let character_to_show_in_the_back = 0;
+      let without_spaces_count2 = 0;
+      for (let index of range(text.length, 0)) {
+        let char = text[index];
+        if (char === " " || char === "\t" || char === "\n") {
+          continue;
+        }
+        without_spaces_count2 += 1;
+
+        if (without_spaces_count2 > 20) {
+          character_to_show_in_the_back = text.length - index;
+          break;
+        }
+      }
+
+      if (
+        from + character_to_show_in_front <
+        to - character_to_show_in_the_back
+      ) {
+        decorations.push(
+          Decoration.replace({
+            widget: new ReactWidget(<FoldedRegion to={to} from={from} />),
+          }).range(
+            from + character_to_show_in_front,
+            to - character_to_show_in_the_back
+          )
+        );
+      }
+    }
+    return Decoration.set(decorations);
+  }),
+  EditorView.decorations.compute([what_to_fold], (state) => {
+    let folds = state.field(what_to_fold);
+    let decorations = /** @type {Array<Range<Decoration>>} */ ([]);
+
+    let did_fold = /** @type {Array<[from: number, to: number]>} */ ([]);
+    for (let [from, to] of folds) {
+      if (did_fold.some(([f, t]) => f <= from && to <= t)) {
+        continue;
+      }
+      did_fold.push([from, to]);
+
+      let text = state.doc.sliceString(from, to);
+      for (let { index, 0: match, 1: pre, 2: post } of text.matchAll(
+        /(\()?\s+(\))?/g
+      )) {
+        index = /** @type {number} */ (index);
+        let match_from = from + index + (pre?.length ?? 0);
+        let match_to = from + index + match.length - (post?.length ?? 0);
+
+        if (
+          pre != null ||
+          post != null ||
+          index === 0 ||
+          index + match.length === text.length
+        ) {
+          // If the match starts with "(" or /^/, or ends with ")" or /$/,
+          // then we get rid of all the spaces
+          decorations.push(Decoration.replace({}).range(match_from, match_to));
+        } else {
+          // If it is just whitespace in the middle, we preserve one space
+          decorations.push(
+            Decoration.replace({
+              widget: new ReactWidget(<span> </span>),
+            }).range(match_from, match_to)
+          );
+        }
+      }
+    }
+    return Decoration.set(decorations);
   }),
   EditorView.decorations.compute([AllFoldsFacet], (state) => {
     // I wanted this to work with the foldNodeProps, but I find that complex and blablabla
@@ -848,6 +947,13 @@ let lezer_as_javascript_plugins = [
   ),
 ];
 
+let but_disable_all_editting = EditorState.transactionFilter.of((tr) => {
+  if (tr.docChanged) {
+    return [];
+  }
+  return tr;
+});
+
 /**
  * @param {{
  *  code_to_parse: string,
@@ -881,6 +987,7 @@ export let ParsedResultEditor = ({ code_to_parse, parser }) => {
         to: codemirror_ref.current.state.doc.length,
         insert: parsed_as_js,
       },
+      filter: false,
     });
   }, [parsed_as_js]);
 
@@ -891,7 +998,8 @@ export let ParsedResultEditor = ({ code_to_parse, parser }) => {
       <Extension extension={lezer_result_syntax_classes} />
       <Extension extension={javascript_syntax_highlighting} />
       <Extension extension={lezer_as_javascript_plugins} />
-      <Extension extension={EditorView.editable.of(false)} deps={[]} />
+      {/* <Extension extension={EditorView.editable.of(false)} deps={[]} /> */}
+      <Extension extension={but_disable_all_editting} />
     </CodeMirror>
   );
 };
