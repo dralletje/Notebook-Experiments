@@ -1,7 +1,7 @@
 import { createElement, createContext, useContext } from "react";
 import ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
-import { EditorView, WidgetType } from "@codemirror/view";
+import { EditorView, GutterMarker, WidgetType } from "@codemirror/view";
 
 export let EditorViewContext = createContext(
   /** @type {EditorView} */ (/** @type {any} */ (null))
@@ -68,5 +68,38 @@ export class ReactWidget extends WidgetType {
       )
     );
     return true;
+  }
+}
+
+/**
+ * Use this GutterMarker to render (P)react components as codemirror widgets.
+ */
+export class ReactGutterMarker extends GutterMarker {
+  /** @param {import("react").ReactElement} element */
+  constructor(element) {
+    super();
+    this.element = element;
+  }
+
+  eq(other) {
+    return (
+      this.element.key != null &&
+      this.element.type === other.element.type &&
+      this.element.key === other.element.key
+    );
+  }
+
+  toDOM(view) {
+    this.view = view;
+    let span = document.createElement("span");
+    let root = createRoot(span);
+    root.render(
+      createElement(
+        EditorViewContext.Provider,
+        { value: this.view },
+        this.element
+      )
+    );
+    return span;
   }
 }

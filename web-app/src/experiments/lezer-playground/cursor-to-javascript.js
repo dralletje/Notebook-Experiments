@@ -48,7 +48,7 @@ let render_cursor = (cursor) => {
 export let cursor_to_javascript = (cursor) => {
   let code = render_cursor(cursor);
   try {
-    return format_with_prettier(code);
+    return format_with_prettier(code).trim();
   } catch (error) {
     console.error("Couldn't prettier-ify cursor-code:", error.message);
     return code;

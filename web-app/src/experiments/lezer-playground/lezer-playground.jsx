@@ -6,6 +6,8 @@ import {
   Facet,
   Prec,
   Range,
+  RangeSetBuilder,
+  RangeValue,
   StateEffect,
   StateEffectType,
   StateField,
@@ -67,7 +69,7 @@ import {
 } from "./use/OperationMonadBullshit.js";
 import { useWorker, useWorkerPool } from "./use/useWorker.js";
 import { ScopedStorage, useScopedStorage } from "./use/scoped-storage.js";
-import { dot_gutter } from "./codemirror-dot-gutter.js";
+import { dot_gutter } from "./codemirror-dot-gutter.jsx";
 import {
   DEFAULT_JAVASCRIPT_STUFF,
   DEFAULT_PARSER_CODE,
@@ -586,6 +588,55 @@ let what_to_focus = StateField.define({
     return value;
   },
 });
+
+let node_that_contains_selection_field = StateField.define({
+  create() {
+    return /** @type {import("@lezer/common").SyntaxNode?} */ (null);
+  },
+  update(value, tr) {
+    if (tr.selection || syntaxTree(tr.state) !== syntaxTree(tr.startState)) {
+      let tree = syntaxTree(tr.state);
+
+      // YES I HAVE TO MAKE EVERYTHING COMPLEX I LOVE IT
+      let selection_head = tr.state.selection.main.head;
+      if (tr.state.sliceDoc(selection_head - 1, selection_head) === ")") {
+        selection_head = selection_head - 1;
+      } else if (
+        tr.state.sliceDoc(selection_head, selection_head + 1) === ")"
+      ) {
+        selection_head = selection_head - 1;
+      }
+
+      let cursor = tree.cursorAt(selection_head, 1);
+      if (cursor.name === ",") cursor.prevSibling();
+
+      // Easily selectable nodes
+      if (
+        cursor.node.parent?.name === "ArgList" &&
+        cursor.node.parent?.parent?.name === "CallExpression"
+      ) {
+        if (cursor.name === "VariableName") {
+          return cursor.node;
+        }
+        if (cursor.name === "String") {
+          return cursor.node;
+        }
+      }
+
+      do {
+        if (cursor.name === "CallExpression") {
+          cursor.firstChild(); // Get callee (VariableName)
+          return cursor.node;
+        }
+        if (cursor.name === "NewExpression") {
+          return cursor.node;
+        }
+      } while (cursor.parent());
+    }
+    return value;
+  },
+});
+
 let all_this_just_to_click = [
   ViewPlugin.define((view) => {
     let handle = (position) => {
@@ -617,33 +668,63 @@ let all_this_just_to_click = [
       document.activeElement?.blur?.();
     },
   }),
-  EditorView.decorations.compute([what_to_focus], (state) => {
-    let focus_thing = state.field(what_to_focus);
-    if (focus_thing == null) {
-      return Decoration.none;
-    } else {
-      let parents = focus_thing.slice(0, -1);
-      let last = focus_thing.at(-1);
+  node_that_contains_selection_field,
+  EditorView.decorations.compute(
+    [what_to_focus, node_that_contains_selection_field],
+    (state) => {
+      let focus_thing = state.field(what_to_focus);
+      let node_that_contains_selection = state.field(
+        node_that_contains_selection_field
+      );
+      if (focus_thing != null) {
+        let parents = focus_thing.slice(0, -1);
+        let last = focus_thing.at(-1);
 
-      let decorations = [];
-      for (let [from, to] of parents) {
-        decorations.push(
-          Decoration.mark({
-            class: "FOCUSSED",
-          }).range(from, to)
-        );
-      }
+        let decorations = [];
+        for (let [from, to] of parents) {
+          decorations.push(
+            Decoration.mark({
+              class: "FOCUSSED",
+            }).range(from, to)
+          );
+        }
 
-      if (last) {
-        decorations.push(
+        if (last) {
+          decorations.push(
+            Decoration.mark({
+              class: "VERY-FOCUSSED",
+            }).range(last[0], last[1])
+          );
+        }
+        return Decoration.set(decorations);
+      } else if (node_that_contains_selection != null) {
+        let cursor = node_that_contains_selection.cursor();
+        // Use unshift on the decorations, because we are going from inner to outer node
+        // (e.g. "in the wrong direction")
+        let decorations = [];
+
+        decorations.unshift(
           Decoration.mark({
             class: "VERY-FOCUSSED",
-          }).range(last[0], last[1])
+          }).range(cursor.from, cursor.to)
         );
+        while (cursor.parent()) {
+          if (cursor.name === "CallExpression") {
+            cursor.firstChild();
+            decorations.unshift(
+              Decoration.mark({
+                class: "FOCUSSED",
+              }).range(cursor.from, cursor.to)
+            );
+            cursor.parent();
+          }
+        }
+        return Decoration.set(decorations);
+      } else {
+        return Decoration.none;
       }
-      return Decoration.set(decorations);
     }
-  }),
+  ),
   EditorView.updateListener.of((update) => {
     let plllt = update.state.field(what_to_focus);
     if (
@@ -700,17 +781,16 @@ let what_to_fold = StateField.define({
 
     if (tr.selection != null) {
       let { main } = tr.selection;
-      return value.filter(([from, to]) => from > main.from && to < main.to);
+      // Remove all folds that contain the cursor
+      return value.filter(([from, to]) => !(from < main.from && main.to < to));
     }
 
     return produce(value, (value) => {
       for (let effect of tr.effects) {
         if (effect.is(FoldEffect)) {
           // Find index of where this fold would fit if sorted by `from`
-          let index = Math.max(
-            value.findIndex((x) => x[0] < effect.value.from) - 1,
-            0
-          );
+          let raw_index = value.findIndex((x) => x[0] > effect.value.from);
+          let index = Math.max(raw_index === -1 ? value.length : raw_index, 0);
           value.splice(index, 0, [effect.value.from, effect.value.to]);
           // value.push([effect.value.from, effect.value.to]);
         }
@@ -762,12 +842,25 @@ let AllFoldsFacet = Facet.define({
   combine: (values) => values[0],
 });
 
+class SpaceRange extends RangeValue {}
+let SPACE_RANGE = new SpaceRange();
+let atomic_spaces = EditorView.atomicRanges.of((view) => {
+  let doc = view.state.doc;
+  let ranges = new RangeSetBuilder();
+  for (let { index, 0: text } of doc.sliceString(0).matchAll(/\s+/g)) {
+    index = /** @type {number} */ (index);
+    ranges.add(index, index + text.length, SPACE_RANGE);
+  }
+  return ranges.finish();
+});
+
 let lezer_as_javascript_plugins = [
   new LanguageSupport(javascriptLanguage),
   codeFolding(),
   all_this_just_to_click,
   what_to_fold,
   fold_style,
+  atomic_spaces,
   AllFoldsFacet.compute(["doc"], (state) => {
     let cursor = syntaxTree(state).cursor();
     /** @type {FoldableCall[]} */
@@ -799,11 +892,10 @@ let lezer_as_javascript_plugins = [
 
     let did_fold = /** @type {Array<[from: number, to: number]>} */ ([]);
     for (let [from, to] of folds) {
-      if (did_fold.some(([f, t]) => f <= from && to <= t)) {
+      if (did_fold.some(([f, t]) => f >= from && t <= to)) {
         continue;
       }
       did_fold.push([from, to]);
-      decorations.push(Decoration.mark({ class: "folded" }).range(from, to));
 
       // Find first 20 characters without counting tabs, newlines and spaces
       let text = state.sliceDoc(from, to);
@@ -850,6 +942,20 @@ let lezer_as_javascript_plugins = [
           )
         );
       }
+    }
+    return Decoration.set(decorations);
+  }),
+  EditorView.decorations.compute([what_to_fold], (state) => {
+    let folds = state.field(what_to_fold);
+    let decorations = /** @type {Array<Range<Decoration>>} */ ([]);
+
+    let did_fold = /** @type {Array<[from: number, to: number]>} */ ([]);
+    for (let [from, to] of folds) {
+      if (did_fold.some(([f, t]) => f >= from && t <= to)) {
+        continue;
+      }
+      did_fold.push([from, to]);
+      decorations.push(Decoration.mark({ class: "folded" }).range(from, to));
     }
     return Decoration.set(decorations);
   }),
