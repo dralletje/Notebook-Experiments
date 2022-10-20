@@ -1,15 +1,8 @@
 import React, { useLayoutEffect, useRef, useMemo } from "react";
-import { compact, takeWhile, zip } from "lodash";
 import styled from "styled-components";
 
-import {
-  EditorState,
-  Compartment,
-  StateEffect,
-  Transaction,
-} from "@codemirror/state";
+import { Compartment, StateEffect, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { useDidJustHotReload, useRealMemo } from "use-real-memo";
 
 /** @type {React.Context<(...spec: any[]) => void>} */
 let codemirror_editorview_context = React.createContext(

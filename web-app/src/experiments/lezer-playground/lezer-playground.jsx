@@ -25,7 +25,11 @@ import { IonIcon } from "@ionic/react";
 import { bonfire } from "ionicons/icons";
 import usePath from "react-use-path";
 
-import { CodeMirror, Extension } from "codemirror-x-react";
+import { Extension } from "codemirror-x-react";
+import {
+  useViewUpdate,
+  CodemirrorFromViewUpdate,
+} from "codemirror-x-react/viewupdate";
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
 import { LezerGeneratorWorker } from "@dral/lezer-generator-worker/lezer-generator-worker.js";
 import { TransformJavascriptWorker } from "@dral/dralbook-transform-javascript/worker/transform-javascript-worker.js";
@@ -107,23 +111,8 @@ let position_from_error = (error) => {
   }
 };
 
-/** @param {{ doc: string, onChange: (str: string) => void, result: ExecutionResult<any>, error: Error? }} props */
-export let LezerEditor = ({ doc, onChange, result, error }) => {
-  let initial_editor_state = React.useMemo(() => {
-    return EditorState.create({
-      doc,
-      extensions: [base_extensions],
-    });
-  }, []);
-
-  let on_change_extension = React.useMemo(() => {
-    return EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        onChange(update.state.doc.toString());
-      }
-    });
-  }, [onChange]);
-
+/** @param {{ viewupdate: import("codemirror-x-react").GenericViewUpdate, result: ExecutionResult<any>, error: Error? }} props */
+export let LezerEditor = ({ viewupdate, result, error }) => {
   let error_extension = React.useMemo(() => {
     if (error != null) {
       let position = position_from_error(error);
@@ -148,32 +137,17 @@ export let LezerEditor = ({ doc, onChange, result, error }) => {
   }, [error]);
 
   return (
-    <CodeMirror state={initial_editor_state}>
+    <CodemirrorFromViewUpdate viewupdate={viewupdate}>
+      <Extension extension={base_extensions} />
       <Extension extension={lezer_syntax_extensions} />
-      <Extension extension={on_change_extension} />
       <Extension extension={awesome_line_wrapping} />
       <Extension extension={error_extension} />
-    </CodeMirror>
+    </CodemirrorFromViewUpdate>
   );
 };
 
-/** @param {{ doc: string, onChange: (str: string) => void, error: Error? }} props */
-export let JavascriptStuffEditor = ({ doc, onChange, error }) => {
-  let initial_editor_state = React.useMemo(() => {
-    return EditorState.create({
-      doc,
-      extensions: [base_extensions],
-    });
-  }, []);
-
-  let on_change_extension = React.useMemo(() => {
-    return EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        onChange(update.state.doc.toString());
-      }
-    });
-  }, [onChange]);
-
+/** @param {{ viewupdate: import("codemirror-x-react").GenericViewUpdate, error: Error? }} props */
+export let JavascriptStuffEditor = ({ viewupdate, error }) => {
   let error_extension = React.useMemo(() => {
     if (error != null) {
       let position = position_from_error(error);
@@ -198,11 +172,11 @@ export let JavascriptStuffEditor = ({ doc, onChange, error }) => {
   }, [error]);
 
   return (
-    <CodeMirror state={initial_editor_state}>
-      <Extension extension={on_change_extension} />
+    <CodemirrorFromViewUpdate viewupdate={viewupdate}>
+      <Extension extension={base_extensions} />
       <Extension extension={basic_javascript_setup} />
       <Extension extension={error_extension} />
-    </CodeMirror>
+    </CodemirrorFromViewUpdate>
   );
 };
 
@@ -211,21 +185,13 @@ let NO_EXTENSIONS = [];
 
 /**
  * @param {{
- *  doc: string,
- *  onChange: (str: string) => void,
+ *  viewupdate: import("codemirror-x-react").GenericViewUpdate,
  *  parser: import("@lezer/lr").LRParser | null,
  *  js_stuff: ExecutionResult<{
  *    extensions: import("@codemirror/state").Extension[],
  *  }>
  * }} props */
-export let WhatToParseEditor = ({ doc, onChange, parser, js_stuff }) => {
-  let initial_editor_state = React.useMemo(() => {
-    return EditorState.create({
-      doc,
-      extensions: [base_extensions],
-    });
-  }, []);
-
+export let WhatToParseEditor = ({ viewupdate, parser, js_stuff }) => {
   let js_result = js_stuff.or(null);
 
   let parser_extension = React.useMemo(() => {
@@ -240,13 +206,13 @@ export let WhatToParseEditor = ({ doc, onChange, parser, js_stuff }) => {
     }
   }, [parser]);
 
-  let on_change_extension = React.useMemo(() => {
-    return EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        onChange(update.state.doc.toString());
-      }
-    });
-  }, [onChange]);
+  // let on_change_extension = React.useMemo(() => {
+  //   return EditorView.updateListener.of((update) => {
+  //     if (update.docChanged) {
+  //       onChange(update.state.doc.toString());
+  //     }
+  //   });
+  // }, [onChange]);
 
   let custom_extensions = js_result?.extensions ?? NO_EXTENSIONS;
 
@@ -262,15 +228,15 @@ export let WhatToParseEditor = ({ doc, onChange, parser, js_stuff }) => {
   }
 
   return (
-    <CodeMirror state={initial_editor_state}>
-      <Extension extension={on_change_extension} />
+    <CodemirrorFromViewUpdate viewupdate={viewupdate}>
+      <Extension extension={base_extensions} />
       <Extension extension={parser_extension} />
       <Extension extension={custom_extensions} />
       <Extension extension={exceptionSinkExtension} />
       <Extension extension={awesome_line_wrapping} />
 
       <Extension extension={let_me_know_what_node_i_clicked} />
-    </CodeMirror>
+    </CodemirrorFromViewUpdate>
   );
 };
 
@@ -558,42 +524,123 @@ let verify_imported = (imported, mod) => {
   return mod;
 };
 
-import {
-  CellEditorStatesField,
-  CellPlugin,
-  editor_state_for_cell,
-  nested_cell_states_basics,
-} from "../../NotebookEditor.ts";
+// import {
+//   CellEditorStatesField,
+//   CellPlugin,
+//   editor_state_for_cell,
+//   nested_cell_states_basics,
+// } from "./MultiEditor.ts";
 import { compact } from "lodash";
 
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {
   let main_scope = new ScopedStorage("lezer-playground").child(project_name);
 
-  let [parser_code, set_parser_code] = useScopedStorage(
+  // let state = React.useMemo(() => {
+  //   let notebook_state = CellEditorStatesField.init((editorstate) => {
+  //     return {
+  //       cell_order: notebook.cell_order,
+  //       cells: mapValues(notebook.cells, (cell) => {
+  //         return editor_state_for_cell(cell, editorstate);
+  //       }),
+  //       transactions_to_send_to_cells: [],
+  //       cell_with_current_selection: null,
+  //     };
+  //   });
+  //   return EditorState.create({
+  //     extensions: [
+  //       notebook_state,
+  //       nested_cell_states_basics,
+
+  //       // This works so smooth omg
+  //       // [shared_history(), keymap.of(historyKeymap)],
+
+  //       // NotebookId.of(notebook.id),
+  //       // NotebookFilename.of(filename),
+
+  //       CellPlugin.of(
+  //         EditorView.scrollMargins.of(() => ({ top: 100, bottom: 100 }))
+  //       ),
+
+  //       // just_for_kicks_extension
+  //       // UpdateLocalStorage,
+  //     ],
+  //   });
+
+  // }, [])
+
+  let [code_to_parse, set_code_to_parse] = useScopedStorage(
+    main_scope.child("code_to_parse"),
+    DEFAULT_TO_PARSE
+  );
+  let code_to_parse_initial_state = React.useMemo(() => {
+    return EditorState.create({
+      doc: code_to_parse,
+      extensions: [
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            set_code_to_parse(update.state.doc.toString());
+          }
+        }),
+      ],
+    });
+  }, [set_code_to_parse]);
+  let [code_to_parse_state, code_to_parse_set_state] = React.useState(
+    code_to_parse_initial_state
+  );
+  let code_to_parse_viewupdate = useViewUpdate(
+    code_to_parse_state,
+    code_to_parse_set_state
+  );
+
+  let [javascript_stuff, set_javascript_stuff] = useScopedStorage(
+    main_scope.child("javascript_stuff"),
+    DEFAULT_JAVASCRIPT_STUFF
+  );
+  let javascript_stuff_initial_state = React.useMemo(() => {
+    return EditorState.create({
+      doc: javascript_stuff,
+      extensions: [
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            set_javascript_stuff(update.state.doc.toString());
+          }
+        }),
+      ],
+    });
+  }, [set_javascript_stuff]);
+  let [javascript_stuff_state, javascript_stuff_set_state] = React.useState(
+    javascript_stuff_initial_state
+  );
+  let javascript_stuff_viewupdate = useViewUpdate(
+    javascript_stuff_state,
+    javascript_stuff_set_state
+  );
+
+  let [_parser_code, set_parser_code] = useScopedStorage(
     main_scope.child("parser_code"),
     DEFAULT_PARSER_CODE
   );
-  let [code_to_parse, set_code_to_parse] = useScopedStorage(
-    main_scope.child("javascript_stuff"),
-    DEFAULT_TO_PARSE
+  let parser_code_initial_state = React.useMemo(() => {
+    return EditorState.create({
+      doc: _parser_code,
+      extensions: [
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            set_parser_code(update.state.doc.toString());
+          }
+        }),
+      ],
+    });
+  }, [set_parser_code]);
+  let [parser_code_state, parser_code_set_state] = React.useState(
+    parser_code_initial_state
   );
-  let [javascript_stuff, set_javascript_stuff] = useScopedStorage(
-    main_scope.child("code_to_parse"),
-    DEFAULT_JAVASCRIPT_STUFF
+  let parser_code_viewupdate = useViewUpdate(
+    parser_code_state,
+    parser_code_set_state
   );
-  let lezer_on_change = React.useCallback(
-    (str) => set_parser_code(str),
-    [set_parser_code]
-  );
-  let code_to_parse_on_change = React.useCallback(
-    (str) => set_code_to_parse(str),
-    [set_code_to_parse]
-  );
-  let javascript_stuff_on_change = React.useCallback(
-    (str) => set_javascript_stuff(str),
-    [set_javascript_stuff]
-  );
+  let parser_code = parser_code_state.doc.toString();
 
   let babel_worker = useWorker(() => new TransformJavascriptWorker(), []);
   let get_lezer_worker = useWorkerPool(() => new LezerGeneratorWorker());
@@ -760,8 +807,7 @@ let Editor = ({ project_name }) => {
                 ? generated_parser_code.value
                 : null
             }
-            doc={parser_code}
-            onChange={lezer_on_change}
+            viewupdate={parser_code_viewupdate}
             result={parser}
           />
         </GeneralEditorStyles>
@@ -779,8 +825,7 @@ let Editor = ({ project_name }) => {
       >
         <GeneralEditorStyles>
           <WhatToParseEditorWithErrorBoundary
-            doc={code_to_parse}
-            onChange={code_to_parse_on_change}
+            viewupdate={code_to_parse_viewupdate}
             errors={compact([
               generated_parser_code instanceof Failure
                 ? {
@@ -843,8 +888,7 @@ let Editor = ({ project_name }) => {
                 ? javascript_result.value
                 : null
             }
-            doc={javascript_stuff}
-            onChange={javascript_stuff_on_change}
+            viewupdate={javascript_stuff_viewupdate}
           />
         </GeneralEditorStyles>
       </Pane>

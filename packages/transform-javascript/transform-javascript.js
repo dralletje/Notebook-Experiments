@@ -69,10 +69,6 @@ export function transform_code(code, { filename }) {
   });
   // let result = print(ast, {});
 
-  console.log(`result:`, result);
-  console.log(`created_names:`, created_names);
-  console.log(`consumed_names:`, consumed_names);
-
   // let source_map = "data:text/plain;base64," + btoa(JSON.stringify(result.map));
   // let full_code = `${result.code}\n//# sourceMappingURL=${source_map}\n//# sourceURL=${filename}`;
   let full_code = result.code;

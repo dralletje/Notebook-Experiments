@@ -10,12 +10,10 @@ import {
   StateEffectType,
 } from "@codemirror/state";
 import { Cell, CellId } from "./notebook-types";
-import immer, { original } from "immer";
+import immer from "immer";
 import { useDidJustHotReload, useRealMemo } from "use-real-memo";
 import React from "react";
 import { compact, takeWhile, zip, remove, without } from "lodash";
-import { SingleEventEmitter } from "single-event-emitter";
-import { ViewPlugin } from "@codemirror/view";
 import { invertedEffects } from "@codemirror/commands";
 import { v4 as uuidv4 } from "uuid";
 
@@ -243,28 +241,6 @@ export let CellMetaField = StateField.define<CellMeta>({
   },
 });
 
-let TransactionFromNexusToCellEmitterFacet = Facet.define<
-  SingleEventEmitter<Transaction[]>,
-  SingleEventEmitter<Transaction[]>
->({
-  combine: (x) => x[0],
-});
-let emit_transaction_from_nexus_to_cell_extension = ViewPlugin.define(
-  (cell_editor_view) => {
-    let emitter = cell_editor_view.state.facet(
-      TransactionFromNexusToCellEmitterFacet
-    );
-    let off = emitter.on((transactions) => {
-      cell_editor_view.update(transactions);
-    });
-    return {
-      destroy() {
-        off();
-      },
-    };
-  }
-);
-
 export let CellTypeFacet = Facet.define<
   Exclude<Cell["type"], void>,
   Exclude<Cell["type"], void>
@@ -289,7 +265,6 @@ export let CellHasSelectionField = StateField.define<boolean>({
 });
 
 export let editor_state_for_cell = (cell: Cell, nexus_state: EditorState) => {
-  let event_emitter = new SingleEventEmitter<Transaction[]>();
   let extensions = nexus_state.facet(CellPlugin);
 
   return EditorState.create({
@@ -305,10 +280,6 @@ export let editor_state_for_cell = (cell: Cell, nexus_state: EditorState) => {
       CellTypeFacet.of(cell.type ?? "code"),
 
       CellHasSelectionField,
-
-      TransactionFromNexusToCellEmitterFacet.of(event_emitter),
-      // emit_transaction_from_nexus_to_cell_extension,
-
       ...extensions,
     ],
   });
@@ -391,9 +362,8 @@ export let CellEditorStatesField = StateField.define<{
         transaction.startState.facet(CellPlugin) !==
         transaction.state.facet(CellPlugin)
       ) {
-        throw new Error(
-          `Please don't change the CellPlugin facet yet... please`
-        );
+        // prettier-ignore
+        throw new Error(`Please don't change the CellPlugin facet yet... please`);
       }
 
       for (let effect of transaction.effects) {
@@ -659,47 +629,9 @@ let invert_removing_and_adding_cells = invertedEffects.of((transaction) => {
   return inverted_effects;
 });
 
-let updateCellsFromNexus = updateListener.of((viewupdate) => {
-  // Because we get one `viewupdate` for multiple transactions happening,
-  // and `.transactions_to_send_to_cells` gets cleared after every transactions,
-  // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
-  let cell_transactions = viewupdate.transactions.flatMap((transaction) => {
-    return transaction.state.field(CellEditorStatesField)
-      .transactions_to_send_to_cells;
-  });
-
-  // We don't want to send an viewupdate to cells that weren't initialized before this viewupdate started.
-  // Because their state will already be the latest state we have here, and we don't want to send them a viewupdate.
-  let pre_existing_cells = viewupdate.startState.field(
-    CellEditorStatesField
-  ).cells;
-
-  // We bunch up all the transactions into one viewupdate for each cell.
-  let transactions_per_cell = new Map<
-    SingleEventEmitter<Transaction[]>,
-    Array<Transaction>
-  >();
-  for (let transaction of cell_transactions) {
-    let id = transaction.startState.facet(CellIdFacet);
-    if (!(id in pre_existing_cells)) return;
-
-    let emitter = transaction.startState.facet(
-      TransactionFromNexusToCellEmitterFacet
-    );
-    if (!transactions_per_cell.has(emitter)) {
-      transactions_per_cell.set(emitter, []);
-    }
-    transactions_per_cell.get(emitter)!.push(transaction);
-  }
-  // for (let [emitter, transactions] of transactions_per_cell) {
-  //   emitter.emit(transactions);
-  // }
-});
-
 export let nested_cell_states_basics = [
   CellEditorStatesField,
   invert_removing_and_adding_cells,
-  updateCellsFromNexus,
   add_single_cell_when_all_cells_are_removed,
   expand_cell_effects_that_area_actually_meant_for_the_nexus,
 ];
