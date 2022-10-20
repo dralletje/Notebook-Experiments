@@ -2,22 +2,16 @@ import React from "react";
 import "./App.css";
 
 import { produce } from "immer";
-import { io, Socket } from "socket.io-client";
+import { io } from "socket.io-client";
 import { LastCreatedCells } from "./Notebook";
 import styled from "styled-components";
 import { EditorState, Facet } from "@codemirror/state";
 import {
   CellEditorStatesField,
-  CellIdFacet,
-  CellMetaField,
   CellPlugin,
-  CellTypeFacet,
   editor_state_for_cell,
   nested_cell_states_basics,
-  updateListener,
-  useNotebookviewWithExtensions,
 } from "./NotebookEditor";
-import { useRealMemo } from "use-real-memo";
 import { SelectedCellsField, selected_cells_keymap } from "./cell-selection";
 import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
 import {
@@ -33,24 +27,10 @@ import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-ce
 import { File } from "./File";
 import { NotebookFilename, NotebookId } from "./notebook-types";
 
-// let worker = create_worker();
-// console.log(`worker:`, worker);
-
-// post_message(worker, {
-//   type: "transform-code",
-//   data: {
-//     code: `let x = 1;`,
-//   },
-// }).then((x) => {
-//   console.log(`x:`, x);
-// });
-
 let cell_id_order_from_notebook_facet = CellIdOrder.compute(
   [CellEditorStatesField],
   (state) => state.field(CellEditorStatesField).cell_order
 );
-
-let JustForKicksFacet = Facet.define({});
 
 /**
  * @typedef WorkspaceSerialized

@@ -18,33 +18,18 @@ import { EditorState, Facet } from "@codemirror/state";
 import {
   BlurAllCells,
   CellEditorStatesField,
-  CellHasSelectionField,
   CellIdFacet,
   CellMetaField,
   CellTypeFacet,
-  updateListener,
   useViewUpdate,
 } from "./NotebookEditor";
 import { SelectCellsEffect, SelectedCellsField } from "./cell-selection";
-import { CellIdOrder } from "./packages/codemirror-nexus/codemirror-cell-movement";
 import { MetaNotebook } from "./MetaNotebook";
 import { SelectionArea } from "./selection-area/SelectionArea";
 import { NotebookFilename, NotebookId } from "./notebook-types";
 import { CellList } from "./Notebook";
 import { deserialize } from "./deserialize-value-to-show";
 import { FilesTab, files_to_directory } from "./tabs/Files/Files.jsx";
-
-// let worker = create_worker();
-// console.log(`worker:`, worker);
-
-// post_message(worker, {
-//   type: "transform-code",
-//   data: {
-//     code: `let x = 1;`,
-//   },
-// }).then((x) => {
-//   console.log(`x:`, x);
-// });
 
 let AppStyle = styled.div`
   padding-top: 50px;
@@ -92,9 +77,6 @@ let DependenciesTab = () => {
   );
 };
 
-// let LOCALSTORAGE_KEY = "ASDASDASD";
-let LOCALSTORAGE_KEY = "notebook";
-
 let GraphTab = ({ dag }) => {
   /** @type {any} */
   let ref = React.useRef();
@@ -140,45 +122,6 @@ let ShellTab = () => {
   );
 };
 
-let try_json = (str) => {
-  try {
-    return JSON.parse(str);
-  } catch (error) {
-    return null;
-  }
-};
-
-let cell_id_order_from_notebook_facet = CellIdOrder.compute(
-  [CellEditorStatesField],
-  (state) => state.field(CellEditorStatesField).cell_order
-);
-
-let JustForKicksFacet = Facet.define({});
-
-let UpdateLocalStorage = updateListener.of((viewupdate) => {
-  let cell_state = viewupdate.state.field(CellEditorStatesField);
-  localStorage.setItem(
-    LOCALSTORAGE_KEY,
-    JSON.stringify(
-      /** @type {import("./notebook-types").Notebook} */ ({
-        id: "hi",
-        cell_order: cell_state.cell_order,
-        cells: mapValues(cell_state.cells, (cell_state) => {
-          let meta = cell_state.field(CellMetaField);
-          return /** @type {import("./notebook-types").Cell} */ ({
-            id: cell_state.facet(CellIdFacet),
-            code: meta.code,
-            unsaved_code: cell_state.doc.toString(),
-            last_run: meta.last_run,
-            folded: meta.folded,
-            type: cell_state.facet(CellTypeFacet),
-          });
-        }),
-      })
-    )
-  );
-});
-
 /**
  * @param {{ filename: string, notebook: import("./notebook-types").NotebookSerialized }} notebook
  * @param {Socket} socket
@@ -220,7 +163,7 @@ let useEngine = (notebook, socket) => {
  *  files: { [filename: string]: { filename: string } },
  * }} props
  */
-export function File({ state, onChange, socket, files, onFileClick }) {
+export function File({ state, onChange, socket, files }) {
   let viewupdate = useViewUpdate(state, onChange);
 
   let cell_editor_states = state.field(CellEditorStatesField);
@@ -291,12 +234,6 @@ export function File({ state, onChange, socket, files, onFileClick }) {
   );
 
   let selected_cells = viewupdate.state.field(SelectedCellsField);
-
-  let cell_that_has_selection = Object.values(
-    viewupdate.state.field(CellEditorStatesField).cells
-  )
-    .find((x) => x.field(CellHasSelectionField))
-    ?.facet(CellIdFacet);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
