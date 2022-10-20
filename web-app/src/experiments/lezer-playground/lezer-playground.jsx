@@ -39,10 +39,8 @@ import { TransformJavascriptWorker } from "@dral/dralbook-transform-javascript/w
 import { basic_javascript_setup } from "../../codemirror-javascript-setup.js";
 ////////////////////
 
-import {
-  ParsedResultEditor,
-  let_me_know_what_node_i_clicked,
-} from "./CodemirrorInspector.jsx";
+import { let_me_know_what_node_i_clicked } from "./parsed-result-editor/CodemirrorInspector.jsx";
+import { ParsedResultEditor } from "./parsed-result-editor/parsed-result-editor.jsx";
 import { lezer_syntax_extensions } from "./editors/lezer-editor.js";
 import {
   Failure,
@@ -534,13 +532,25 @@ let verify_imported = (imported, mod) => {
   return mod;
 };
 
+// @ts-expect-error - Styled Components? Whyyy
+let FillAndCenter = styled.div`
+  height: 100%;
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+`;
+
 import { compact } from "lodash";
 import {
   create_nested_editor_state,
   NestedEditorStatesField,
   NestedExtension,
   nested_cell_states_basics,
-  useNestedViewUpdate,
+  nested_view_update,
 } from "./MultiEditor";
 import { shared_history, historyKeymap } from "./codemirror-shared-history";
 
@@ -604,17 +614,17 @@ let Editor = ({ project_name }) => {
 
   let viewupdate = useViewUpdate(state, set_state);
 
-  let lezer_grammar_viewupdate = useNestedViewUpdate(
-    viewupdate,
-    "lezer-grammar"
+  let lezer_grammar_viewupdate = React.useMemo(
+    () => nested_view_update(viewupdate, "lezer-grammar"),
+    [viewupdate]
   );
-  let code_to_parse_viewupdate = useNestedViewUpdate(
-    viewupdate,
-    "code-to-parse"
+  let code_to_parse_viewupdate = React.useMemo(
+    () => nested_view_update(viewupdate, "code-to-parse"),
+    [viewupdate]
   );
-  let javascript_stuff_viewupdate = useNestedViewUpdate(
-    viewupdate,
-    "javascript"
+  let javascript_stuff_viewupdate = React.useMemo(
+    () => nested_view_update(viewupdate, "javascript"),
+    [viewupdate]
   );
 
   React.useEffect(() => {
@@ -884,42 +894,34 @@ let Editor = ({ project_name }) => {
         }
       >
         <GeneralEditorStyles>
-          {parser_in_betweens instanceof Success ? (
-            <ParsedResultEditor
-              parser={parser_in_betweens.value}
-              code_to_parse={code_to_parse}
-            />
-          ) : parser_in_betweens instanceof Failure ? (
-            <div
-              style={{
-                height: "100%",
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <pre style={{ color: "red", whiteSpace: "pre-wrap", padding: 8 }}>
-                {parser_in_betweens.value.toString()}
-              </pre>
-            </div>
-          ) : (
-            <div
-              style={{
-                height: "100%",
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <pre
-                style={{ color: "#ffff004d", padding: 8, textAlign: "center" }}
-              >
-                Waiting for{"\n"}parser to compile..
-              </pre>
-            </div>
-          )}
+          <React.Suspense
+            fallback={
+              <FillAndCenter>
+                <pre style={{ color: "#ffff004d" }}>
+                  Waiting for{"\n"}editor to load..
+                </pre>
+              </FillAndCenter>
+            }
+          >
+            {parser_in_betweens instanceof Success ? (
+              <ParsedResultEditor
+                parser={parser_in_betweens.value}
+                code_to_parse={code_to_parse}
+              />
+            ) : parser_in_betweens instanceof Failure ? (
+              <FillAndCenter>
+                <pre style={{ color: "red", whiteSpace: "pre-wrap" }}>
+                  {parser_in_betweens.value.toString()}
+                </pre>
+              </FillAndCenter>
+            ) : (
+              <FillAndCenter>
+                <pre style={{ color: "#ffff004d" }}>
+                  Waiting for{"\n"}parser to compile..
+                </pre>
+              </FillAndCenter>
+            )}
+          </React.Suspense>
         </GeneralEditorStyles>
       </Pane>
 

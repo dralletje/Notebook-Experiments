@@ -3,7 +3,6 @@ import { produce } from "immer";
 import {
   EditorState,
   Facet,
-  Prec,
   Range,
   RangeSetBuilder,
   RangeValue,
@@ -11,74 +10,11 @@ import {
   StateEffectType,
   StateField,
 } from "@codemirror/state";
-import {
-  Decoration,
-  drawSelection,
-  EditorView,
-  keymap,
-  placeholder,
-  ViewPlugin,
-} from "@codemirror/view";
-import {
-  bracketMatching,
-  codeFolding,
-  HighlightStyle,
-  LanguageSupport,
-  syntaxHighlighting,
-  syntaxTree,
-} from "@codemirror/language";
-import { tags as t } from "@lezer/highlight";
-import { search, searchKeymap } from "@codemirror/search";
-import { defaultKeymap } from "@codemirror/commands";
+import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
+import { codeFolding, LanguageSupport, syntaxTree } from "@codemirror/language";
 import { javascript, javascriptLanguage } from "@codemirror/lang-javascript";
 
-import { CodeMirror, Extension } from "codemirror-x-react";
-import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
 import { ReactWidget, useEditorView } from "react-codemirror-widget";
-
-import { cursor_to_javascript } from "./cursor-to-javascript.js";
-import { dot_gutter } from "./codemirror-dot-gutter.jsx";
-
-let base_extensions = [
-  EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
-  dot_gutter,
-  EditorState.tabSize.of(2),
-  placeholder("The rest is still unwritten..."),
-  bracketMatching({}),
-  // highlightSelectionMatches(),
-  keymap.of(defaultKeymap),
-  drawSelection({ cursorBlinkRate: 0 }),
-
-  search({
-    caseSensitive: false,
-    top: true,
-  }),
-  keymap.of(searchKeymap),
-];
-
-/** @type {Array<import("@codemirror/state").Extension>} */
-let NO_EXTENSIONS = [];
-
-let Decorate_New_Error = Prec.highest(
-  DecorationsFromTree(({ cursor, mutable_decorations }) => {
-    if (cursor.name === "NewExpression") {
-      mutable_decorations.push(
-        Decoration.mark({ class: "error" }).range(cursor.from, cursor.to)
-      );
-    }
-  })
-);
-
-let lezer_result_syntax_classes = EditorView.theme({
-  ".very-important": { color: "#ffb4fb", fontWeight: 700 },
-  ".important": { color: "#ffb4fb" },
-  ".boring": { color: "#2c402d" },
-  ".property": { color: "#cb00d7" },
-  ".variable": { color: "#0d6801" },
-  ".literal": { color: "#00c66d" },
-  ".comment": { color: "#747474", fontStyle: "italic" },
-  ".error": { color: "#860101", fontStyle: "italic" },
-});
 
 let fold_style = EditorView.theme({
   ".fold-me-daddy:not(.folded)": {
@@ -528,7 +464,14 @@ let atomic_spaces = EditorView.atomicRanges.of((view) => {
   return ranges.finish();
 });
 
-let lezer_as_javascript_plugins = [
+let but_disable_all_editting = EditorState.transactionFilter.of((tr) => {
+  if (tr.docChanged) {
+    return [];
+  }
+  return tr;
+});
+
+export let lezer_as_javascript_plugins = [
   new LanguageSupport(javascriptLanguage),
   codeFolding(),
   all_this_just_to_click,
@@ -717,67 +660,6 @@ let lezer_as_javascript_plugins = [
       }
     },
   }),
-  lezer_result_syntax_classes,
-  syntaxHighlighting(
-    HighlightStyle.define([
-      { tag: t.string, class: "literal" },
-      { tag: t.variableName, class: "variable" },
-      { tag: t.punctuation, class: "boring" },
-    ])
-  ),
   javascript(),
+  but_disable_all_editting,
 ];
-
-let but_disable_all_editting = EditorState.transactionFilter.of((tr) => {
-  if (tr.docChanged) {
-    return [];
-  }
-  return tr;
-});
-
-/**
- * @param {{
- *  code_to_parse: string,
- *  parser: import("@lezer/lr").LRParser,
- * }} props
- */
-export let ParsedResultEditor = ({ code_to_parse, parser }) => {
-  let parsed_as_js = React.useMemo(() => {
-    try {
-      let tree = parser.parse(code_to_parse);
-      return cursor_to_javascript(tree.cursor());
-    } catch (error) {
-      return error.message;
-    }
-  }, [parser, code_to_parse]);
-
-  let initial_editor_state = React.useMemo(() => {
-    return EditorState.create({
-      doc: parsed_as_js,
-      extensions: [base_extensions],
-    });
-  }, []);
-
-  /** @type {import("react").MutableRefObject<EditorView>} */
-  let codemirror_ref = React.useRef(/** @type {any} */ (null));
-
-  React.useLayoutEffect(() => {
-    codemirror_ref.current.dispatch({
-      changes: {
-        from: 0,
-        to: codemirror_ref.current.state.doc.length,
-        insert: parsed_as_js,
-      },
-      filter: false,
-    });
-  }, [parsed_as_js]);
-
-  return (
-    <CodeMirror ref={codemirror_ref} state={initial_editor_state}>
-      <Extension extension={Decorate_New_Error} />
-      <Extension extension={lezer_result_syntax_classes} />
-      <Extension extension={lezer_as_javascript_plugins} />
-      <Extension extension={but_disable_all_editting} />
-    </CodeMirror>
-  );
-};

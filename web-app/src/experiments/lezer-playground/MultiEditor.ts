@@ -1,5 +1,4 @@
 import {
-  Compartment,
   EditorState,
   Extension,
   Facet,
@@ -11,27 +10,9 @@ import {
   EditorStateConfig,
 } from "@codemirror/state";
 import immer from "immer";
-import { useDidJustHotReload, useRealMemo } from "use-real-memo";
-import React from "react";
-import { compact, takeWhile, zip, remove, without } from "lodash";
-import { invertedEffects } from "@codemirror/commands";
-import { v4 as uuidv4 } from "uuid";
-import {
-  useViewUpdate,
-  GenericViewUpdate,
-} from "codemirror-x-react/viewupdate.js";
+import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 
 type CellId = string;
-
-/**
- * So this should be split into two files:
- * 1. *React x Codemirror Xtreme*
- *    This is the file that allows using the React lifecycle as EditorView lifecycle.
- *    Could be part of Codemirror-x-React, but could also be on its own (and be a dependency of Codemirror-x-React ??)
- * 2. *Nested EditorStates/Cell EditorStates*
- *    This allows putting EditorStates inside of a parent EditorState, and make transactions and all
- *    work for it. This would be most that is currently in this file.
- */
 
 export let CellIdFacet = Facet.define<CellId, CellId>({
   combine: (x) => x[0],
@@ -304,46 +285,42 @@ export let NestedEditorStatesField = StateField.define<{
   },
 });
 
-export let useNestedViewUpdate = (
+export let nested_view_update = (
   viewupdate: GenericViewUpdate,
   cell_id: CellId
 ): GenericViewUpdate => {
-  return React.useMemo(() => {
-    // Because we get one `viewupdate` for multiple transactions happening,
-    // and `.transactions_to_send_to_cells` gets cleared after every transactions,
-    // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
-    let all_cell_transactions = viewupdate.transactions.flatMap(
-      (transaction) => {
-        return transaction.state.field(NestedEditorStatesField)
-          .transactions_to_send_to_cells;
-      }
-    );
-    let transactions = all_cell_transactions.filter((transaction) => {
-      return transaction.startState.facet(CellIdFacet) === cell_id;
-    });
+  // Because we get one `viewupdate` for multiple transactions happening,
+  // and `.transactions_to_send_to_cells` gets cleared after every transactions,
+  // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
+  let all_cell_transactions = viewupdate.transactions.flatMap((transaction) => {
+    return transaction.state.field(NestedEditorStatesField)
+      .transactions_to_send_to_cells;
+  });
+  let transactions = all_cell_transactions.filter((transaction) => {
+    return transaction.startState.facet(CellIdFacet) === cell_id;
+  });
 
-    let nested_editor_state = viewupdate.state.field(NestedEditorStatesField)
-      .cells[cell_id];
+  let nested_editor_state = viewupdate.state.field(NestedEditorStatesField)
+    .cells[cell_id];
 
-    let nested_view = {
-      state: nested_editor_state,
-      dispatch: (
-        ...transactions: import("@codemirror/state").TransactionSpec[]
-      ) => {
-        viewupdate.view.dispatch(
-          ...transactions.map((tr) => ({
-            annotations: tr.annotations,
-            effects: CellDispatchEffect.of({
-              cell_id: cell_id,
-              transaction: tr,
-            }),
-          }))
-        );
-      },
-    };
+  let nested_view = {
+    state: nested_editor_state,
+    dispatch: (
+      ...transactions: import("@codemirror/state").TransactionSpec[]
+    ) => {
+      viewupdate.view.dispatch(
+        ...transactions.map((tr) => ({
+          annotations: tr.annotations,
+          effects: CellDispatchEffect.of({
+            cell_id: cell_id,
+            transaction: tr,
+          }),
+        }))
+      );
+    },
+  };
 
-    return new GenericViewUpdate(transactions, nested_view);
-  }, [viewupdate]);
+  return new GenericViewUpdate(transactions, nested_view);
 };
 
 export let nested_cell_states_basics = [

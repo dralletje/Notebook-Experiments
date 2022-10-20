@@ -3,9 +3,7 @@
     "module": "ES2022",
     "target": "ES2022",
     "moduleResolution": "node",
-    "esModuleInterop": true,
-    "allowJs": true,
-    "checkJs": true,
+    "allowSyntheticDefaultImports": true,
     "noEmit": true,
     "jsx": "react"
   }
