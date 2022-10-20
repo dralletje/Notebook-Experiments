@@ -587,7 +587,6 @@ let lezer_as_javascript_plugins = [
           break;
         }
       }
-      console.log(`without_spaces_count:`, without_spaces_count);
 
       let character_to_show_in_the_back = 0;
       let without_spaces_count2 = 0;
@@ -604,16 +603,6 @@ let lezer_as_javascript_plugins = [
         }
       }
 
-      console.log(
-        `from + character_to_show_in_front:`,
-        from,
-        character_to_show_in_front
-      );
-      console.log(
-        `to - character_to_show_in_the_back:`,
-        to,
-        character_to_show_in_the_back
-      );
       if (
         from + character_to_show_in_front <
         to - character_to_show_in_the_back
@@ -786,7 +775,6 @@ export let ParsedResultEditor = ({ code_to_parse, parser }) => {
   return (
     <CodeMirror ref={codemirror_ref} state={initial_editor_state}>
       <Extension extension={Decorate_New_Error} />
-      <Extension extension={debug_syntax_plugin} />
       <Extension extension={lezer_result_syntax_classes} />
       <Extension extension={lezer_as_javascript_plugins} />
       <Extension extension={but_disable_all_editting} />

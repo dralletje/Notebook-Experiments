@@ -7,6 +7,7 @@ import {
   EditorView,
   keymap,
   placeholder,
+  runScopeHandlers,
 } from "@codemirror/view";
 import {
   bracketMatching,
@@ -19,7 +20,7 @@ import {
   search,
   searchKeymap,
 } from "@codemirror/search";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { defaultKeymap } from "@codemirror/commands";
 import { LRParser } from "@lezer/lr";
 import { IonIcon } from "@ionic/react";
 import { bonfire } from "ionicons/icons";
@@ -84,7 +85,7 @@ let base_extensions = [
   bracketMatching({}),
   closeBrackets(),
   highlightSelectionMatches(),
-  keymap.of(defaultKeymap),
+  // keymap.of(defaultKeymap),
   drawSelection({ cursorBlinkRate: 0 }),
 
   search({
@@ -93,8 +94,8 @@ let base_extensions = [
   }),
 
   // COUGH SHARED HITORY COUGH
-  history(),
-  keymap.of(historyKeymap),
+  // history(),
+  // keymap.of(historyKeymap),
   keymap.of(searchKeymap),
 ];
 
@@ -111,7 +112,7 @@ let position_from_error = (error) => {
   }
 };
 
-/** @param {{ viewupdate: import("codemirror-x-react").GenericViewUpdate, result: ExecutionResult<any>, error: Error? }} props */
+/** @param {{ viewupdate: import("codemirror-x-react/viewupdate").GenericViewUpdate, result: ExecutionResult<any>, error: Error? }} props */
 export let LezerEditor = ({ viewupdate, result, error }) => {
   let error_extension = React.useMemo(() => {
     if (error != null) {
@@ -146,7 +147,7 @@ export let LezerEditor = ({ viewupdate, result, error }) => {
   );
 };
 
-/** @param {{ viewupdate: import("codemirror-x-react").GenericViewUpdate, error: Error? }} props */
+/** @param {{ viewupdate: import("codemirror-x-react/viewupdate").GenericViewUpdate, error: Error? }} props */
 export let JavascriptStuffEditor = ({ viewupdate, error }) => {
   let error_extension = React.useMemo(() => {
     if (error != null) {
@@ -185,7 +186,7 @@ let NO_EXTENSIONS = [];
 
 /**
  * @param {{
- *  viewupdate: import("codemirror-x-react").GenericViewUpdate,
+ *  viewupdate: import("codemirror-x-react/viewupdate.js").GenericViewUpdate,
  *  parser: import("@lezer/lr").LRParser | null,
  *  js_stuff: ExecutionResult<{
  *    extensions: import("@codemirror/state").Extension[],
@@ -240,6 +241,7 @@ export let WhatToParseEditor = ({ viewupdate, parser, js_stuff }) => {
   );
 };
 
+// @ts-expect-error - Styled Components? Whyyy
 let ErrorBox = styled.div`
   color: rgb(181 181 181);
   background-color: #420000;
@@ -318,11 +320,11 @@ class WhatToParseEditorWithErrorBoundary extends React.Component {
         {errors_with_component_error.length > 0 && (
           <ErrorBox>
             {errors_with_component_error.map((error) => (
-              <>
+              <React.Fragment key={error.title}>
                 <h1>{error.title}</h1>
                 {/* @ts-ignore */}
                 <pre>{error.error.message}</pre>
-              </>
+              </React.Fragment>
             ))}
           </ErrorBox>
         )}
@@ -347,6 +349,7 @@ let run_cell_code = async (code, globals) => {
   return await f(...Object.values(globals));
 };
 
+// @ts-expect-error - Styled Components? Whyyy
 let GeneralEditorStyles = styled.div`
   height: 100%;
   font-family: Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro",
@@ -370,11 +373,15 @@ let NOISE_BACKGROUND = new URL(
   "./noise-backgrounds/asfalt-light.png",
   import.meta.url
 ).href;
+// @ts-expect-error - Styled Components? Whyyy
 let PaneStyle = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border-radius: 4px;
+
+  background-size: 50px 50px;
+  background-image: url("${NOISE_BACKGROUND}");
 
   .cm-content,
   .cm-gutters {
@@ -387,6 +394,7 @@ let PaneStyle = styled.div`
   }
 `;
 
+// @ts-expect-error - Styled Components? Whyyy
 let PaneHeader = styled.div`
   padding-top: 3px;
   padding-bottom: 4px;
@@ -412,7 +420,7 @@ let Pane = ({ children, header, ...props }) => {
   );
 };
 
-// prettier-ignore
+// @ts-expect-error - Styled Components? Whyyy
 let AppGrid = styled.div`
   width: 100vw;
   height: 100vh;
@@ -420,7 +428,7 @@ let AppGrid = styled.div`
   background-color: black;
 
   display: grid;
-  grid-template: 
+  grid-template:
     "what-to-parse-editor  ↑       parsed-result " minmax(0, 1fr)
     " ←                    █                  →  " 8px
     "lezer-editor          ↓   javascript-stuff  " minmax(0, 1fr)
@@ -428,6 +436,7 @@ let AppGrid = styled.div`
 `;
 
 // Thanks, https://loading.io/css/
+// @ts-expect-error - Styled Components? Whyyy
 let LoadingRingThing = styled.div`
   --size: 1em;
   --px: calc(var(--size) / 80);
@@ -490,11 +499,12 @@ let PaneTab = ({ title, process }) => {
         </>
       )}
       {/* Now slicing the first, gotta make sure I show all the errors but not too much though */}
-      {errors.slice(0, 1).map((error) => (
-        <>
+      {errors.slice(0, 1).map((error, index) => (
+        // TODO Using `index` here is wrong, but it doesn't hurt too much
+        <React.Fragment key={index}>
           <div style={{ minWidth: 8 }} />
           <IonIcon icon={bonfire} style={{ color: ERROR_COLOR }} />
-        </>
+        </React.Fragment>
       ))}
     </>
   );
@@ -524,123 +534,135 @@ let verify_imported = (imported, mod) => {
   return mod;
 };
 
-// import {
-//   CellEditorStatesField,
-//   CellPlugin,
-//   editor_state_for_cell,
-//   nested_cell_states_basics,
-// } from "./MultiEditor.ts";
 import { compact } from "lodash";
+import {
+  create_nested_editor_state,
+  NestedEditorStatesField,
+  NestedExtension,
+  nested_cell_states_basics,
+  useNestedViewUpdate,
+} from "./MultiEditor";
+import { shared_history, historyKeymap } from "./codemirror-shared-history";
 
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {
   let main_scope = new ScopedStorage("lezer-playground").child(project_name);
 
-  // let state = React.useMemo(() => {
-  //   let notebook_state = CellEditorStatesField.init((editorstate) => {
-  //     return {
-  //       cell_order: notebook.cell_order,
-  //       cells: mapValues(notebook.cells, (cell) => {
-  //         return editor_state_for_cell(cell, editorstate);
-  //       }),
-  //       transactions_to_send_to_cells: [],
-  //       cell_with_current_selection: null,
-  //     };
-  //   });
-  //   return EditorState.create({
-  //     extensions: [
-  //       notebook_state,
-  //       nested_cell_states_basics,
-
-  //       // This works so smooth omg
-  //       // [shared_history(), keymap.of(historyKeymap)],
-
-  //       // NotebookId.of(notebook.id),
-  //       // NotebookFilename.of(filename),
-
-  //       CellPlugin.of(
-  //         EditorView.scrollMargins.of(() => ({ top: 100, bottom: 100 }))
-  //       ),
-
-  //       // just_for_kicks_extension
-  //       // UpdateLocalStorage,
-  //     ],
-  //   });
-
-  // }, [])
-
-  let [code_to_parse, set_code_to_parse] = useScopedStorage(
-    main_scope.child("code_to_parse"),
-    DEFAULT_TO_PARSE
-  );
-  let code_to_parse_initial_state = React.useMemo(() => {
-    return EditorState.create({
-      doc: code_to_parse,
-      extensions: [
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            set_code_to_parse(update.state.doc.toString());
-          }
-        }),
-      ],
-    });
-  }, [set_code_to_parse]);
-  let [code_to_parse_state, code_to_parse_set_state] = React.useState(
-    code_to_parse_initial_state
-  );
-  let code_to_parse_viewupdate = useViewUpdate(
-    code_to_parse_state,
-    code_to_parse_set_state
-  );
-
-  let [javascript_stuff, set_javascript_stuff] = useScopedStorage(
-    main_scope.child("javascript_stuff"),
-    DEFAULT_JAVASCRIPT_STUFF
-  );
-  let javascript_stuff_initial_state = React.useMemo(() => {
-    return EditorState.create({
-      doc: javascript_stuff,
-      extensions: [
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            set_javascript_stuff(update.state.doc.toString());
-          }
-        }),
-      ],
-    });
-  }, [set_javascript_stuff]);
-  let [javascript_stuff_state, javascript_stuff_set_state] = React.useState(
-    javascript_stuff_initial_state
-  );
-  let javascript_stuff_viewupdate = useViewUpdate(
-    javascript_stuff_state,
-    javascript_stuff_set_state
-  );
-
   let [_parser_code, set_parser_code] = useScopedStorage(
     main_scope.child("parser_code"),
     DEFAULT_PARSER_CODE
   );
-  let parser_code_initial_state = React.useMemo(() => {
+  let [javascript_stuff, set_javascript_stuff] = useScopedStorage(
+    main_scope.child("javascript_stuff"),
+    DEFAULT_JAVASCRIPT_STUFF
+  );
+  let [code_to_parse, set_code_to_parse] = useScopedStorage(
+    main_scope.child("code_to_parse"),
+    DEFAULT_TO_PARSE
+  );
+
+  let initial_state = React.useMemo(() => {
+    let notebook_state = NestedEditorStatesField.init((editorstate) => {
+      return {
+        cells: {
+          "lezer-grammar": create_nested_editor_state({
+            parent: editorstate,
+            cell_id: "lezer-grammar",
+            doc: _parser_code,
+          }),
+          javascript: create_nested_editor_state({
+            parent: editorstate,
+            cell_id: "javascript",
+            doc: javascript_stuff,
+          }),
+          "code-to-parse": create_nested_editor_state({
+            parent: editorstate,
+            cell_id: "code-to-parse",
+            doc: code_to_parse,
+          }),
+        },
+        transactions_to_send_to_cells: [],
+        cell_with_current_selection: null,
+      };
+    });
     return EditorState.create({
-      doc: _parser_code,
       extensions: [
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            set_parser_code(update.state.doc.toString());
-          }
-        }),
+        notebook_state,
+        nested_cell_states_basics,
+
+        // This works so smooth omg
+        [shared_history(), keymap.of(historyKeymap)],
+
+        // NestedExtension.of(
+        //   EditorView.scrollMargins.of(() => ({ top: 100, bottom: 100 }))
+        // ),
       ],
     });
-  }, [set_parser_code]);
-  let [parser_code_state, parser_code_set_state] = React.useState(
-    parser_code_initial_state
+  }, []);
+
+  let [state, set_state] = React.useState(initial_state);
+
+  let viewupdate = useViewUpdate(state, set_state);
+
+  let lezer_grammar_viewupdate = useNestedViewUpdate(
+    viewupdate,
+    "lezer-grammar"
   );
-  let parser_code_viewupdate = useViewUpdate(
-    parser_code_state,
-    parser_code_set_state
+  let code_to_parse_viewupdate = useNestedViewUpdate(
+    viewupdate,
+    "code-to-parse"
   );
-  let parser_code = parser_code_state.doc.toString();
+  let javascript_stuff_viewupdate = useNestedViewUpdate(
+    viewupdate,
+    "javascript"
+  );
+
+  React.useEffect(() => {
+    for (let transaction of lezer_grammar_viewupdate.transactions) {
+      if (transaction.docChanged) {
+        set_parser_code(transaction.newDoc.toString());
+      }
+    }
+  }, [lezer_grammar_viewupdate]);
+  React.useEffect(() => {
+    for (let transaction of code_to_parse_viewupdate.transactions) {
+      if (transaction.docChanged) {
+        set_code_to_parse(transaction.newDoc.toString());
+      }
+    }
+  }, [code_to_parse_viewupdate]);
+  React.useEffect(() => {
+    for (let transaction of javascript_stuff_viewupdate.transactions) {
+      if (transaction.docChanged) {
+        set_javascript_stuff(transaction.newDoc.toString());
+      }
+    }
+  }, [javascript_stuff_viewupdate]);
+
+  // Use the nexus' keymaps as shortcuts!
+  // This passes on keydown events from the document to the nexus for handling.
+  React.useEffect(() => {
+    let fn = (event) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      let should_cancel = runScopeHandlers(
+        // @ts-ignore
+        viewupdate.view,
+        event,
+        "editor"
+      );
+      if (should_cancel) {
+        event.preventDefault();
+      }
+    };
+    document.addEventListener("keydown", fn);
+    return () => {
+      document.removeEventListener("keydown", fn);
+    };
+  }, [viewupdate.view]);
+
+  let parser_code = lezer_grammar_viewupdate.state.doc.toString();
 
   let babel_worker = useWorker(() => new TransformJavascriptWorker(), []);
   let get_lezer_worker = useWorkerPool(() => new LezerGeneratorWorker());
@@ -742,7 +764,7 @@ let Editor = ({ project_name }) => {
       throw Loading.of();
     }
     if (generated_parser_code instanceof Failure) {
-      throw new Error("Failed to generate parser");
+      throw new Error("Failed to compile lezer grammar");
     }
 
     let parser_code_raw = generated_parser_code.get().parser;
@@ -807,7 +829,7 @@ let Editor = ({ project_name }) => {
                 ? generated_parser_code.value
                 : null
             }
-            viewupdate={parser_code_viewupdate}
+            viewupdate={lezer_grammar_viewupdate}
             result={parser}
           />
         </GeneralEditorStyles>
@@ -838,7 +860,7 @@ let Editor = ({ project_name }) => {
                 : null,
 
               parser instanceof Failure
-                ? { title: "Parser generation error", error: parser.value }
+                ? { title: "Parser generation", error: parser.value }
                 : null,
             ])}
             js_stuff={js_stuff}
@@ -868,11 +890,35 @@ let Editor = ({ project_name }) => {
               code_to_parse={code_to_parse}
             />
           ) : parser_in_betweens instanceof Failure ? (
-            <pre style={{ color: "red", whiteSpace: "pre-wrap", padding: 8 }}>
-              {parser_in_betweens.value.toString()}
-            </pre>
+            <div
+              style={{
+                height: "100%",
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <pre style={{ color: "red", whiteSpace: "pre-wrap", padding: 8 }}>
+                {parser_in_betweens.value.toString()}
+              </pre>
+            </div>
           ) : (
-            <pre style={{ color: "yellow", padding: 8 }}>Loading</pre>
+            <div
+              style={{
+                height: "100%",
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <pre
+                style={{ color: "#ffff004d", padding: 8, textAlign: "center" }}
+              >
+                Waiting for{"\n"}parser to compile..
+              </pre>
+            </div>
           )}
         </GeneralEditorStyles>
       </Pane>
