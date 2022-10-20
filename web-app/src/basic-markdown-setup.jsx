@@ -1,5 +1,5 @@
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { indentUnit, syntaxTree, Language } from "@codemirror/language";
+import { indentUnit, syntaxTree } from "@codemirror/language";
 
 import {
   EditorState,
@@ -11,7 +11,6 @@ import {
   StateEffect,
   StateEffectType,
   MapMode,
-  Text,
   EditorSelection,
 } from "@codemirror/state";
 import {
@@ -31,7 +30,7 @@ import emoji from "node-emoji";
 
 import { IonIcon } from "@ionic/react";
 import { eyeOutline, eye } from "ionicons/icons";
-import { TreeCursor } from "@lezer/common";
+import { DecorationsFromTree } from "@dral/dral-codemirror-helpers";
 
 let markdown_styling_base_theme = EditorView.baseTheme({
   "& .cm-content": {
@@ -238,30 +237,6 @@ class EZRange extends RangeValue {
     return true;
   }
 }
-
-/** @param {(context: { cursor: TreeCursor, mutable_decorations: Range<Decoration>[], doc: Text }) => void | boolean} fn */
-export let DecorationsFromTree = (fn) => {
-  // TODO Must have good reasons to make `Language.state` private, but o well
-  // @ts-ignore
-  let LanguageField = Language.state;
-  return EditorView.decorations.compute([LanguageField], (state) => {
-    // Move verbose way to write `let tree = syntaxTree(state);` but I'm untethered now
-    let language_state = state.field(LanguageField, false);
-    if (language_state == null) return Decoration.set([]);
-    let tree = language_state.tree;
-
-    /** @type {Range<Decoration>[]} */
-    let decorations = [];
-    iterate_with_cursor({
-      tree,
-      enter: (/** @type {any} */ cursor) => {
-        return fn({ cursor, mutable_decorations: decorations, doc: state.doc });
-      },
-    });
-
-    return Decoration.set(decorations);
-  });
-};
 
 let headers = {
   ATXHeading1: "h1",
