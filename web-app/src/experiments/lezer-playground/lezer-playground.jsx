@@ -377,9 +377,6 @@ let PaneStyle = styled.div`
   overflow: hidden;
   border-radius: 4px;
 
-  background-size: 50px 50px;
-  background-image: url("${NOISE_BACKGROUND}");
-
   .cm-content,
   .cm-gutters {
     background-size: 50px 50px;
