@@ -21,6 +21,7 @@
     "@observablehq/stdlib": "^3.20.0",
     "@types/node": "^18.7.18",
     "@typescript/vfs": "^1.4.0",
+    "assert": "^2.0.0",
     "buffer": "^6.0.3",
     "events": "^3.3.0",
     "htl": "^0.3.1",

@@ -33,6 +33,7 @@ export let inspector_meta_from_tree = InspectorMetaFacet.compute(
           let position_node = node.getChild("Position");
           if (!position_node) return;
           let [from_str, to_str] = position_node.getChildren("Number");
+          if (!from_str || !to_str) return;
 
           if (cursor.firstChild()) {
             // Name
