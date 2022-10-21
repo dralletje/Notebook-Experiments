@@ -228,8 +228,11 @@ class SpaceWidget extends ReactWidget {
   constructor() {
     super(" ");
   }
-  eq() {
-    return true;
+  // eq() {
+  //   return true;
+  // }
+  toDOM(view) {
+    return super.toDOM(view);
   }
 }
 
@@ -313,9 +316,7 @@ export let lezer_result_as_lezer_extensions = [
       ) {
         decorations.push(
           Decoration.replace({
-            widget: new ReactWidget(
-              <FoldedRegion key="fold" to={to} from={from} />
-            ),
+            widget: new ReactWidget(<FoldedRegion to={to} from={from} />),
           }).range(
             from + character_to_show_in_front,
             to - character_to_show_in_the_back

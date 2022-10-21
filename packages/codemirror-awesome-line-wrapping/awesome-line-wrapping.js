@@ -21,7 +21,7 @@ import { range } from "lodash";
  * To disable use `MaxIdentationSpacesFacet.of(Infinity)`
  * @type {Facet<number, number>}
  */
-let MaxIdentationSpacesFacet = Facet.define({
+export let MaxIdentationSpacesFacet = Facet.define({
   combine: (values) => values[0],
 });
 

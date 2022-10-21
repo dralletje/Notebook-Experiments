@@ -1,6 +1,7 @@
 import { defaultKeymap } from "@codemirror/commands";
 import {
   bracketMatching,
+  ensureSyntaxTree,
   HighlightStyle,
   LanguageSupport,
   LRLanguage,
@@ -43,6 +44,7 @@ import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 import { ReactWidget } from "react-codemirror-widget";
 import { IonIcon } from "@ionic/react";
 import { warning } from "ionicons/icons";
+import { full_syntax_tree_field } from "@dral/codemirror-helpers";
 
 let base_extensions = [
   EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
@@ -105,6 +107,11 @@ class WarningSignWidget extends ReactWidget {
   eq() {
     return true;
   }
+  toDOM(view) {
+    let span = super.toDOM(view);
+    span.style.pointerEvents = "none";
+    return span;
+  }
 }
 
 /** @param {GenericViewUpdate} viewupdate */
@@ -132,7 +139,7 @@ let useExplicitSelection = (viewupdate) => {
 class PositionRange extends RangeValue {}
 let POSITION_RANGE = new PositionRange();
 let hide_positions = [
-  EditorView.decorations.compute(["doc"], (state) => {
+  EditorView.decorations.compute([full_syntax_tree_field], (state) => {
     let decorations = [];
     iterate_over_cursor({
       cursor: syntaxTree(state).cursor(),
@@ -150,8 +157,9 @@ let hide_positions = [
     return Decoration.set(decorations);
   }),
 
-  EditorView.decorations.compute(["doc"], (state) => {
+  EditorView.decorations.compute([full_syntax_tree_field], (state) => {
     let decorations = [];
+    console.time("Poisitions");
     iterate_over_cursor({
       cursor: syntaxTree(state).cursor(),
       enter: (cursor) => {
@@ -162,6 +170,8 @@ let hide_positions = [
         }
       },
     });
+    console.timeEnd("Poisitions");
+
     return Decoration.set(decorations);
   }),
   EditorView.atomicRanges.of((view) => {
@@ -180,6 +190,22 @@ let hide_positions = [
   }),
 ];
 
+let state_to_inspector_lang = (state, parser) => {
+  if (parser == null) return Text.of([""]);
+  let tree = ensureSyntaxTree(state, state.doc.length, Infinity);
+
+  if (tree == null) {
+    tree = parser.parse(state.doc.toString());
+  }
+
+  if (tree == null) {
+    return Text.of([""]);
+  }
+
+  let lines = cursor_to_inspector_lang(tree.cursor()).text.split("\n");
+  return Text.of(lines);
+};
+
 /**
  * @param {{
  *  code_to_parse: string,
@@ -194,15 +220,12 @@ export let ParsedResultEditor = ({
   onSelection,
   code_to_parse_viewupdate,
 }) => {
-  let parsed_as_js = React.useMemo(() => {
-    let tree = parser.parse(code_to_parse);
-    let { lines } = cursor_to_inspector_lang(tree.cursor());
-    return Text.of(lines);
-  }, [parser, code_to_parse]);
+  // let parsed_as_js = React.useMemo(() => {
+  // }, [parser, code_to_parse_viewupdate]);
 
   let initial_editor_state = React.useMemo(() => {
     return EditorState.create({
-      doc: parsed_as_js,
+      doc: state_to_inspector_lang(code_to_parse_viewupdate.state, parser),
       extensions: [base_extensions],
     });
   }, []);
@@ -210,7 +233,11 @@ export let ParsedResultEditor = ({
   /** @type {import("react").MutableRefObject<EditorView>} */
   let codemirror_ref = React.useRef(/** @type {any} */ (null));
 
-  React.useLayoutEffect(() => {
+  React.useEffect(() => {
+    let parsed_as_js = state_to_inspector_lang(
+      code_to_parse_viewupdate.state,
+      parser
+    );
     let { anchor, head } = codemirror_ref.current.state.selection.main;
     codemirror_ref.current.dispatch({
       changes: {
@@ -225,7 +252,7 @@ export let ParsedResultEditor = ({
       },
       scrollIntoView: true,
     });
-  }, [parsed_as_js]);
+  }, [code_to_parse_viewupdate.state.doc, parser]);
 
   // Highlight the node that is currently selected in the what-to-parse editor
   let code_to_parse_selection = useExplicitSelection(code_to_parse_viewupdate);
@@ -233,48 +260,45 @@ export let ParsedResultEditor = ({
     let idle_callback = 0;
     // Hacky solution to wait for syntaxTree to become available
     let try_parse = () => {
-      idle_callback = window.requestIdleCallback(() => {
-        let selection = code_to_parse_selection;
+      let selection = code_to_parse_selection;
+      if (selection == null) return;
 
-        if (!syntaxTreeAvailable(codemirror_ref.current.state)) {
-          return try_parse();
-        }
+      if (!syntaxTreeAvailable(codemirror_ref.current.state)) {
+        idle_callback = window.requestIdleCallback(() => {
+          try_parse();
+        });
+        return;
+      }
 
-        if (selection == null) return try_parse();
+      let tree = syntaxTree(codemirror_ref.current.state);
+      let meta = inspector_meta_from_tree(
+        codemirror_ref.current.state.doc,
+        tree
+      );
 
-        let tree = syntaxTree(codemirror_ref.current.state);
-        let meta = inspector_meta_from_tree(
-          codemirror_ref.current.state.doc,
-          tree
-        );
-
-        for (let index of range(meta.length - 1, -1)) {
-          let {
-            original: [from, to],
-            cursor,
-          } = meta[index];
-          if (from <= selection.from && selection.to <= to) {
-            let current_selection = codemirror_ref.current.state.selection.main;
-            if (
-              current_selection.from !== from ||
-              current_selection.to !== to
-            ) {
-              codemirror_ref.current.dispatch({
-                effects: [FoldAllEffect.of(null)],
-              });
-              codemirror_ref.current.dispatch({
-                selection: {
-                  anchor: cursor[0],
-                  head: cursor[1],
-                },
-                scrollIntoView: true,
-                effects: [FoldAllEffect.of(null)],
-              });
-            }
-            return;
+      for (let index of range(meta.length - 1, -1)) {
+        let {
+          original: [from, to],
+          cursor,
+        } = meta[index];
+        if (from <= selection.from && selection.to <= to) {
+          let current_selection = codemirror_ref.current.state.selection.main;
+          if (current_selection.from !== from || current_selection.to !== to) {
+            codemirror_ref.current.dispatch({
+              effects: [FoldAllEffect.of(null)],
+            });
+            codemirror_ref.current.dispatch({
+              selection: {
+                anchor: cursor[0],
+                head: cursor[1],
+              },
+              scrollIntoView: true,
+              effects: [FoldAllEffect.of(null)],
+            });
           }
+          return;
         }
-      });
+      }
     };
     try_parse();
     return () => window.cancelIdleCallback(idle_callback);

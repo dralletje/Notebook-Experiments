@@ -32,7 +32,10 @@ import {
   useViewUpdate,
   CodemirrorFromViewUpdate,
 } from "codemirror-x-react/viewupdate";
-import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
+import {
+  awesome_line_wrapping,
+  MaxIdentationSpacesFacet,
+} from "codemirror-awesome-line-wrapping";
 import { LezerGeneratorWorker } from "@dral/lezer-generator-worker/lezer-generator-worker.js";
 import { TransformJavascriptWorker } from "@dral/dralbook-transform-javascript/worker/transform-javascript-worker.js";
 
@@ -176,6 +179,8 @@ let what_to_parse_theme = [
   }),
 ];
 
+let dont_space_too_much = MaxIdentationSpacesFacet.of(10);
+
 /**
  * @param {{
  *  viewupdate: import("codemirror-x-react/viewupdate.js").GenericViewUpdate,
@@ -230,6 +235,7 @@ export let WhatToParseEditor = ({ viewupdate, parser, js_stuff }) => {
       <Extension extension={exceptionSinkExtension} />
       <Extension extension={awesome_line_wrapping} />
       <Extension extension={what_to_parse_theme} />
+      <Extension extension={dont_space_too_much} />
     </CodemirrorFromViewUpdate>
   );
 };

@@ -71,19 +71,19 @@ let tag_to_string = (tag) => {
 let tree_to_inspector_lang_weakmap = new WeakMap();
 
 /** @param {TreeCursor} cursor */
-export let cursor_to_inspector_lang = (cursor) => {
-  let lines = [];
+export let cursor_to_inspector_lang = (cursor, indent = "") => {
+  let text = "";
 
-  let current_line = "";
+  text += indent;
   if (cursor.type.isError) {
-    current_line += `⚠️`;
+    text += `⚠️`;
   } else if (cursor.type.isAnonymous) {
-    current_line += `🔘`;
+    text += `🔘`;
   } else {
     if (/^[A-Z_$][a-zA-Z_$0-9]*$/.test(cursor.name)) {
-      current_line += cursor.name;
+      text += cursor.name;
     } else {
-      current_line += `"${cursor.name}"`;
+      text += `"${cursor.name}"`;
     }
   }
 
@@ -106,41 +106,39 @@ export let cursor_to_inspector_lang = (cursor) => {
   }
 
   if (tags.length > 0) {
-    current_line += ` [${tags.map(([k, v]) => `${k}="${v}"`).join(", ")}]`;
+    text += ` [${tags.map(([k, v]) => `${k}="${v}"`).join(", ")}]`;
   }
 
-  current_line += `<${cursor.from},${cursor.to}>`;
+  text += `<${cursor.from},${cursor.to}>`;
 
   if (cursor.firstChild()) {
-    lines.push(current_line + " {");
-
-    let child_lines = [];
+    text += " {\n";
     if (
       cursor.tree != null &&
       tree_to_inspector_lang_weakmap.has(cursor.tree)
     ) {
-      child_lines = tree_to_inspector_lang_weakmap.get(cursor.tree);
+      text += tree_to_inspector_lang_weakmap.get(cursor.tree);
     } else {
+      let child_text = "";
       try {
         do {
-          let { lines: sub_lines } = cursor_to_inspector_lang(cursor);
-          for (let line of sub_lines) {
-            child_lines.push(`  ${line}`);
-          }
+          let { text: subtext } = cursor_to_inspector_lang(
+            cursor,
+            indent + "  "
+          );
+          child_text += subtext + "\n";
         } while (cursor.nextSibling());
       } finally {
         cursor.parent();
       }
       if (cursor.tree != null) {
-        tree_to_inspector_lang_weakmap.set(cursor.tree, child_lines);
+        tree_to_inspector_lang_weakmap.set(cursor.tree, child_text);
       }
+      text += child_text;
     }
 
-    lines = lines.concat(child_lines);
-    lines.push("}");
-  } else {
-    lines.push(current_line);
+    text += indent + "}";
   }
 
-  return { lines };
+  return { text };
 };
