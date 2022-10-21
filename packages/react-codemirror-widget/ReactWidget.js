@@ -70,8 +70,6 @@ export class ReactWidget extends WidgetType {
 
     if (Array.isArray(this.element)) return false;
 
-    console.log(`dom[codemirror_view_symbol]:`, dom[codemirror_view_symbol]);
-
     dom[react_root_symbol].render(
       createElement(
         EditorViewContext.Provider,
