@@ -10,11 +10,14 @@ import {
   StateEffectType,
   StateField,
 } from "@codemirror/state";
-import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
-import { codeFolding, LanguageSupport, syntaxTree } from "@codemirror/language";
-import { javascript, javascriptLanguage } from "@codemirror/lang-javascript";
+import { Decoration, EditorView } from "@codemirror/view";
+import { codeFolding, syntaxTree } from "@codemirror/language";
 
 import { ReactWidget, useEditorView } from "react-codemirror-widget";
+import {
+  SyntaxTreeFacet,
+  full_syntax_tree_field,
+} from "@dral/codemirror-helpers";
 
 let fold_style = EditorView.theme({
   ".fold-me-daddy:not(.folded)": {
@@ -236,7 +239,9 @@ export let lezer_result_as_lezer_extensions = [
   what_to_fold,
   fold_style,
   atomic_spaces,
-  AllFoldsFacet.compute(["doc"], (state) => {
+
+  full_syntax_tree_field,
+  AllFoldsFacet.compute([SyntaxTreeFacet, full_syntax_tree_field], (state) => {
     let cursor = syntaxTree(state).cursor();
     /** @type {FoldableCall[]} */
     let ranges = [];

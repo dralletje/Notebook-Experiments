@@ -234,7 +234,6 @@ export let WhatToParseEditor = ({ viewupdate, parser, js_stuff }) => {
   );
 };
 
-// @ts-expect-error - Styled Components? Whyyy
 let ErrorBox = styled.div`
   color: rgb(181 181 181);
   background-color: #420000;
@@ -347,7 +346,6 @@ let run_cell_code = async (code, globals) => {
   return await f(...Object.values(globals));
 };
 
-// @ts-expect-error - Styled Components? Whyyy
 let GeneralEditorStyles = styled.div`
   height: 100%;
   font-family: var(--mono-font-family);
@@ -366,29 +364,6 @@ let GeneralEditorStyles = styled.div`
   }
 `;
 
-let NOISE_BACKGROUND = new URL(
-  "./noise-backgrounds/asfalt-light.png",
-  import.meta.url
-).href;
-// @ts-expect-error - Styled Components? Whyyy
-let PaneStyle = styled.div`
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 4px;
-
-  .cm-content,
-  .cm-gutters {
-    background-size: 50px 50px;
-    background-image: url("${NOISE_BACKGROUND}");
-
-    &.cm-gutters {
-      background-position: right;
-    }
-  }
-`;
-
-// @ts-expect-error - Styled Components? Whyyy
 let PaneHeader = styled.div`
   padding-top: 3px;
   padding-bottom: 4px;
@@ -405,6 +380,32 @@ let PaneHeader = styled.div`
   align-items: center;
 `;
 
+let NOISE_BACKGROUND = new URL(
+  "./noise-backgrounds/asfalt-light.png",
+  import.meta.url
+).href;
+let PaneStyle = styled.div`
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 4px;
+
+  ${PaneHeader} {
+    background-size: 50px 50px;
+    background-image: url("${NOISE_BACKGROUND}");
+  }
+
+  .cm-content,
+  .cm-gutters {
+    background-size: 50px 50px;
+    background-image: url("${NOISE_BACKGROUND}");
+
+    &.cm-gutters {
+      background-position: right;
+    }
+  }
+`;
+
 let Pane = ({ children, header, ...props }) => {
   return (
     <PaneStyle {...props}>
@@ -414,7 +415,6 @@ let Pane = ({ children, header, ...props }) => {
   );
 };
 
-// @ts-expect-error - Styled Components? Whyyy
 let AppGrid = styled.div`
   width: 100vw;
   height: 100vh;
@@ -434,7 +434,6 @@ let AppGrid = styled.div`
 `;
 
 // Thanks, https://loading.io/css/
-// @ts-expect-error - Styled Components? Whyyy
 let LoadingRingThing = styled.div`
   --size: 1em;
   --px: calc(var(--size) / 80);
@@ -532,7 +531,6 @@ let verify_imported = (imported, mod) => {
   return mod;
 };
 
-// @ts-expect-error - Styled Components? Whyyy
 let FillAndCenter = styled.div`
   height: 100%;
   width: 100%;
@@ -543,51 +541,6 @@ let FillAndCenter = styled.div`
 
   text-align: center;
 `;
-
-/**
- * @param {import("@lezer/common").TreeCursor} cursor
- * @param {import("./parsed-result-editor/CodemirrorInspector.jsx").RangeTuple} position
- * @returns {number[]}
- */
-let cursor_to_tree_position = (cursor, [from, to]) => {
-  // if (from !== to) {
-  //   to = to + 1;
-  // }
-  let positions = [];
-  parent: do {
-    let index = 0;
-    do {
-      if (cursor.from <= from && to <= cursor.to) {
-        // Very hacky way to make sure that if we are at the end of a node,
-        // and there is no next node right next to it,
-        // we want to select that node.
-        // HOWEVER, if there
-        if (cursor.to === to) {
-          if (cursor.nextSibling()) {
-            if (cursor.from === to && from === to) {
-              positions.push(index + 1);
-              continue parent;
-            } else {
-              cursor.prevSibling();
-              positions.push(index);
-              continue parent;
-            }
-          } else {
-            positions.push(index);
-            continue parent;
-          }
-        }
-
-        positions.push(index);
-        continue parent;
-      }
-      index++;
-    } while (cursor.nextSibling());
-    // throw new Error("Can't find position in tree");
-    break;
-  } while (cursor.firstChild());
-  return positions;
-};
 
 import { compact, range, sortBy, uniq } from "lodash";
 import {

@@ -30,7 +30,7 @@ import {
 } from "@codemirror/search";
 
 import { styleTags, tags as t } from "@lezer/highlight";
-import { DecorationsFromTree } from "@dral/dral-codemirror-helpers";
+import { DecorationsFromTree } from "@dral/codemirror-helpers";
 import { iterate_over_cursor } from "dral-lezer-helpers";
 
 export const customJsHighlight = styleTags({

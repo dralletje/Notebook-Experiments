@@ -6,12 +6,14 @@ import {
   LRLanguage,
   syntaxHighlighting,
   syntaxTree,
+  syntaxTreeAvailable,
 } from "@codemirror/language";
 import { search, searchKeymap } from "@codemirror/search";
 import {
   EditorState,
   RangeSetBuilder,
   RangeValue,
+  SelectionRange,
   Text,
   Transaction,
 } from "@codemirror/state";
@@ -35,7 +37,6 @@ import { iterate_over_cursor } from "dral-lezer-helpers";
 import { range } from "lodash";
 import {
   cursor_to_inspector_lang,
-  InspectorMetaFacet,
   inspector_meta_from_tree,
 } from "./cursor-to-inspector-lang.js";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
@@ -105,6 +106,28 @@ class WarningSignWidget extends ReactWidget {
     return true;
   }
 }
+
+/** @param {GenericViewUpdate} viewupdate */
+let useExplicitSelection = (viewupdate) => {
+  let last_explicit_selection = React.useRef(
+    /** @type {SelectionRange?} */ (null)
+  );
+
+  for (let transaction of viewupdate.transactions) {
+    let annotation = transaction.annotation(Transaction.userEvent);
+    if (
+      (annotation != null && annotation.startsWith("select")) ||
+      transaction.docChanged
+    ) {
+      last_explicit_selection.current = viewupdate.state.selection.main;
+    } else if (transaction.selection != null) {
+      // Not sure about this one yet,
+      // TODO Might want a specific annotation here
+      last_explicit_selection.current = null;
+    }
+  }
+  return last_explicit_selection.current;
+};
 
 class PositionRange extends RangeValue {}
 let POSITION_RANGE = new PositionRange();
@@ -188,6 +211,7 @@ export let ParsedResultEditor = ({
   let codemirror_ref = React.useRef(/** @type {any} */ (null));
 
   React.useLayoutEffect(() => {
+    let { anchor, head } = codemirror_ref.current.state.selection.main;
     codemirror_ref.current.dispatch({
       changes: {
         from: 0,
@@ -195,36 +219,66 @@ export let ParsedResultEditor = ({
         insert: parsed_as_js,
       },
       filter: false,
+      selection: {
+        anchor: Math.min(anchor, parsed_as_js.length),
+        head: Math.min(head, parsed_as_js.length),
+      },
+      scrollIntoView: true,
     });
   }, [parsed_as_js]);
 
   // Highlight the node that is currently selected in the what-to-parse editor
+  let code_to_parse_selection = useExplicitSelection(code_to_parse_viewupdate);
   React.useEffect(() => {
-    for (let transaction of code_to_parse_viewupdate.transactions) {
-      let annotation = transaction.annotation(Transaction.userEvent);
-      if (annotation == null || !annotation.startsWith("select")) return;
+    let idle_callback = 0;
+    // Hacky solution to wait for syntaxTree to become available
+    let try_parse = () => {
+      idle_callback = window.requestIdleCallback(() => {
+        let selection = code_to_parse_selection;
 
-      let selection = code_to_parse_viewupdate.state.selection.main;
-      let meta = codemirror_ref.current.state.facet(InspectorMetaFacet);
-      for (let index of range(meta.length - 1, -1)) {
-        let {
-          original: [from, to],
-          cursor,
-        } = meta[index];
-        if (from <= selection.from && selection.to <= to) {
-          codemirror_ref.current.dispatch({
-            selection: {
-              anchor: cursor[0],
-              head: cursor[1],
-            },
-            scrollIntoView: true,
-            effects: [FoldAllEffect.of(null)],
-          });
-          return;
+        if (!syntaxTreeAvailable(codemirror_ref.current.state)) {
+          return try_parse();
         }
-      }
-    }
-  }, [code_to_parse_viewupdate]);
+
+        if (selection == null) return try_parse();
+
+        let tree = syntaxTree(codemirror_ref.current.state);
+        let meta = inspector_meta_from_tree(
+          codemirror_ref.current.state.doc,
+          tree
+        );
+
+        for (let index of range(meta.length - 1, -1)) {
+          let {
+            original: [from, to],
+            cursor,
+          } = meta[index];
+          if (from <= selection.from && selection.to <= to) {
+            let current_selection = codemirror_ref.current.state.selection.main;
+            if (
+              current_selection.from !== from ||
+              current_selection.to !== to
+            ) {
+              codemirror_ref.current.dispatch({
+                effects: [FoldAllEffect.of(null)],
+              });
+              codemirror_ref.current.dispatch({
+                selection: {
+                  anchor: cursor[0],
+                  head: cursor[1],
+                },
+                scrollIntoView: true,
+                effects: [FoldAllEffect.of(null)],
+              });
+            }
+            return;
+          }
+        }
+      });
+    };
+    try_parse();
+    return () => window.cancelIdleCallback(idle_callback);
+  }, [code_to_parse_viewupdate, code_to_parse_selection]);
 
   // Other way around: highlight the node in the what-to-parse editor that is currently selected in the parsed editor
   let update_what_to_code_selection = React.useMemo(() => {
@@ -233,7 +287,8 @@ export let ParsedResultEditor = ({
         let annotation = transaction.annotation(Transaction.userEvent);
         if (annotation == null || !annotation.startsWith("select")) return;
 
-        let meta = update.view.state.facet(InspectorMetaFacet);
+        let tree = syntaxTree(update.state);
+        let meta = inspector_meta_from_tree(update.view.state.doc, tree);
         let selection = update.view.state.selection.main;
         for (let index of range(meta.length - 1, -1)) {
           let {
@@ -258,7 +313,6 @@ export let ParsedResultEditor = ({
       <Extension extension={hide_positions} />
 
       <Extension extension={update_what_to_code_selection} />
-      <Extension extension={inspector_meta_from_tree} />
     </CodeMirror>
   );
 };

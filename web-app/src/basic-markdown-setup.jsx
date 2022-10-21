@@ -30,7 +30,7 @@ import emoji from "node-emoji";
 
 import { IonIcon } from "@ionic/react";
 import { eyeOutline, eye } from "ionicons/icons";
-import { DecorationsFromTree } from "@dral/dral-codemirror-helpers";
+import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
 let markdown_styling_base_theme = EditorView.baseTheme({
   "& .cm-content": {

@@ -1,5 +1,5 @@
 {
-  "name": "@dral/dral-codemirror-helpers",
+  "name": "@dral/codemirror-helpers",
   "version": "1.0.0",
   "description": "",
   "main": "dral-codemirror-helpers.js",

@@ -1,32 +1,32 @@
 @top Inspected { Node }
 
+Name { name }
+Node {
+  ( Error | String | Name )
+  meta?
+  Arguments?
+}
+Error { "⚠️" }
+Arguments { "{" (Node)* "}" }
+
 meta {
   Props?
   Position
 }
-Name { name }
 Props {
   "["
-  Prop {
-    PropName { "@" name }
-    "="
-    PropValue { Name | String }
-  }+
+  Prop ("," Prop)*
   "]"
+}
+Prop {
+  PropName { "@"? name }
+  "="
+  PropValue { Name | String }
 }
 Position {
   "<" Number "," Number ">"
 }
 
-Node {
-  Error meta? |
-  String meta? |
-  Name meta? Arguments |
-  Name meta?
-  
-}
-Error { "⚠️" }
-Arguments { "{" (Node)* "}" }
 
 @skip { spaces | newline | tabs }
 

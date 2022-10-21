@@ -1,8 +1,7 @@
-import { syntaxTree } from "@codemirror/language";
-import { Facet } from "@codemirror/state";
+import { Text } from "@codemirror/state";
 import { iterate_over_cursor } from "dral-lezer-helpers";
 import { tags, getStyleTags } from "@lezer/highlight";
-import { TreeCursor } from "@lezer/common";
+import { Tree, TreeCursor } from "@lezer/common";
 
 /**
  * @typedef CursorMapping
@@ -13,45 +12,38 @@ import { TreeCursor } from "@lezer/common";
  */
 
 /**
- * @type {Facet<CursorMapping[], CursorMapping[]>} */
-export let InspectorMetaFacet = Facet.define({
-  combine: (values) => values[0],
-});
+ * @param {Text} doc
+ * @param {Tree} tree
+ */
+export let inspector_meta_from_tree = (doc, tree) => {
+  /** @type {CursorMapping[]} */
+  let selectable_nodes = [];
+  iterate_over_cursor({
+    cursor: tree.cursor(),
+    enter: (cursor) => {
+      if (cursor.name === "Node") {
+        let node = cursor.node;
+        let position_node = node.getChild("Position");
+        if (!position_node) return;
+        let [from_str, to_str] = position_node.getChildren("Number");
+        if (!from_str || !to_str) return;
 
-export let inspector_meta_from_tree = InspectorMetaFacet.compute(
-  ["doc"],
-  (state) => {
-    let tree = syntaxTree(state);
-    let doc = state.doc;
-    /** @type {CursorMapping[]} */
-    let selectable_nodes = [];
-    iterate_over_cursor({
-      cursor: tree.cursor(),
-      enter: (cursor) => {
-        if (cursor.name === "Node") {
-          let node = cursor.node;
-          let position_node = node.getChild("Position");
-          if (!position_node) return;
-          let [from_str, to_str] = position_node.getChildren("Number");
-          if (!from_str || !to_str) return;
-
-          if (cursor.firstChild()) {
-            // Name
-            selectable_nodes.push({
-              cursor: [cursor.from, cursor.to],
-              original: [
-                Number(doc.sliceString(from_str.from, from_str.to)),
-                Number(doc.sliceString(to_str.from, to_str.to)),
-              ],
-            });
-            cursor.parent();
-          }
+        if (cursor.firstChild()) {
+          // Name
+          selectable_nodes.push({
+            cursor: [cursor.from, cursor.to],
+            original: [
+              Number(doc.sliceString(from_str.from, from_str.to)),
+              Number(doc.sliceString(to_str.from, to_str.to)),
+            ],
+          });
+          cursor.parent();
         }
-      },
-    });
-    return selectable_nodes;
-  }
-);
+      }
+    },
+  });
+  return selectable_nodes;
+};
 
 let tags_map = new Map(
   Object.entries(tags)
@@ -76,6 +68,8 @@ let tag_to_string = (tag) => {
   }
 };
 
+let tree_to_inspector_lang_weakmap = new WeakMap();
+
 /** @param {TreeCursor} cursor */
 export let cursor_to_inspector_lang = (cursor) => {
   let lines = [];
@@ -84,8 +78,7 @@ export let cursor_to_inspector_lang = (cursor) => {
   if (cursor.type.isError) {
     current_line += `⚠️`;
   } else if (cursor.type.isAnonymous) {
-    console.log(`cursor:`, cursor);
-    throw new Error("Got a cursor with an anonymous type");
+    current_line += `🔘`;
   } else {
     if (/^[A-Z_$][a-zA-Z_$0-9]*$/.test(cursor.name)) {
       current_line += cursor.name;
@@ -94,27 +87,56 @@ export let cursor_to_inspector_lang = (cursor) => {
     }
   }
 
+  let tags = [];
+
   let style_tags = getStyleTags(cursor);
   if (style_tags != null && style_tags.tags.length !== 0) {
-    current_line += ` [@style="${style_tags.tags
-      .map((tag) => tag_to_string(tag))
-      .join(", ")}"]`;
+    tags.push([
+      "style",
+      style_tags.tags.map((tag) => tag_to_string(tag)).join(", "),
+    ]);
+  }
+
+  if (cursor.tree != null) {
+    if (tree_to_inspector_lang_weakmap.has(cursor.tree)) {
+      tags.push(["tree", "refurbished"]);
+    } else {
+      tags.push(["tree", "fresh"]);
+    }
+  }
+
+  if (tags.length > 0) {
+    current_line += ` [${tags.map(([k, v]) => `${k}="${v}"`).join(", ")}]`;
   }
 
   current_line += `<${cursor.from},${cursor.to}>`;
 
   if (cursor.firstChild()) {
     lines.push(current_line + " {");
-    try {
-      do {
-        let { lines: sub_lines } = cursor_to_inspector_lang(cursor);
-        for (let line of sub_lines) {
-          lines.push(`  ${line}`);
-        }
-      } while (cursor.nextSibling());
-    } finally {
-      cursor.parent();
+
+    let child_lines = [];
+    if (
+      cursor.tree != null &&
+      tree_to_inspector_lang_weakmap.has(cursor.tree)
+    ) {
+      child_lines = tree_to_inspector_lang_weakmap.get(cursor.tree);
+    } else {
+      try {
+        do {
+          let { lines: sub_lines } = cursor_to_inspector_lang(cursor);
+          for (let line of sub_lines) {
+            child_lines.push(`  ${line}`);
+          }
+        } while (cursor.nextSibling());
+      } finally {
+        cursor.parent();
+      }
+      if (cursor.tree != null) {
+        tree_to_inspector_lang_weakmap.set(cursor.tree, child_lines);
+      }
     }
+
+    lines = lines.concat(child_lines);
     lines.push("}");
   } else {
     lines.push(current_line);
