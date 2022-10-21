@@ -38,14 +38,4 @@ h6 {
 
 button {
   all: unset;
-  cursor: pointer;
-  font-weight: bold;
-  color: white;
-  border: solid 3px white;
-  padding: 0.1em 0.4em;
-  user-select: none;
-}
-button:hover {
-  background-color: white;
-  color: black;
 }

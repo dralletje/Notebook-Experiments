@@ -2,10 +2,19 @@ import { defaultKeymap } from "@codemirror/commands";
 import {
   bracketMatching,
   HighlightStyle,
+  LanguageSupport,
+  LRLanguage,
   syntaxHighlighting,
+  syntaxTree,
 } from "@codemirror/language";
 import { search, searchKeymap } from "@codemirror/search";
-import { EditorState, Prec } from "@codemirror/state";
+import {
+  EditorState,
+  RangeSetBuilder,
+  RangeValue,
+  Text,
+  Transaction,
+} from "@codemirror/state";
 import {
   Decoration,
   drawSelection,
@@ -13,12 +22,23 @@ import {
   keymap,
   placeholder,
 } from "@codemirror/view";
-import { DecorationsFromTree } from "@dral/dral-codemirror-helpers";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import React from "react";
 import { dot_gutter } from "../codemirror-dot-gutter.jsx";
 import { tags as t } from "@lezer/highlight";
-import { lezer_as_javascript_plugins } from "./CodemirrorInspector.jsx";
+import {
+  FoldAllEffect,
+  lezer_result_as_lezer_extensions,
+} from "./CodemirrorInspector.jsx";
+import { parser as inspector_parser } from "@dral/lezer-inspector";
+import { iterate_over_cursor } from "dral-lezer-helpers";
+import { range } from "lodash";
+import {
+  cursor_to_inspector_lang,
+  InspectorMetaFacet,
+  inspector_meta_from_tree,
+} from "./cursor-to-inspector-lang.js";
+import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 
 let base_extensions = [
   EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
@@ -37,57 +57,92 @@ let base_extensions = [
   keymap.of(searchKeymap),
 ];
 
-let Decorate_New_Error = Prec.highest(
-  DecorationsFromTree(({ cursor, mutable_decorations }) => {
-    if (cursor.name === "NewExpression") {
-      mutable_decorations.push(
-        Decoration.mark({ class: "error" }).range(cursor.from, cursor.to)
-      );
-    }
+let inspector_lang = new LanguageSupport(
+  LRLanguage.define({
+    // @ts-ignore
+    parser: inspector_parser,
   })
 );
 
-let lezer_result_syntax_classes = EditorView.theme({
-  ".very-important": { color: "#ffb4fb", fontWeight: 700 },
-  ".important": { color: "#ffb4fb" },
-  ".boring": { color: "#2c402d" },
-  ".property": { color: "#cb00d7" },
-  ".variable": { color: "#0d6801" },
-  ".literal": { color: "#00c66d" },
+let lezer_syntax_classes = EditorView.theme({
+  ".very-important": { color: "#947eff", fontWeight: 700 },
+  ".important": { color: "#947eff" },
+  ".boring": { color: "#414141", opacity: 0.5 },
+  ".property": { color: "#096e5a" },
+  ".variable": { color: "#04a0fa" },
+  ".literal": { color: "#53f1de" },
   ".comment": { color: "#747474", fontStyle: "italic" },
-  ".error": { color: "#860101", fontStyle: "italic" },
+  ".error": { color: "#ff0000", fontWeight: "bold" },
+
+  // Just boring
+  ".cm-content": { color: "#414141" },
+
+  ".boring.literal": { color: "#688f03" },
+  ".boring.property": { color: "#04a0fa" },
 });
 
-let my_highlighting = [
-  lezer_result_syntax_classes,
-  syntaxHighlighting(
-    HighlightStyle.define([
-      { tag: t.string, class: "literal" },
-      { tag: t.variableName, class: "variable" },
-      { tag: t.punctuation, class: "boring" },
-    ])
-  ),
+let highlight_extension = syntaxHighlighting(
+  HighlightStyle.define([
+    { tag: t.string, class: "literal" },
+    { tag: t.invalid, class: "error" },
+    { tag: t.punctuation, class: "boring" },
+    { tag: t.variableName, class: "variable" },
+    { tag: t.propertyName, class: "property" },
+    { tag: t.meta, class: "boring" },
+  ])
+);
+
+class PositionRange extends RangeValue {}
+let POSITION_RANGE = new PositionRange();
+let hide_positions = [
+  EditorView.decorations.compute(["doc"], (state) => {
+    let decorations = [];
+    iterate_over_cursor({
+      cursor: syntaxTree(state).cursor(),
+      enter: (cursor) => {
+        if (cursor.name === "Position") {
+          decorations.push(
+            Decoration.replace({}).range(cursor.from, cursor.to)
+          );
+        }
+      },
+    });
+    return Decoration.set(decorations);
+  }),
+  EditorView.atomicRanges.of((view) => {
+    let ranges = new RangeSetBuilder();
+    iterate_over_cursor({
+      cursor: syntaxTree(view.state).cursor(),
+      enter: (cursor) => {
+        if (cursor.name === "Position") {
+          // +1 in so the space after it also is in the range,
+          // meaning there won't be an awkward second cursor move necessary
+          ranges.add(cursor.from, cursor.to + 1, POSITION_RANGE);
+        }
+      },
+    });
+    return ranges.finish();
+  }),
 ];
 
 /**
  * @param {{
  *  code_to_parse: string,
  *  parser: import("@lezer/lr").LRParser,
- *  cursor_to_javascript: import("./cursor-to-javascript.js").cursor_to_javascript,
+ *  code_to_parse_viewupdate: GenericViewUpdate,
+ *  onSelection: (selection: readonly [number, number]) => void,
  * }} props
  */
-export let _ParsedResultEditor = ({
+export let ParsedResultEditor = ({
   code_to_parse,
   parser,
-  cursor_to_javascript,
+  onSelection,
+  code_to_parse_viewupdate,
 }) => {
   let parsed_as_js = React.useMemo(() => {
-    try {
-      let tree = parser.parse(code_to_parse);
-      return cursor_to_javascript(tree.cursor());
-    } catch (error) {
-      return error.message;
-    }
+    let tree = parser.parse(code_to_parse);
+    let { lines } = cursor_to_inspector_lang(tree.cursor());
+    return Text.of(lines);
   }, [parser, code_to_parse]);
 
   let initial_editor_state = React.useMemo(() => {
@@ -111,29 +166,67 @@ export let _ParsedResultEditor = ({
     });
   }, [parsed_as_js]);
 
+  // Highlight the node that is currently selected in the what-to-parse editor
+  React.useEffect(() => {
+    for (let transaction of code_to_parse_viewupdate.transactions) {
+      let annotation = transaction.annotation(Transaction.userEvent);
+      if (annotation == null || !annotation.startsWith("select")) return;
+
+      let selection = code_to_parse_viewupdate.state.selection.main;
+      let meta = codemirror_ref.current.state.facet(InspectorMetaFacet);
+      for (let index of range(meta.length - 1, -1)) {
+        let {
+          original: [from, to],
+          cursor,
+        } = meta[index];
+        if (from <= selection.from && selection.to <= to) {
+          codemirror_ref.current.dispatch({
+            selection: {
+              anchor: cursor[0],
+              head: cursor[1],
+            },
+            scrollIntoView: true,
+            effects: [FoldAllEffect.of(null)],
+          });
+          return;
+        }
+      }
+    }
+  }, [code_to_parse_viewupdate]);
+
+  // Other way around: highlight the node in the what-to-parse editor that is currently selected in the parsed editor
+  let update_what_to_code_selection = React.useMemo(() => {
+    return EditorView.updateListener.of((update) => {
+      for (let transaction of update.transactions) {
+        let annotation = transaction.annotation(Transaction.userEvent);
+        if (annotation == null || !annotation.startsWith("select")) return;
+
+        let meta = update.view.state.facet(InspectorMetaFacet);
+        let selection = update.view.state.selection.main;
+        for (let index of range(meta.length - 1, -1)) {
+          let {
+            original,
+            cursor: [from, to],
+          } = meta[index];
+          if (from <= selection.from && selection.to <= to) {
+            onSelection(original);
+            return;
+          }
+        }
+      }
+    });
+  }, [onSelection]);
+
   return (
     <CodeMirror ref={codemirror_ref} state={initial_editor_state}>
-      <Extension extension={Decorate_New_Error} />
-      <Extension extension={my_highlighting} />
-      <Extension extension={lezer_as_javascript_plugins} />
+      <Extension extension={inspector_lang} />
+      <Extension extension={highlight_extension} />
+      <Extension extension={lezer_result_as_lezer_extensions} />
+      <Extension extension={lezer_syntax_classes} />
+      <Extension extension={hide_positions} />
+
+      <Extension extension={update_what_to_code_selection} />
+      <Extension extension={inspector_meta_from_tree} />
     </CodeMirror>
-  );
-};
-
-let CursorToJavascriptHOC = React.lazy(() =>
-  import("./higher-order-component-to-import-prettier.jsx")
-);
-
-/** @param {Omit<Parameters<_ParsedResultEditor>[0], "cursor_to_javascript">} props */
-export let ParsedResultEditor = (props) => {
-  return (
-    <CursorToJavascriptHOC>
-      {(cursor_to_javascript) => (
-        <_ParsedResultEditor
-          {...props}
-          cursor_to_javascript={cursor_to_javascript}
-        />
-      )}
-    </CursorToJavascriptHOC>
   );
 };

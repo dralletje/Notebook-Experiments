@@ -1,0 +1,43 @@
+@top Inspected { Node }
+
+meta {
+  Props?
+  Position
+}
+Name { name }
+Props {
+  "["
+  Prop {
+    PropName { "@" name }
+    "="
+    PropValue { Name | String }
+  }+
+  "]"
+}
+Position {
+  "<" Number "," Number ">"
+}
+
+Node {
+  Error meta? |
+  String meta? |
+  Name meta? Arguments |
+  Name meta?
+  
+}
+Error { "⚠️" }
+Arguments { "{" (Node)* "}" }
+
+@skip { spaces | newline | tabs }
+
+@tokens {
+  name { @asciiLetter+ }
+  Number { @digit+ }
+  String { '"' (![\\\n"] | "\\" _)* '"' }
+  newline { $[\r\n] }
+  spaces { " "+ }
+  tabs { "\t"+ }
+  commas { "," }
+}
+
+@external propSource inspectorHighlight from "./highlight"

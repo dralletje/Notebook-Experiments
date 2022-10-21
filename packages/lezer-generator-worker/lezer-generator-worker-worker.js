@@ -1,5 +1,7 @@
 import { handleCalls } from "@dral/worker-typescript-magic/import-in-worker.js";
-import { buildParserFile } from "@dral/lezer-generator";
+// import { buildParserFile } from "@dral/lezer-generator";
+
+import { buildParserFile } from "@lezer/generator";
 
 let commands = {
   /**

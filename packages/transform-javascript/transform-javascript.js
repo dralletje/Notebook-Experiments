@@ -38,7 +38,7 @@ export function transform_code(code, { filename }) {
         });
       },
     },
-    tabWidth: 2,
+    // tabWidth: 2,
     sourceFileName: filename,
   });
 
@@ -64,7 +64,7 @@ export function transform_code(code, { filename }) {
   // ....     `
   // .... which is very wrong
   let result = prettyPrint(ast, {
-    tabWidth: 0,
+    // tabWidth: 0,
     sourceMapName: "map.json",
   });
   // let result = print(ast, {});

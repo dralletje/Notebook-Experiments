@@ -208,10 +208,24 @@ let character_width_listener = EditorView.updateListener.of((viewupdate) => {
   }
 });
 
+// When your cursor is just after a soft-wrap, and you press [space], codemirror will trigger a
+// "\n" inputHandler, followed by a " " inputHandler.
+// Turns out, "\n" inputHandlers normally don't happen: pressing [enter] will skip this entirely.
+// So I think it is safe to assume that if we get a "\n" inputHandler, it is because of a soft-wrap, and I can cancel it.
+let block_creation_of_weird_newlines = EditorView.inputHandler.of(
+  (view, from, to, text) => {
+    if (text === "\n") {
+      return true;
+    }
+    return false;
+  }
+);
+
 export let awesome_line_wrapping = [
   EditorView.lineWrapping,
   base_theme,
   extra_cycle_character_width,
   character_width_listener,
   line_wrapping_decorations,
+  block_creation_of_weird_newlines,
 ];

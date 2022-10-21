@@ -140,7 +140,16 @@ export let CodemirrorFromViewUpdate = React.forwardRef(
       last_viewupdate_ref.current = viewupdate;
 
       if (viewupdate.transactions.length > 0) {
-        editorview_ref.current.update(viewupdate.transactions);
+        if (
+          viewupdate.transactions[0].startState !== editorview_ref.current.state
+        ) {
+          // TODO Now just warning, might need to `.setState`?
+          console.warn(`ViewUpdate is not in sync with the EditorView`);
+          editorview_ref.current.setState(viewupdate.state);
+          // editorview_ref.current.update(viewupdate.transactions);
+        } else {
+          editorview_ref.current.update(viewupdate.transactions);
+        }
       }
     }, [viewupdate]);
 

@@ -1,6 +1,6 @@
 import React from "react";
 import styled from "styled-components";
-import { EditorState } from "@codemirror/state";
+import { EditorState, StateEffect } from "@codemirror/state";
 import {
   Decoration,
   drawSelection,
@@ -13,6 +13,7 @@ import {
   bracketMatching,
   LanguageSupport,
   LRLanguage,
+  syntaxTree,
 } from "@codemirror/language";
 import { closeBrackets } from "@codemirror/autocomplete";
 import {
@@ -39,7 +40,6 @@ import { TransformJavascriptWorker } from "@dral/dralbook-transform-javascript/w
 import { basic_javascript_setup } from "../../codemirror-javascript-setup.js";
 ////////////////////
 
-import { let_me_know_what_node_i_clicked } from "./parsed-result-editor/CodemirrorInspector.jsx";
 import { ParsedResultEditor } from "./parsed-result-editor/parsed-result-editor.jsx";
 import { lezer_syntax_extensions } from "./editors/lezer-editor.js";
 import {
@@ -68,32 +68,18 @@ import "./App.css";
 let base_extensions = [
   EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
   dot_gutter,
-
-  // Make awesome line wrapping indent wrapped lines a liiiiitle bit (1 character) more than the first line
-  // TODO Doesn't seem to work in result editor... (actually shifts every line by 1 character? Weird)
-  // EditorView.theme({
-  //   ".awesome-wrapping-plugin-the-line": {
-  //     "margin-left": "calc(var(--indented) + 1ch)",
-  //     "text-indent": "calc(-1 * var(--indented) - 1ch)",
-  //   },
-  // }),
-
   EditorState.tabSize.of(2),
   placeholder("The rest is still unwritten..."),
   bracketMatching({}),
   closeBrackets(),
   highlightSelectionMatches(),
-  // keymap.of(defaultKeymap),
+  keymap.of(defaultKeymap),
   drawSelection({ cursorBlinkRate: 0 }),
 
   search({
     caseSensitive: false,
     top: true,
   }),
-
-  // COUGH SHARED HITORY COUGH
-  // history(),
-  // keymap.of(historyKeymap),
   keymap.of(searchKeymap),
 ];
 
@@ -182,6 +168,14 @@ export let JavascriptStuffEditor = ({ viewupdate, error }) => {
 /** @type {Array<import("@codemirror/state").Extension>} */
 let NO_EXTENSIONS = [];
 
+let what_to_parse_theme = [
+  EditorView.theme({
+    ".cm-selectionMatch": {
+      "text-shadow": "0 0 13px rgb(255 255 255 / 70%) !important",
+    },
+  }),
+];
+
 /**
  * @param {{
  *  viewupdate: import("codemirror-x-react/viewupdate.js").GenericViewUpdate,
@@ -195,23 +189,13 @@ export let WhatToParseEditor = ({ viewupdate, parser, js_stuff }) => {
 
   let parser_extension = React.useMemo(() => {
     if (parser) {
-      let language = LRLanguage.define({
-        // @ts-ignore
-        parser: parser,
-      });
+      // @ts-ignore
+      let language = LRLanguage.define({ parser: parser });
       return new LanguageSupport(language);
     } else {
       return EditorView.updateListener.of(() => {});
     }
   }, [parser]);
-
-  // let on_change_extension = React.useMemo(() => {
-  //   return EditorView.updateListener.of((update) => {
-  //     if (update.docChanged) {
-  //       onChange(update.state.doc.toString());
-  //     }
-  //   });
-  // }, [onChange]);
 
   let custom_extensions = js_result?.extensions ?? NO_EXTENSIONS;
 
@@ -226,6 +210,18 @@ export let WhatToParseEditor = ({ viewupdate, parser, js_stuff }) => {
     throw exception;
   }
 
+  // Try adding the parser extension to the list of extensions to see if it doesn't error.
+  // If it does, we throw the error to the error boundary.
+  // This is necessary because an error on the state/extension side would otherwise kill the whole app
+  // (because it would be thrown from the Nexus state...)
+  React.useMemo(() => {
+    if (custom_extensions != null) {
+      viewupdate.startState.update({
+        effects: StateEffect.appendConfig.of(custom_extensions),
+      }).state;
+    }
+  }, [custom_extensions]);
+
   return (
     <CodemirrorFromViewUpdate viewupdate={viewupdate}>
       <Extension extension={base_extensions} />
@@ -233,8 +229,7 @@ export let WhatToParseEditor = ({ viewupdate, parser, js_stuff }) => {
       <Extension extension={custom_extensions} />
       <Extension extension={exceptionSinkExtension} />
       <Extension extension={awesome_line_wrapping} />
-
-      <Extension extension={let_me_know_what_node_i_clicked} />
+      <Extension extension={what_to_parse_theme} />
     </CodemirrorFromViewUpdate>
   );
 };
@@ -286,6 +281,7 @@ class WhatToParseEditorWithErrorBoundary extends React.Component {
     if (this.last_js_stuff != this.props.js_stuff) {
       this.last_js_stuff = this.props.js_stuff;
       if (component_error != null) {
+        // React will whine about this, but it's fine.
         this.setState({ component_error: null });
       }
     }
@@ -312,7 +308,11 @@ class WhatToParseEditorWithErrorBoundary extends React.Component {
         }}
       >
         <div style={{ flex: 1, minHeight: 0 }}>
-          <WhatToParseEditor {...props} js_stuff={js_stuff_safe} />
+          <WhatToParseEditor
+            key={js_stuff_safe != null ? "error" : "fine"}
+            {...props}
+            js_stuff={js_stuff_safe}
+          />
         </div>
 
         {errors_with_component_error.length > 0 && (
@@ -350,8 +350,7 @@ let run_cell_code = async (code, globals) => {
 // @ts-expect-error - Styled Components? Whyyy
 let GeneralEditorStyles = styled.div`
   height: 100%;
-  font-family: Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro",
-    monospace;
+  font-family: var(--mono-font-family);
 
   & .cm-scroller {
     /* padding-left: 16px; */
@@ -425,11 +424,15 @@ let AppGrid = styled.div`
   border: solid 8px black;
   background-color: black;
 
+  /* Because we have a header bar */
+  border-top: 0;
+
   display: grid;
   grid-template:
-    "what-to-parse-editor  ↑       parsed-result " minmax(0, 1fr)
-    " ←                    █                  →  " 8px
-    "lezer-editor          ↓   javascript-stuff  " minmax(0, 1fr)
+    " header              header           header " 30px
+    " what-to-parse-editor  ↑       parsed-result " minmax(0, 1fr)
+    "  ←                    █                  →  " 8px
+    " lezer-editor          ↓    javascript-stuff " minmax(0, 1fr)
     / 1fr 8px 1fr;
 `;
 
@@ -544,8 +547,54 @@ let FillAndCenter = styled.div`
   text-align: center;
 `;
 
-import { compact } from "lodash";
+/**
+ * @param {import("@lezer/common").TreeCursor} cursor
+ * @param {import("./parsed-result-editor/CodemirrorInspector.jsx").RangeTuple} position
+ * @returns {number[]}
+ */
+let cursor_to_tree_position = (cursor, [from, to]) => {
+  // if (from !== to) {
+  //   to = to + 1;
+  // }
+  let positions = [];
+  parent: do {
+    let index = 0;
+    do {
+      if (cursor.from <= from && to <= cursor.to) {
+        // Very hacky way to make sure that if we are at the end of a node,
+        // and there is no next node right next to it,
+        // we want to select that node.
+        // HOWEVER, if there
+        if (cursor.to === to) {
+          if (cursor.nextSibling()) {
+            if (cursor.from === to && from === to) {
+              positions.push(index + 1);
+              continue parent;
+            } else {
+              cursor.prevSibling();
+              positions.push(index);
+              continue parent;
+            }
+          } else {
+            positions.push(index);
+            continue parent;
+          }
+        }
+
+        positions.push(index);
+        continue parent;
+      }
+      index++;
+    } while (cursor.nextSibling());
+    // throw new Error("Can't find position in tree");
+    break;
+  } while (cursor.firstChild());
+  return positions;
+};
+
+import { compact, range, sortBy, uniq } from "lodash";
 import {
+  CellHasSelectionField,
   create_nested_editor_state,
   NestedEditorStatesField,
   NestedExtension,
@@ -602,10 +651,6 @@ let Editor = ({ project_name }) => {
 
         // This works so smooth omg
         [shared_history(), keymap.of(historyKeymap)],
-
-        // NestedExtension.of(
-        //   EditorView.scrollMargins.of(() => ({ top: 100, bottom: 100 }))
-        // ),
       ],
     });
   }, []);
@@ -821,6 +866,47 @@ let Editor = ({ project_name }) => {
 
   let parser_in_betweens = useMemoizeSuccess(parser);
 
+  let code_to_parse_state = code_to_parse_viewupdate.state;
+  let code_to_parse_has_selection = code_to_parse_state.field(
+    CellHasSelectionField
+  );
+  let code_to_parse_selection = React.useMemo(() => {
+    if (code_to_parse_has_selection) {
+      return /** @type {const} */ ([
+        code_to_parse_state.selection.main.from,
+        code_to_parse_state.selection.main.to,
+      ]);
+    } else {
+      return null;
+    }
+  }, [code_to_parse_has_selection, code_to_parse_state.selection]);
+
+  // Add a class to the body whenever the mouse is held down
+  React.useEffect(() => {
+    let mouse_down_listener = () => {
+      document.body.classList.add("mouse-down");
+    };
+    let mouse_up_listener = () => {
+      document.body.classList.remove("mouse-down");
+    };
+    document.addEventListener("mousedown", mouse_down_listener);
+    document.addEventListener("mouseup", mouse_up_listener);
+    return () => {
+      document.removeEventListener("mousedown", mouse_down_listener);
+      document.removeEventListener("mouseup", mouse_up_listener);
+    };
+  }, []);
+
+  let onSelection = React.useCallback(
+    (/** @type {readonly [Number, number]} */ [from, to]) => {
+      code_to_parse_viewupdate.view.dispatch({
+        selection: { anchor: to, head: from },
+        scrollIntoView: true,
+      });
+    },
+    []
+  );
+
   return (
     <AppGrid>
       <Pane
@@ -905,8 +991,10 @@ let Editor = ({ project_name }) => {
           >
             {parser_in_betweens instanceof Success ? (
               <ParsedResultEditor
+                code_to_parse_viewupdate={code_to_parse_viewupdate}
                 parser={parser_in_betweens.value}
                 code_to_parse={code_to_parse}
+                onSelection={onSelection}
               />
             ) : parser_in_betweens instanceof Failure ? (
               <FillAndCenter>
@@ -950,6 +1038,154 @@ let Editor = ({ project_name }) => {
           }}
         />
       ))}
+
+      <div
+        style={{
+          gridArea: "header",
+          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        <span
+          style={{
+            flex: 1,
+            alignSelf: "stretch",
+            display: "flex",
+            alignItems: "stretch",
+          }}
+        >
+          <ProjectsDropdown />
+        </span>
+        <span style={{ fontWeight: "bold" }}>Lezer Playground</span>
+        <span style={{ flex: 1 }}></span>
+      </div>
     </AppGrid>
+  );
+};
+
+// @ts-expect-error
+let ProjectDropdownStyle = styled.div`
+  position: relative;
+
+  button {
+    border: none;
+    height: 100%;
+    padding: 0 8px;
+    font-weight: normal;
+
+    body:not(.mouse-down) &:hover {
+      background-color: white;
+      color: black;
+    }
+  }
+
+  .menu {
+    display: flex;
+    background-color: black;
+    min-width: 150px;
+    font-size: 16px;
+
+    flex-direction: column;
+
+    border: solid 4px white;
+
+    a {
+      padding: 8px 16px;
+      white-space: pre;
+      cursor: pointer;
+      font-family: var(--mono-font-family);
+
+      border-top: solid white 2px;
+      &:first-child {
+        border-top: none;
+      }
+
+      &.active {
+        cursor: unset;
+        color: #37ff61;
+        font-weight: bold;
+        background-color: #323232;
+      }
+
+      &:not(.active):hover {
+        background-color: white;
+        color: black;
+      }
+    }
+  }
+
+  .help {
+    width: 300px;
+    background-color: black;
+    font-size: 16px;
+    padding: 16px;
+    border: solid 4px white;
+    border-left: none;
+  }
+
+  .dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+
+    flex-direction: row;
+  }
+
+  body:not(.mouse-down) &:has(button:hover),
+  &:has(.dropdown:hover) {
+    .dropdown {
+      display: flex;
+    }
+    button {
+      background-color: white;
+      color: black;
+    }
+  }
+`;
+
+/** @param {Storage} storage */
+let storage_keys = function* (storage) {
+  for (let i of range(0, storage.length)) {
+    let key = storage.key(i);
+    if (key != null) {
+      yield key;
+    }
+  }
+};
+
+let ProjectsDropdown = () => {
+  let path = window.location.pathname;
+
+  let project_names = sortBy(
+    uniq(
+      Array.from(storage_keys(localStorage))
+        .map((x) => x.split("."))
+        .filter((x) => x[0] === "lezer-playground")
+        .map((x) => x[1])
+    )
+  );
+
+  return (
+    <ProjectDropdownStyle>
+      <button>projects</button>
+      <div className="dropdown">
+        <div className="menu">
+          {project_names.map((project_name) => (
+            <a
+              className={path === project_name ? "active" : ""}
+              key={project_name}
+              href={project_name}
+            >
+              {project_name}
+            </a>
+          ))}
+        </div>
+        <div className="help">
+          To open a new project, change the path to something not listed here.
+        </div>
+      </div>
+    </ProjectDropdownStyle>
   );
 };

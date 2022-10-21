@@ -17,7 +17,7 @@
     "@codemirror/view": "^6.2.0",
     "@ionic/react": "^6.2.7",
     "@lezer/common": "^1.0.1",
-    "@lezer/generator": "lezer-parser/generator",
+    "@lezer/generator": "^1.1.1",
     "@observablehq/graphviz": "^0.2.1",
     "@observablehq/stdlib": "^3.20.0",
     "@types/node": "^18.7.18",

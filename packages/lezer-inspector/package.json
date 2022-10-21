@@ -1,0 +1,31 @@
+{
+  "name": "@dral/lezer-inspector",
+  "version": "1.0.0",
+  "description": "Custom lezer grammar",
+  "main": "dist/index.cjs",
+  "type": "module",
+  "exports": {
+    "import": "./dist/index.es.js",
+    "require": "./dist/index.cjs"
+  },
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
+  "author": "Michiel Dral <m.c.dral@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@lezer/generator": "^1.0.0",
+    "mocha": "^9.0.1",
+    "rollup": "^2.52.2",
+    "@rollup/plugin-node-resolve": "^9.0.0"
+  },
+  "dependencies": {
+    "@lezer/highlight": "^1.0.0",
+    "@lezer/lr": "^1.0.0"
+  },
+  "scripts": {
+    "build": "lezer-generator src/inspector.grammar -o src/parser && rollup -c",
+    "build-debug": "lezer-generator src/inspector.grammar --names -o src/parser && rollup -c",
+    "prepare": "npm run build",
+    "test": "npm run build && mocha test/test-json.js"
+  }
+}

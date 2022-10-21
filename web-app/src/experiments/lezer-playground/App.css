@@ -7,6 +7,9 @@
   --cm-selection-background: hsl(215deg 64% 59% / 48%);
   --cm-selection-background-blurred: hsl(0deg 0% 59% / 30%);
 
+  --mono-font-family: Menlo, "Roboto Mono", "Lucida Sans Typewriter",
+    "Source Code Pro", monospace;
+
   color-scheme: dark;
 }
 

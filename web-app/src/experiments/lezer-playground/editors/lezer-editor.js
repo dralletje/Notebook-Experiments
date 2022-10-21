@@ -37,22 +37,21 @@ let lezerStyleTags = styleTags({
 });
 
 let lezer_syntax_classes = EditorView.theme({
-  ".very-important": {
+  ".boring": {
     color: "#947eff",
+  },
+  ".very-important": {
+    color: "#b6b6b6",
     fontWeight: 700,
   },
   ".important": {
     color: "#947eff",
   },
-  ".boring": {
-    color: "#6a3e7d",
-  },
-
   ".property": {
     color: "#cb00d7",
   },
   ".variable": {
-    color: "#13a400",
+    color: "#7229ff",
   },
   ".literal": {
     color: "#00a7ca",
@@ -63,12 +62,12 @@ let lezer_syntax_classes = EditorView.theme({
   },
 });
 
-let lezer_extension = new LanguageSupport(
+export let lezer_extension = new LanguageSupport(
   lezerLanguage.configure({
     props: [lezerStyleTags],
   })
 );
-let lezer_highlight = syntaxHighlighting(
+export let lezer_highlight = syntaxHighlighting(
   HighlightStyle.define(
     [
       { tag: t.lineComment, class: "comment" },
@@ -84,7 +83,7 @@ let lezer_highlight = syntaxHighlighting(
       { tag: t.variableName, class: "variable" },
       { tag: t.definition(t.variableName), class: "variable" },
       { tag: t.name, class: "variable" },
-      { tag: t.paren, class: "boring" },
+      { tag: t.paren, class: "very-important" },
       { tag: t.squareBracket, class: "boring" },
       { tag: t.brace, class: "boring" },
       { tag: t.operator, class: "very-important" },
@@ -98,7 +97,7 @@ let lezer_highlight = syntaxHighlighting(
       { tag: t.punctuation, class: "boring" },
     ],
     {
-      all: { color: "#6a3e7d" },
+      all: "boring",
     }
   )
 );
