@@ -221,6 +221,15 @@ let but_disable_all_editting = EditorState.transactionFilter.of((tr) => {
   return tr;
 });
 
+class SpaceWidget extends ReactWidget {
+  constructor() {
+    super(" ");
+  }
+  eq() {
+    return true;
+  }
+}
+
 export let lezer_result_as_lezer_extensions = [
   codeFolding(),
   all_this_just_to_click,
@@ -299,7 +308,9 @@ export let lezer_result_as_lezer_extensions = [
       ) {
         decorations.push(
           Decoration.replace({
-            widget: new ReactWidget(<FoldedRegion to={to} from={from} />),
+            widget: new ReactWidget(
+              <FoldedRegion key="fold" to={to} from={from} />
+            ),
           }).range(
             from + character_to_show_in_front,
             to - character_to_show_in_the_back
@@ -343,7 +354,7 @@ export let lezer_result_as_lezer_extensions = [
         // If it is just whitespace in the middle, we preserve one space
         decorations.push(
           Decoration.replace({
-            widget: new ReactWidget(<span key={" "}> </span>),
+            widget: new SpaceWidget(),
           }).range(match_from, match_to)
         );
       }

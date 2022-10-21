@@ -97,7 +97,9 @@ let highlight_extension = syntaxHighlighting(
 
 class WarningSignWidget extends ReactWidget {
   constructor() {
-    super(<IonIcon style={{ color: "red" }} icon={warning} />);
+    super(
+      <IonIcon style={{ color: "red", pointerEvents: "none" }} icon={warning} />
+    );
   }
   eq() {
     return true;

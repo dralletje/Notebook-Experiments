@@ -1,4 +1,9 @@
-import { createElement, createContext, useContext } from "react";
+import {
+  createElement,
+  createContext,
+  useContext,
+  isValidElement,
+} from "react";
 import ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
 import { EditorView, GutterMarker, WidgetType } from "@codemirror/view";
@@ -24,7 +29,7 @@ let element_key_symbol = Symbol("Element key");
  * Use this Widget to render (P)react components as codemirror widgets.
  */
 export class ReactWidget extends WidgetType {
-  /** @param {import("react").ReactElement} element */
+  /** @param {import("react").ReactNode} element */
   constructor(element) {
     super();
     this.element = element;
@@ -47,18 +52,25 @@ export class ReactWidget extends WidgetType {
     );
     span[codemirror_view_symbol] = view;
     span[react_root_symbol] = root;
-    span[element_key_symbol] = this.element?.key;
+    if (isValidElement(this.element))
+      span[element_key_symbol] = this.element.key;
+
     return span;
   }
 
   updateDOM(dom) {
     if (dom[react_root_symbol] == null) return false;
     if (dom[codemirror_view_symbol] == null) return false;
+
     if (
-      this.element.key == null ||
-      dom[element_key_symbol] !== this.element.key
+      isValidElement(this.element) &&
+      (this.element.key == null || dom[element_key_symbol] !== this.element.key)
     )
       return false;
+
+    if (Array.isArray(this.element)) return false;
+
+    console.log(`dom[codemirror_view_symbol]:`, dom[codemirror_view_symbol]);
 
     dom[react_root_symbol].render(
       createElement(

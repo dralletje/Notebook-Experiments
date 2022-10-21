@@ -1,5 +1,5 @@
 {
-  "name": "engine",
+  "name": "@dral/notebook-engine",
   "version": "1.0.0",
   "description": "",
   "type": "module",
@@ -27,7 +27,8 @@
     "stack-trace-anynode": "^1.0.0-pre3",
     "stacktrace-js": "^2.0.2",
     "stacktrace-parser": "^0.1.10",
-    "strip-color": "^0.1.0"
+    "strip-color": "^0.1.0",
+    "@dral/notebook-app": "*"
   },
   "devDependencies": {
     "@types/lodash-es": "^4.17.6",
