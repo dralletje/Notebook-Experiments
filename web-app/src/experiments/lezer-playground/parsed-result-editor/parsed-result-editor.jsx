@@ -39,6 +39,9 @@ import {
   inspector_meta_from_tree,
 } from "./cursor-to-inspector-lang.js";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
+import { ReactWidget } from "react-codemirror-widget";
+import { IonIcon } from "@ionic/react";
+import { warning } from "ionicons/icons";
 
 let base_extensions = [
   EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
@@ -92,9 +95,36 @@ let highlight_extension = syntaxHighlighting(
   ])
 );
 
+class WarningSignWidget extends ReactWidget {
+  constructor() {
+    super(<IonIcon style={{ color: "red" }} icon={warning} />);
+  }
+  eq() {
+    return true;
+  }
+}
+
 class PositionRange extends RangeValue {}
 let POSITION_RANGE = new PositionRange();
 let hide_positions = [
+  EditorView.decorations.compute(["doc"], (state) => {
+    let decorations = [];
+    iterate_over_cursor({
+      cursor: syntaxTree(state).cursor(),
+      enter: (cursor) => {
+        if (cursor.name === "Error") {
+          decorations.push(
+            Decoration.replace({ widget: new WarningSignWidget() }).range(
+              cursor.from,
+              cursor.to
+            )
+          );
+        }
+      },
+    });
+    return Decoration.set(decorations);
+  }),
+
   EditorView.decorations.compute(["doc"], (state) => {
     let decorations = [];
     iterate_over_cursor({
