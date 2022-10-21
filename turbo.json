@@ -9,7 +9,15 @@
       "dependsOn": ["^build"],
       // note: output globs are relative to each package's `package.json`
       // (and not the monorepo root)
-      "outputs": ["dist"]
+      "outputs": ["dist"],
+      "inputs": [
+        "src/**/*.{tsx,ts,js,jsx,grammar}",
+        "index.html",
+        "postcss.config.js",
+        "tailwindo.config.js",
+        "vite.config.js",
+        "rollup.config.js"
+      ]
     }
   }
 }

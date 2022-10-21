@@ -38,7 +38,8 @@ export function transform_code(code, { filename }) {
         });
       },
     },
-    // tabWidth: 2,
+    tabWidth: 2,
+    // useTabs: true,
     sourceFileName: filename,
   });
 
