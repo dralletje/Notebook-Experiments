@@ -3,6 +3,7 @@ import {
   bracketMatching,
   ensureSyntaxTree,
   HighlightStyle,
+  Language,
   LanguageSupport,
   LRLanguage,
   syntaxHighlighting,
@@ -11,6 +12,7 @@ import {
 } from "@codemirror/language";
 import { search, searchKeymap } from "@codemirror/search";
 import {
+  EditorSelection,
   EditorState,
   RangeSetBuilder,
   RangeValue,
@@ -27,7 +29,7 @@ import {
 } from "@codemirror/view";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import React from "react";
-import { dot_gutter } from "../codemirror-dot-gutter.jsx";
+import { dot_gutter } from "../should-be-shared/codemirror-dot-gutter.jsx";
 import { tags as t } from "@lezer/highlight";
 import {
   FoldAllEffect,
@@ -39,12 +41,15 @@ import { range } from "lodash";
 import {
   cursor_to_inspector_lang,
   inspector_meta_from_tree,
+  _cursor_to_inspector_lang,
 } from "./cursor-to-inspector-lang.js";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 import { ReactWidget } from "react-codemirror-widget";
 import { IonIcon } from "@ionic/react";
 import { warning } from "ionicons/icons";
-import { full_syntax_tree_field } from "@dral/codemirror-helpers";
+import { LanguageStateFacet } from "@dral/codemirror-helpers";
+import { Failure, Loading, usePromise } from "../use/OperationMonadBullshit.js";
+import { Tree } from "@lezer/common";
 
 let base_extensions = [
   EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
@@ -57,7 +62,7 @@ let base_extensions = [
   drawSelection({ cursorBlinkRate: 0 }),
 
   search({
-    caseSensitive: false,
+    caseSensitive: true,
     top: true,
   }),
   keymap.of(searchKeymap),
@@ -75,7 +80,7 @@ let lezer_syntax_classes = EditorView.theme({
   ".important": { color: "#947eff" },
   ".boring": { color: "#414141", opacity: 0.5 },
   ".property": { color: "#096e5a" },
-  ".variable": { color: "#04a0fa" },
+  ".variable": { color: "#00cc4c" },
   ".literal": { color: "#53f1de" },
   ".comment": { color: "#747474", fontStyle: "italic" },
   ".error": { color: "#ff0000", fontWeight: "bold" },
@@ -83,8 +88,12 @@ let lezer_syntax_classes = EditorView.theme({
   // Just boring
   ".cm-content": { color: "#414141" },
 
-  ".boring.literal": { color: "#688f03" },
-  ".boring.property": { color: "#04a0fa" },
+  ".meta": { opacity: 0.5 },
+  ".meta.literal": { color: "#688f03" },
+  ".meta.property": { color: "#04a0fa" },
+  ".cm-line:hover .meta, .cm-line:has(.VERY-FOCUSSED) .meta": {
+    opacity: 1,
+  },
 });
 
 let highlight_extension = syntaxHighlighting(
@@ -94,14 +103,18 @@ let highlight_extension = syntaxHighlighting(
     { tag: t.punctuation, class: "boring" },
     { tag: t.variableName, class: "variable" },
     { tag: t.propertyName, class: "property" },
-    { tag: t.meta, class: "boring" },
+    { tag: t.meta, class: "meta" },
   ])
 );
 
 class WarningSignWidget extends ReactWidget {
   constructor() {
     super(
-      <IonIcon style={{ color: "red", pointerEvents: "none" }} icon={warning} />
+      <IonIcon
+        key="warning"
+        style={{ color: "red", pointerEvents: "none" }}
+        icon={warning}
+      />
     );
   }
   eq() {
@@ -139,7 +152,7 @@ let useExplicitSelection = (viewupdate) => {
 class PositionRange extends RangeValue {}
 let POSITION_RANGE = new PositionRange();
 let hide_positions = [
-  EditorView.decorations.compute([full_syntax_tree_field], (state) => {
+  EditorView.decorations.compute([LanguageStateFacet], (state) => {
     let decorations = [];
     iterate_over_cursor({
       cursor: syntaxTree(state).cursor(),
@@ -157,9 +170,8 @@ let hide_positions = [
     return Decoration.set(decorations);
   }),
 
-  EditorView.decorations.compute([full_syntax_tree_field], (state) => {
+  EditorView.decorations.compute([LanguageStateFacet], (state) => {
     let decorations = [];
-    console.time("Poisitions");
     iterate_over_cursor({
       cursor: syntaxTree(state).cursor(),
       enter: (cursor) => {
@@ -170,8 +182,6 @@ let hide_positions = [
         }
       },
     });
-    console.timeEnd("Poisitions");
-
     return Decoration.set(decorations);
   }),
   EditorView.atomicRanges.of((view) => {
@@ -186,24 +196,68 @@ let hide_positions = [
         }
       },
     });
-    return ranges.finish();
+    let set = ranges.finish();
+    return set;
   }),
 ];
 
-let state_to_inspector_lang = (state, parser) => {
-  if (parser == null) return Text.of([""]);
+let get_tree_immediately = (state, parser) => {
+  if (parser == null) return Tree.empty;
   let tree = ensureSyntaxTree(state, state.doc.length, Infinity);
 
   if (tree == null) {
     tree = parser.parse(state.doc.toString());
   }
+  return tree ?? Tree.empty;
+};
 
-  if (tree == null) {
-    return Text.of([""]);
+let requestIdleCallback = (fn) => {
+  if ("requestIdleCallback" in window) {
+    return window.requestIdleCallback(fn);
+  } else {
+    // @ts-expect-error - TS doesn't know requestIdleCallback isn't always present
+    return window.setTimeout(fn, 0);
   }
+};
+let cancelIdleCallback = (id) => {
+  if ("cancelIdleCallback" in window) {
+    return window.cancelIdleCallback(id);
+  } else {
+    // @ts-expect-error - TS doesn't know requestIdleCallback isn't always present
+    return window.clearTimeout(id);
+  }
+};
 
-  let lines = cursor_to_inspector_lang(tree.cursor()).text.split("\n");
-  return Text.of(lines);
+let requestIdlePromise = async (signal) => {
+  await new Promise((resolve) => requestIdleCallback(resolve));
+  if (signal.aborted) {
+    await new Promise(() => {});
+  }
+};
+
+let selected_node_from_code_to_parse_selection = (meta, selection) => {
+  if (selection == null) return null;
+
+  let match = null;
+  for (let index of range(meta.length - 1, -1)) {
+    let {
+      original: [from, to],
+      cursor,
+    } = meta[index];
+    if (match == null && from <= selection.from && selection.to <= to) {
+      match = cursor;
+    } else if (selection.to === to) {
+      match = cursor;
+    } else if (to < selection.to) {
+      break;
+    }
+  }
+  return match == null
+    ? null
+    : {
+        anchor: match[0],
+        head: match[1],
+      };
 };
 
 /**
@@ -220,12 +274,12 @@ export let ParsedResultEditor = ({
   onSelection,
   code_to_parse_viewupdate,
 }) => {
-  // let parsed_as_js = React.useMemo(() => {
-  // }, [parser, code_to_parse_viewupdate]);
-
+  let code_to_parse_selection = useExplicitSelection(code_to_parse_viewupdate);
   let initial_editor_state = React.useMemo(() => {
+    let tree = get_tree_immediately(code_to_parse_viewupdate.state, parser);
+    let { lines } = cursor_to_inspector_lang(tree.cursor());
     return EditorState.create({
-      doc: state_to_inspector_lang(code_to_parse_viewupdate.state, parser),
+      doc: Text.of(lines),
       extensions: [base_extensions],
     });
   }, []);
@@ -233,29 +287,90 @@ export let ParsedResultEditor = ({
   /** @type {import("react").MutableRefObject<EditorView>} */
   let codemirror_ref = React.useRef(/** @type {any} */ (null));
 
-  React.useEffect(() => {
-    let parsed_as_js = state_to_inspector_lang(
-      code_to_parse_viewupdate.state,
-      parser
-    );
-    let { anchor, head } = codemirror_ref.current.state.selection.main;
-    codemirror_ref.current.dispatch({
-      changes: {
-        from: 0,
-        to: codemirror_ref.current.state.doc.length,
-        insert: parsed_as_js,
-      },
-      filter: false,
-      selection: {
+  let result = usePromise(
+    async (signal) => {
+      // Very basic debounce
+      await requestIdlePromise(signal);
+
+      let tree = get_tree_immediately(code_to_parse_viewupdate.state, parser);
+
+      await requestIdlePromise(signal);
+
+      let { lines } = cursor_to_inspector_lang(tree.cursor());
+      let parsed_as_js = Text.of(lines);
+
+      await requestIdlePromise(signal);
+
+      let state = codemirror_ref.current.state;
+      let { anchor, head } = state.selection.main;
+
+      let spec = {
+        changes: {
+          from: 0,
+          to: state.doc.length,
+          insert: parsed_as_js,
+        },
+        filter: false,
+      };
+
+      let transaction;
+      // console.groupCollapsed("FAKE UPDATE");
+      try {
+        transaction = state.update(spec);
+        transaction.state;
+      } finally {
+        // console.groupEnd();
+      }
+      let language_state = transaction.state.field(LanguageStateFacet);
+      let LanguageState = language_state.constructor;
+      let new_context = language_state.context;
+      while (!new_context.isDone(transaction.state.doc.length)) {
+        new_context.work(5, transaction.state.doc.length);
+        await requestIdlePromise(signal);
+      }
+      new_context.takeTree();
+      let new_language_state = new LanguageState(new_context);
+
+      let meta = inspector_meta_from_tree(
+        transaction.state.doc,
+        new_context.tree
+      );
+
+      let explicit_selection = selected_node_from_code_to_parse_selection(
+        meta,
+        code_to_parse_selection
+      );
+      let new_selection = explicit_selection ?? {
         anchor: Math.min(anchor, parsed_as_js.length),
         head: Math.min(head, parsed_as_js.length),
-      },
-      scrollIntoView: true,
-    });
-  }, [code_to_parse_viewupdate.state.doc, parser]);
+      };
+
+      console.group("MY CHANGE");
+      try {
+        codemirror_ref.current.dispatch({
+          ...spec,
+          effects: [
+            ...(explicit_selection != null ? [FoldAllEffect.of(null)] : []),
+            // @ts-expect-error Using Language.setState which is ~~private~~
+            Language.setState.of(new_language_state),
+            EditorView.scrollIntoView(new_selection.head, {
+              y: "nearest",
+            }),
+          ],
+          selection: new_selection,
+        });
+      } finally {
+        console.groupEnd();
+      }
+    },
+    [code_to_parse_viewupdate.state.doc, parser]
+  );
+
+  if (result instanceof Failure) {
+    result.get(); // Throw the error
+  }
 
   // Highlight the node that is currently selected in the what-to-parse editor
-  let code_to_parse_selection = useExplicitSelection(code_to_parse_viewupdate);
   React.useEffect(() => {
     let idle_callback = 0;
     // Hacky solution to wait for syntaxTree to become available
@@ -264,7 +379,7 @@ export let ParsedResultEditor = ({
       if (selection == null) return;
 
       if (!syntaxTreeAvailable(codemirror_ref.current.state)) {
-        idle_callback = window.requestIdleCallback(() => {
+        idle_callback = requestIdleCallback(() => {
           try_parse();
         });
         return;
@@ -275,33 +390,26 @@ export let ParsedResultEditor = ({
         codemirror_ref.current.state.doc,
         tree
       );
+      let new_selection = selected_node_from_code_to_parse_selection(
+        meta,
+        code_to_parse_selection
+      );
 
-      for (let index of range(meta.length - 1, -1)) {
-        let {
-          original: [from, to],
-          cursor,
-        } = meta[index];
-        if (from <= selection.from && selection.to <= to) {
-          let current_selection = codemirror_ref.current.state.selection.main;
-          if (current_selection.from !== from || current_selection.to !== to) {
-            codemirror_ref.current.dispatch({
-              effects: [FoldAllEffect.of(null)],
-            });
-            codemirror_ref.current.dispatch({
-              selection: {
-                anchor: cursor[0],
-                head: cursor[1],
-              },
-              scrollIntoView: true,
-              effects: [FoldAllEffect.of(null)],
-            });
-          }
-          return;
-        }
+      if (new_selection != null) {
+        codemirror_ref.current.dispatch({
+          selection: new_selection,
+          scrollIntoView: true,
+          effects: [FoldAllEffect.of(null)],
+        });
+      } else {
+        let simple = codemirror_ref.current.state.selection.main.head;
+        codemirror_ref.current.dispatch({
+          selection: EditorSelection.cursor(simple),
+        });
       }
     };
     try_parse();
-    return () => window.cancelIdleCallback(idle_callback);
+    return () => cancelIdleCallback(idle_callback);
   }, [code_to_parse_viewupdate, code_to_parse_selection]);
 
   // Other way around: highlight the node in the what-to-parse editor that is currently selected in the parsed editor
@@ -329,14 +437,23 @@ export let ParsedResultEditor = ({
   }, [onSelection]);
 
   return (
-    <CodeMirror ref={codemirror_ref} state={initial_editor_state}>
-      <Extension extension={inspector_lang} />
-      <Extension extension={highlight_extension} />
-      <Extension extension={lezer_result_as_lezer_extensions} />
-      <Extension extension={lezer_syntax_classes} />
-      <Extension extension={hide_positions} />
+    <div
+      style={{
+        height: "100%",
+        opacity: result instanceof Loading ? 0.5 : 1,
+        transition:
+          result instanceof Loading ? "opacity 0.5s ease 0.2s" : "opacity 0.2s",
+      }}
+    >
+      <CodeMirror ref={codemirror_ref} state={initial_editor_state}>
+        <Extension extension={inspector_lang} />
+        <Extension extension={highlight_extension} />
+        <Extension extension={lezer_syntax_classes} />
+        <Extension extension={hide_positions} />
 
-      <Extension extension={update_what_to_code_selection} />
-    </CodeMirror>
+        <Extension extension={update_what_to_code_selection} />
+        <Extension extension={lezer_result_as_lezer_extensions} />
+      </CodeMirror>
+    </div>
   );
 };

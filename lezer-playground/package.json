@@ -1,0 +1,84 @@
+{
+  "name": "@dral/lezer-playground",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.1.0",
+    "@codemirror/collab": "^6.0.0",
+    "@codemirror/commands": "^6.1.0",
+    "@codemirror/lang-javascript": "^6.0.2",
+    "@codemirror/lang-lezer": "^6.0.0",
+    "@codemirror/lang-markdown": "^6.0.1",
+    "@codemirror/language": "^6.2.1",
+    "@codemirror/search": "^6.2.1",
+    "@codemirror/state": "^6.1.1",
+    "@codemirror/view": "^6.2.0",
+    "@dral/lezer-inspector": "*",
+    "@ionic/react": "^6.2.7",
+    "@lezer/common": "^1.0.1",
+    "@lezer/generator": "^1.1.1",
+    "@observablehq/graphviz": "^0.2.1",
+    "@observablehq/stdlib": "^3.20.0",
+    "@types/node": "^18.7.18",
+    "@typescript/vfs": "^1.4.0",
+    "assert": "^2.0.0",
+    "buffer": "^6.0.3",
+    "events": "^3.3.0",
+    "htl": "^0.3.1",
+    "ionicons": "^6.0.3",
+    "lodash": "^4.17.21",
+    "node-emoji": "^1.11.0",
+    "prettier": "^2.7.1",
+    "process": "^0.11.10",
+    "react": "^18.2.0",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-dom": "^18.2.0",
+    "react-flip-toolkit": "^7.0.16",
+    "react-use-path": "^0.3.1",
+    "shallow-equal": "^1.2.1",
+    "socket.io-client": "^4.5.1",
+    "style-mod": "^4.0.0",
+    "styled-components": "^5.3.5",
+    "typescript": "^4.8.3",
+    "uuid": "^8.3.2"
+  },
+  "workspaces": {
+    "nohoist": [
+      "typescript",
+      "typescript/**"
+    ]
+  },
+  "scripts": {
+    "start": "vite",
+    "build": "vite build"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.20",
+    "@types/serviceworker": "^0.0.52",
+    "@vitejs/plugin-react": "^2.1.0",
+    "autoprefixer": "^10.4.12",
+    "postcss": "^8.4.17",
+    "rollup-plugin-analyzer": "^4.0.0",
+    "rollup-plugin-visualizer": "^5.8.3",
+    "tailwindcss": "^3.1.8",
+    "vite": "^3.1.0"
+  }
+}

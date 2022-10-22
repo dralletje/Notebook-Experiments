@@ -59,6 +59,9 @@ let modifiers_map = new Map(
 );
 
 let tag_to_string = (tag) => {
+  if (tag == null) {
+    return "<>";
+  }
   if (tag.base == null) {
     return tags_map.get(tag);
   } else {
@@ -71,7 +74,7 @@ let tag_to_string = (tag) => {
 let tree_to_inspector_lang_weakmap = new WeakMap();
 
 /** @param {TreeCursor} cursor */
-export let cursor_to_inspector_lang = (cursor, indent = "") => {
+export let _cursor_to_inspector_lang = (cursor, indent = "") => {
   let text = "";
 
   text += indent;
@@ -122,7 +125,7 @@ export let cursor_to_inspector_lang = (cursor, indent = "") => {
       let child_text = "";
       try {
         do {
-          let { text: subtext } = cursor_to_inspector_lang(
+          let { text: subtext } = _cursor_to_inspector_lang(
             cursor,
             indent + "  "
           );
@@ -141,4 +144,79 @@ export let cursor_to_inspector_lang = (cursor, indent = "") => {
   }
 
   return { text };
+};
+
+/**
+ * This is (barely) faster than the recursive function above...
+ * BUT it could be converted to a generator so be executed piece by piece later...
+ * Now I think of it, the recursive function could be as well, with `yield*`, could be a nice experiment some day.
+ * @param {TreeCursor} cursor
+ * @returns {{ lines: string[] }}
+ */
+export let cursor_to_inspector_lang = (cursor) => {
+  let lines = [];
+  let indents = [""];
+
+  node_loop: while (true) {
+    let first_line_of_this_node = "";
+    first_line_of_this_node += indents[0];
+    if (cursor.type.isError) {
+      first_line_of_this_node += `⚠️`;
+    } else if (cursor.type.isAnonymous) {
+      first_line_of_this_node += `🔘`;
+    } else {
+      if (/^[a-zA-Z_$0-9]*$/.test(cursor.name)) {
+        first_line_of_this_node += cursor.name;
+      } else {
+        first_line_of_this_node += `"${cursor.name}"`;
+      }
+    }
+
+    let tags = [];
+    let style_tags = getStyleTags(cursor);
+    if (style_tags != null && style_tags.tags.length !== 0) {
+      tags.push([
+        "style",
+        style_tags.tags.map((tag) => tag_to_string(tag)).join(", "),
+      ]);
+    }
+    if (cursor.tree != null) {
+      if (tree_to_inspector_lang_weakmap.has(cursor.tree)) {
+        tags.push(["tree", "refurbished"]);
+      } else {
+        tags.push(["tree", "fresh"]);
+      }
+    }
+
+    if (tags.length > 0) {
+      first_line_of_this_node += ` [${tags
+        .map(([k, v]) => `${k}="${v}"`)
+        .join(", ")}]`;
+    }
+
+    first_line_of_this_node += `<${cursor.from},${cursor.to}>`;
+
+    if (cursor.firstChild()) {
+      first_line_of_this_node += " {";
+      lines.push(first_line_of_this_node);
+
+      indents.unshift(indents[0] + "  ");
+      continue node_loop;
+    } else if (cursor.nextSibling()) {
+      first_line_of_this_node += "";
+      lines.push(first_line_of_this_node);
+      continue node_loop;
+    } else {
+      lines.push(first_line_of_this_node);
+      while (cursor.parent()) {
+        indents.shift();
+        lines.push(indents[0] + "}");
+        if (cursor.nextSibling()) {
+          continue node_loop;
+        }
+      }
+      break node_loop;
+    }
+  }
+  return { lines: lines };
 };

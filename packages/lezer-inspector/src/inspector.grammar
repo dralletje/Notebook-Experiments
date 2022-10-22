@@ -31,7 +31,8 @@ Position {
 @skip { spaces | newline | tabs }
 
 @tokens {
-  name { @asciiLetter+ }
+  // From lezer source directly
+  name { (@asciiLetter | @digit | $[\-_\u{a1}-\u{10ffff}])+ }
   Number { @digit+ }
   String { '"' (![\\\n"] | "\\" _)* '"' }
   newline { $[\r\n] }

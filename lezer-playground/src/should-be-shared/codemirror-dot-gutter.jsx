@@ -1,6 +1,4 @@
-import React from "react";
 import { EditorView, gutter, GutterMarker } from "@codemirror/view";
-import { ReactGutterMarker } from "react-codemirror-widget";
 
 export let subtle_gutter = EditorView.theme({
   ".cm-gutters": {

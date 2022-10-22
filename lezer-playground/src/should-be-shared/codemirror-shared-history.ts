@@ -859,6 +859,7 @@ class HistoryState {
             : CellDispatchEffect.of({
                 transaction: {
                   selection: event.startSelection.value,
+                  scrollIntoView: true,
                 },
                 cell_id: event.startSelection.cell_id,
               }),

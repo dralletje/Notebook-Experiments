@@ -10,14 +10,15 @@ import {
   StateEffectType,
   StateField,
 } from "@codemirror/state";
-import { Decoration, EditorView } from "@codemirror/view";
-import { codeFolding, syntaxTree } from "@codemirror/language";
+import { Decoration, EditorView, WidgetType } from "@codemirror/view";
+import {
+  codeFolding,
+  syntaxTree,
+  syntaxTreeAvailable,
+} from "@codemirror/language";
 
 import { ReactWidget, useEditorView } from "react-codemirror-widget";
-import {
-  SyntaxTreeFacet,
-  full_syntax_tree_field,
-} from "@dral/codemirror-helpers";
+import { LanguageStateFacet } from "@dral/codemirror-helpers";
 
 let fold_style = EditorView.theme({
   ".fold-me-daddy:not(.folded)": {
@@ -67,12 +68,14 @@ let node_that_contains_selection_field = StateField.define({
 let all_this_just_to_click = [
   EditorView.theme({
     ".FOCUSSED": {
-      filter: "brightness(2)",
-      // "font-weight": "bold",
+      "text-decoration": "underline 3px #ffffff40",
+      "text-underline-offset": "3px",
+      "text-decoration-skip-ink": "none",
     },
     ".VERY-FOCUSSED": {
-      filter: "brightness(4)",
-      // "font-weight": "bold",
+      "text-decoration": "underline 3px #ffffffaa",
+      "text-underline-offset": "3px",
+      "text-decoration-skip-ink": "none",
     },
   }),
   node_that_contains_selection_field,
@@ -133,7 +136,7 @@ let what_to_fold = StateField.define({
   },
   update(value, tr) {
     if (tr.docChanged) {
-      return [];
+      value = [];
     }
 
     value = produce(value, (value) => {
@@ -158,6 +161,7 @@ let what_to_fold = StateField.define({
           value = tr.state.facet(AllFoldsFacet).map((x) => x.fold);
         }
       }
+
       return value;
     });
 
@@ -166,6 +170,7 @@ let what_to_fold = StateField.define({
       // Remove all folds that contain the cursor
       value = value.filter(([from, to]) => !(from < main.from && main.to < to));
     }
+
     return value;
   },
   // provide: (value) => EditorView.decorations.from(value, (value) => Decoration.none)
@@ -224,15 +229,22 @@ let but_disable_all_editting = EditorState.transactionFilter.of((tr) => {
   return tr;
 });
 
-class SpaceWidget extends ReactWidget {
-  constructor() {
-    super(" ");
+// class SpaceWidget extends ReactWidget {
+//   constructor() {
+//     super(" ");
+//   }
+//   eq() {
+//     return true;
+//   }
+// }
+class SpaceWidget extends WidgetType {
+  eq() {
+    return true;
   }
-  // eq() {
-  //   return true;
-  // }
-  toDOM(view) {
-    return super.toDOM(view);
+  toDOM() {
+    let span = document.createElement("span");
+    span.textContent = " ";
+    return span;
   }
 }
 
@@ -243,8 +255,7 @@ export let lezer_result_as_lezer_extensions = [
   fold_style,
   atomic_spaces,
 
-  full_syntax_tree_field,
-  AllFoldsFacet.compute([SyntaxTreeFacet, full_syntax_tree_field], (state) => {
+  AllFoldsFacet.compute([LanguageStateFacet], (state) => {
     let cursor = syntaxTree(state).cursor();
     /** @type {FoldableCall[]} */
     let ranges = [];

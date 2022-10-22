@@ -40,7 +40,7 @@ import { LezerGeneratorWorker } from "@dral/lezer-generator-worker/lezer-generat
 import { TransformJavascriptWorker } from "@dral/dralbook-transform-javascript/worker/transform-javascript-worker.js";
 
 ////////////////////
-import { basic_javascript_setup } from "../../codemirror-javascript-setup.js";
+import { basic_javascript_setup } from "./should-be-shared/codemirror-javascript-setup.js";
 ////////////////////
 
 import { ParsedResultEditor } from "./parsed-result-editor/parsed-result-editor.jsx";
@@ -54,7 +54,7 @@ import {
 } from "./use/OperationMonadBullshit.js";
 import { useWorker, useWorkerPool } from "./use/useWorker.js";
 import { ScopedStorage, useScopedStorage } from "./use/scoped-storage.js";
-import { dot_gutter } from "./codemirror-dot-gutter.jsx";
+import { dot_gutter } from "./should-be-shared/codemirror-dot-gutter.jsx";
 import {
   DEFAULT_JAVASCRIPT_STUFF,
   DEFAULT_PARSER_CODE,
@@ -364,10 +364,6 @@ let GeneralEditorStyles = styled.div`
     padding-bottom: 8px !important;
     padding-right: 16px;
   }
-
-  & .cm-panels {
-    filter: invert(1);
-  }
 `;
 
 let PaneHeader = styled.div`
@@ -396,9 +392,58 @@ let PaneStyle = styled.div`
   overflow: hidden;
   border-radius: 4px;
 
-  ${PaneHeader} {
+  ${PaneHeader}, .cm-panels {
     background-size: 50px 50px;
+    background-color: #ffffff17;
     background-image: url("${NOISE_BACKGROUND}");
+  }
+
+  .cm-panels {
+    color: #ffffff75;
+    border-bottom: none;
+  }
+  .cm-search {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    [name="select"],
+    [name="replace"],
+    [name="replaceAll"],
+    label {
+      display: none;
+    }
+
+    input,
+    button {
+      border: none;
+      border-radius: 2px !important;
+    }
+    input:focus-visible,
+    button:focus-visible {
+      outline: 2px #ffffff4f solid;
+    }
+
+    [name="search"] {
+      flex: 1;
+    }
+
+    [name="close"] {
+      position: relative !important;
+      /* margin-left: 8px !important; */
+      margin-left: 4px !important;
+      padding-right: 4px !important;
+      padding-left: 4px !important;
+    }
+  }
+
+  .cm-textfield {
+    color: white;
+    background-color: #0000006b;
+  }
+  .cm-button {
+    background: none;
+    background-color: black;
   }
 
   .cm-content,
@@ -548,7 +593,7 @@ let FillAndCenter = styled.div`
   text-align: center;
 `;
 
-import { compact, range, sortBy, uniq } from "lodash";
+import { compact, groupBy, range, sortBy, uniq } from "lodash";
 import {
   CellHasSelectionField,
   create_nested_editor_state,
@@ -556,8 +601,11 @@ import {
   NestedExtension,
   nested_cell_states_basics,
   nested_view_update,
-} from "./MultiEditor";
-import { shared_history, historyKeymap } from "./codemirror-shared-history";
+} from "./should-be-shared/MultiEditor";
+import {
+  shared_history,
+  historyKeymap,
+} from "./should-be-shared/codemirror-shared-history";
 
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {
@@ -721,6 +769,18 @@ let Editor = ({ project_name }) => {
       let our_javascript_code = await babel_worker.request("transform-code", {
         code: javascript_stuff,
       });
+
+      let load_terms_file = async () => {
+        if (terms_file_result instanceof Failure) {
+          // prettier-ignore
+          throw new TypeError(`Failed to resolve module specifier './parser.terms.js'`);
+        }
+        if (terms_file_result instanceof Loading) {
+          throw new TermsFileNotReadyError();
+        }
+        return terms_file_result.get();
+      };
+
       let import_map = {
         "@lezer/highlight": () => import("@lezer/highlight"),
         "@codemirror/language": () => import("@codemirror/language"),
@@ -728,16 +788,8 @@ let Editor = ({ project_name }) => {
         "@codemirror/state": () => import("@codemirror/state"),
         "style-mod": () => import("style-mod"),
         "@lezer/lr": () => import("@lezer/lr"),
-        "./parser.terms.js": async () => {
-          if (terms_file_result instanceof Failure) {
-            // prettier-ignore
-            throw new TypeError(`Failed to resolve module specifier './parser.terms.js'`);
-          }
-          if (terms_file_result instanceof Loading) {
-            throw new TermsFileNotReadyError();
-          }
-          return terms_file_result.get();
-        },
+        "./parser.terms.js": load_terms_file,
+        "./parser.terms": load_terms_file,
       };
 
       try {
@@ -1012,6 +1064,7 @@ let Editor = ({ project_name }) => {
           }}
         >
           <ProjectsDropdown />
+          <LoadSampleDropdown scoped_storage={main_scope} />
         </span>
         <span style={{ fontWeight: "bold" }}>Lezer Playground</span>
         <span style={{ flex: 1 }}></span>
@@ -1020,7 +1073,6 @@ let Editor = ({ project_name }) => {
   );
 };
 
-// @ts-expect-error
 let ProjectDropdownStyle = styled.div`
   position: relative;
 
@@ -1140,6 +1192,70 @@ let ProjectsDropdown = () => {
         </div>
         <div className="help">
           To open a new project, change the path to something not listed here.
+        </div>
+      </div>
+    </ProjectDropdownStyle>
+  );
+};
+
+let path_prefix = "./premade-projects/";
+const modules = import.meta.glob("./premade-projects/**/*", { as: "raw" });
+let premade_projects = {};
+for (let [path, import_module] of Object.entries(modules)) {
+  let [project, filename] = path.slice(path_prefix.length).split("/");
+  premade_projects[project] ??= {};
+
+  if (filename.startsWith("example.")) {
+    premade_projects[project].example = import_module;
+  } else if (filename === "external.js") {
+    premade_projects[project].external = import_module;
+  } else if (filename.endsWith(".grammar")) {
+    premade_projects[project].grammar = import_module;
+  } else {
+    console.error(`Unknown file type: ${path}/${filename}`);
+  }
+}
+console.log(`premade_projects:`, premade_projects);
+
+let LoadSampleDropdown = ({ scoped_storage }) => {
+  let path = window.location.pathname;
+  let project_names = Object.keys(premade_projects);
+
+  return (
+    <ProjectDropdownStyle>
+      <button>load</button>
+      <div className="dropdown">
+        <div className="menu">
+          {project_names.map((project_name) => (
+            <a
+              key={project_name}
+              onClick={() => {
+                Promise.all([
+                  premade_projects[project_name].example(),
+                  premade_projects[project_name].grammar(),
+                  premade_projects[project_name].external(),
+                ]).then(([example, grammar, external]) => {
+                  scoped_storage.child("code_to_parse").set(example),
+                    scoped_storage.child("javascript_stuff").set(external),
+                    scoped_storage.child("parser_code").set(grammar),
+                    window.location.reload();
+                });
+              }}
+            >
+              {project_name}
+            </a>
+          ))}
+        </div>
+        <div className="help">
+          Load an pre-made project.
+          <br />
+          <br />
+          I've compiled those from github, mashing the javascript files
+          together. Maybe in the future I'll make a way to actually import from
+          github.
+          <br />
+          <br />
+          <b>This will override the project you have open currently!</b>
         </div>
       </div>
     </ProjectDropdownStyle>

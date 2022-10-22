@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "web-app",
+    "lezer-playground",
     "node-engine",
     "packages/*"
   ],
