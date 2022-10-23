@@ -86,7 +86,10 @@ export let lezer_highlight = syntaxHighlighting(
       { tag: t.paren, class: "very-important" },
       { tag: t.squareBracket, class: "boring" },
       { tag: t.brace, class: "boring" },
+      // ~ * ? | +
       { tag: t.operator, class: "very-important" },
+      // ~name
+      { tag: t.name, class: "very-important" },
 
       { tag: t.labelName, class: "property" },
       { tag: t.function(t.variableName), class: "variable" },

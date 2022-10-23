@@ -49,6 +49,18 @@ class ForCell<T> {
     let value = f(this.value, this.cell_id);
     return value == null ? null : new ForCell(this.cell_id, value);
   }
+
+  toJSON() {
+    return {
+      cell_id: this.cell_id,
+      // @ts-expect-error
+      value: this.value.toJSON(),
+    };
+  }
+
+  static fromJSON<T>(json: any, fromJSON: (json: any) => T): ForCell<T> {
+    return new ForCell(json.cell_id, fromJSON(json.value));
+  }
 }
 
 class ForNotebook<T> {
@@ -57,6 +69,10 @@ class ForNotebook<T> {
   forCell(cell_id: string | null): T | undefined {
     const x = this.items.find((x) => x.cell_id == cell_id);
     return x?.value;
+  }
+
+  toJSON() {
+    return this.items.map((x) => x.toJSON());
   }
 }
 
@@ -78,9 +94,11 @@ class CellEditorSelection extends ForCell<EditorSelection> {
     return new CellEditorSelection(value.cell_id, value.value);
   }
 
-  toJSON() {
-    // TODO
-    throw new Error("not implemented");
+  static fromJSON(json: ReturnType<CellEditorSelection["toJSON"]>): any {
+    return new CellEditorSelection(
+      json.cell_id,
+      EditorSelection.fromJSON(json.value)
+    );
   }
 }
 // @ts-ignore
@@ -246,9 +264,10 @@ class CellChangeDesc extends ForNotebook<ChangeDesc> {
     );
   }
 
-  toJSON(): any {
-    // TODO
-    throw new Error("not implemented");
+  static fromJSON(json: ReturnType<CellChangeDesc["toJSON"]>) {
+    return new CellChangeDesc(
+      json.map((x) => ForCell.fromJSON(x, ChangeDesc.fromJSON))
+    );
   }
 }
 
@@ -306,6 +325,12 @@ class CellChangeSet extends CellChangeDesc {
   get desc() {
     return new CellChangeDesc(
       compact(this.changes.map((x) => x.mapCell((x) => x.desc)))
+    );
+  }
+
+  static fromJSON(json: ReturnType<CellChangeSet["toJSON"]>) {
+    return new CellChangeSet(
+      json.map((x) => ForCell.fromJSON(x, ChangeSet.fromJSON))
     );
   }
 }
@@ -535,11 +560,11 @@ class CellHistEvent {
 
   static fromJSON(json: any) {
     return new CellHistEvent(
-      json.changes && ChangeSet.fromJSON(json.changes),
+      json.changes && CellChangeSet.fromJSON(json.changes),
       [],
-      json.mapped && ChangeDesc.fromJSON(json.mapped),
-      json.startSelection && EditorSelection.fromJSON(json.startSelection),
-      json.selectionsAfter.map(EditorSelection.fromJSON)
+      json.mapped && CellChangeDesc.fromJSON(json.mapped),
+      json.startSelection && CellEditorSelection.fromJSON(json.startSelection),
+      json.selectionsAfter.map(CellEditorSelection.fromJSON)
     );
   }
 

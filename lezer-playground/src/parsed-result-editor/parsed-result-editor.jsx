@@ -45,8 +45,7 @@ import {
 } from "./cursor-to-inspector-lang.js";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 import { ReactWidget } from "react-codemirror-widget";
-import { IonIcon } from "@ionic/react";
-import { warning } from "ionicons/icons";
+import { IoWarning } from "react-icons/io5";
 import { LanguageStateFacet } from "@dral/codemirror-helpers";
 import { Failure, Loading, usePromise } from "../use/OperationMonadBullshit.js";
 import { Tree } from "@lezer/common";
@@ -110,10 +109,9 @@ let highlight_extension = syntaxHighlighting(
 class WarningSignWidget extends ReactWidget {
   constructor() {
     super(
-      <IonIcon
+      <IoWarning
         key="warning"
         style={{ color: "red", pointerEvents: "none" }}
-        icon={warning}
       />
     );
   }
@@ -203,12 +201,11 @@ let hide_positions = [
 
 let get_tree_immediately = (state, parser) => {
   if (parser == null) return Tree.empty;
-  let tree = ensureSyntaxTree(state, state.doc.length, Infinity);
-
-  if (tree == null) {
-    tree = parser.parse(state.doc.toString());
+  try {
+    return parser.parse(state.doc.toString());
+  } catch (error) {
+    return Tree.empty;
   }
-  return tree ?? Tree.empty;
 };
 
 let requestIdleCallback = (fn) => {
@@ -275,6 +272,7 @@ export let ParsedResultEditor = ({
   code_to_parse_viewupdate,
 }) => {
   let code_to_parse_selection = useExplicitSelection(code_to_parse_viewupdate);
+
   let initial_editor_state = React.useMemo(() => {
     let tree = get_tree_immediately(code_to_parse_viewupdate.state, parser);
     let { lines } = cursor_to_inspector_lang(tree.cursor());
@@ -336,6 +334,8 @@ export let ParsedResultEditor = ({
         new_context.tree
       );
 
+      let code_to_parse_selection =
+        code_to_parse_viewupdate.state.selection.main;
       let explicit_selection = selected_node_from_code_to_parse_selection(
         meta,
         code_to_parse_selection

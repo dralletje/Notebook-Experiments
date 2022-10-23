@@ -23,8 +23,7 @@ import {
 } from "@codemirror/search";
 import { defaultKeymap } from "@codemirror/commands";
 import { LRParser } from "@lezer/lr";
-import { IonIcon } from "@ionic/react";
-import { bonfire } from "ionicons/icons";
+import { IoBonfire, IoLogoGithub } from "react-icons/io5";
 import usePath from "react-use-path";
 
 import { Extension } from "codemirror-x-react";
@@ -41,6 +40,7 @@ import { TransformJavascriptWorker } from "@dral/dralbook-transform-javascript/w
 
 ////////////////////
 import { basic_javascript_setup } from "./should-be-shared/codemirror-javascript-setup.js";
+import { dot_gutter } from "./should-be-shared/codemirror-dot-gutter.jsx";
 ////////////////////
 
 import { ParsedResultEditor } from "./parsed-result-editor/parsed-result-editor.jsx";
@@ -54,7 +54,6 @@ import {
 } from "./use/OperationMonadBullshit.js";
 import { useWorker, useWorkerPool } from "./use/useWorker.js";
 import { ScopedStorage, useScopedStorage } from "./use/scoped-storage.js";
-import { dot_gutter } from "./should-be-shared/codemirror-dot-gutter.jsx";
 import {
   DEFAULT_JAVASCRIPT_STUFF,
   DEFAULT_PARSER_CODE,
@@ -380,6 +379,8 @@ let PaneHeader = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
+
+  user-select: none;
 `;
 
 let NOISE_BACKGROUND = new URL(
@@ -403,6 +404,7 @@ let PaneStyle = styled.div`
     border-bottom: none;
   }
   .cm-search {
+    font-size: 1rem;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -551,7 +553,7 @@ let PaneTab = ({ title, process }) => {
         // TODO Using `index` here is wrong, but it doesn't hurt too much
         <React.Fragment key={index}>
           <div style={{ minWidth: 8 }} />
-          <IonIcon icon={bonfire} style={{ color: ERROR_COLOR }} />
+          <IoBonfire style={{ color: ERROR_COLOR }} />
         </React.Fragment>
       ))}
     </>
@@ -605,7 +607,10 @@ import {
 import {
   shared_history,
   historyKeymap,
+  historyField,
 } from "./should-be-shared/codemirror-shared-history";
+import { lezerLanguage } from "@codemirror/lang-lezer";
+import { iterate_over_cursor } from "dral-lezer-helpers";
 
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {
@@ -623,6 +628,14 @@ let Editor = ({ project_name }) => {
     main_scope.child("code_to_parse"),
     DEFAULT_TO_PARSE
   );
+
+  let do_run_storage = main_scope.child("run");
+  let [do_run, set_do_run] = useScopedStorage(do_run_storage, true);
+
+  do_run_storage.set(false);
+  React.useLayoutEffect(() => {
+    do_run_storage.set(true);
+  });
 
   let initial_state = React.useMemo(() => {
     let notebook_state = NestedEditorStatesField.init((editorstate) => {
@@ -648,10 +661,31 @@ let Editor = ({ project_name }) => {
         cell_with_current_selection: null,
       };
     });
+
+    // Keep history state in localstorage so you don't lose your history whaaaaaat
+    let history = null;
+    try {
+      let history_field_json = main_scope.child("history").get();
+      let restored_state = EditorState.fromJSON(
+        {
+          doc: "",
+          selection: { main: 0, ranges: [{ anchor: 0, head: 0 }] },
+          history: history_field_json,
+        },
+        {},
+        {
+          history: historyField,
+        }
+      );
+      history = restored_state.field(historyField);
+    } catch (error) {}
+
     return EditorState.create({
       extensions: [
         notebook_state,
         nested_cell_states_basics,
+
+        history != null ? historyField.init(() => history) : [],
 
         // This works so smooth omg
         [shared_history(), keymap.of(historyKeymap)],
@@ -721,6 +755,14 @@ let Editor = ({ project_name }) => {
     };
   }, [viewupdate.view]);
 
+  React.useEffect(() => {
+    let serialized = state.toJSON({
+      history: historyField,
+    });
+    console.log(`serialized:`, serialized);
+    main_scope.child("history").set(serialized.history);
+  }, [state]);
+
   let parser_code = lezer_grammar_viewupdate.state.doc.toString();
 
   let babel_worker = useWorker(() => new TransformJavascriptWorker(), []);
@@ -728,12 +770,47 @@ let Editor = ({ project_name }) => {
 
   let generated_parser_code = usePromise(
     async (signal) => {
+      if (!do_run) {
+        throw new Error("Not running");
+      }
+
+      // Find empty Body's in the lezer parser, which will definitely lead to an infinite loop
+      let tree = lezerLanguage.parser.parse(parser_code);
+      iterate_over_cursor({
+        cursor: tree.cursor(),
+        enter: (cursor) => {
+          if (cursor.name === "Body") {
+            if (cursor.node.parent?.name === "SkipScope") {
+              return;
+            }
+
+            let has_a_child = false;
+            if (cursor.firstChild()) {
+              try {
+                do {
+                  if (/^[A-Z0-9][A-Z0-9a-z]*$/.test(cursor.name)) {
+                    has_a_child = true;
+                  }
+                } while (cursor.nextSibling());
+              } finally {
+                cursor.parent();
+              }
+              if (!has_a_child) {
+                throw new Error(`Empty Body (at line:col here)`);
+              }
+            } else {
+              throw new Error(`Empty Body (at line:col here)`);
+            }
+          }
+        },
+      });
+
       // Build the parser file first
       return await get_lezer_worker(signal).request("build-parser", {
         code: parser_code,
       });
     },
-    [parser_code, get_lezer_worker]
+    [parser_code, get_lezer_worker, do_run]
   );
 
   let terms_file_result = usePromise(
@@ -760,6 +837,10 @@ let Editor = ({ project_name }) => {
 
   let javascript_result = usePromise(
     async (signal) => {
+      if (!do_run) {
+        throw new Error("Not running");
+      }
+
       if (babel_worker == null) {
         throw Loading.of();
       }
@@ -788,8 +869,6 @@ let Editor = ({ project_name }) => {
         "@codemirror/state": () => import("@codemirror/state"),
         "style-mod": () => import("style-mod"),
         "@lezer/lr": () => import("@lezer/lr"),
-        "./parser.terms.js": load_terms_file,
-        "./parser.terms": load_terms_file,
       };
 
       try {
@@ -798,6 +877,10 @@ let Editor = ({ project_name }) => {
             // prettier-ignore
             url: new URL("./lezer-playground.js", window.location.href).toString(),
             import: async (specifier, imported) => {
+              if (specifier.endsWith(".terms.js") || specifier === ".terms") {
+                return await load_terms_file();
+              }
+
               let fn = import_map[specifier];
               if (fn == null)
                 return verify_imported(
@@ -819,7 +902,13 @@ let Editor = ({ project_name }) => {
         }
       }
     },
-    [terms_file_result, babel_worker, javascript_stuff, terms_file_result]
+    [
+      terms_file_result,
+      babel_worker,
+      javascript_stuff,
+      terms_file_result,
+      do_run,
+    ]
   );
 
   let parser = usePromise(async () => {
@@ -874,21 +963,6 @@ let Editor = ({ project_name }) => {
 
   let parser_in_betweens = useMemoizeSuccess(parser);
 
-  let code_to_parse_state = code_to_parse_viewupdate.state;
-  let code_to_parse_has_selection = code_to_parse_state.field(
-    CellHasSelectionField
-  );
-  let code_to_parse_selection = React.useMemo(() => {
-    if (code_to_parse_has_selection) {
-      return /** @type {const} */ ([
-        code_to_parse_state.selection.main.from,
-        code_to_parse_state.selection.main.to,
-      ]);
-    } else {
-      return null;
-    }
-  }, [code_to_parse_has_selection, code_to_parse_state.selection]);
-
   // Add a class to the body whenever the mouse is held down
   React.useEffect(() => {
     let mouse_down_listener = () => {
@@ -920,10 +994,27 @@ let Editor = ({ project_name }) => {
       <Pane
         style={{ gridArea: "lezer-editor", backgroundColor: "#010539" }}
         header={
-          <PaneTab
-            title="lezer grammar"
-            process={[generated_parser_code, parser]}
-          />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              flex: 1,
+            }}
+          >
+            <PaneTab
+              title="lezer grammar"
+              process={[generated_parser_code, parser]}
+            />
+
+            <div style={{ flex: 1 }} />
+            <input
+              type="checkbox"
+              checked={do_run}
+              onChange={(e) => {
+                set_do_run(e.target.checked);
+              }}
+            />
+          </div>
         }
       >
         <GeneralEditorStyles>
@@ -1053,6 +1144,7 @@ let Editor = ({ project_name }) => {
           fontSize: 12,
           display: "flex",
           alignItems: "center",
+          userSelect: "none",
         }}
       >
         <span
@@ -1067,11 +1159,29 @@ let Editor = ({ project_name }) => {
           <LoadSampleDropdown scoped_storage={main_scope} />
         </span>
         <span style={{ fontWeight: "bold" }}>Lezer Playground</span>
-        <span style={{ flex: 1 }}></span>
+        <span
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "flex-end",
+          }}
+        >
+          <SimpleLink href="https://github.com/dralletje/Notebook-Experiments/tree/main/lezer-playground">
+            <IoLogoGithub title="Github Repository" style={{ fontSize: 16 }} />
+          </SimpleLink>
+        </span>
       </div>
     </AppGrid>
   );
 };
+
+let SimpleLink = styled.a`
+  cursor: pointer;
+  &:hover {
+    color: #00e1ff;
+  }
+`;
 
 let ProjectDropdownStyle = styled.div`
   position: relative;
@@ -1199,6 +1309,7 @@ let ProjectsDropdown = () => {
 };
 
 let path_prefix = "./premade-projects/";
+// @ts-expect-error - Vite glob 😎
 const modules = import.meta.glob("./premade-projects/**/*", { as: "raw" });
 let premade_projects = {};
 for (let [path, import_module] of Object.entries(modules)) {
@@ -1215,7 +1326,6 @@ for (let [path, import_module] of Object.entries(modules)) {
     console.error(`Unknown file type: ${path}/${filename}`);
   }
 }
-console.log(`premade_projects:`, premade_projects);
 
 let LoadSampleDropdown = ({ scoped_storage }) => {
   let path = window.location.pathname;
@@ -1247,7 +1357,7 @@ let LoadSampleDropdown = ({ scoped_storage }) => {
           ))}
         </div>
         <div className="help">
-          Load an pre-made project.
+          Load an existing parser.
           <br />
           <br />
           I've compiled those from github, mashing the javascript files
