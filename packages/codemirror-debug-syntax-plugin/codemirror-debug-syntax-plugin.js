@@ -78,7 +78,7 @@ export const debug_syntax_plugin = EditorView.updateListener.of((update) => {
         console.groupEnd();
       }
     } else {
-      console.log("⚠️ Full syntax tree not available");
+      console.log("⚠ Full syntax tree not available");
     }
   }
 });

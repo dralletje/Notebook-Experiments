@@ -345,7 +345,6 @@ export let ParsedResultEditor = ({
         head: Math.min(head, parsed_as_js.length),
       };
 
-      console.group("MY CHANGE");
       try {
         codemirror_ref.current.dispatch({
           ...spec,

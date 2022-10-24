@@ -6,7 +6,7 @@ Node {
   meta?
   Arguments?
 }
-Error { "⚠️" }
+Error { @specialize[@name="⚠"]<name, "⚠"> }
 Arguments { "{" (Node)* "}" }
 
 meta {
@@ -26,7 +26,6 @@ Prop {
 Position {
   "<" Number "," Number ">"
 }
-
 
 @skip { spaces | newline | tabs }
 

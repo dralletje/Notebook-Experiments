@@ -410,7 +410,7 @@ export let CellEditorStatesField = StateField.define<{
 
           if (cell_state == null) {
             // prettier-ignore
-            console.log(`⚠️ CellDispatchEffect for Cell(${cell_id}) but no cell state exists`);
+            console.log(`⚠ CellDispatchEffect for Cell(${cell_id}) but no cell state exists`);
             continue;
           }
 
@@ -506,7 +506,7 @@ export let CellEditorStatesField = StateField.define<{
           }
           let cell_above_id = cell_order[cell_below_index - 1];
           if (cell_above_id == null) {
-            console.log(`⚠️ MergeCellFromBelowEffect: no cell above`);
+            console.log(`⚠ MergeCellFromBelowEffect: no cell above`);
             // Remove cell below
             delete cells[cell_below_id];
             cell_order.splice(cell_order.indexOf(cell_below_id), 1);

@@ -618,9 +618,11 @@ import { lezerLanguage } from "@codemirror/lang-lezer";
 import { iterate_over_cursor } from "dral-lezer-helpers";
 import { cool_cmd_d } from "./should-be-shared/commands.js";
 
+let lezer_playground_storage = new ScopedStorage("lezer-playground");
+
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {
-  let main_scope = new ScopedStorage("lezer-playground").child(project_name);
+  let main_scope = lezer_playground_storage.child(project_name);
 
   let [_parser_code, set_parser_code] = useScopedStorage(
     main_scope.child("parser_code"),
@@ -1208,6 +1210,7 @@ let Editor = ({ project_name }) => {
         >
           <ProjectsDropdown />
           <LoadSampleDropdown scoped_storage={main_scope} />
+          <ExtraDropdown scoped_storage={main_scope} />
         </span>
         <span style={{ fontWeight: "bold" }}>Lezer Playground</span>
         <span
@@ -1417,6 +1420,70 @@ let LoadSampleDropdown = ({ scoped_storage }) => {
           <br />
           <br />
           <b>This will override the project you have open currently!</b>
+        </div>
+      </div>
+    </ProjectDropdownStyle>
+  );
+};
+
+let ExtraDropdown = ({ scoped_storage }) => {
+  let project_names = sortBy(
+    uniq(
+      Array.from(storage_keys(localStorage))
+        .map((x) => x.split("."))
+        .filter((x) => x[0] === "lezer-playground")
+        .map((x) => x[1])
+    )
+  );
+
+  return (
+    <ProjectDropdownStyle>
+      <button style={{ color: "gray" }}>other</button>
+      <div className="dropdown">
+        <div className="menu">
+          <a
+            onClick={() => {
+              scoped_storage.child("history").remove();
+              window.location.reload();
+            }}
+          >
+            clear project history
+          </a>
+          <a
+            onClick={() => {
+              for (let project_name of project_names) {
+                let storage = lezer_playground_storage
+                  .child(project_name)
+                  .child("history");
+                storage.remove();
+              }
+              window.location.reload();
+            }}
+          >
+            clear <b style={{ color: "red" }}>all history</b>
+          </a>
+          <a
+            onClick={() => {
+              if (window.confirm("Hey, are you sure?")) {
+                for (let child of scoped_storage.children()) {
+                  console.log(`child.key:`, child.key);
+                  child.remove();
+                }
+                window.location.href = "/";
+              }
+            }}
+          >
+            <b>remove project</b>
+          </a>
+        </div>
+        <div className="help">
+          I needed a catch all where I can put all my other miscellaneous
+          options.
+          <br />
+          <br />
+          Delete history is here because I save the codemirror history to
+          localstorage, but it turns out localstorage has a limited size, so I
+          needed a way to clear the history if it gets too big.
         </div>
       </div>
     </ProjectDropdownStyle>

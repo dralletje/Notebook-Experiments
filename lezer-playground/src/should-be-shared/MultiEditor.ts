@@ -214,7 +214,7 @@ export let NestedEditorStatesField = StateField.define<{
 
             if (cell_state == null) {
               // prettier-ignore
-              console.log(`⚠️ CellDispatchEffect for Cell(${cell_id}) but no cell state exists`);
+              console.log(`⚠ CellDispatchEffect for Cell(${cell_id}) but no cell state exists`);
               continue;
             }
 

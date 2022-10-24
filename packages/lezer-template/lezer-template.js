@@ -793,7 +793,7 @@ export const t = /** @type {const} */ ({
             node: ast.node.firstChild,
           })
         );
-        console.log("⚠️ Narrowing inside many", ast.node, sub_template);
+        console.log("⚠ Narrowing inside many", ast.node, sub_template);
       } else {
         sub_template = return_value(template_generator.next(ast));
       }
@@ -839,7 +839,7 @@ export const t = /** @type {const} */ ({
               );
               if (!did_match) {
                 // prettier-ignore
-                verbose && console.log("⚠️ Didn't match subtemplate, which _could_ be fine - many");
+                verbose && console.log("⚠ Didn't match subtemplate, which _could_ be fine - many");
                 // Move back on child, as that is the child that DIDN'T match
                 // And we want to give the next template a change to maybe match it
                 cursor.prevSibling();

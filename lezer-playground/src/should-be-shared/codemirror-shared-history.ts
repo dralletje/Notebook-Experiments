@@ -174,7 +174,7 @@ class NotebookTransaction {
 
     if (cell_with_current_selection != null) {
       if (cell_states.cells[cell_with_current_selection] == null) {
-        console.log(`⚠️ cell ${cell_with_current_selection} not found`);
+        console.log(`⚠ cell ${cell_with_current_selection} not found`);
         return new CellEditorSelection(null, this.startState.selection);
       }
 

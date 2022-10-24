@@ -79,7 +79,7 @@ export let _cursor_to_inspector_lang = (cursor, indent = "") => {
 
   text += indent;
   if (cursor.type.isError) {
-    text += `⚠️`;
+    text += `⚠`;
   } else if (cursor.type.isAnonymous) {
     text += `🔘`;
   } else {
@@ -161,7 +161,7 @@ export let cursor_to_inspector_lang = (cursor) => {
     let first_line_of_this_node = "";
     first_line_of_this_node += indents[0];
     if (cursor.type.isError) {
-      first_line_of_this_node += `⚠️`;
+      first_line_of_this_node += `⚠`;
     } else if (cursor.type.isAnonymous) {
       first_line_of_this_node += `🔘`;
     } else {

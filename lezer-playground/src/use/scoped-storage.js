@@ -1,3 +1,4 @@
+import { range } from "lodash";
 import React from "react";
 
 // Time to actually make this into it's own package?
@@ -24,11 +25,26 @@ export class ScopedStorage {
   }
 
   set(value) {
-    localStorage.setItem(this.key, JSON.stringify(value));
+    if (value == null) {
+      this.remove();
+    } else {
+      localStorage.setItem(this.key, JSON.stringify(value));
+    }
+  }
+
+  remove() {
+    localStorage.removeItem(this.key);
   }
 
   child(/** @type {string} */ key) {
     return new ScopedStorage(`${this.key}.${key}`);
+  }
+
+  children() {
+    return range(0, localStorage.length)
+      .map((index) => /** @type {String} */ (localStorage.key(index)))
+      .filter((key) => key.startsWith(this.key))
+      .map((key) => new ScopedStorage(key));
   }
 }
 

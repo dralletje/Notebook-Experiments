@@ -218,7 +218,6 @@ let scope_from_cursor = (doc, cursor) => {
               if (cursor.name === "Body") {
                 // TODO Parameters
                 let subscope = scope_from_cursor(doc, cursor);
-                console.log(`subscope:`, subscope);
                 for (let reference of subscope.references) {
                   references.push(reference);
                 }
@@ -293,7 +292,6 @@ let scope_decorations = EditorView.decorations.compute(
   [scope_field],
   (state) => {
     let scope = state.field(scope_field);
-    console.log(`scope:`, scope);
     let decorations = [];
 
     for (let reference of scope.references) {
