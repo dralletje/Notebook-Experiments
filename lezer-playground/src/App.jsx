@@ -491,18 +491,21 @@ let AppGrid = styled.div`
   display: grid;
   grid-template:
     " header              header           header " 30px
-    " what-to-parse-editor  ↑       parsed-result " minmax(0, 1fr)
-    "  ←                    █                  →  " 8px
-    " lezer-editor          ↓    javascript-stuff " minmax(0, 1fr)
+    " what-to-parse-editor  .       parsed-result " minmax(0, 1fr)
+    "  .                    .               .     " 8px
+    " lezer-editor          .    javascript-stuff " minmax(0, 1fr)
     / 1fr 8px 1fr;
 
   /* Media query for mobile: */
   @media (max-width: 800px) {
-    height: 90vh;
+    height: 100vh;
+    height: 100dvh;
     grid-template:
-      " header            header header   header    header  header header        █" 30px
-      "what-to-parse-editor ↑ parsed-result ← lezer-editor  → javascript-stuff   █" 90vh
-      / 100% 8px 100% 8px 100% 8px 100% 8px;
+      " header               header                header     █ " 30px
+      "lezer-editor   what-to-parse-editor  javascript-stuff  █ " 1fr
+      "lezer-editor      parsed-result      javascript-stuff  █ " 1fr
+      / 100% 100% 100% 8px;
+    gap: 8px;
 
     ${PaneStyle} {
       scroll-snap-align: center;

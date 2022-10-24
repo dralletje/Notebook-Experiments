@@ -50,6 +50,8 @@ import { LanguageStateFacet } from "@dral/codemirror-helpers";
 import { Failure, Loading, usePromise } from "../use/OperationMonadBullshit.js";
 import { Tree } from "@lezer/common";
 
+import { useIntersectionObserver } from "@asyarb/use-intersection-observer";
+
 let base_extensions = [
   EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
   dot_gutter,
@@ -277,6 +279,15 @@ export let ParsedResultEditor = ({
   onSelection,
   code_to_parse_viewupdate,
 }) => {
+  let container_ref = React.useRef(null);
+  const inView = useIntersectionObserver({
+    ref: container_ref,
+    options: {
+      threshold: 0.25,
+      triggerOnce: false,
+    },
+  });
+
   let code_to_parse_selection = useExplicitSelection(code_to_parse_viewupdate);
 
   let initial_editor_state = React.useMemo(() => {
@@ -358,9 +369,14 @@ export let ParsedResultEditor = ({
             ...(explicit_selection != null ? [FoldAllEffect.of(null)] : []),
             // @ts-expect-error Using Language.setState which is ~~private~~
             Language.setState.of(new_language_state),
-            EditorView.scrollIntoView(new_selection.head, {
-              y: "nearest",
-            }),
+            // TODO Scroll only the editor, not the rest of the page? 🤔
+            ...(inView
+              ? [
+                  EditorView.scrollIntoView(new_selection.head, {
+                    y: "nearest",
+                  }),
+                ]
+              : []),
           ],
           selection: new_selection,
         });
@@ -403,7 +419,8 @@ export let ParsedResultEditor = ({
       if (new_selection != null) {
         codemirror_ref.current.dispatch({
           selection: new_selection,
-          scrollIntoView: true,
+          // TODO Scroll only the editor, not the rest of the page? 🤔
+          scrollIntoView: inView,
           effects: [FoldAllEffect.of(null)],
         });
       } else {
@@ -443,6 +460,7 @@ export let ParsedResultEditor = ({
 
   return (
     <div
+      ref={container_ref}
       style={{
         height: "100%",
         opacity: result instanceof Loading ? 0.5 : 1,
