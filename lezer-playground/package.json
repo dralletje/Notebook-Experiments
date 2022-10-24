@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@asyarb/use-intersection-observer": "^2.0.2",
     "@codemirror/autocomplete": "^6.1.0",
     "@codemirror/collab": "^6.0.0",
     "@codemirror/commands": "^6.1.0",
