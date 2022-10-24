@@ -10,7 +10,8 @@ import { styleTags, tags as t } from "@lezer/highlight";
 import { StateField, Text } from "@codemirror/state";
 import { partition, update } from "lodash";
 import { Tree, TreeCursor } from "@lezer/common";
-import { iterate_over_cursor } from "dral-lezer-helpers";
+import { iterate_over_cursor, iterate_with_cursor } from "dral-lezer-helpers";
+import { LanguageStateFacet } from "@dral/codemirror-helpers";
 
 let lezerStyleTags = styleTags({
   LineComment: t.lineComment,
@@ -115,26 +116,49 @@ export let lezer_highlight = syntaxHighlighting(
  * @param {TreeCursor} cursor
  * @returns {{
  *  definitions: { [name: string]: Array<{ position: [number, number] }> },
- *  references: Array<{ position: [number, number], name: string, definition: { position: [number, number] } }>,
- *  unresolved: Array<{ position: [number, number], name: string }>,
+ *  references: Array<{ position: [number, number], name: string, definition: { position: [number, number] }? }>,
  * }}
  */
 let scope_from_cursor = (doc, cursor) => {
   let definitions =
     /** @type {ReturnType<scope_from_cursor>["definitions"]} */ ({});
-  let unresolveds =
-    /** @type {ReturnType<scope_from_cursor>["unresolved"]} */ ([]);
   let references =
     /** @type {ReturnType<scope_from_cursor>["references"]} */ ([]);
 
   iterate_over_cursor({
     cursor,
     enter: (cursor) => {
-      if (cursor.name === "RuleName") {
+      if (cursor.name === "PrecedenceBody") {
+        iterate_over_cursor({
+          cursor,
+          enter: (cursor) => {
+            if (cursor.name === "PrecedenceName") {
+              let name = "!" + doc.sliceString(cursor.from, cursor.to);
+              definitions[name] = definitions[name] || [];
+              definitions[name].push({
+                position: [cursor.from, cursor.to],
+              });
+            }
+          },
+        });
+        return false;
+      }
+
+      if (cursor.name === "PrecedenceMarker") {
         let name = doc.sliceString(cursor.from, cursor.to);
-        unresolveds.push({
+        references.push({
           position: [cursor.from, cursor.to],
           name,
+          definition: null,
+        });
+      }
+
+      if (cursor.name === "RuleName") {
+        let name = doc.sliceString(cursor.from, cursor.to);
+        references.push({
+          position: [cursor.from, cursor.to],
+          name,
+          definition: null,
         });
       }
 
@@ -147,7 +171,7 @@ let scope_from_cursor = (doc, cursor) => {
                 // TODO Parameters
                 let subscope = scope_from_cursor(doc, cursor);
                 // TODO Add resolved references
-                unresolveds.push(...subscope.unresolved);
+                references.push(...subscope.references);
                 return false;
               }
             } while (cursor.nextSibling());
@@ -194,18 +218,21 @@ let scope_from_cursor = (doc, cursor) => {
               if (cursor.name === "Body") {
                 // TODO Parameters
                 let subscope = scope_from_cursor(doc, cursor);
+                console.log(`subscope:`, subscope);
                 for (let reference of subscope.references) {
                   references.push(reference);
                 }
-                for (let unresolved of subscope.unresolved) {
-                  if (local_definitions[unresolved.name]) {
+                for (let unresolved of subscope.references) {
+                  if (unresolved.definition != null) {
+                    references.push(unresolved);
+                  } else if (local_definitions[unresolved.name]) {
                     references.push({
                       position: unresolved.position,
                       name: unresolved.name,
                       definition: local_definitions[unresolved.name],
                     });
                   } else {
-                    unresolveds.push(unresolved);
+                    references.push(unresolved);
                   }
                 }
               }
@@ -224,15 +251,16 @@ let scope_from_cursor = (doc, cursor) => {
     references: [],
     unresolved: [],
   });
-  for (let unresolved of unresolveds) {
-    let definition = definitions[unresolved.name];
+  for (let reference of references) {
+    let definition = reference.definition ?? definitions[reference.name]?.[0];
+
     if (definition) {
       result.references.push({
-        ...unresolved,
-        definition: definition[0],
+        ...reference,
+        definition: definition,
       });
     } else {
-      result.unresolved.push(unresolved);
+      result.references.push(reference);
     }
   }
   return result;
@@ -243,10 +271,13 @@ let scope_field = StateField.define({
     return scope_from_cursor(state.doc, syntaxTree(state).cursor());
   },
   update(value, tr) {
-    if (tr.docChanged) {
+    if (
+      tr.docChanged ||
+      tr.state.facet(LanguageStateFacet) !==
+        tr.startState.facet(LanguageStateFacet)
+    ) {
       let state = tr.state;
       let value = scope_from_cursor(state.doc, syntaxTree(state).cursor());
-      console.log(`value:`, value);
       return value;
     }
     return value;
@@ -262,39 +293,37 @@ let scope_decorations = EditorView.decorations.compute(
   [scope_field],
   (state) => {
     let scope = state.field(scope_field);
+    console.log(`scope:`, scope);
     let decorations = [];
 
     for (let reference of scope.references) {
-      decorations.push(
-        Decoration.mark({
-          class: "reference",
-          attributes: {
-            title: `${ctrl_or_cmd_name}-Click to jump to the definition of ${reference.name}.`,
-            "data-pluto-variable": reference.name,
-            "data-definition-from": String(reference.definition.position[0]),
-            "data-definition-to": String(reference.definition.position[1]),
-            href: `#${reference.name}`,
-          },
-        }).range(reference.position[0], reference.position[1])
-      );
+      if (reference.definition != null) {
+        decorations.push(
+          Decoration.mark({
+            class: "reference",
+            attributes: {
+              title: `${ctrl_or_cmd_name}-Click to jump to the definition of ${reference.name}.`,
+              "data-pluto-variable": reference.name,
+              "data-definition-from": String(reference.definition.position[0]),
+              "data-definition-to": String(reference.definition.position[1]),
+              href: `#${reference.name}`,
+            },
+          }).range(reference.position[0], reference.position[1])
+        );
+      }
     }
 
-    return Decoration.set(decorations);
+    return Decoration.set(decorations, true);
   }
 );
 
 let scope_event_handler = EditorView.domEventHandlers({
   pointerdown: (event, view) => {
-    console.log(
-      `as_ctrl_or_cmd_pressed(event):`,
-      has_ctrl_or_cmd_pressed(event)
-    );
     if (!has_ctrl_or_cmd_pressed(event)) return;
     if (event.button !== 0) return;
     if (!(event.target instanceof Element)) return;
 
     let pluto_variable = event.target.closest("[data-pluto-variable]");
-    console.log(`pluto_variable:`, pluto_variable);
     if (!pluto_variable) return;
 
     let variable = pluto_variable.getAttribute("data-pluto-variable");
@@ -318,10 +347,58 @@ let scope_event_handler = EditorView.domEventHandlers({
   },
 });
 
+let scope_style = EditorView.theme({
+  "[data-pluto-variable]": {
+    "--variable-color": "#ff00a8",
+  },
+  ".cmd-down & [data-pluto-variable]": {
+    cursor: "pointer",
+    "text-decoration": "underline 2px #ffffff40",
+    "text-underline-offset": "3px",
+    "text-decoration-skip-ink": "none",
+  },
+  ".cmd-down & [data-pluto-variable]:hover": {
+    cursor: "pointer",
+    // "font-weight": "bold",
+    "text-decoration": "underline 2px var(--variable-color)",
+    "text-underline-offset": "3px",
+    "text-decoration-skip-ink": "none",
+  },
+  ".cmd-down & [data-pluto-variable]:hover *": {
+    color: "var(--variable-color)",
+  },
+});
+
+let theme = EditorView.theme(
+  {
+    "& .cm-selectionBackground": {
+      background: "rgb(74 0 88 / 56%) !important",
+    },
+    "&.cm-focused .cm-selectionBackground": {
+      background: "rgb(130 0 153 / 56%) !important",
+    },
+    "&.cm-editor .cm-selectionMatch": {
+      "text-shadow": "0 0 13px rgb(255 7 7)",
+    },
+    ".cm-searchMatch": {
+      "background-color": "#4800568a",
+    },
+    ".cm-searchMatch-selected": {
+      "background-color": "#ff00ff8a",
+    },
+  },
+  {
+    dark: true,
+  }
+);
+
 export let lezer_syntax_extensions = [
   scope_field,
   scope_decorations,
   scope_event_handler,
+  scope_style,
+
+  theme,
 
   lezer_extension,
   lezer_highlight,

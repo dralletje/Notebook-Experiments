@@ -21,7 +21,7 @@ import {
   search,
   searchKeymap,
 } from "@codemirror/search";
-import { defaultKeymap } from "@codemirror/commands";
+import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { LRParser } from "@lezer/lr";
 import { IoBonfire, IoLogoGithub } from "react-icons/io5";
 import usePath from "react-use-path";
@@ -75,7 +75,6 @@ let base_extensions = [
   bracketMatching({}),
   closeBrackets(),
   highlightSelectionMatches(),
-  keymap.of(defaultKeymap),
   drawSelection({ cursorBlinkRate: 0 }),
 
   search({
@@ -83,6 +82,9 @@ let base_extensions = [
     top: true,
   }),
   keymap.of(searchKeymap),
+  keymap.of([indentWithTab]),
+  cool_cmd_d,
+  keymap.of(defaultKeymap),
 ];
 
 let position_from_error = (error) => {
@@ -366,10 +368,10 @@ let GeneralEditorStyles = styled.div`
 `;
 
 let PaneHeader = styled.div`
-  padding-top: 3px;
+  padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 18px;
-  padding-right: 18px;
+  padding-right: 5px;
   font-weight: bold;
   font-size: 12px;
 
@@ -614,6 +616,7 @@ import {
 } from "./should-be-shared/codemirror-shared-history";
 import { lezerLanguage } from "@codemirror/lang-lezer";
 import { iterate_over_cursor } from "dral-lezer-helpers";
+import { cool_cmd_d } from "./should-be-shared/commands.js";
 
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {
@@ -982,6 +985,29 @@ let Editor = ({ project_name }) => {
     };
   }, []);
 
+  // Add a class to the body whenever the mouse is held down
+  React.useEffect(() => {
+    let key_i_m_looking_for = /Mac/.test(navigator.platform)
+      ? "Meta"
+      : "Control";
+    let mouse_down_listener = (event) => {
+      if (event.key === key_i_m_looking_for) {
+        document.body.classList.add("cmd-down");
+      }
+    };
+    let mouse_up_listener = (event) => {
+      if (event.key === key_i_m_looking_for) {
+        document.body.classList.remove("cmd-down");
+      }
+    };
+    document.addEventListener("keydown", mouse_down_listener);
+    document.addEventListener("keyup", mouse_up_listener);
+    return () => {
+      document.removeEventListener("keydown", mouse_down_listener);
+      document.removeEventListener("keyup", mouse_up_listener);
+    };
+  }, []);
+
   let onSelection = React.useCallback(
     (/** @type {readonly [Number, number]} */ [from, to]) => {
       code_to_parse_viewupdate.view.dispatch({
@@ -1008,15 +1034,29 @@ let Editor = ({ project_name }) => {
               title="lezer grammar"
               process={[generated_parser_code, parser]}
             />
-
             <div style={{ flex: 1 }} />
-            <input
-              type="checkbox"
-              checked={do_run}
-              onChange={(e) => {
-                set_do_run(e.target.checked);
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
               }}
-            />
+            >
+              <span style={{ opacity: 0.5 }}>run</span>
+              <div style={{ width: 8 }} />
+              <input
+                style={{
+                  margin: 0,
+                  accentColor: "#cb00d7",
+                  opacity: 0.5,
+                }}
+                type="checkbox"
+                checked={do_run}
+                onChange={(e) => {
+                  set_do_run(e.target.checked);
+                }}
+              />
+            </div>
           </div>
         }
       >
