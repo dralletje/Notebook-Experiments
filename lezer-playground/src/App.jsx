@@ -23,7 +23,7 @@ import {
 } from "@codemirror/search";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { LRParser } from "@lezer/lr";
-import { IoBonfire, IoLogoGithub } from "react-icons/io5";
+import { IoBonfire, IoHeart, IoLogoGithub } from "react-icons/io5";
 import usePath from "react-use-path";
 
 import { Extension } from "codemirror-x-react";
@@ -1166,7 +1166,7 @@ let Editor = ({ project_name }) => {
       </Pane>
 
       <Pane
-        style={{ gridArea: "javascript-stuff" }}
+        style={{ gridArea: "javascript-stuff", backgroundColor: "#180000" }}
         header={<PaneTab title="javascript stuff" process={js_stuff} />}
       >
         <GeneralEditorStyles>
@@ -1221,6 +1221,13 @@ let Editor = ({ project_name }) => {
             justifyContent: "flex-end",
           }}
         >
+          <SimpleLink href="https://github.com/dralletje">
+            <IoHeart
+              title="By Michiel Dral (link to github)"
+              style={{ fontSize: 16 }}
+            />
+          </SimpleLink>
+          <div style={{ width: 8 }} />
           <SimpleLink href="https://github.com/dralletje/Notebook-Experiments/tree/main/lezer-playground">
             <IoLogoGithub title="Github Repository" style={{ fontSize: 16 }} />
           </SimpleLink>
