@@ -271,6 +271,7 @@ export let Extension = ({
   let extension = useMemo(() => extension_unmemod, deps);
 
   useLayoutEffect(() => {
+    console.log("INITIAL DISPATCH");
     dispatch({
       effects: StateEffect.appendConfig.of(compartment.of(extension)),
     });
@@ -292,7 +293,7 @@ export let Extension = ({
       return;
     }
 
-    // console.log("RECONFIGURING", { extension, deps });
+    console.log("RECONFIGURING", { extension, deps });
     dispatch({
       effects: compartment.reconfigure(extension),
     });

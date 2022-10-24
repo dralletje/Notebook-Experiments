@@ -1,17 +1,23 @@
 import { lezerLanguage } from "@codemirror/lang-lezer";
-import { Decoration, EditorView } from "@codemirror/view";
+import { Decoration, EditorView, keymap } from "@codemirror/view";
 import {
+  bracketMatching,
   HighlightStyle,
   LanguageSupport,
   syntaxHighlighting,
   syntaxTree,
 } from "@codemirror/language";
 import { styleTags, tags as t } from "@lezer/highlight";
-import { StateField, Text } from "@codemirror/state";
+import { EditorState, Prec, StateField, Text } from "@codemirror/state";
 import { partition, update } from "lodash";
 import { Tree, TreeCursor } from "@lezer/common";
 import { iterate_over_cursor, iterate_with_cursor } from "dral-lezer-helpers";
 import { LanguageStateFacet } from "@dral/codemirror-helpers";
+import {
+  acceptCompletion,
+  autocompletion,
+  closeBrackets,
+} from "@codemirror/autocomplete";
 
 let lezerStyleTags = styleTags({
   LineComment: t.lineComment,
@@ -246,7 +252,7 @@ let scope_from_cursor = (doc, cursor) => {
   });
 
   let result = /** @type {ReturnType<scope_from_cursor>} */ ({
-    definitions: {},
+    definitions: definitions,
     references: [],
     unresolved: [],
   });
@@ -306,6 +312,12 @@ let scope_decorations = EditorView.decorations.compute(
               "data-definition-to": String(reference.definition.position[1]),
               href: `#${reference.name}`,
             },
+          }).range(reference.position[0], reference.position[1])
+        );
+      } else {
+        decorations.push(
+          Decoration.mark({
+            class: "undefined",
           }).range(reference.position[0], reference.position[1])
         );
       }
@@ -390,11 +402,118 @@ let theme = EditorView.theme(
   }
 );
 
+/** @type {import("@codemirror/autocomplete").CompletionSource} */
+const completion_provider = (ctx) => {
+  let scope = ctx.state.field(scope_field);
+
+  // TODO Check if we are in a RuleBody? (instead of the name part)
+  let token = ctx.tokenBefore(["RuleName", "PrecedenceMarker"]);
+  if (token == null) return null;
+
+  // If the thing you are typing is matching a definition, but that definition
+  // is right where you are typing it!! Then don't show the completion.
+  let definitions = scope.definitions[token.text];
+  for (let definition of definitions ?? []) {
+    if (
+      definition.position[0] === token.from &&
+      definition.position[1] === token.to
+    ) {
+      return null;
+    }
+  }
+
+  let defined_names = Object.keys(scope.definitions);
+  let options = defined_names.map((x) => {
+    return {
+      label: x,
+    };
+  });
+
+  return {
+    from: token.from,
+    options: options,
+
+    // Can't seem to get this shit to update!!
+    // I wants to refetch every time D:
+    update: (current, from, to, ctx) => {
+      console.log(`current, from, to, ctx:`, current, from, to, ctx);
+
+      let token = ctx.tokenBefore(["RuleName", "PrecedenceMarker"]);
+      if (token == null) return null;
+
+      return {
+        from: token.from,
+        options: options,
+      };
+    },
+    validFor: () => {
+      return true;
+    },
+  };
+};
+
 export let lezer_syntax_extensions = [
   scope_field,
   scope_decorations,
   scope_event_handler,
   scope_style,
+
+  // Trying to add completions to the languageData...
+  // but I have to cache stuff or else it will keep calling this in a loop D:
+  // very frustrating!!
+  // EditorState.languageData.compute([scope_field], (state) => {
+  //   let last_pos = null;
+  //   let last_completions = null;
+  //   return (state, pos) => {
+  //     if (last_pos !== pos) {
+  //       last_pos = pos;
+  //       last_completions = [
+  //         {
+  //           autocomplete: ["Pre"],
+  //         },
+  //       ];
+  //     }
+  //     return last_completions;
+  //   };
+  // }),
+
+  autocompletion({
+    activateOnTyping: true,
+    override: [completion_provider],
+  }),
+  Prec.highest(
+    keymap.of([
+      {
+        key: "Tab",
+        run: acceptCompletion,
+      },
+    ])
+  ),
+  EditorView.theme({
+    ".cm-tooltip-autocomplete": {
+      "background-color": "#000000",
+      // border: "white solid 2px",
+      "border-radius": "9px",
+      transform: "translateY(10px) translateX(-7px)",
+      overflow: "hidden",
+    },
+    ".cm-completionMatchedText": {
+      "text-decoration": "none",
+      "font-weight": "bold",
+    },
+    ".cm-tooltip.cm-tooltip-autocomplete > ul": {
+      "font-family": "inherit",
+    },
+    ".cm-tooltip.cm-tooltip-autocomplete > ul > li": {
+      "padding-left": "8px",
+    },
+    ".cm-tooltip-autocomplete ul li[aria-selected]": {
+      background: "#ffffff2b",
+    },
+    ".cm-completionIcon": {
+      display: "none",
+    },
+  }),
 
   theme,
 

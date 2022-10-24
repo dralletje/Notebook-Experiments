@@ -85,6 +85,12 @@ let base_extensions = [
   keymap.of([indentWithTab]),
   cool_cmd_d,
   keymap.of(defaultKeymap),
+
+  EditorView.theme({
+    ".cm-content": {
+      "caret-color": "white",
+    },
+  }),
 ];
 
 let position_from_error = (error) => {
@@ -489,6 +495,19 @@ let AppGrid = styled.div`
     "  ←                    █                  →  " 8px
     " lezer-editor          ↓    javascript-stuff " minmax(0, 1fr)
     / 1fr 8px 1fr;
+
+  /* Media query for mobile: */
+  @media (max-width: 800px) {
+    height: 90vh;
+    grid-template:
+      " header            header header   header    header  header header        █" 30px
+      "what-to-parse-editor ↑ parsed-result ← lezer-editor  → javascript-stuff   █" 90vh
+      / 100% 8px 100% 8px 100% 8px 100% 8px;
+
+    ${PaneStyle} {
+      scroll-snap-align: center;
+    }
+  }
 `;
 
 // Thanks, https://loading.io/css/
@@ -600,6 +619,16 @@ let FillAndCenter = styled.div`
   text-align: center;
 `;
 
+let AppScroller = styled.div`
+  height: 100vh;
+  width: 100vw;
+  background-color: black;
+
+  overflow-x: auto;
+  scroll-snap-points-x: repeat(100vw);
+  scroll-snap-type: x mandatory;
+`;
+
 import { compact, groupBy, range, sortBy, uniq } from "lodash";
 import {
   CellHasSelectionField,
@@ -703,7 +732,14 @@ let Editor = ({ project_name }) => {
 
   let [state, set_state] = React.useState(initial_state);
 
-  let viewupdate = useViewUpdate(state, set_state);
+  let viewupdate = useViewUpdate(state, (to_set) => {
+    console.trace(`set:`, to_set);
+    set_state(to_set);
+  });
+
+  React.useEffect(() => {
+    console.log(`viewupdate:`, viewupdate);
+  }, [viewupdate]);
 
   let lezer_grammar_viewupdate = React.useMemo(
     () => nested_view_update(viewupdate, "lezer-grammar"),
@@ -1024,216 +1060,227 @@ let Editor = ({ project_name }) => {
   );
 
   return (
-    <AppGrid>
-      <Pane
-        style={{ gridArea: "lezer-editor", backgroundColor: "#010539" }}
-        header={
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              flex: 1,
-            }}
-          >
-            <PaneTab
-              title="lezer grammar"
-              process={[generated_parser_code, parser]}
-            />
-            <div style={{ flex: 1 }} />
+    <AppScroller>
+      <AppGrid>
+        <Pane
+          style={{ gridArea: "lezer-editor", backgroundColor: "#010539" }}
+          header={
             <div
               style={{
                 display: "flex",
-                flexDirection: "row",
                 alignItems: "center",
+                flex: 1,
               }}
-              title="
+            >
+              <PaneTab
+                title="lezer grammar"
+                process={[generated_parser_code, parser]}
+              />
+              <div style={{ flex: 1 }} />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+                title="
                 Compile and run the grammar:
                 this mainly exists because the parser might get into an infinite loop,
                 and reloading the page afterwards will then toggle this checkbox so you can fix the error.
               "
-            >
-              <span style={{ opacity: 0.5 }}>run</span>
-              <div style={{ width: 8 }} />
-              <input
-                style={{
-                  margin: 0,
-                  accentColor: "#cb00d7",
-                  opacity: 0.5,
-                }}
-                type="checkbox"
-                checked={do_run}
-                onChange={(e) => {
-                  set_do_run(e.target.checked);
-                }}
-              />
+              >
+                <span style={{ opacity: 0.5 }}>run</span>
+                <div style={{ width: 8 }} />
+                <input
+                  style={{
+                    margin: 0,
+                    accentColor: "#cb00d7",
+                    opacity: 0.5,
+                  }}
+                  type="checkbox"
+                  checked={do_run}
+                  onChange={(e) => {
+                    set_do_run(e.target.checked);
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        }
-      >
-        <GeneralEditorStyles>
-          <LezerEditor
-            error={
-              generated_parser_code instanceof Failure
-                ? generated_parser_code.value
-                : null
-            }
-            viewupdate={lezer_grammar_viewupdate}
-            result={parser}
-          />
-        </GeneralEditorStyles>
-      </Pane>
-
-      <Pane
-        style={{ gridArea: "what-to-parse-editor", backgroundColor: "#0a0a0a" }}
-        header={
-          <>
-            <span>demo text</span>
-            <div style={{ minWidth: 8 }} />
-            {/* <LoadingRingThing /> */}
-          </>
-        }
-      >
-        <GeneralEditorStyles>
-          <WhatToParseEditorWithErrorBoundary
-            viewupdate={code_to_parse_viewupdate}
-            errors={compact([
-              generated_parser_code instanceof Failure
-                ? {
-                    title: "Lezer grammar error",
-                    error: generated_parser_code.value,
-                  }
-                : null,
-              js_stuff instanceof Failure
-                ? { title: "Javascript error", error: js_stuff.value }
-                : null,
-
-              parser instanceof Failure
-                ? { title: "Parser generation", error: parser.value }
-                : null,
-            ])}
-            js_stuff={js_stuff}
-            parser={
-              parser_in_betweens instanceof Success
-                ? parser_in_betweens.get()
-                : null
-            }
-          />
-        </GeneralEditorStyles>
-      </Pane>
-
-      <Pane
-        style={{ gridArea: "parsed-result", backgroundColor: "#001107" }}
-        header={
-          <>
-            <span>lezer result tree</span>
-            <div style={{ minWidth: 8 }} />
-            {/* <LoadingRingThing /> */}
-          </>
-        }
-      >
-        <GeneralEditorStyles>
-          <React.Suspense
-            fallback={
-              <FillAndCenter>
-                <pre style={{ color: "#ffff004d" }}>
-                  Waiting for{"\n"}editor to load..
-                </pre>
-              </FillAndCenter>
-            }
-          >
-            {parser_in_betweens instanceof Success ? (
-              <ParsedResultEditor
-                code_to_parse_viewupdate={code_to_parse_viewupdate}
-                parser={parser_in_betweens.value}
-                code_to_parse={code_to_parse}
-                onSelection={onSelection}
-              />
-            ) : parser_in_betweens instanceof Failure ? (
-              <FillAndCenter>
-                <pre style={{ color: "red", whiteSpace: "pre-wrap" }}>
-                  {parser_in_betweens.value.toString()}
-                </pre>
-              </FillAndCenter>
-            ) : (
-              <FillAndCenter>
-                <pre style={{ color: "#ffff004d" }}>
-                  Waiting for{"\n"}parser to compile..
-                </pre>
-              </FillAndCenter>
-            )}
-          </React.Suspense>
-        </GeneralEditorStyles>
-      </Pane>
-
-      <Pane
-        style={{ gridArea: "javascript-stuff", backgroundColor: "#180000" }}
-        header={<PaneTab title="javascript stuff" process={js_stuff} />}
-      >
-        <GeneralEditorStyles>
-          <JavascriptStuffEditor
-            error={
-              javascript_result instanceof Failure
-                ? javascript_result.value
-                : null
-            }
-            viewupdate={javascript_stuff_viewupdate}
-          />
-        </GeneralEditorStyles>
-      </Pane>
-
-      {["↓", "→", "↑", "←", "█"].map((area) => (
-        <div
-          key={area}
-          style={{
-            gridArea: area,
-            backgroundColor: "black",
-          }}
-        />
-      ))}
-
-      <div
-        style={{
-          gridArea: "header",
-          fontSize: 12,
-          display: "flex",
-          alignItems: "center",
-          userSelect: "none",
-        }}
-      >
-        <span
-          style={{
-            flex: 1,
-            alignSelf: "stretch",
-            display: "flex",
-            alignItems: "stretch",
-          }}
+          }
         >
-          <ProjectsDropdown />
-          <LoadSampleDropdown scoped_storage={main_scope} />
-          <ExtraDropdown scoped_storage={main_scope} />
-        </span>
-        <span style={{ fontWeight: "bold" }}>Lezer Playground</span>
-        <span
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "row",
-            justifyContent: "flex-end",
-          }}
-        >
-          <SimpleLink href="https://github.com/dralletje">
-            <IoHeart
-              title="By Michiel Dral (link to github)"
-              style={{ fontSize: 16 }}
+          <GeneralEditorStyles>
+            <LezerEditor
+              error={
+                generated_parser_code instanceof Failure
+                  ? generated_parser_code.value
+                  : null
+              }
+              viewupdate={lezer_grammar_viewupdate}
+              result={parser}
             />
-          </SimpleLink>
-          <div style={{ width: 8 }} />
-          <SimpleLink href="https://github.com/dralletje/Notebook-Experiments/tree/main/lezer-playground">
-            <IoLogoGithub title="Github Repository" style={{ fontSize: 16 }} />
-          </SimpleLink>
-        </span>
-      </div>
-    </AppGrid>
+          </GeneralEditorStyles>
+        </Pane>
+
+        <Pane
+          style={{
+            gridArea: "what-to-parse-editor",
+            backgroundColor: "#0a0a0a",
+          }}
+          header={
+            <>
+              <span>demo text</span>
+              <div style={{ minWidth: 8 }} />
+              {/* <LoadingRingThing /> */}
+            </>
+          }
+        >
+          <GeneralEditorStyles>
+            <WhatToParseEditorWithErrorBoundary
+              viewupdate={code_to_parse_viewupdate}
+              errors={compact([
+                generated_parser_code instanceof Failure
+                  ? {
+                      title: "Lezer grammar error",
+                      error: generated_parser_code.value,
+                    }
+                  : null,
+                js_stuff instanceof Failure
+                  ? { title: "Javascript error", error: js_stuff.value }
+                  : null,
+
+                parser instanceof Failure
+                  ? { title: "Parser generation", error: parser.value }
+                  : null,
+              ])}
+              js_stuff={js_stuff}
+              parser={
+                parser_in_betweens instanceof Success
+                  ? parser_in_betweens.get()
+                  : null
+              }
+            />
+          </GeneralEditorStyles>
+        </Pane>
+
+        <Pane
+          style={{ gridArea: "parsed-result", backgroundColor: "#001107" }}
+          header={
+            <>
+              <span>lezer result tree</span>
+              <div style={{ minWidth: 8 }} />
+              {/* <LoadingRingThing /> */}
+            </>
+          }
+        >
+          <GeneralEditorStyles>
+            <React.Suspense
+              fallback={
+                <FillAndCenter>
+                  <pre style={{ color: "#ffff004d" }}>
+                    Waiting for{"\n"}editor to load..
+                  </pre>
+                </FillAndCenter>
+              }
+            >
+              {parser_in_betweens instanceof Success ? (
+                <ParsedResultEditor
+                  code_to_parse_viewupdate={code_to_parse_viewupdate}
+                  parser={parser_in_betweens.value}
+                  code_to_parse={code_to_parse}
+                  onSelection={onSelection}
+                />
+              ) : parser_in_betweens instanceof Failure &&
+                parser instanceof Failure ? (
+                <FillAndCenter>
+                  <pre style={{ color: "red", whiteSpace: "pre-wrap" }}>
+                    {parser_in_betweens.value.toString()}
+                  </pre>
+                </FillAndCenter>
+              ) : (
+                <FillAndCenter>
+                  <pre style={{ color: "#ffff004d" }}>
+                    Waiting for{"\n"}parser to compile..
+                  </pre>
+                </FillAndCenter>
+              )}
+            </React.Suspense>
+          </GeneralEditorStyles>
+        </Pane>
+
+        <Pane
+          style={{ gridArea: "javascript-stuff", backgroundColor: "#180000" }}
+          header={<PaneTab title="javascript stuff" process={js_stuff} />}
+        >
+          <GeneralEditorStyles>
+            <JavascriptStuffEditor
+              error={
+                javascript_result instanceof Failure
+                  ? javascript_result.value
+                  : null
+              }
+              viewupdate={javascript_stuff_viewupdate}
+            />
+          </GeneralEditorStyles>
+        </Pane>
+
+        {["↓", "→", "↑", "←", "█"].map((area) => (
+          <div
+            key={area}
+            style={{
+              gridArea: area,
+              backgroundColor: "black",
+            }}
+          />
+        ))}
+
+        <div
+          style={{
+            gridArea: "header",
+            fontSize: 12,
+            display: "flex",
+            alignItems: "center",
+            userSelect: "none",
+          }}
+        >
+          <InnerHeaderLol>
+            <span
+              style={{
+                flex: 1,
+                alignSelf: "stretch",
+                display: "flex",
+                alignItems: "stretch",
+              }}
+            >
+              <ProjectsDropdown />
+              <LoadSampleDropdown scoped_storage={main_scope} />
+              <ExtraDropdown scoped_storage={main_scope} />
+            </span>
+            <span style={{ fontWeight: "bold" }}>Lezer Playground</span>
+            <span
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "row",
+                justifyContent: "flex-end",
+              }}
+            >
+              <SimpleLink href="https://github.com/dralletje">
+                <IoHeart
+                  title="By Michiel Dral (link to github)"
+                  style={{ fontSize: 16 }}
+                />
+              </SimpleLink>
+              <div style={{ width: 8 }} />
+              <SimpleLink href="https://github.com/dralletje/Notebook-Experiments/tree/main/lezer-playground">
+                <IoLogoGithub
+                  title="Github Repository"
+                  style={{ fontSize: 16 }}
+                />
+              </SimpleLink>
+            </span>
+          </InnerHeaderLol>
+        </div>
+      </AppGrid>
+    </AppScroller>
   );
 };
 
@@ -1432,6 +1479,15 @@ let LoadSampleDropdown = ({ scoped_storage }) => {
     </ProjectDropdownStyle>
   );
 };
+
+let InnerHeaderLol = styled.div`
+  width: 100%;
+  max-width: calc(100vw - 16px);
+  position: sticky;
+  right: 8px;
+  left: 8px;
+  display: flex;
+`;
 
 let ExtraDropdown = ({ scoped_storage }) => {
   let project_names = sortBy(

@@ -65,6 +65,12 @@ let base_extensions = [
     top: true,
   }),
   keymap.of(searchKeymap),
+
+  EditorView.theme({
+    ".cm-content": {
+      "caret-color": "white",
+    },
+  }),
 ];
 
 let inspector_lang = new LanguageSupport(
