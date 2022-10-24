@@ -56,7 +56,6 @@ let node_that_contains_selection_field = StateField.define({
       let cursor = tree.cursorAt(selection_head, 1);
 
       do {
-        console.log(`cursor.name:`, cursor.toString());
         // TODO Make this select the whole node, and highlight that in a nice way?
         if (cursor.name === "Node") {
           cursor.firstChild(); // Get callee (VariableName)

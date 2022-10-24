@@ -79,7 +79,7 @@ let base_extensions = [
   drawSelection({ cursorBlinkRate: 0 }),
 
   search({
-    caseSensitive: false,
+    caseSensitive: true,
     top: true,
   }),
   keymap.of(searchKeymap),
@@ -405,6 +405,8 @@ let PaneStyle = styled.div`
   }
   .cm-search {
     font-size: 1rem;
+    font-family: var(--mono-font-family);
+
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -420,6 +422,7 @@ let PaneStyle = styled.div`
     button {
       border: none;
       border-radius: 2px !important;
+      font-family: inherit;
     }
     input:focus-visible,
     button:focus-visible {
@@ -759,7 +762,7 @@ let Editor = ({ project_name }) => {
     let serialized = state.toJSON({
       history: historyField,
     });
-    console.log(`serialized:`, serialized);
+    // console.log(`serialized:`, serialized);
     main_scope.child("history").set(serialized.history);
   }, [state]);
 
@@ -796,10 +799,10 @@ let Editor = ({ project_name }) => {
                 cursor.parent();
               }
               if (!has_a_child) {
-                throw new Error(`Empty Body (at line:col here)`);
+                throw new Error(`Empty Body (add line:col here)`);
               }
             } else {
-              throw new Error(`Empty Body (at line:col here)`);
+              throw new Error(`Empty Body (add line:col here)`);
             }
           }
         },

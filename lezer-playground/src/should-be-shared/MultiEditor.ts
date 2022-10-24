@@ -280,7 +280,7 @@ export let NestedEditorStatesField = StateField.define<{
         // }
       });
     } catch (error) {
-      throw new Error("Error while");
+      throw new Error(`Error while updating NestedEditorStatesField: ${error}`);
     }
   },
 });
