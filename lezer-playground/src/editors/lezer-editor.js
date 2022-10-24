@@ -44,7 +44,7 @@ let lezerStyleTags = styleTags({
 
 let lezer_syntax_classes = EditorView.theme({
   ".boring": {
-    color: "#947eff",
+    color: "#655d8d",
   },
   ".very-important": {
     color: "#b6b6b6",
@@ -57,7 +57,7 @@ let lezer_syntax_classes = EditorView.theme({
     color: "#cb00d7",
   },
   ".variable": {
-    color: "#7229ff",
+    color: "#a16fff",
   },
   ".literal": {
     color: "#00a7ca",

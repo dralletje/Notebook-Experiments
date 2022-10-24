@@ -883,7 +883,10 @@ let Editor = ({ project_name }) => {
             // prettier-ignore
             url: new URL("./lezer-playground.js", window.location.href).toString(),
             import: async (specifier, imported) => {
-              if (specifier.endsWith(".terms.js") || specifier === ".terms") {
+              if (
+                specifier.endsWith(".terms.js") ||
+                specifier.endsWith(".terms")
+              ) {
                 return await load_terms_file();
               }
 
@@ -1041,6 +1044,11 @@ let Editor = ({ project_name }) => {
                 flexDirection: "row",
                 alignItems: "center",
               }}
+              title="
+                Compile and run the grammar:
+                this mainly exists because the parser might get into an infinite loop,
+                and reloading the page afterwards will then toggle this checkbox so you can fix the error.
+              "
             >
               <span style={{ opacity: 0.5 }}>run</span>
               <div style={{ width: 8 }} />
