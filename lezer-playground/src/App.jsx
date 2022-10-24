@@ -1473,7 +1473,7 @@ let ExtraDropdown = ({ scoped_storage }) => {
               }
             }}
           >
-            <b>remove project</b>
+            remove project
           </a>
         </div>
         <div className="help">
