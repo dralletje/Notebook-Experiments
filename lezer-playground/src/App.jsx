@@ -1355,6 +1355,13 @@ let ProjectDropdownStyle = styled.div`
     left: 0;
 
     flex-direction: row;
+
+    @media (max-width: 450px) {
+      position: fixed;
+      top: 30px;
+      left: 0;
+      right: 0;
+    }
   }
 
   body:not(.mouse-down) &:has(button:hover),
