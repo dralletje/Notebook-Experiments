@@ -2,7 +2,7 @@ import React from "react";
 import styled from "styled-components";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import { StateField } from "@codemirror/state";
-import { EditorView, ViewPlugin } from "@codemirror/view";
+import { EditorView, placeholder, ViewPlugin } from "@codemirror/view";
 import { compact, isEqual, range } from "lodash";
 import { shallowEqualObjects } from "shallow-equal";
 
@@ -816,6 +816,11 @@ export let Cell = ({
           cell_id={cell.id}
           viewupdate={viewupdate}
         >
+          <Extension
+            key="placeholder"
+            deps={[]}
+            extension={placeholder("The rest is still unwritten...")}
+          />
           <Extension
             key="basic-javascript-setup"
             extension={basic_javascript_setup}

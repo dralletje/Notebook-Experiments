@@ -497,7 +497,6 @@ export let basic_javascript_setup = [
   EditorState.tabSize.of(2),
   indentUnit.of("\t"),
   javascript_syntax_highlighting,
-  placeholder("The rest is still unwritten..."),
   bracketMatching({}),
   closeBrackets(),
   highlightSelectionMatches(),

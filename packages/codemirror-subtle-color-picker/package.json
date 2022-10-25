@@ -1,0 +1,17 @@
+{
+  "name": "@dral/codemirror-subtle-color-picker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "codemirror-subtle-color-picker.jsx",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@codemirror/state": "^6.1.2",
+    "@codemirror/view": "^6.4.0",
+    "react": "^18.2.0",
+    "react-color": "^2.19.3"
+  }
+}

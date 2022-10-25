@@ -145,6 +145,8 @@ export let LezerEditor = ({ viewupdate, result, error }) => {
   );
 };
 
+let javascript_specific_extension = [codemirror_subtle_color_picker];
+
 /** @param {{ viewupdate: import("codemirror-x-react/viewupdate").GenericViewUpdate, error: Error? }} props */
 export let JavascriptStuffEditor = ({ viewupdate, error }) => {
   let error_extension = React.useMemo(() => {
@@ -174,6 +176,7 @@ export let JavascriptStuffEditor = ({ viewupdate, error }) => {
     <CodemirrorFromViewUpdate viewupdate={viewupdate}>
       <Extension extension={base_extensions} />
       <Extension extension={basic_javascript_setup} />
+      <Extension extension={javascript_specific_extension} />
       <Extension extension={error_extension} />
     </CodemirrorFromViewUpdate>
   );
@@ -663,6 +666,7 @@ import {
 import { lezerLanguage } from "@codemirror/lang-lezer";
 import { iterate_over_cursor } from "dral-lezer-helpers";
 import { cool_cmd_d } from "./should-be-shared/commands.js";
+import { codemirror_subtle_color_picker } from "../../packages/codemirror-subtle-color-picker/codemirror-subtle-color-picker.jsx";
 
 let lezer_playground_storage = new ScopedStorage("lezer-playground");
 
