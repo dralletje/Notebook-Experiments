@@ -271,7 +271,6 @@ export let Extension = ({
   let extension = useMemo(() => extension_unmemod, deps);
 
   useLayoutEffect(() => {
-    console.log("INITIAL DISPATCH");
     dispatch({
       effects: StateEffect.appendConfig.of(compartment.of(extension)),
     });

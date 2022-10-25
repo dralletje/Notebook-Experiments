@@ -37,7 +37,7 @@ import {
 } from "./CodemirrorInspector.jsx";
 import { parser as inspector_parser } from "@dral/lezer-inspector";
 import { iterate_over_cursor } from "dral-lezer-helpers";
-import { range } from "lodash";
+import { range } from "lodash-es";
 import {
   cursor_to_inspector_lang,
   inspector_meta_from_tree,

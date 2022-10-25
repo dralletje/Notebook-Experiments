@@ -13,7 +13,6 @@ import {
   bracketMatching,
   LanguageSupport,
   LRLanguage,
-  syntaxTree,
 } from "@codemirror/language";
 import { closeBrackets } from "@codemirror/autocomplete";
 import {
@@ -496,7 +495,9 @@ let AppGrid = styled.div`
     " lezer-editor          .    javascript-stuff " minmax(0, 1fr)
     / 1fr 8px 1fr;
 
-  /* Media query for mobile: */
+  /* Media query for mobile:
+     Who wants to use this on mobile????
+     Nobody! But I still want it to work LOL */
   @media (max-width: 800px) {
     height: 100vh;
     height: 100dvh;
@@ -632,14 +633,12 @@ let AppScroller = styled.div`
   scroll-snap-type: x mandatory;
 `;
 
-import { compact, groupBy, range, sortBy, uniq } from "lodash";
+import { compact, range, sortBy, uniq } from "lodash-es";
 import {
-  CellHasSelectionField,
   create_nested_editor_state,
   NestedEditorStatesField,
-  NestedExtension,
   nested_cell_states_basics,
-  nested_view_update,
+  useNestedViewUpdate,
 } from "./should-be-shared/MultiEditor";
 import {
   shared_history,
@@ -735,26 +734,19 @@ let Editor = ({ project_name }) => {
 
   let [state, set_state] = React.useState(initial_state);
 
-  let viewupdate = useViewUpdate(state, (to_set) => {
-    console.trace(`set:`, to_set);
-    set_state(to_set);
-  });
+  let viewupdate = useViewUpdate(state, set_state);
 
-  React.useEffect(() => {
-    console.log(`viewupdate:`, viewupdate);
-  }, [viewupdate]);
-
-  let lezer_grammar_viewupdate = React.useMemo(
-    () => nested_view_update(viewupdate, "lezer-grammar"),
-    [viewupdate]
+  let lezer_grammar_viewupdate = useNestedViewUpdate(
+    viewupdate,
+    "lezer-grammar"
   );
-  let code_to_parse_viewupdate = React.useMemo(
-    () => nested_view_update(viewupdate, "code-to-parse"),
-    [viewupdate]
+  let code_to_parse_viewupdate = useNestedViewUpdate(
+    viewupdate,
+    "code-to-parse"
   );
-  let javascript_stuff_viewupdate = React.useMemo(
-    () => nested_view_update(viewupdate, "javascript"),
-    [viewupdate]
+  let javascript_stuff_viewupdate = useNestedViewUpdate(
+    viewupdate,
+    "javascript"
   );
 
   React.useEffect(() => {
@@ -1225,23 +1217,16 @@ let Editor = ({ project_name }) => {
           </GeneralEditorStyles>
         </Pane>
 
-        {["↓", "→", "↑", "←", "█"].map((area) => (
-          <div
-            key={area}
-            style={{
-              gridArea: area,
-              backgroundColor: "black",
-            }}
-          />
-        ))}
+        <div
+          style={{
+            gridArea: "█",
+            backgroundColor: "black",
+          }}
+        />
 
         <div
           style={{
             gridArea: "header",
-            fontSize: 12,
-            display: "flex",
-            alignItems: "center",
-            userSelect: "none",
           }}
         >
           <InnerHeaderLol>
@@ -1485,11 +1470,17 @@ let LoadSampleDropdown = ({ scoped_storage }) => {
 
 let InnerHeaderLol = styled.div`
   width: 100%;
+  height: 100%;
   max-width: calc(100vw - 16px);
   position: sticky;
   right: 8px;
   left: 8px;
+
   display: flex;
+  align-items: center;
+
+  user-select: none;
+  font-size: 12px;
 `;
 
 let ExtraDropdown = ({ scoped_storage }) => {

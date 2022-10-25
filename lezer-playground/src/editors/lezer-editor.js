@@ -1,23 +1,17 @@
 import { lezerLanguage } from "@codemirror/lang-lezer";
 import { Decoration, EditorView, keymap } from "@codemirror/view";
 import {
-  bracketMatching,
   HighlightStyle,
   LanguageSupport,
   syntaxHighlighting,
   syntaxTree,
 } from "@codemirror/language";
 import { styleTags, tags as t } from "@lezer/highlight";
-import { EditorState, Prec, StateField, Text } from "@codemirror/state";
-import { partition, update } from "lodash";
-import { Tree, TreeCursor } from "@lezer/common";
-import { iterate_over_cursor, iterate_with_cursor } from "dral-lezer-helpers";
+import { Prec, StateField, Text } from "@codemirror/state";
+import { TreeCursor } from "@lezer/common";
+import { iterate_over_cursor } from "dral-lezer-helpers";
 import { LanguageStateFacet } from "@dral/codemirror-helpers";
-import {
-  acceptCompletion,
-  autocompletion,
-  closeBrackets,
-} from "@codemirror/autocomplete";
+import { acceptCompletion, autocompletion } from "@codemirror/autocomplete";
 
 let lezerStyleTags = styleTags({
   LineComment: t.lineComment,

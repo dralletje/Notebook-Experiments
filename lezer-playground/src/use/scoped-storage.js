@@ -1,4 +1,4 @@
-import { range } from "lodash";
+import { range } from "lodash-es";
 import React from "react";
 
 // Time to actually make this into it's own package?

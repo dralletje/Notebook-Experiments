@@ -74,6 +74,7 @@ export let CellDispatchEffect = StateEffect.define<{
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 import { EditorView, ViewPlugin } from "@codemirror/view";
+import React from "react";
 
 export let CellHasSelectionEffect = StateEffect.define<boolean>();
 export let CellHasSelectionField = StateField.define<boolean>({
@@ -285,29 +286,15 @@ export let NestedEditorStatesField = StateField.define<{
   },
 });
 
-export let nested_view_update = (
+// Wanted to make this a normal function, but I need to memo some stuff,
+// So it's a hook now
+export let useNestedViewUpdate = (
   viewupdate: GenericViewUpdate,
   cell_id: CellId
 ): GenericViewUpdate => {
-  // Because we get one `viewupdate` for multiple transactions happening,
-  // and `.transactions_to_send_to_cells` gets cleared after every transactions,
-  // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
-  let all_cell_transactions = viewupdate.transactions.flatMap((transaction) => {
-    return transaction.state.field(NestedEditorStatesField)
-      .transactions_to_send_to_cells;
-  });
-  let transactions = all_cell_transactions.filter((transaction) => {
-    return transaction.startState.facet(CellIdFacet) === cell_id;
-  });
-
-  let nested_editor_state = viewupdate.state.field(NestedEditorStatesField)
-    .cells[cell_id];
-
-  let nested_view = {
-    state: nested_editor_state,
-    dispatch: (
-      ...transactions: import("@codemirror/state").TransactionSpec[]
-    ) => {
+  // Wrap every transaction in CellDispatchEffect's
+  let nested_dispatch = React.useMemo(() => {
+    return (...transactions: import("@codemirror/state").TransactionSpec[]) => {
       viewupdate.view.dispatch(
         ...transactions.map((tr) => ({
           annotations: tr.annotations,
@@ -317,10 +304,34 @@ export let nested_view_update = (
           }),
         }))
       );
-    },
-  };
+    };
+  }, [viewupdate.view.dispatch]);
 
-  return new GenericViewUpdate(transactions, nested_view);
+  let nested_editor_state = React.useMemo(() => {
+    return viewupdate.state.field(NestedEditorStatesField).cells[cell_id];
+  }, [viewupdate.state]);
+
+  let nested_transactions = React.useMemo(() => {
+    // Because we get one `viewupdate` for multiple transactions happening,
+    // and `.transactions_to_send_to_cells` gets cleared after every transactions,
+    // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
+    let all_cell_transactions = viewupdate.transactions.flatMap(
+      (transaction) => {
+        return transaction.state.field(NestedEditorStatesField)
+          .transactions_to_send_to_cells;
+      }
+    );
+    return all_cell_transactions.filter((transaction) => {
+      return transaction.startState.facet(CellIdFacet) === cell_id;
+    });
+  }, [viewupdate.transactions]);
+
+  return React.useMemo(() => {
+    return new GenericViewUpdate(nested_transactions, {
+      state: nested_editor_state,
+      dispatch: nested_dispatch,
+    });
+  }, [nested_transactions, nested_editor_state, nested_dispatch]);
 };
 
 export let nested_cell_states_basics = [
