@@ -34,6 +34,7 @@ import { tags as t } from "@lezer/highlight";
 import {
   FoldAllEffect,
   lezer_result_as_lezer_extensions,
+  node_that_contains_selection_field,
 } from "./CodemirrorInspector.jsx";
 import { parser as inspector_parser } from "@dral/lezer-inspector";
 import { iterate_over_cursor } from "dral-lezer-helpers";
@@ -443,7 +444,12 @@ export let ParsedResultEditor = ({
 
         let tree = syntaxTree(update.state);
         let meta = inspector_meta_from_tree(update.view.state.doc, tree);
-        let selection = update.view.state.selection.main;
+        let selection = update.view.state.field(
+          node_that_contains_selection_field
+        );
+        if (selection == null) return;
+
+        // let selection = update.view.state.selection.main;
         for (let index of range(meta.length - 1, -1)) {
           let {
             original,

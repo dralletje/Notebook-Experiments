@@ -423,8 +423,11 @@ const completion_provider = (ctx) => {
     };
   });
 
+  console.log("AAAAAAAA");
+
   return {
     from: token.from,
+    to: token.to,
     options: options,
 
     // Can't seem to get this shit to update!!

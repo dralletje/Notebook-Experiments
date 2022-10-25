@@ -43,7 +43,7 @@ let fold_style = EditorView.theme({
 import { iterate_over_cursor } from "dral-lezer-helpers";
 import { range } from "lodash-es";
 
-let node_that_contains_selection_field = StateField.define({
+export let node_that_contains_selection_field = StateField.define({
   create() {
     return /** @type {import("@lezer/common").SyntaxNode?} */ (null);
   },

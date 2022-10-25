@@ -1517,7 +1517,7 @@ let ExtraDropdown = ({ scoped_storage }) => {
               window.location.reload();
             }}
           >
-            clear <b style={{ color: "red" }}>all history</b>
+            clear <b style={{ color: "#b20000" }}>all history</b>
           </a>
           <a
             onClick={() => {
