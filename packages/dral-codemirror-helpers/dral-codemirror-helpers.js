@@ -1,19 +1,37 @@
 import { Language } from "@codemirror/language";
 
-import { Range, Text } from "@codemirror/state";
+import { Range, Text, StateField } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
 import { iterate_with_cursor } from "dral-lezer-helpers";
 import { TreeCursor } from "@lezer/common";
 
-// TODO Must have good reasons to make `Language.state` private, but o well
+/**
+ * @typedef LanguageContext
+ * @type {any}
+ */
+
+/**
+ * This class just exists to provide a type
+ */
+class LanguageStateClassDoNotInstantiate {
+  /** @type {import("@lezer/common").Tree} */
+  tree = /** @type {any} */ (null);
+  /** @type {LanguageContext} */
+  context = /** @type {any} */ (null);
+
+  // /** @param {LanguageContext} context */
+  // constructor(context) {}
+}
+
 /**
  * @typedef LanguageState
- * @type {{
- *  tree: import("@lezer/common").Tree,
- *  context: any,
- * } | null}
- *
- * @type {Facet<LanguageState, LanguageState>} */
+ * @type {LanguageStateClassDoNotInstantiate}
+ */
+
+/**
+ * TODO Must have good reasons to make `Language.state` private, but o well
+ * @type {StateField<LanguageState, LanguageState>}
+ */
 // @ts-ignore
 export let LanguageStateFacet = Language.state;
 

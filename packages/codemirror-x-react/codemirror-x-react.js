@@ -19,10 +19,6 @@ let Container = styled.div`
     font-family: inherit;
   }
 
-  & .cm-editor .cm-content {
-    padding: 2px 0px;
-  }
-
   &:focus-within .cm-editor .cm-matchingBracket {
     color: var(--cm-matchingBracket-color) !important;
     font-weight: 700;

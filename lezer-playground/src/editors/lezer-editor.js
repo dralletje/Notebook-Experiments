@@ -12,6 +12,7 @@ import { TreeCursor } from "@lezer/common";
 import { iterate_over_cursor } from "dral-lezer-helpers";
 import { LanguageStateFacet } from "@dral/codemirror-helpers";
 import { acceptCompletion, autocompletion } from "@codemirror/autocomplete";
+import { isEmpty } from "lodash-es";
 
 let lezerStyleTags = styleTags({
   LineComment: t.lineComment,
@@ -43,26 +44,29 @@ let lezerStyleTags = styleTags({
 });
 
 let lezer_syntax_classes = EditorView.theme({
-  ".boring": {
+  // Repeated so specificity is increased...
+  // I need this to show the colors in the selected autocomplete...
+  // TODO Ideally I'd just do a custom render or something on the autocomplete
+  ".boring.boring.boring": {
     color: "#655d8d",
   },
-  ".very-important": {
+  ".very-important.very-important.very-important": {
     color: "#b6b6b6",
     fontWeight: 700,
   },
-  ".important": {
+  ".important.important.important": {
     color: "#947eff",
   },
-  ".property": {
+  ".property.property.property": {
     color: "#cb00d7",
   },
-  ".variable": {
+  ".variable.variable.variable": {
     color: "#a16fff",
   },
-  ".literal": {
+  ".literal.literal.literal": {
     color: "#00a7ca",
   },
-  ".comment": {
+  ".comment.comment.comment": {
     color: "#747474",
     fontStyle: "italic",
   },
@@ -112,18 +116,36 @@ export let lezer_highlight = syntaxHighlighting(
 );
 
 /**
- * @param {Text} doc
- * @param {TreeCursor} cursor
- * @returns {{
+ * @typedef Scope
+ * @type {{
+ *  parent_scope: Scope?,
+ *  child_scopes: Scope[],
+ *  from: number,
+ *  to: number,
  *  definitions: { [name: string]: Array<{ position: [number, number] }> },
  *  references: Array<{ position: [number, number], name: string, definition: { position: [number, number] }? }>,
  * }}
+ *
+ * @param {Text} doc
+ * @param {TreeCursor} cursor
+ * @returns {Scope}
  */
 let scope_from_cursor = (doc, cursor) => {
   let definitions =
     /** @type {ReturnType<scope_from_cursor>["definitions"]} */ ({});
   let references =
     /** @type {ReturnType<scope_from_cursor>["references"]} */ ([]);
+
+  // Already make the scope, so we can add it to subscopes
+  let scope = /** @type {ReturnType<scope_from_cursor>} */ ({
+    from: cursor.from,
+    to: cursor.to,
+    parent_scope: null,
+    child_scopes: [],
+    definitions: definitions,
+    references: [],
+    unresolved: [],
+  });
 
   iterate_over_cursor({
     cursor,
@@ -168,8 +190,14 @@ let scope_from_cursor = (doc, cursor) => {
             do {
               // @ts-expect-error
               if (cursor.name === "Body") {
-                // TODO Parameters
                 let subscope = scope_from_cursor(doc, cursor);
+
+                // This scope will never have definitions.. right?
+                if (!isEmpty(subscope.definitions)) {
+                  console.log(`subscope.definitions:`, subscope.definitions);
+                  scope.child_scopes.push(subscope);
+                }
+
                 // TODO Add resolved references
                 references.push(...subscope.references);
                 return false;
@@ -183,8 +211,8 @@ let scope_from_cursor = (doc, cursor) => {
 
       if (cursor.name === "RuleDeclaration") {
         if (cursor.firstChild()) {
-          let local_definitions = {};
           try {
+            let local_definitions = {};
             do {
               // @ts-expect-error
               if (cursor.name === "RuleName") {
@@ -217,21 +245,30 @@ let scope_from_cursor = (doc, cursor) => {
               // @ts-expect-error
               if (cursor.name === "Body") {
                 // TODO Parameters
-                let subscope = scope_from_cursor(doc, cursor);
-                for (let reference of subscope.references) {
-                  references.push(reference);
+                let subscope = {
+                  ...scope_from_cursor(doc, cursor),
+                  parent: scope,
+                };
+
+                if (!isEmpty(local_definitions)) {
+                  scope.child_scopes.push(subscope);
+                  subscope.definitions = {
+                    ...subscope.definitions,
+                    ...local_definitions,
+                  };
                 }
-                for (let unresolved of subscope.references) {
-                  if (unresolved.definition != null) {
-                    references.push(unresolved);
-                  } else if (local_definitions[unresolved.name]) {
+
+                for (let reference of subscope.references) {
+                  if (reference.definition != null) {
+                    references.push(reference);
+                  } else if (local_definitions[reference.name]) {
                     references.push({
-                      position: unresolved.position,
-                      name: unresolved.name,
-                      definition: local_definitions[unresolved.name],
+                      position: reference.position,
+                      name: reference.name,
+                      definition: local_definitions[reference.name],
                     });
                   } else {
-                    references.push(unresolved);
+                    references.push(reference);
                   }
                 }
               }
@@ -245,24 +282,19 @@ let scope_from_cursor = (doc, cursor) => {
     },
   });
 
-  let result = /** @type {ReturnType<scope_from_cursor>} */ ({
-    definitions: definitions,
-    references: [],
-    unresolved: [],
-  });
   for (let reference of references) {
     let definition = reference.definition ?? definitions[reference.name]?.[0];
 
     if (definition) {
-      result.references.push({
+      scope.references.push({
         ...reference,
         definition: definition,
       });
     } else {
-      result.references.push(reference);
+      scope.references.push(reference);
     }
   }
-  return result;
+  return scope;
 };
 
 let scope_field = StateField.define({
@@ -397,55 +429,69 @@ let theme = EditorView.theme(
 );
 
 /** @type {import("@codemirror/autocomplete").CompletionSource} */
-const completion_provider = (ctx) => {
+const body_provider = (ctx) => {
   let scope = ctx.state.field(scope_field);
+  console.log(`scope:`, scope);
 
-  // TODO Check if we are in a RuleBody? (instead of the name part)
-  let token = ctx.tokenBefore(["RuleName", "PrecedenceMarker"]);
+  let body_token = ctx.tokenBefore(["Body", "Props"]);
+  if (body_token?.type.name !== "Body") return null;
+
+  let token =
+    ctx.tokenBefore(["RuleName", "PrecedenceMarker"]) ??
+    (ctx.explicit ? { from: ctx.pos, to: ctx.pos } : null);
   if (token == null) return null;
 
-  // If the thing you are typing is matching a definition, but that definition
-  // is right where you are typing it!! Then don't show the completion.
-  let definitions = scope.definitions[token.text];
-  for (let definition of definitions ?? []) {
-    if (
-      definition.position[0] === token.from &&
-      definition.position[1] === token.to
-    ) {
-      return null;
+  /** @type {import("@codemirror/autocomplete").Completion[]} */
+  let collected_options = [];
+
+  /** @type {Scope?} */
+  let current_scope = scope;
+  let scope_counter = 0;
+  while (current_scope) {
+    console.log(`current_scope:`, current_scope);
+    for (let [name, meta] of Object.entries(current_scope.definitions)) {
+      console.log(`name:`, name);
+      collected_options.push({
+        label: name,
+        type: name.startsWith("!") ? "property" : "variable",
+        boost: scope_counter,
+      });
     }
+
+    scope_counter++;
+    current_scope =
+      current_scope.child_scopes.find(
+        (scope) => scope.from <= ctx.pos && ctx.pos <= scope.to
+      ) ?? null;
   }
 
-  let defined_names = Object.keys(scope.definitions);
-  let options = defined_names.map((x) => {
-    return {
-      label: x,
-    };
-  });
+  return {
+    from: token.from,
+    to: token.to,
+    options: collected_options,
+  };
+};
 
-  console.log("AAAAAAAA");
+/** @type {import("@codemirror/autocomplete").CompletionSource} */
+const pseudo_prop_provider = (ctx) => {
+  let body_token = ctx.tokenBefore(["Props"]);
+  if (body_token == null) return null;
+
+  let token =
+    ctx.tokenBefore(["AtName"]) ??
+    ctx.matchBefore(/@/) ??
+    (ctx.explicit ? { from: ctx.pos, to: ctx.pos } : null);
+  if (token == null) return null;
+
+  let options = [
+    { label: "@isGroup", type: "property" },
+    { label: "@name", type: "property" },
+  ];
 
   return {
     from: token.from,
     to: token.to,
     options: options,
-
-    // Can't seem to get this shit to update!!
-    // I wants to refetch every time D:
-    update: (current, from, to, ctx) => {
-      console.log(`current, from, to, ctx:`, current, from, to, ctx);
-
-      let token = ctx.tokenBefore(["RuleName", "PrecedenceMarker"]);
-      if (token == null) return null;
-
-      return {
-        from: token.from,
-        options: options,
-      };
-    },
-    validFor: () => {
-      return true;
-    },
   };
 };
 
@@ -476,7 +522,10 @@ export let lezer_syntax_extensions = [
 
   autocompletion({
     activateOnTyping: true,
-    override: [completion_provider],
+    closeOnBlur: false,
+    icons: false,
+    optionClass: (x) => x.type ?? "",
+    override: [body_provider, pseudo_prop_provider],
   }),
   Prec.highest(
     keymap.of([
@@ -487,28 +536,34 @@ export let lezer_syntax_extensions = [
     ])
   ),
   EditorView.theme({
-    ".cm-tooltip-autocomplete": {
+    ".cm-tooltip.cm-tooltip-autocomplete": {
       "background-color": "#000000",
-      // border: "white solid 2px",
       "border-radius": "9px",
       transform: "translateY(10px) translateX(-7px)",
       overflow: "hidden",
-    },
-    ".cm-completionMatchedText": {
-      "text-decoration": "none",
-      "font-weight": "bold",
-    },
-    ".cm-tooltip.cm-tooltip-autocomplete > ul": {
-      "font-family": "inherit",
-    },
-    ".cm-tooltip.cm-tooltip-autocomplete > ul > li": {
-      "padding-left": "8px",
-    },
-    ".cm-tooltip-autocomplete ul li[aria-selected]": {
-      background: "#ffffff2b",
-    },
-    ".cm-completionIcon": {
-      display: "none",
+
+      "& .cm-completionMatchedText": {
+        "text-decoration": "none",
+        "font-weight": "bold",
+      },
+      "& > ul": {
+        "font-family": "inherit",
+
+        "& > li": {
+          "padding-left": "8px",
+
+          "&:first-child": {
+            "padding-top": "4px",
+          },
+          "&:last-child": {
+            "padding-bottom": "4px",
+          },
+          "&[aria-selected]": {
+            background: "#ffffff2b",
+            // filter: "brightness(1.5)",
+          },
+        },
+      },
     },
   }),
 

@@ -26,6 +26,7 @@ import {
   EditorView,
   keymap,
   placeholder,
+  scrollPastEnd,
 } from "@codemirror/view";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import React from "react";
@@ -78,6 +79,8 @@ let base_extensions = [
       "caret-color": "white",
     },
   }),
+
+  scrollPastEnd(),
 ];
 
 let inspector_lang = new LanguageSupport(
