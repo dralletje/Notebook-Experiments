@@ -40,6 +40,10 @@ import { TransformJavascriptWorker } from "@dral/dralbook-transform-javascript/w
 ////////////////////
 import { basic_javascript_setup } from "./should-be-shared/codemirror-javascript-setup.js";
 import { dot_gutter } from "./should-be-shared/codemirror-dot-gutter.jsx";
+import {
+  ScrollIntoViewButOnlyTheEditor,
+  ScrollIntoViewButOnlyTheEditorEffect,
+} from "./should-be-shared/ScrollIntoViewButOnlyTheEditor";
 ////////////////////
 
 import { ParsedResultEditor } from "./parsed-result-editor/parsed-result-editor.jsx";
@@ -85,6 +89,7 @@ let base_extensions = [
   cool_cmd_d,
   keymap.of(defaultKeymap),
 
+  ScrollIntoViewButOnlyTheEditor,
   EditorView.theme({
     ".cm-content": {
       "caret-color": "white",
@@ -633,7 +638,7 @@ let AppScroller = styled.div`
   scroll-snap-type: x mandatory;
 `;
 
-import { compact, range, sortBy, uniq } from "lodash-es";
+import { compact, head, range, sortBy, uniq } from "lodash-es";
 import {
   create_nested_editor_state,
   NestedEditorStatesField,
@@ -1046,12 +1051,17 @@ let Editor = ({ project_name }) => {
 
   let onSelection = React.useCallback(
     (/** @type {readonly [Number, number]} */ [from, to]) => {
+      console.log("Letsgooooo");
       code_to_parse_viewupdate.view.dispatch({
         selection: { anchor: to, head: from },
-        scrollIntoView: true,
+        effects: [
+          ScrollIntoViewButOnlyTheEditorEffect.of({
+            position: from,
+          }),
+        ],
       });
     },
-    []
+    [code_to_parse_viewupdate.view.dispatch]
   );
 
   return (

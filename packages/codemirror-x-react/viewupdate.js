@@ -1,8 +1,8 @@
 import React from "react";
-import { takeWhile, without } from "lodash";
-
+import { takeWhile, without } from "lodash-es";
 import { EditorState, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+
 import { CodeMirror } from "./codemirror-x-react.js";
 
 /**

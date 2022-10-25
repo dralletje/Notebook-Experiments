@@ -52,6 +52,10 @@ import { Failure, Loading, usePromise } from "../use/OperationMonadBullshit.js";
 import { Tree } from "@lezer/common";
 
 import { useIntersectionObserver } from "@asyarb/use-intersection-observer";
+import {
+  ScrollIntoViewButOnlyTheEditor,
+  ScrollIntoViewButOnlyTheEditorEffect,
+} from "../should-be-shared/ScrollIntoViewButOnlyTheEditor";
 
 let base_extensions = [
   EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
@@ -281,14 +285,6 @@ export let ParsedResultEditor = ({
   code_to_parse_viewupdate,
 }) => {
   let container_ref = React.useRef(null);
-  const inView = useIntersectionObserver({
-    ref: container_ref,
-    options: {
-      threshold: 0.25,
-      triggerOnce: false,
-    },
-  });
-
   let code_to_parse_selection = useExplicitSelection(code_to_parse_viewupdate);
 
   let initial_editor_state = React.useMemo(() => {
@@ -370,14 +366,9 @@ export let ParsedResultEditor = ({
             ...(explicit_selection != null ? [FoldAllEffect.of(null)] : []),
             // @ts-expect-error Using Language.setState which is ~~private~~
             Language.setState.of(new_language_state),
-            // TODO Scroll only the editor, not the rest of the page? 🤔
-            ...(inView
-              ? [
-                  EditorView.scrollIntoView(new_selection.head, {
-                    y: "nearest",
-                  }),
-                ]
-              : []),
+            ScrollIntoViewButOnlyTheEditorEffect.of({
+              position: Math.min(new_selection.anchor, new_selection.head),
+            }),
           ],
           selection: new_selection,
         });
@@ -421,8 +412,13 @@ export let ParsedResultEditor = ({
         codemirror_ref.current.dispatch({
           selection: new_selection,
           // TODO Scroll only the editor, not the rest of the page? 🤔
-          scrollIntoView: inView,
-          effects: [FoldAllEffect.of(null)],
+          // scrollIntoView: inView,
+          effects: [
+            FoldAllEffect.of(null),
+            ScrollIntoViewButOnlyTheEditorEffect.of({
+              position: Math.min(new_selection.anchor, new_selection.head),
+            }),
+          ],
         });
       } else {
         let simple = codemirror_ref.current.state.selection.main.head;
@@ -476,6 +472,7 @@ export let ParsedResultEditor = ({
     >
       <CodeMirror ref={codemirror_ref} state={initial_editor_state}>
         <Extension extension={inspector_lang} />
+        <Extension extension={ScrollIntoViewButOnlyTheEditor} />
         <Extension extension={highlight_extension} />
         <Extension extension={lezer_syntax_classes} />
         <Extension extension={hide_positions} />

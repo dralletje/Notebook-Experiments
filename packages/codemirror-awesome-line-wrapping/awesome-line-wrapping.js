@@ -13,7 +13,7 @@
 
 import { Facet, StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
-import { range } from "lodash";
+import { range } from "lodash-es";
 
 /**
  * Use this to prevent soft-wrapping from going all the way to the right

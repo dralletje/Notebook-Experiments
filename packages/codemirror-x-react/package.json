@@ -9,6 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "lodash": "^4.17.21"
+    "@codemirror/state": "^6.1.2",
+    "@codemirror/view": "^6.4.0",
+    "lodash-es": "^4.17.21",
+    "styled-components": "^5.3.6"
   }
 }
