@@ -18,7 +18,7 @@ import {
 } from "@codemirror/language";
 
 import { ReactWidget, useEditorView } from "react-codemirror-widget";
-import { LanguageStateFacet } from "@dral/codemirror-helpers";
+import { LanguageStateField } from "@dral/codemirror-helpers";
 
 let fold_style = EditorView.theme({
   ".fold-me-daddy:not(.folded)": {
@@ -257,7 +257,7 @@ export let lezer_result_as_lezer_extensions = [
   fold_style,
   atomic_spaces,
 
-  AllFoldsFacet.compute([LanguageStateFacet], (state) => {
+  AllFoldsFacet.compute([LanguageStateField], (state) => {
     let cursor = syntaxTree(state).cursor();
     /** @type {FoldableCall[]} */
     let ranges = [];

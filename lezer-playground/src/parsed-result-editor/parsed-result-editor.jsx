@@ -48,7 +48,7 @@ import {
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 import { ReactWidget } from "react-codemirror-widget";
 import { IoWarning } from "react-icons/io5";
-import { LanguageStateFacet } from "@dral/codemirror-helpers";
+import { LanguageStateField } from "@dral/codemirror-helpers";
 import { Failure, Loading, usePromise } from "../use/OperationMonadBullshit.js";
 import { Tree } from "@lezer/common";
 
@@ -166,7 +166,7 @@ let useExplicitSelection = (viewupdate) => {
 class PositionRange extends RangeValue {}
 let POSITION_RANGE = new PositionRange();
 let hide_positions = [
-  EditorView.decorations.compute([LanguageStateFacet], (state) => {
+  EditorView.decorations.compute([LanguageStateField], (state) => {
     let decorations = [];
     iterate_over_cursor({
       cursor: syntaxTree(state).cursor(),
@@ -184,7 +184,7 @@ let hide_positions = [
     return Decoration.set(decorations);
   }),
 
-  EditorView.decorations.compute([LanguageStateFacet], (state) => {
+  EditorView.decorations.compute([LanguageStateField], (state) => {
     let decorations = [];
     iterate_over_cursor({
       cursor: syntaxTree(state).cursor(),
@@ -336,7 +336,7 @@ export let ParsedResultEditor = ({
       } finally {
         // console.groupEnd();
       }
-      let language_state = transaction.state.field(LanguageStateFacet);
+      let language_state = transaction.state.field(LanguageStateField);
       let LanguageState = language_state.constructor;
       let new_context = language_state.context;
       while (!new_context.isDone(transaction.state.doc.length)) {
@@ -344,6 +344,7 @@ export let ParsedResultEditor = ({
         await requestIdlePromise(signal);
       }
       new_context.takeTree();
+      // @ts-expect-error ARGggg
       let new_language_state = new LanguageState(new_context);
 
       let meta = inspector_meta_from_tree(

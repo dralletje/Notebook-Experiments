@@ -33,13 +33,13 @@ class LanguageStateClassDoNotInstantiate {
  * @type {StateField<LanguageState, LanguageState>}
  */
 // @ts-ignore
-export let LanguageStateFacet = Language.state;
+export let LanguageStateField = Language.state;
 
 /** @param {(context: { cursor: TreeCursor, mutable_decorations: Range<Decoration>[], doc: Text }) => void | boolean} fn */
 export let DecorationsFromTree = (fn) => {
-  return EditorView.decorations.compute([LanguageStateFacet], (state) => {
+  return EditorView.decorations.compute([LanguageStateField], (state) => {
     // Move verbose way to write `let tree = syntaxTree(state);` but I'm untethered now
-    let language_state = state.field(LanguageStateFacet, false);
+    let language_state = state.field(LanguageStateField, false);
     if (language_state == null) return Decoration.set([]);
     let tree = language_state.tree;
 

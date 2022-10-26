@@ -10,7 +10,7 @@ import { styleTags, tags as t } from "@lezer/highlight";
 import { Prec, StateField, Text } from "@codemirror/state";
 import { TreeCursor } from "@lezer/common";
 import { iterate_over_cursor } from "dral-lezer-helpers";
-import { LanguageStateFacet } from "@dral/codemirror-helpers";
+import { LanguageStateField } from "@dral/codemirror-helpers";
 import { acceptCompletion, autocompletion } from "@codemirror/autocomplete";
 import { isEmpty } from "lodash-es";
 
@@ -40,7 +40,8 @@ let lezerStyleTags = styleTags({
   "Call/RuleName": t.function(t.variableName),
   "PrecedenceMarker!": t.className,
   "Prop/AtName": t.propertyName,
-  propSource: t.keyword,
+  "ParamList/Name": t.variableName,
+  // propSource: t.keyword,
 });
 
 let lezer_syntax_classes = EditorView.theme({
@@ -304,8 +305,8 @@ let scope_field = StateField.define({
   update(value, tr) {
     if (
       tr.docChanged ||
-      tr.state.facet(LanguageStateFacet) !==
-        tr.startState.facet(LanguageStateFacet)
+      tr.state.field(LanguageStateField) !==
+        tr.startState.field(LanguageStateField, false)
     ) {
       let state = tr.state;
       let value = scope_from_cursor(state.doc, syntaxTree(state).cursor());
@@ -349,9 +350,43 @@ let scope_decorations = EditorView.decorations.compute(
       }
     }
 
-    return Decoration.set(decorations, true);
+    return Decoration.set(decorations, false);
   }
 );
+
+let local_variable_decorations = [
+  EditorView.theme({
+    ".local-variable, .local-variable *": {
+      color: "#cb8fff !important",
+      "font-weight": "bold",
+    },
+  }),
+  EditorView.decorations.compute([scope_field], (state) => {
+    let scope = state.field(scope_field);
+    let decorations = [];
+
+    for (let subscope of scope.child_scopes) {
+      for (let definition of Object.values(subscope.definitions).flat()) {
+        decorations.push(
+          Decoration.mark({
+            class: "local-variable",
+          }).range(definition.position[0], definition.position[1])
+        );
+      }
+      for (let reference of subscope.references) {
+        if (reference.name in subscope.definitions) {
+          decorations.push(
+            Decoration.mark({
+              class: "local-variable",
+            }).range(reference.position[0], reference.position[1])
+          );
+        }
+      }
+    }
+
+    return Decoration.set(decorations, true);
+  }),
+];
 
 let scope_event_handler = EditorView.domEventHandlers({
   pointerdown: (event, view) => {
@@ -431,7 +466,8 @@ let theme = EditorView.theme(
 /** @type {import("@codemirror/autocomplete").CompletionSource} */
 const body_provider = (ctx) => {
   let scope = ctx.state.field(scope_field);
-  console.log(`scope:`, scope);
+
+  let tokens_declration_token = ctx.tokenBefore(["TokensDeclaration"]);
 
   let body_token = ctx.tokenBefore(["Body", "Props"]);
   if (body_token?.type.name !== "Body") return null;
@@ -448,12 +484,20 @@ const body_provider = (ctx) => {
   let current_scope = scope;
   let scope_counter = 0;
   while (current_scope) {
-    console.log(`current_scope:`, current_scope);
     for (let [name, meta] of Object.entries(current_scope.definitions)) {
-      console.log(`name:`, name);
+      let is_precedence = name.startsWith("!");
+
+      // Don't show !precedence in tokens where they are not allowed
+      // TODO Only show token names? (now it shows all names, which only token names are allowed in tokens)
+      if (is_precedence && tokens_declration_token != null) continue;
+
       collected_options.push({
         label: name,
-        type: name.startsWith("!") ? "property" : "variable",
+        type: is_precedence
+          ? "property"
+          : scope_counter > 0
+          ? "local-variable"
+          : "variable",
         boost: scope_counter,
       });
     }
@@ -469,6 +513,39 @@ const body_provider = (ctx) => {
     from: token.from,
     to: token.to,
     options: collected_options,
+  };
+};
+
+let charclasses = [
+  "@asciiLetter",
+  "@asciiUpperCase",
+  "@asciiLowerCase",
+  "@digit",
+  "@whitespace",
+  "@eof",
+];
+
+/** @type {import("@codemirror/autocomplete").CompletionSource} */
+const charclass_provider = (ctx) => {
+  // Let us be inside a Body inside a TokensDeclaration
+  if (ctx.tokenBefore(["TokensDeclaration"]) == null) return null;
+  if (ctx.tokenBefore(["Body"]) == null) return null;
+
+  let current_token =
+    ctx.matchBefore(/@\w*/) ??
+    (ctx.explicit
+      ? {
+          from: ctx.pos,
+          to: ctx.pos,
+        }
+      : null);
+
+  if (current_token == null) return null;
+
+  return {
+    from: current_token.from,
+    to: current_token.to,
+    options: charclasses.map((x) => ({ label: x, type: "literal", boost: 2 })),
   };
 };
 
@@ -498,6 +575,7 @@ const pseudo_prop_provider = (ctx) => {
 export let lezer_syntax_extensions = [
   scope_field,
   scope_decorations,
+  local_variable_decorations,
   scope_event_handler,
   scope_style,
 
@@ -525,7 +603,7 @@ export let lezer_syntax_extensions = [
     closeOnBlur: false,
     icons: false,
     optionClass: (x) => x.type ?? "",
-    override: [body_provider, pseudo_prop_provider],
+    override: [body_provider, pseudo_prop_provider, charclass_provider],
   }),
   Prec.highest(
     keymap.of([
