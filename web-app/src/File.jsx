@@ -42,6 +42,9 @@ let AppStyle = styled.div`
   min-width: 0;
 `;
 
+let TAB_COLOR = "rgb(21 45 41)";
+
+let NOISE_BACKGROUND = new URL("./noise-background.png", import.meta.url).href;
 let MyButton = styled.button`
   font-size: 0.6rem;
   hyphens: auto;
@@ -55,7 +58,8 @@ let MyButton = styled.button`
   padding-bottom: 0.5rem;
 
   &.active {
-    background-color: rgb(45 21 29);
+    background-color: ${TAB_COLOR};
+    background-image: url(${NOISE_BACKGROUND});
     color: white;
   }
 
@@ -63,6 +67,19 @@ let MyButton = styled.button`
     font-size: 1.5rem;
     margin-bottom: 0.5rem;
   }
+`;
+
+let OpenTab = styled.div`
+  flex: 0 0 300px;
+  height: calc(100vh - 50px);
+  position: sticky;
+  top: 50px;
+
+  background-color: ${TAB_COLOR};
+  background-image: url(${NOISE_BACKGROUND});
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
 `;
 
 let DependenciesTab = () => {
@@ -260,19 +277,7 @@ export function File({ state, onChange, socket, files }) {
       </SelectionArea>
 
       {open_tab != null && (
-        <div
-          style={{
-            flex: "0 0 300px",
-            height: "calc(100vh - 50px)",
-            position: "sticky",
-            top: 50,
-
-            backgroundColor: "rgb(45 21 29)",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "auto",
-          }}
-        >
+        <OpenTab>
           {open_tab === "files" && (
             <FilesTab filesystem={files_to_directory(files)} />
           )}
@@ -280,7 +285,7 @@ export function File({ state, onChange, socket, files }) {
           {open_tab === "dependencies" && <DependenciesTab />}
           {open_tab === "shell" && <ShellTab />}
           {open_tab === "meta" && <MetaNotebook />}
-        </div>
+        </OpenTab>
       )}
       <div
         style={{
