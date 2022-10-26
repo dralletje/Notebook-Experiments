@@ -214,9 +214,18 @@ let scope_from_cursor = (doc, cursor) => {
         if (cursor.firstChild()) {
           try {
             let local_definitions = {};
+            let is_top = false;
             do {
               // @ts-expect-error
+              if (cursor.name === "@top") {
+                is_top = true;
+              }
+
+              // @ts-expect-error
               if (cursor.name === "RuleName") {
+                // @top rules aren't actually definitions
+                if (is_top) continue;
+
                 let name = doc.sliceString(cursor.from, cursor.to);
                 definitions[name] ??= [];
                 definitions[name].push({
@@ -381,6 +390,36 @@ let local_variable_decorations = [
             }).range(reference.position[0], reference.position[1])
           );
         }
+      }
+    }
+
+    return Decoration.set(decorations, true);
+  }),
+];
+
+let unused_variable_decorations = [
+  EditorView.theme({
+    ".unused-variable": {
+      opacity: "0.5",
+    },
+  }),
+  EditorView.decorations.compute([scope_field], (state) => {
+    let scope = state.field(scope_field);
+    let decorations = [];
+
+    definition_loop: for (let name of Object.keys(scope.definitions)) {
+      for (let reference of scope.references) {
+        if (reference.name === name) {
+          continue definition_loop;
+        }
+      }
+
+      for (let definition of scope.definitions[name]) {
+        decorations.push(
+          Decoration.mark({
+            class: "unused-variable",
+          }).range(definition.position[0], definition.position[1])
+        );
       }
     }
 
@@ -576,6 +615,7 @@ export let lezer_syntax_extensions = [
   scope_field,
   scope_decorations,
   local_variable_decorations,
+  unused_variable_decorations,
   scope_event_handler,
   scope_style,
 

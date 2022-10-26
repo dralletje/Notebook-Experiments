@@ -25,7 +25,7 @@ import { LRParser } from "@lezer/lr";
 import { IoBonfire, IoHeart, IoLogoGithub } from "react-icons/io5";
 import usePath from "react-use-path";
 
-import { Extension } from "codemirror-x-react";
+import { CodeMirror, Extension } from "codemirror-x-react";
 import {
   useViewUpdate,
   CodemirrorFromViewUpdate,
@@ -528,9 +528,9 @@ let AppGrid = styled.div`
   display: grid;
   grid-template:
     " header              header           header " 30px
-    " what-to-parse-editor  .       parsed-result " minmax(0, 1fr)
+    " what-to-parse-editor  .       parsed-result " minmax(0, 2fr)
     "  .                    .               .     " 8px
-    " lezer-editor          .    javascript-stuff " minmax(0, 1fr)
+    " lezer-editor          .    javascript-stuff " minmax(0, 3fr)
     / 1fr 8px 1fr;
 
   /* Media query for mobile:
@@ -693,6 +693,71 @@ import {
 import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
 let lezer_playground_storage = new ScopedStorage("lezer-playground");
+
+// A very dim/dull syntax highlighting so you have something to look at, but also to trigger you to write your own ;)
+// Also shows that you can use `export let extension = [...]`, to add extensions to the "demo text" editor.
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { tags as t } from "@lezer/highlight";
+const syntax_colors = syntaxHighlighting(
+  HighlightStyle.define(
+    [
+      { tag: t.name, color: "#b10000" },
+      { tag: t.propertyName, color: "#ff0000", fontWeight: "bold" },
+      { tag: t.atom, color: "#ffffff", fontWeight: 700 },
+      { tag: t.self, color: "#ffffff", fontWeight: 700 },
+
+      { tag: t.literal, color: "#99ad00" },
+      { tag: t.moduleKeyword, color: "white", fontWeight: "bold" },
+    ],
+    { all: { color: "#5f0000" } }
+  )
+);
+
+import { parser as lezer_error_parser } from "@dral/lezer-lezer-error";
+let lezer_error_lang = new LanguageSupport(
+  LRLanguage.define({
+    // @ts-ignore
+    parser: lezer_error_parser,
+  })
+);
+
+let extension_for_error = (error_message) => {
+  console.log(`error_message:`, error_message);
+  if (error_message.startsWith("shift/reduce conflict between")) {
+    console.log("SHIFT REDUCE");
+    return [
+      EditorView.theme({
+        "&": {
+          color: "red",
+        },
+      }),
+    ];
+  } else {
+    return [
+      EditorView.theme({
+        "&": {
+          color: "red",
+        },
+      }),
+    ];
+  }
+};
+
+let LezerErrorEditor = ({ error }) => {
+  let initial_editor_state = React.useMemo(() => {
+    return EditorState.create({
+      doc: error.message,
+      extensions: [
+        base_extensions,
+        extension_for_error(error.message),
+        lezer_error_lang,
+        syntax_colors,
+      ],
+    });
+  }, [error.message]);
+
+  return <CodeMirror state={initial_editor_state} />;
+};
 
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {
@@ -1233,11 +1298,15 @@ let Editor = ({ project_name }) => {
                 />
               ) : parser_in_betweens instanceof Failure &&
                 parser instanceof Failure ? (
-                <FillAndCenter>
-                  <pre style={{ color: "red", whiteSpace: "pre-wrap" }}>
-                    {parser_in_betweens.value.toString()}
-                  </pre>
-                </FillAndCenter>
+                generated_parser_code instanceof Failure ? (
+                  <LezerErrorEditor error={generated_parser_code.value} />
+                ) : (
+                  <FillAndCenter>
+                    <pre style={{ color: "red", whiteSpace: "pre-wrap" }}>
+                      {parser_in_betweens.value.toString()}
+                    </pre>
+                  </FillAndCenter>
+                )
               ) : (
                 <FillAndCenter>
                   <pre style={{ color: "#ffff004d" }}>

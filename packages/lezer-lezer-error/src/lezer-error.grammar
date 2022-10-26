@@ -1,0 +1,80 @@
+@top LezerError {
+  ErrorType {
+    "shift/reduce conflict"
+  }
+  " between" newline
+  Between {
+    tab value " -> " Expression newline
+  }
+  And {
+    "and" newline
+    tab value " -> " Expression newline
+  }
+  WithInput {
+    "With input:" newline
+    tab Expression newline
+  }
+  SharedOrigin {
+    "Shared origin:" " " value " -> " Expression newline
+  }
+  Via {
+    FirstVia {
+      tab "via " value " -> " Expression newline
+    }
+    NestedVia {
+      tab tab tab* via " " value " -> " Expression newline
+    }*
+    LastVia {
+      tab tab tab* value " -> " Expression newline?
+    }
+  }*
+
+}
+
+value {
+  Dot |
+  Name |
+  AnonymousName |
+  Rest |
+  Top |
+  Literal
+}
+
+Expression {
+  space_delimited<value>
+}
+
+space_delimited<k> {
+  k (" " k)*
+}
+
+@tokens {
+  Name { (@asciiLetter | @digit | $[\-_\u{a1}-\u{10ffff}])+ }
+  AnonymousName {
+    $[a-z]
+    (@asciiLetter | @digit | $[\-_\u{a1}-\u{10ffff}])+
+  }
+  
+  Literal {
+    '"' (![\\\n"] | "\\" _)* '"'? |
+    "'" (![\\\n'] | "\\" _)* "'"?
+  }
+
+  Dot { "·" }
+  Rest { "…" }
+  via { "via" }
+  Top { "@top" }
+
+  @precedence {
+    via
+    Dot
+    Rest
+    AnonymousName
+    Name
+  }
+  
+  newline { $[\n\r] }
+  tab { "  " }
+}
+
+@external propSource lezerErrorHighlight from "./highlight"

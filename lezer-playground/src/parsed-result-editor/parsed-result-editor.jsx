@@ -1,7 +1,6 @@
 import { defaultKeymap } from "@codemirror/commands";
 import {
   bracketMatching,
-  ensureSyntaxTree,
   HighlightStyle,
   Language,
   LanguageSupport,
@@ -52,7 +51,6 @@ import { LanguageStateField } from "@dral/codemirror-helpers";
 import { Failure, Loading, usePromise } from "../use/OperationMonadBullshit.js";
 import { Tree } from "@lezer/common";
 
-import { useIntersectionObserver } from "@asyarb/use-intersection-observer";
 import {
   ScrollIntoViewButOnlyTheEditor,
   ScrollIntoViewButOnlyTheEditorEffect,
