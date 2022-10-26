@@ -14,7 +14,8 @@ Making writing lezer grammars fun since 2022.
 - ### Compiles lezer grammar on the fly
 - ### Runs custom javascript necessary for your grammar
 - ### Explore your syntax tree to debug and style it
-- ### Does not _completely_ break when grammar results in infinite loop! (You will have to refresh the page though 🙃)
+- ### Does not _completely_ break when grammar results in infinite loop!
+  (You will have to refresh the page though 🙃)
 
 ## Usage
 
