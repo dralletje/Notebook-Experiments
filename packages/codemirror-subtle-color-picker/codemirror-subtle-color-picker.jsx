@@ -1,5 +1,3 @@
-import { Decoration, EditorView } from "@codemirror/view";
-import { DecorationsFromTree } from "@dral/codemirror-helpers";
 import React from "react";
 import { ReactWidget, useEditorView } from "react-codemirror-widget";
 import { ChromePicker } from "react-color";
@@ -23,6 +21,19 @@ let FullscreenDialog = styled.dialog`
   }
 `;
 
+let Button = styled.button`
+  all: unset;
+
+  display: inline-block;
+  height: 1em;
+  width: 1em;
+  margin-right: 5px;
+  margin-left: 2px;
+  cursor: pointer;
+  transform: translateY(3px);
+  border-radius: 2px;
+`;
+
 let Ughhhhh = styled.div`
   input {
     /* box-shadow: unset;
@@ -32,7 +43,7 @@ let Ughhhhh = styled.div`
   }
 `;
 
-let SubtleColorPicker = ({ from, to, color }) => {
+export let SubtleColorPicker = ({ from, to, color }) => {
   let editorview = useEditorView();
 
   /** @type {import("react").MutableRefObject<HTMLDialogElement>} */
@@ -43,9 +54,8 @@ let SubtleColorPicker = ({ from, to, color }) => {
 
   return (
     <>
-      <button
+      <Button
         ref={color_ref}
-        className="cm-subtle-color-picker"
         style={{
           backgroundColor: color,
         }}
@@ -70,7 +80,7 @@ let SubtleColorPicker = ({ from, to, color }) => {
           dialog_ref.current.style.top = projected_top + "px";
           dialog_ref.current.style.left = projected_left + "px";
         }}
-      ></button>
+      />
       <FullscreenDialog
         tabIndex={-1}
         ref={dialog_ref}
@@ -124,7 +134,7 @@ let SubtleColorPicker = ({ from, to, color }) => {
 };
 
 let div_cache = null;
-let ask_css_to_sanitize_color = (color) => {
+export let ask_css_to_sanitize_color = (color) => {
   if (div_cache == null) {
     div_cache = document.createElement("div");
   }
@@ -133,47 +143,32 @@ let ask_css_to_sanitize_color = (color) => {
   return div_cache.style.color;
 };
 
-export let codemirror_subtle_color_picker = [
-  EditorView.baseTheme({
-    ".cm-subtle-color-picker": {
-      all: "unset",
+export class ColorPickerWidget extends ReactWidget {
+  /**
+   * @param {number} from
+   * @param {number} to
+   * @param {string} color
+   */
+  constructor(from, to, color) {
+    super(
+      <SubtleColorPicker
+        key="subtle-color-picker"
+        from={from}
+        to={to}
+        color={color}
+      />
+    );
 
-      display: "inline-block",
-      height: "1em",
-      width: "1em",
-      "margin-right": "5px",
-      "margin-left": "2px",
-      cursor: "pointer",
-      transform: "translateY(3px)",
-      "border-radius": "2px",
-    },
-  }),
-  DecorationsFromTree(({ cursor, mutable_decorations, doc }) => {
-    if (cursor.name === "String") {
-      let text_from = cursor.from + 1;
-      let text_to = cursor.to - 1;
+    this.from = from;
+    this.to = to;
+    this.color = color;
+  }
 
-      let text = doc.sliceString(text_from, text_to);
-      if (text.startsWith(" ") || text.endsWith(" ")) return;
-      let color = ask_css_to_sanitize_color(text);
-
-      if (color != "") {
-        mutable_decorations.push(
-          Decoration.widget({
-            block: false,
-            widget: new ReactWidget(
-              (
-                <SubtleColorPicker
-                  key="subtle-color-picker"
-                  from={text_from}
-                  to={text_to}
-                  color={color}
-                />
-              )
-            ),
-          }).range(cursor.from + 1, cursor.from + 1)
-        );
-      }
-    }
-  }),
-];
+  eq(other) {
+    return (
+      this.from === other.from &&
+      this.to === other.to &&
+      this.color === other.color
+    );
+  }
+}

@@ -145,7 +145,27 @@ export let LezerEditor = ({ viewupdate, result, error }) => {
   );
 };
 
-let javascript_specific_extension = [codemirror_subtle_color_picker];
+let javascript_specific_extension = [
+  DecorationsFromTree(({ cursor, mutable_decorations, doc }) => {
+    if (cursor.name === "String") {
+      let text_from = cursor.from + 1;
+      let text_to = cursor.to - 1;
+
+      let text = doc.sliceString(text_from, text_to);
+      if (text.startsWith(" ") || text.endsWith(" ")) return;
+      let color = ask_css_to_sanitize_color(text);
+
+      if (color != "") {
+        mutable_decorations.push(
+          Decoration.widget({
+            block: false,
+            widget: new ColorPickerWidget(text_from, text_to, color),
+          }).range(text_from)
+        );
+      }
+    }
+  }),
+];
 
 /** @param {{ viewupdate: import("codemirror-x-react/viewupdate").GenericViewUpdate, error: Error? }} props */
 export let JavascriptStuffEditor = ({ viewupdate, error }) => {
@@ -666,7 +686,11 @@ import {
 import { lezerLanguage } from "@codemirror/lang-lezer";
 import { iterate_over_cursor } from "dral-lezer-helpers";
 import { cool_cmd_d } from "./should-be-shared/commands.js";
-import { codemirror_subtle_color_picker } from "../../packages/codemirror-subtle-color-picker/codemirror-subtle-color-picker.jsx";
+import {
+  ask_css_to_sanitize_color,
+  ColorPickerWidget,
+} from "@dral/codemirror-subtle-color-picker";
+import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
 let lezer_playground_storage = new ScopedStorage("lezer-playground");
 
