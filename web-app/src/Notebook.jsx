@@ -112,7 +112,7 @@ let CellHasSelectionPlugin = [
 let NOISE_BACKGROUND = new URL("./noise-background.png", import.meta.url).href;
 export let EditorStyled = styled.div`
   /* background-color: rgba(0, 0, 0, 0.4); */
-  background-color: rgb(42 0 130 / 40%);
+  background-color: rgb(23 23 23 / 40%);
   background-image: url(${NOISE_BACKGROUND});
 
   & .cm-content {
