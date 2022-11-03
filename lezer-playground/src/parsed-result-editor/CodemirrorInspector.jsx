@@ -284,6 +284,7 @@ export let lezer_result_as_lezer_extensions = [
     let folds = state.field(what_to_fold);
     let decorations = /** @type {Array<Range<Decoration>>} */ ([]);
 
+    // console.time("FOLDS")
     let did_fold = /** @type {Array<[from: number, to: number]>} */ ([]);
     for (let [from, to] of folds) {
       if (did_fold.some(([f, t]) => f <= from && to <= t)) {
@@ -337,6 +338,7 @@ export let lezer_result_as_lezer_extensions = [
         );
       }
     }
+    // console.timeEnd("FOLDS")
     return Decoration.set(decorations, true);
   }),
   EditorView.decorations.compute([what_to_fold], (state) => {

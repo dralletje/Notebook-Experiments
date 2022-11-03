@@ -86,41 +86,7 @@ extern fn consoleGroupEnd() void;
 extern fn consoleTime(message: String) void;
 extern fn consoleTimeEnd(message: String) void;
 
-pub const Utf8Browser = struct {
-    iterator: std.unicode.Utf8Iterator,
-    current_character_index: usize = 0,
-
-    pub fn nextCodepointSlice(it: *Utf8Browser) ?[]const u8 {
-        it.current_character_index += 1;
-        return it.iterator.nextCodepointSlice();
-    }
-
-    pub fn nextCodepoint(it: *Utf8Browser) ?u21 {
-        it.current_character_index += 1;
-        return it.iterator.nextCodepoint();
-    }
-
-    pub fn go_to(it: *Utf8Browser, to: usize) !void {
-        if (it.current_character_index > to) {
-            it.iterator.i = 0;
-            it.current_character_index = 0;
-        }
-
-        while (it.current_character_index < to) {
-            const x = it.nextCodepoint() orelse return error.IndexOutOfBounds3;
-            console.log("x: {}", .{x});
-        }
-    }
-
-    pub fn read(it: *Utf8Browser, from: usize, to: usize) ![]const u8 {
-        try it.go_to(from);
-        const start_byte = it.iterator.i;
-        while (it.current_character_index < to) {
-            _ = it.nextCodepoint() orelse return error.IndexOutOfBounds2;
-        }
-        return it.iterator.bytes[start_byte..it.iterator.i];
-    }
-};
+extern fn slice_doc_number(from: u32, to: u32) u32;
 
 fn get_child_of_type(buffer: []Node, node_type: u16) ?u16 {
     var i: u16 = 1; // Skip to first child
@@ -159,40 +125,23 @@ const MappedPosition = extern struct {
     const empty = MappedPosition{ .text_from = 0, .text_to = 0, .parsed_from = 0, .parsed_to = 0 };
 };
 
-export fn meta_from_tree2(
+export fn meta_from_tree(
     treebuffer: [*:Node.empty]Node,
     treebuffer_length: u16,
-    doc: [*:0]u8,
     doc_offset: u16,
-    doc_length: usize,
 ) usize {
     // console.time("Hahaa", .{});
     // defer console.timeEnd("Hahaa", .{});
 
-    return _meta_from_tree(treebuffer, treebuffer_length, doc, doc_offset, doc_length) catch |x| {
+    return _meta_from_tree(treebuffer, treebuffer_length, doc_offset) catch |x| {
         console.log("Error: {}", .{x});
         return 0;
     };
 }
 
-fn _meta_from_tree2(
-    _: [*:Node.empty]Node,
-    _: u16,
-    _: [*:0]u8,
-    _: u32,
-    _: u16,
-) !usize {
-    return 0;
-}
-
 var positions: []MappedPosition = &[0]MappedPosition{};
 
-fn _meta_from_tree(treebuffer: [*:Node.empty]Node, treebuffer_length: u16, doc: [*:0]u8, text_offset: u32, doc_length: usize) !usize {
-    const as_slice = doc[0..doc_length];
-    var doc_browser = Utf8Browser{
-        .iterator = std.unicode.Utf8View.initUnchecked(as_slice).iterator(),
-    };
-
+fn _meta_from_tree(treebuffer: [*:Node.empty]Node, treebuffer_length: u16, text_offset: u32) !usize {
     const max_amount_of_positions = treebuffer_length / 4;
     if (positions.len < max_amount_of_positions) {
         main_allocator.free(positions);
@@ -204,7 +153,6 @@ fn _meta_from_tree(treebuffer: [*:Node.empty]Node, treebuffer_length: u16, doc: 
     {
         var i: u16 = 0;
         while (!std.meta.eql(treebuffer[i], Node.empty)) : (i += 1) {
-            // while (i < treebuffer_length) : (i += 1) {
             const node: Node = treebuffer[i];
             // console.log("Node {}: {}", .{ i, node });
 
@@ -227,18 +175,21 @@ fn _meta_from_tree(treebuffer: [*:Node.empty]Node, treebuffer_length: u16, doc: 
                             const to_index = from_index + _to_index;
 
                             // _ = to_index;
-                            _ = doc_browser;
                             // _ = text_offset;
 
                             const from_node: Node = treebuffer[from_index];
+                            // _ = from_node;
                             // const from_text = try doc_browser.read(from_node.text_start + text_offset, from_node.text_end + text_offset);
-                            const from_text = as_slice[from_node.text_start + text_offset .. from_node.text_end + text_offset];
-                            const from_number = try std.fmt.parseInt(u16, from_text, 10);
+                            // const from_text = as_slice[from_node.text_start + text_offset .. from_node.text_end + text_offset];
+                            // const from_number = try std.fmt.parseInt(u16, from_text, 10);
+                            const from_number = slice_doc_number(from_node.text_start + text_offset, from_node.text_end + text_offset);
 
                             const to_node = treebuffer[to_index];
+                            // _ = to_node;
                             // const to_text = try doc_browser.read(to_node.text_start + text_offset, to_node.text_end + text_offset);
-                            const to_text = as_slice[to_node.text_start + text_offset .. to_node.text_end + text_offset];
-                            const to_number = try std.fmt.parseInt(u16, to_text, 10);
+                            // const to_text = as_slice[to_node.text_start + text_offset .. to_node.text_end + text_offset];
+                            // const to_number = try std.fmt.parseInt(u16, to_text, 10);
+                            const to_number = slice_doc_number(to_node.text_start + text_offset, to_node.text_end + text_offset);
 
                             const position = MappedPosition{
                                 .text_from = from_number,

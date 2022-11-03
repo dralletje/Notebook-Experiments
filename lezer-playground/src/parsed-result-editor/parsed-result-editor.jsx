@@ -431,7 +431,7 @@ export let ParsedResultEditor = ({
     };
     try_parse();
     return () => cancelIdleCallback(idle_callback);
-  }, [code_to_parse_viewupdate, code_to_parse_selection]);
+  }, [code_to_parse_selection]);
 
   // Other way around: highlight the node in the what-to-parse editor that is currently selected in the parsed editor
   let update_what_to_code_selection = React.useMemo(() => {
