@@ -6,7 +6,7 @@
     "node": ">=12"
   },
   "bin": {
-    "zig": "zig-on-npm.mjs"
+    "zig": "zig-on-npm.js"
   },
   "optionalDependencies": {
     "@zig-on-npm/darwin-arm64": "0.10.0-rc.0",
