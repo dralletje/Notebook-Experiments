@@ -15,6 +15,8 @@ try {
   }
 }
 
+console.log(`one_that_works:`, one_that_works);
+
 try {
   execFileSync(one_that_works, process.argv.slice(2), { stdio: "inherit" });
 } catch (error) {
