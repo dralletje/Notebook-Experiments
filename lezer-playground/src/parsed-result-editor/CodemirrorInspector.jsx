@@ -40,7 +40,7 @@ let fold_style = EditorView.theme({
 /////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////
-import { iterate_over_cursor } from "dral-lezer-helpers";
+import { iterate_over_cursor, iterate_trees } from "dral-lezer-helpers";
 import { range } from "lodash-es";
 
 export let node_that_contains_selection_field = StateField.define({
@@ -250,6 +250,139 @@ class SpaceWidget extends WidgetType {
   }
 }
 
+/**
+ * @param {Array<[from: number, to: number]>} did_fold
+ * @param {[from: number, to: number]} current_fold
+ */
+let did_fold_fast = (did_fold, [from, to]) => {
+  for (let [fold_from, fold_to] of did_fold) {
+    if (fold_from === from && fold_to === to) {
+      return true;
+    }
+  }
+  did_fold.push([from, to]);
+  return false;
+};
+
+let VERBOSE_PERFORMANCE_FOR_FOLDING = false;
+
+/** @type {Awaited<ReturnType<import("all-folds-zig").default>>?} */
+let _all_folds_zig = null;
+import("all-folds-zig")
+  .then(async (x) => await x.default())
+  .then((all_folds_zig) => {
+    _all_folds_zig = all_folds_zig;
+  })
+  .catch((error) => {
+    console.error(`Failed to load all-folds-zig`, error);
+  });
+
+/** @param {import("@lezer/common").Tree} tree */
+let get_all_folds_WASM = (tree) => {
+  if (_all_folds_zig == null) {
+    if (VERBOSE_PERFORMANCE_FOR_FOLDING) {
+      console.group("WASM not loaded (yet??)");
+      console.log("So now running the JS (optimised) version instead");
+    }
+
+    try {
+      return get_all_folds_JS_optimised(tree);
+    } finally {
+      if (VERBOSE_PERFORMANCE_FOR_FOLDING) {
+        console.groupEnd();
+      }
+    }
+  }
+  let all_folds_zig = _all_folds_zig;
+
+  /** @type {FoldableCall[]} */
+  let ranges_from_wasm = [];
+  iterate_trees({
+    tree: tree,
+    enter_tree: (tree, offset) => {
+      if (tree.type.name === "Node") {
+        let node = tree.topNode;
+        let callee = node.firstChild;
+        let arg_list = node.getChild("Arguments");
+
+        if (callee == null || arg_list == null) return;
+
+        ranges_from_wasm.push({
+          name: [callee.from + offset, callee.to + offset],
+          fold: [arg_list.from + 1 + offset, arg_list.to - 1 + offset],
+        });
+      }
+    },
+    enter_treebuffer: (tree, offset) => {
+      let result_array = all_folds_zig(tree, offset);
+      for (let i = 0; i < result_array.length; i += 4) {
+        ranges_from_wasm.push({
+          name: [result_array[i], result_array[i + 1]],
+          fold: [result_array[i + 2], result_array[i + 3]],
+        });
+      }
+    },
+  });
+  return ranges_from_wasm;
+};
+
+let get_all_folds_JS = (tree) => {
+  /** @type {FoldableCall[]} */
+  let ranges = [];
+  iterate_over_cursor({
+    cursor: tree.cursor(),
+    enter: (cursor) => {
+      if (cursor.name === "Node") {
+        let node = cursor.node;
+
+        let callee = node.firstChild;
+        let arg_list = node.getChild("Arguments");
+
+        if (callee == null || arg_list == null) return;
+
+        ranges.push({
+          name: [callee.from, callee.to],
+          fold: [arg_list.from + 1, arg_list.to - 1],
+        });
+      }
+    },
+  });
+  return ranges;
+};
+
+let jump_to_first_sibling_of_type = (cursor, type) => {
+  while (cursor.name !== type && cursor.nextSibling()) {}
+  return cursor.name == type;
+};
+
+let get_all_folds_JS_optimised = (tree) => {
+  /** @type {FoldableCall[]} */
+  let ranges = [];
+  iterate_over_cursor({
+    cursor: tree.cursor(),
+    enter: (cursor) => {
+      if (cursor.name === "Node") {
+        if (cursor.firstChild()) {
+          try {
+            let callee_from = cursor.from;
+            let callee_to = cursor.to;
+
+            if (jump_to_first_sibling_of_type(cursor, "Arguments")) {
+              ranges.push({
+                name: [callee_from, callee_to],
+                fold: [cursor.from + 1, cursor.to - 1],
+              });
+            }
+          } finally {
+            cursor.parent();
+          }
+        }
+      }
+    },
+  });
+  return ranges;
+};
+
 export let lezer_result_as_lezer_extensions = [
   codeFolding(),
   all_this_just_to_click,
@@ -258,27 +391,35 @@ export let lezer_result_as_lezer_extensions = [
   atomic_spaces,
 
   AllFoldsFacet.compute([LanguageStateField], (state) => {
-    let cursor = syntaxTree(state).cursor();
-    /** @type {FoldableCall[]} */
-    let ranges = [];
-    iterate_over_cursor({
-      cursor: cursor,
-      enter: (cursor) => {
-        if (cursor.name === "Node") {
-          let node = cursor.node;
-          let callee = node.firstChild;
-          let arg_list = node.getChild("Arguments");
+    // So this might sound stupid, because this wasn't really slow to begin with...
+    // but I thought "hey this doesn't use text, this must be fast in zig!", and yes!
+    // It's "just" 5x-10x faster than the JS version, but goddamnit I love making things more complex!
 
-          if (callee == null || arg_list == null) return;
+    VERBOSE_PERFORMANCE_FOR_FOLDING && console.time("ALL FOLD FROM WASM");
+    let ranges_from_wasm = get_all_folds_WASM(syntaxTree(state));
+    VERBOSE_PERFORMANCE_FOR_FOLDING && console.timeEnd("ALL FOLD FROM WASM");
 
-          ranges.push({
-            name: [callee.from, callee.to],
-            fold: [arg_list.from + 1, arg_list.to - 1],
-          });
-        }
-      },
-    });
-    return ranges;
+    if (VERBOSE_PERFORMANCE_FOR_FOLDING) {
+      console.time("ALL FOLDS FROM JS");
+      let ranges_from_js = get_all_folds_JS(syntaxTree(state));
+      console.timeEnd("ALL FOLDS FROM JS");
+
+      // AGAIN I figured out I was comparing to a very unoptimised version of the javascript...
+      // but luckily this time the JS didn't suddenly get faster than the WASM :D
+      console.time("ALL FOLDS FROM JS optimised");
+      let ranges_from_js_optimised = get_all_folds_JS_optimised(
+        syntaxTree(state)
+      );
+      console.timeEnd("ALL FOLDS FROM JS optimised");
+
+      console.groupCollapsed("Values");
+      console.log(`Ranges from JS:`, ranges_from_js);
+      console.log(`Ranges from JS optimised:`, ranges_from_js_optimised);
+      console.log(`Ranges from WASM:`, ranges_from_wasm);
+      console.groupEnd();
+    }
+
+    return ranges_from_wasm;
   }),
   EditorView.decorations.compute([what_to_fold], (state) => {
     let folds = state.field(what_to_fold);
@@ -287,10 +428,7 @@ export let lezer_result_as_lezer_extensions = [
     // console.time("FOLDS")
     let did_fold = /** @type {Array<[from: number, to: number]>} */ ([]);
     for (let [from, to] of folds) {
-      if (did_fold.some(([f, t]) => f <= from && to <= t)) {
-        continue;
-      }
-      did_fold.push([from, to]);
+      if (did_fold_fast(did_fold, [from, to])) continue;
 
       // Find first 20 characters without counting tabs, newlines and spaces
       let text = state.sliceDoc(from, to);

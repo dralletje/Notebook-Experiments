@@ -184,6 +184,7 @@ let hide_positions = [
 
   EditorView.decorations.compute([LanguageStateField], (state) => {
     let decorations = [];
+    // console.time("Hide positions from tree");
     iterate_over_cursor({
       cursor: syntaxTree(state).cursor(),
       enter: (cursor) => {
@@ -194,6 +195,7 @@ let hide_positions = [
         }
       },
     });
+    // console.timeEnd("Hide positions from tree");
     return Decoration.set(decorations);
   }),
   EditorView.atomicRanges.of((view) => {
@@ -327,12 +329,21 @@ export let ParsedResultEditor = ({
       };
 
       let transaction;
-      // console.groupCollapsed("FAKE UPDATE");
+      console.groupCollapsed("FAKE UPDATE");
       try {
+        console.log(`> So this is funny:
+> I'm asking for a state update with the new doc
+> so I can get the new language state...
+> But it is also re-running all the extensions
+> and decorations and stuff! Stupid!!
+> TODO Need to figure out a way to not have to do this,
+> but still get the new language state...
+>
+> Stuff that follows are logs posted during this fake update:`);
         transaction = state.update(spec);
         transaction.state;
       } finally {
-        // console.groupEnd();
+        console.groupEnd();
       }
       let language_state = transaction.state.field(LanguageStateField);
       let LanguageState = language_state.constructor;
@@ -387,6 +398,14 @@ export let ParsedResultEditor = ({
 
   // Highlight the node that is currently selected in the what-to-parse editor
   React.useEffect(() => {
+    // If docChanged, we wait for the above effect to update the selection
+    // after it changed the doc and everything
+    for (let transaction of code_to_parse_viewupdate.transactions) {
+      if (transaction.docChanged) {
+        return;
+      }
+    }
+
     let idle_callback = 0;
     // Hacky solution to wait for syntaxTree to become available
     let try_parse = () => {
@@ -440,6 +459,8 @@ export let ParsedResultEditor = ({
         let annotation = transaction.annotation(Transaction.userEvent);
         if (annotation == null || !annotation.startsWith("select")) return;
 
+        // TODO This one can be a lot more effecient because I can "just" get the node currently at the cursor,
+        // .... and from there go up to look around for the corresponsing position.
         let tree = syntaxTree(update.state);
         let meta = inspector_meta_from_tree(update.view.state.doc, tree);
         let selection = update.view.state.field(

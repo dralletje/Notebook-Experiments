@@ -1,0 +1,13 @@
+{
+  "name": "all-folds-zig",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/all-folds-zig.js",
+  "scripts": {
+    "build": "zig build-lib src/main.zig -target wasm32-freestanding -dynamic -OReleaseSafe",
+    "build-fast": "zig build-lib src/main.zig -target wasm32-freestanding -dynamic -OReleaseFast",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

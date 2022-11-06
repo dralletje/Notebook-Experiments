@@ -98,21 +98,18 @@ fn get_child_of_type(buffer: []Node, node_type: u16) ?u16 {
     return null;
 }
 
+// Only useful to map from memory
 const Node = extern struct {
     type: u16,
     text_start: u16,
     text_end: u16,
-    _end: u16,
+    bytes_end: u16,
 
-    const empty = Node{ .type = 0, .text_start = 0, .text_end = 0, ._end = 0 };
+    const empty = Node{ .type = 0, .text_start = 0, .text_end = 0, .bytes_end = 0 };
 
     fn end(self: Node) u16 {
-        return self._end / 4;
+        return self.bytes_end / 4;
     }
-
-    // fn children(self: Node, index: u16) []Node {
-    //     return @intToPtr([*]Node, @ptrToInt(&self) + 8)[0..self.end() - 1 - index];
-    // }
 };
 
 const MappedPosition = extern struct {
@@ -125,14 +122,39 @@ const MappedPosition = extern struct {
     const empty = MappedPosition{ .text_from = 0, .text_to = 0, .parsed_from = 0, .parsed_to = 0 };
 };
 
+// AAAAAAAAAAA
+// Getting performance_now() is not very performant!!!
+// HAHAHA SO IRONIC
+extern fn performance_now() f64;
+// fn performance_now() f64 {
+//     return 0;
+// }
+
+var loop_time: f64 = 0;
+var allocate_time: f64 = 0;
+var times_memory_is_expanded: i32 = 0;
+var shebababa: f64 = 0;
+export fn reset_timing() void {
+    console.log("Loop time: {d} ms", .{loop_time});
+    console.log("Allocate time: {d} ms", .{allocate_time});
+    console.log("Times memory is expanded: {d}", .{times_memory_is_expanded});
+    console.log("Shebababa: {d} ms", .{shebababa});
+    loop_time = 0;
+    allocate_time = 0;
+    times_memory_is_expanded = 0;
+    shebababa = 0;
+}
+
 export fn meta_from_tree(
     treebuffer: [*:Node.empty]Node,
     treebuffer_length: u16,
     doc_offset: u16,
 ) usize {
-    // console.time("Hahaa", .{});
-    // defer console.timeEnd("Hahaa", .{});
+    // console.time("meta_from_tree", .{});
+    // defer console.timeEnd("meta_from_tree", .{});
 
+    var start = performance_now();
+    defer shebababa += performance_now() - start;
     return _meta_from_tree(treebuffer, treebuffer_length, doc_offset) catch |x| {
         console.log("Error: {}", .{x});
         return 0;
@@ -141,18 +163,38 @@ export fn meta_from_tree(
 
 var positions: []MappedPosition = &[0]MappedPosition{};
 
+export fn test_performance_performance() void {
+    // Just trying out
+    var test_i: u16 = 0;
+    const start_test_performance = performance_now();
+    var total_x_stuff: f64 = 0;
+    while (test_i < 10000) : (test_i += 1) {
+        const first = performance_now();
+        const last = performance_now();
+        total_x_stuff += last - first;
+    }
+    const end_test_performance = performance_now();
+    console.log("Test performance: {d} ms", .{end_test_performance - start_test_performance});
+    console.log("total_x_stuff: {d} ms", .{total_x_stuff});
+}
+
 fn _meta_from_tree(treebuffer: [*:Node.empty]Node, treebuffer_length: u16, text_offset: u32) !usize {
+    const start_allocate = performance_now();
     const max_amount_of_positions = treebuffer_length / 4;
     if (positions.len < max_amount_of_positions) {
+        times_memory_is_expanded += 1;
         main_allocator.free(positions);
         positions = try main_allocator.alloc(MappedPosition, max_amount_of_positions);
     }
     var positions_index: usize = 0;
+    allocate_time += performance_now() - start_allocate;
 
     // console.time("Actual thing", .{});
+    const start = performance_now();
     {
         var i: u16 = 0;
-        while (!std.meta.eql(treebuffer[i], Node.empty)) : (i += 1) {
+        // while (!std.meta.eql(treebuffer[i], Node.empty)) : (i += 1) {
+        while (i < treebuffer_length) : (i += 1) {
             const node: Node = treebuffer[i];
             // console.log("Node {}: {}", .{ i, node });
 
@@ -160,73 +202,54 @@ fn _meta_from_tree(treebuffer: [*:Node.empty]Node, treebuffer_length: u16, text_
             // errdefer console.groupEnd();
 
             if (node.type == 2) {
-                const name_index = get_child_of_type(treebuffer[i..node.end()], 6) orelse get_child_of_type(treebuffer[i..node.end()], 5) orelse {
+                const name_index = get_child_of_type(treebuffer[i..node.end()], 6) orelse get_child_of_type(treebuffer[i..node.end()], 5) orelse get_child_of_type(treebuffer[i..node.end()], 3) orelse {
                     continue;
                 };
                 const name_node = treebuffer[i + name_index];
 
-                if (get_child_of_type(treebuffer[i..node.end()], 11)) |_position_index| {
-                    const position_index = i + _position_index;
-                    const position_end = treebuffer[position_index].end();
+                const _position_index = get_child_of_type(treebuffer[i..node.end()], 11) orelse continue;
+                const position_index = i + _position_index;
+                const position_end = treebuffer[position_index].end();
 
-                    if (get_child_of_type(treebuffer[position_index..position_end], 12)) |_from_index| {
-                        const from_index = position_index + _from_index;
-                        if (get_child_of_type(treebuffer[from_index..position_end], 12)) |_to_index| {
-                            const to_index = from_index + _to_index;
+                const _from_index = get_child_of_type(treebuffer[position_index..position_end], 12) orelse continue;
+                const from_index = position_index + _from_index;
+                const from_node: Node = treebuffer[from_index];
 
-                            // _ = to_index;
-                            // _ = text_offset;
+                const _to_index = get_child_of_type(treebuffer[from_index..position_end], 12) orelse continue;
+                const to_index = from_index + _to_index;
+                const to_node = treebuffer[to_index];
 
-                            const from_node: Node = treebuffer[from_index];
-                            // _ = from_node;
-                            // const from_text = try doc_browser.read(from_node.text_start + text_offset, from_node.text_end + text_offset);
-                            // const from_text = as_slice[from_node.text_start + text_offset .. from_node.text_end + text_offset];
-                            // const from_number = try std.fmt.parseInt(u16, from_text, 10);
-                            const from_number = slice_doc_number(from_node.text_start + text_offset, from_node.text_end + text_offset);
+                // Couldn't get this to work with the string from javascript directly,
+                // a bunch of this was because the string contains multiple characters for advanced utf-8 characters,
+                // putting all my character offsets in disarray!
+                // On top of that, it seemed like the string was also getting too big to even give to webassembly?
+                // Seems unlikely, but I couldn't be bothered.
+                // Might get back here later to do it with string in memory, because that is a lot faster!
+                const from_number = slice_doc_number(from_node.text_start + text_offset, from_node.text_end + text_offset);
+                const to_number = slice_doc_number(to_node.text_start + text_offset, to_node.text_end + text_offset);
 
-                            const to_node = treebuffer[to_index];
-                            // _ = to_node;
-                            // const to_text = try doc_browser.read(to_node.text_start + text_offset, to_node.text_end + text_offset);
-                            // const to_text = as_slice[to_node.text_start + text_offset .. to_node.text_end + text_offset];
-                            // const to_number = try std.fmt.parseInt(u16, to_text, 10);
-                            const to_number = slice_doc_number(to_node.text_start + text_offset, to_node.text_end + text_offset);
+                // _ = from_node;
+                // _ = to_node;
+                // _ = text_offset;
+                // _ = name_node;
 
-                            const position = MappedPosition{
-                                .text_from = from_number,
-                                .text_to = to_number,
-                                .parsed_from = text_offset + name_node.text_start,
-                                .parsed_to = text_offset + name_node.text_end,
-                            };
+                const position = MappedPosition{
+                    .text_from = from_number,
+                    .text_to = to_number,
+                    .parsed_from = text_offset + name_node.text_start,
+                    .parsed_to = text_offset + name_node.text_end,
+                };
 
-                            // try positions.append(positions);
-                            positions[positions_index] = position;
-                            positions_index += 1;
-                        }
-                    }
-                }
+                positions[positions_index] = position;
+                positions_index += 1;
             }
-
-            // const has_children = node.end() / 4 != i + 1;
-            // if (!has_children) {
-            //     console.groupEnd();
-            // } else {
-            //     try list.append(node.end());
-            // }
-            // while (list.items.len > 0 and list.items[list.items.len - 1] == i + 1) {
-            //     _ = list.pop();
-            //     console.groupEnd();
-            // }
         }
     }
-
-    // var output_stuff = output_slice[0..output_index];
-    // console.log("output_stuff: {any}", .{output_stuff});
+    loop_time += performance_now() - start;
 
     // console.timeEnd("Actual thing", .{});
 
-    // try positions.append(MappedPosition.empty);
     positions[positions_index] = MappedPosition.empty;
 
-    // return 0;
     return @ptrToInt(positions.ptr);
 }

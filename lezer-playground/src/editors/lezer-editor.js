@@ -8,7 +8,7 @@ import {
 } from "@codemirror/language";
 import { styleTags, tags as t } from "@lezer/highlight";
 import { Prec, StateField, Text } from "@codemirror/state";
-import { TreeCursor } from "@lezer/common";
+import { Tree, TreeCursor } from "@lezer/common";
 import { iterate_over_cursor } from "dral-lezer-helpers";
 import { LanguageStateField } from "@dral/codemirror-helpers";
 import { acceptCompletion, autocompletion } from "@codemirror/autocomplete";
@@ -115,6 +115,18 @@ export let lezer_highlight = syntaxHighlighting(
     }
   )
 );
+
+// /**
+//  * @param {Text} doc
+//  * @param {Tree} tree
+//  * @returns {any}
+//  */
+// let scope_from_tree_wasm = (doc, tree) => {
+//   // console.log(`my_thing:`, my_thing);
+//   // console.log(`tree:`, tree);
+//   let result = my_thing(tree.children[0], 0);
+//   console.log(`result:`, result);
+// };
 
 /**
  * @typedef Scope
@@ -312,13 +324,19 @@ let scope_field = StateField.define({
     return scope_from_cursor(state.doc, syntaxTree(state).cursor());
   },
   update(value, tr) {
+    // console.time("Scope from WASM");
+    // let result = scope_from_tree_wasm(tr.state.doc, syntaxTree(tr.state));
+    // console.timeEnd("Scope from WASM");
+
     if (
       tr.docChanged ||
       tr.state.field(LanguageStateField) !==
         tr.startState.field(LanguageStateField, false)
     ) {
       let state = tr.state;
+      console.time("Scope from cursor");
       let value = scope_from_cursor(state.doc, syntaxTree(state).cursor());
+      console.timeEnd("Scope from cursor");
       return value;
     }
     return value;
