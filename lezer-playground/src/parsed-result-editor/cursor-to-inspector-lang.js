@@ -11,11 +11,11 @@ import { Tree, TreeBuffer, TreeCursor } from "@lezer/common";
 
 // I want WASM to be very laid back and safe, so it will lazily load it
 // and skip it if it fails to load.
-/** @type {Awaited<ReturnType<import("find-positions-zig").default>>["meta_from_tree"]?} */
+/** @type {Awaited<ReturnType<import("@dral/find-positions-zig").default>>["meta_from_tree"]?} */
 let _meta_from_tree = null;
-/** @type {Awaited<ReturnType<import("find-positions-zig").default>>["reset_timing"]?} */
+/** @type {Awaited<ReturnType<import("@dral/find-positions-zig").default>>["reset_timing"]?} */
 let _reset_timing = null;
-import("find-positions-zig")
+import("@dral/find-positions-zig")
   .then(({ default: init }) => init())
   .then(({ meta_from_tree, reset_timing }) => {
     _meta_from_tree = meta_from_tree;

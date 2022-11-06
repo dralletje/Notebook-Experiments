@@ -1,5 +1,5 @@
 {
-  "name": "find-positions-zig",
+  "name": "@dral/find-positions-zig",
   "version": "1.0.0",
   "description": "",
   "main": "find-positions-zig.js",

@@ -266,9 +266,9 @@ let did_fold_fast = (did_fold, [from, to]) => {
 
 let VERBOSE_PERFORMANCE_FOR_FOLDING = false;
 
-/** @type {Awaited<ReturnType<import("all-folds-zig").default>>?} */
+/** @type {Awaited<ReturnType<import("@dral/all-folds-zig").default>>?} */
 let _all_folds_zig = null;
-import("all-folds-zig")
+import("@dral/all-folds-zig")
   .then(async (x) => await x.default())
   .then((all_folds_zig) => {
     _all_folds_zig = all_folds_zig;
