@@ -23,7 +23,7 @@ import("find-positions-zig")
   })
   .catch((error) => {
     // If for any reason the WASM fails to load, we'll just use the JS version
-    console.log(`Error loading find-positions-zig WASM:`, error);
+    console.error(`Error loading find-positions-zig WASM:`, error);
   });
 
 /**
