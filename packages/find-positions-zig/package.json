@@ -4,14 +4,14 @@
   "description": "",
   "main": "find-positions-zig.js",
   "scripts": {
-    "build": "zig build-lib main.zig -target wasm32-freestanding -dynamic -OReleaseSafe",
-    "build-fast": "zig build-lib main.zig -target wasm32-freestanding -dynamic -OReleaseFast",
+    "build": "zig build-lib main.zig -target wasm32-freestanding -dynamic -OReleaseFast",
+    "build-safe": "zig build-lib main.zig -target wasm32-freestanding -dynamic -OReleaseSafe",
     "test": "echo \"Error: no test specified\" && exit 1",
     "which-zig": "which zig"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@zig-on-npm/zig": "^0.10.0-rc.6"
+    "@zig-on-npm/zig": "^0.10.0-rc.7"
   }
 }
