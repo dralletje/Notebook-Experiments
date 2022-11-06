@@ -9,9 +9,19 @@
       "dependsOn": ["^build"],
       // note: output globs are relative to each package's `package.json`
       // (and not the monorepo root)
-      "outputs": ["dist/**"],
+      "outputs": [
+        "dist/**",
+
+        // Zig...
+        // TODO Make zig put it's build stuff in `dist`
+        "main.wasm",
+        "main.wasm.o",
+        "zig-cache",
+        "zig-out"
+      ],
       "inputs": [
         "src/**",
+        "package.json",
         "index.html",
         "postcss.config.js",
         "tailwindo.config.js",

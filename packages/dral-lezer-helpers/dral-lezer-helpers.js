@@ -1,4 +1,4 @@
-import { TreeCursor } from "@lezer/common";
+import { Tree, TreeBuffer, TreeCursor } from "@lezer/common";
 
 /**
  * Like Lezers `iterate`, but instead of `{ from, to, getNode() }`
@@ -74,3 +74,46 @@ export function iterate_over_cursor({
     }
   }
 }
+
+/**
+ * @param {{
+ *  enter_tree: (tree: Tree, offset: number) => void | false,
+ *  enter_treebuffer: (tree: TreeBuffer, offset: number) => void | false,
+ *  verbose?: boolean,
+ * }} context
+ * @param {Tree | TreeBuffer} tree
+ * @param {number} offset
+ */
+export let _iterate_trees = (context, tree, offset) => {
+  let { verbose, enter_tree, enter_treebuffer } = context;
+  if (tree instanceof Tree) {
+    verbose && console.group(`TREE "${tree.type.name}" ${offset}`);
+    verbose && console.log(`tree:`, tree);
+
+    let should_enter = enter_tree(tree, offset);
+
+    if (should_enter !== false) {
+      for (let i = 0; i < tree.children.length; i++) {
+        _iterate_trees(context, tree.children[i], offset + tree.positions[i]);
+      }
+    }
+    verbose && console.groupEnd();
+  } else {
+    verbose && console.group(`BUFFER ${offset}`);
+    enter_treebuffer(tree, offset);
+    verbose && console.groupEnd();
+  }
+};
+
+/**
+ * @param {{
+ *  tree: Tree | TreeBuffer,
+ *  enter_tree: (tree: Tree, offset: number) => void | false,
+ *  enter_treebuffer: (tree: TreeBuffer, offset: number) => void | false,
+ *  offset?: number,
+ *  verbose?: boolean,
+ * }} params
+ */
+export let iterate_trees = ({ offset = 0, tree, ...context }) => {
+  return _iterate_trees(context, tree, offset);
+};

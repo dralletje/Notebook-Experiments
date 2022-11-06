@@ -759,6 +759,33 @@ let LezerErrorEditor = ({ error }) => {
   return <CodeMirror state={initial_editor_state} />;
 };
 
+let requestIdleCallback = (fn) => {
+  if ("requestIdleCallback" in window) {
+    return window.requestIdleCallback(fn);
+  } else {
+    // @ts-expect-error - TS doesn't know requestIdleCallback isn't always present
+    return window.setTimeout(fn, 0);
+  }
+};
+let cancelIdleCallback = (id) => {
+  if ("cancelIdleCallback" in window) {
+    return window.cancelIdleCallback(id);
+  } else {
+    // @ts-expect-error - TS doesn't know requestIdleCallback isn't always present
+    return window.clearTimeout(id);
+  }
+};
+
+/**
+ * @param {AbortSignal} signal
+ */
+let requestIdlePromise = async (signal) => {
+  await new Promise((resolve) => requestIdleCallback(resolve));
+  if (signal.aborted) {
+    await new Promise(() => {});
+  }
+};
+
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {
   let main_scope = lezer_playground_storage.child(project_name);
@@ -921,8 +948,32 @@ let Editor = ({ project_name }) => {
         throw new Error("Not running");
       }
 
+      await requestIdlePromise(signal);
+
       // Find empty Body's in the lezer parser, which will definitely lead to an infinite loop
-      let tree = lezerLanguage.parser.parse(parser_code);
+      let parser = lezerLanguage.parser;
+      let partial_parse = parser.startParse(parser_code);
+
+      let DELAY_EVERY_X_MILLISECONDS = 5;
+      let last_parse_start = performance.now();
+      let request_idle_count = 0;
+
+      /** @type {import("@lezer/common").Tree} */
+      let tree = /** @type {any} */ (null);
+      while (true) {
+        let tree_or_not = partial_parse.advance();
+        if (tree_or_not != null) {
+          tree = tree_or_not;
+          break;
+        }
+
+        if (performance.now() - last_parse_start > DELAY_EVERY_X_MILLISECONDS) {
+          await requestIdlePromise(signal);
+          request_idle_count += 1;
+          last_parse_start = performance.now();
+        }
+      }
+
       iterate_over_cursor({
         cursor: tree.cursor(),
         enter: (cursor) => {
