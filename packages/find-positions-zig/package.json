@@ -12,6 +12,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@zig-on-npm/zig": "^0.10.0-rc.2"
+    "@zig-on-npm/zig": "^0.10.0-rc.3"
   }
 }

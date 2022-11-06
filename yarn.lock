@@ -858,19 +858,25 @@
   resolved "https://registry.yarnpkg.com/@zig-on-npm/darwin-arm64/-/darwin-arm64-0.10.0-rc.0.tgz#143f614077c046aa3efe0f34c00e5f9aaea93a40"
   integrity sha512-IsQrYfqsbhs0Jb69UuREZkzfsowxRDg2weG3I6A2NkuECSe3o3qX4yBwGvEX/urIeLYPMnWKWCzLM8Y2nkJU4g==
 
+"@zig-on-npm/linux-32@0.10.0-rc.0":
+  version "0.10.0-rc.0"
+  resolved "https://registry.yarnpkg.com/@zig-on-npm/linux-32/-/linux-32-0.10.0-rc.0.tgz#60783fac8e26bbfa78f0a9d59bafb1444c702401"
+  integrity sha512-LVOWwg0h+9Ce6WqdgALU2I7cyvcpVDQ/CB/6jsyUSZcSnp5x69t6D//+cvG9TIQqD6JWsaN+BlrVtciv2P+QRA==
+
 "@zig-on-npm/linux-64@0.10.0-rc.0":
   version "0.10.0-rc.0"
   resolved "https://registry.yarnpkg.com/@zig-on-npm/linux-64/-/linux-64-0.10.0-rc.0.tgz#c29d94a47913cec3c88581cfc7c319d23cb60acb"
   integrity sha512-pk3Nqx/MsdJJpsKeyu6m2+qfBECSuzAvDSRj8tjkq4/4zryY0TPZHoJYloR2Tc0Qj2p6dP67gA7laayIp2t1mA==
 
-"@zig-on-npm/zig@^0.10.0-rc.2":
-  version "0.10.0-rc.2"
-  resolved "https://registry.yarnpkg.com/@zig-on-npm/zig/-/zig-0.10.0-rc.2.tgz#8afa18186fe18fa201c5cebccdd78404efc6292e"
-  integrity sha512-6aRobbjA9K4nnUJi9p/p8Rq7diA3W7m8WgcBvzWxb5fZH4vDeUpJm/FdPJSK0j/YcPhTl/KhOwvGUwzbGDxapw==
+"@zig-on-npm/zig@^0.10.0-rc.3":
+  version "0.10.0-rc.3"
+  resolved "https://registry.yarnpkg.com/@zig-on-npm/zig/-/zig-0.10.0-rc.3.tgz#b9bdd533bd19dee660cad0bb96c3502cbea3ff5f"
+  integrity sha512-9dPv2Nqrg2F9UvJUV+DWJ2lJ/iNHW4mdPfxSdelSKJh+ghyuVC4llyZxe9MrGFdyT09CwtjLUaZ5iIKIHtxXlA==
   dependencies:
     resolve-esm "^1.3.0"
   optionalDependencies:
     "@zig-on-npm/darwin-arm64" "0.10.0-rc.0"
+    "@zig-on-npm/linux-32" "0.10.0-rc.0"
     "@zig-on-npm/linux-64" "0.10.0-rc.0"
 
 abbrev@1:
