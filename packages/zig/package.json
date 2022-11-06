@@ -1,5 +1,5 @@
 {
-  "name": "@zig-on-npm/zig",
+  "name": "@dral/zig-on-npm",
   "version": "0.10.0-rc.3",
   "description": "ZIG",
   "engines": {
