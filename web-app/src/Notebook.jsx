@@ -350,6 +350,35 @@ export let LastCreatedCells = StateField.define({
   },
 });
 
+let RenderIframe = ({ notebook }) => {
+  // prettier-ignore
+  let iframe_ref = React.useRef(/** @type {HTMLIFrameElement} */ (/** @type {any} */ (null)));
+
+  React.useEffect(() => {
+    let iframe = iframe_ref.current;
+    iframe.contentWindow?.postMessage({
+      type: "notebook",
+      notebook,
+    });
+  });
+
+  return (
+    <iframe
+      ref={iframe_ref}
+      // src="https://i-need-another-host-so-i-get-multithreaded-iframe.glitch.me/iframe.html?aaaa"
+      src="/iframe/index.html"
+      // @ts-ignore
+      allowtransparency="true"
+      sandbox="allow-downloads allow-forms allow-popups-to-escape-sandbox allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
+      allow="accelerometer; autoplay; clipboard-write; camera; encrypted-media; fullscreen; geolocation; gyroscope; magnetometer; microphone; midi; vr"
+      style={{ visibility: `hidden` }}
+      onLoad={(event) => {
+        event.currentTarget.style.visibility = "visible";
+      }}
+    />
+  );
+};
+
 /**
  * @param {{
  *  notebook: import("./notebook-types").Notebook,
@@ -371,6 +400,8 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
 
   return (
     <React.Fragment>
+      {/* <RenderIframe notebook={notebook} /> */}
+
       <DragAndDropList
         cell_order={notebook.cell_order}
         nexus_editorview={nexus_editorview}

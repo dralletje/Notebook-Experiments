@@ -1,0 +1,117 @@
+<div id="root"></div>
+
+<style>
+  html {
+    background-color: #121212;
+    color: white;
+  }
+</style>
+
+<style>
+  @import url("@observablehq/inspector/src/style.css");
+
+  :root {
+    --syntax_normal: #848484;
+    --syntax_comment: #747474;
+    --syntax_number: #00ca5a;
+    --syntax_keyword: #008c85; /* Or white? */
+    --syntax_atom: #10a778;
+    --syntax_string: #00ca5a;
+    --syntax_error: #ffbedc;
+    --syntax_unknown_variable: #838383;
+    --syntax_known_variable: #ff7a6f;
+    --syntax_matchbracket: #20bbfc;
+    --syntax_key: #f91515;
+  }
+
+  .cell {
+    display: contents;
+  }
+
+  svg {
+    display: inline;
+  }
+
+  /* For some, weird reason, this rule isn't 
+          in the open source version */
+  .observablehq--caret {
+    margin-right: 4px;
+    vertical-align: baseline;
+  }
+
+  .observablehq--inspect {
+    /* Makes the whole inspector flow like text */
+    display: inline;
+    font-size: 16px;
+  }
+  /* Add a gimmicky javascript logo */
+  .observablehq--inspect.observablehq--collapsed > a::before,
+  .observablehq--inspect:not(.observablehq--collapsed)::before,
+  .observablehq--running::before {
+    all: initial;
+    content: "JS";
+    color: #323330;
+    background-color: #f0db4f;
+    display: inline-block;
+    padding-left: 4px;
+    padding-right: 4px;
+    padding-top: 3px;
+    padding-bottom: 2px;
+    margin-right: 8px;
+    font-size: 14px;
+    font-family: "Roboto Mono";
+    font-weight: bold;
+    margin-bottom: 3px;
+
+    /* Hmmm, undo the logo sorry sorry */
+    content: unset;
+  }
+</style>
+
+<script type="module">
+  import ReactDOM from "react-dom/client";
+  import React from "react";
+  import { NotebookOutput } from "./render-cells.jsx";
+
+  let root = ReactDOM.createRoot(document.querySelector("#root"));
+  root.render(
+    React.createElement(NotebookOutput, {
+      notebook: {},
+    })
+  );
+
+  let handlers = {
+    "update-notebook": ({ id, code, args }) => {
+      let fn = new Function(...Object.keys(args), code);
+      let result = fn(...Object.values(args));
+
+      let element = document.createElement("div");
+      element.classList.add("cell");
+      element.id = id;
+
+      let inspector = new Inspector(element);
+      inspector.fulfilled(result);
+
+      cells_div.appendChild();
+    },
+    notebook: ({ notebook }) => {
+      console.log("notebook", notebook);
+    },
+    // "update-cell":
+  };
+
+  window.addEventListener("message", function (event) {
+    if (event.source !== window.parent) {
+      return;
+    }
+
+    if (event.data?.type in handlers) {
+      try {
+        handlers[event.data.type](event.data);
+      } catch (error) {
+        // prettier-ignore
+        console.error(`ERROR WHILE HANDLING MESSAGE:`, { message: event.data, error })
+      }
+    }
+  });
+</script>
