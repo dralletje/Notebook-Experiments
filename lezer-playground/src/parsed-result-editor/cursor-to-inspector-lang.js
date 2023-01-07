@@ -374,7 +374,7 @@ export let cursor_to_inspector_lang = (cursor) => {
     } else if (cursor.type.isAnonymous) {
       first_line_of_this_node += `🔘`;
     } else {
-      if (/^[a-zA-Z_$0-9]*$/.test(cursor.name)) {
+      if (/^[a-zA-Z_0-9]*$/.test(cursor.name)) {
         first_line_of_this_node += cursor.name;
       } else {
         first_line_of_this_node += `"${cursor.name}"`;
