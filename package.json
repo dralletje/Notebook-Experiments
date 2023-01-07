@@ -5,6 +5,7 @@
     "web-app",
     "lezer-playground",
     "node-engine",
+    "zig-playground",
     "packages/*"
   ],
   "version": "1.0.0",
