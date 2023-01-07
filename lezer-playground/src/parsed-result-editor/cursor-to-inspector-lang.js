@@ -7,7 +7,7 @@
 import { Text } from "@codemirror/state";
 import { iterate_over_cursor, iterate_trees } from "dral-lezer-helpers";
 import { tags, getStyleTags } from "@lezer/highlight";
-import { Tree, TreeBuffer, TreeCursor } from "@lezer/common";
+import { Tree, TreeBuffer, TreeCursor, NodeProp } from "@lezer/common";
 
 // I want WASM to be very laid back and safe, so it will lazily load it
 // and skip it if it fails to load.
@@ -382,6 +382,14 @@ export let cursor_to_inspector_lang = (cursor) => {
     }
 
     let tags = [];
+    let group = cursor.type.prop(NodeProp.group);
+    if (group != null) {
+      tags.push(["group", group.join(" ")]);
+    }
+    let look_ahead = cursor.type.prop(NodeProp.lookAhead);
+    if (look_ahead != null) {
+      tags.push(["lookAhead", look_ahead]);
+    }
     let style_tags = getStyleTags(cursor);
     if (style_tags != null && style_tags.tags.length !== 0) {
       tags.push([
@@ -389,7 +397,16 @@ export let cursor_to_inspector_lang = (cursor) => {
         style_tags.tags.map((tag) => tag_to_string(tag)).join(", "),
       ]);
     }
+    let closed_by = cursor.type.prop(NodeProp.closedBy);
+    if (closed_by != null) {
+      tags.push(["closedBy", closed_by.join(" ")]);
+    }
+    let opened_by = cursor.type.prop(NodeProp.openedBy);
+    if (opened_by != null) {
+      tags.push(["openedBy", opened_by.join(" ")]);
+    }
     if (cursor.tree != null) {
+      // TODO In this version the tree never gets added to the weakmap, so it's always "fresh"...
       if (tree_to_inspector_lang_weakmap.has(cursor.tree)) {
         tags.push(["tree", "refurbished"]);
       } else {
