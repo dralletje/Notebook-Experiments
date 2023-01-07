@@ -671,7 +671,7 @@ let AppScroller = styled.div`
   scroll-snap-type: x mandatory;
 `;
 
-import { compact, head, range, sortBy, uniq } from "lodash-es";
+import { compact, head, range, round, sortBy, uniq } from "lodash-es";
 import {
   create_nested_editor_state,
   NestedEditorStatesField,
@@ -942,7 +942,7 @@ let Editor = ({ project_name }) => {
   let babel_worker = useWorker(() => new TransformJavascriptWorker(), []);
   let get_lezer_worker = useWorkerPool(() => new LezerGeneratorWorker());
 
-  let generated_parser_code = usePromise(
+  let generated_parser = usePromise(
     async (signal) => {
       if (!do_run) {
         throw new Error("Not running");
@@ -951,8 +951,8 @@ let Editor = ({ project_name }) => {
       await requestIdlePromise(signal);
 
       // Find empty Body's in the lezer parser, which will definitely lead to an infinite loop
-      let parser = lezerLanguage.parser;
-      let partial_parse = parser.startParse(parser_code);
+      let lezer_parser = lezerLanguage.parser;
+      let partial_parse = lezer_parser.startParse(parser_code);
 
       let DELAY_EVERY_X_MILLISECONDS = 5;
       let last_parse_start = performance.now();
@@ -1004,12 +1004,30 @@ let Editor = ({ project_name }) => {
       });
 
       // Build the parser file first
-      return await get_lezer_worker(signal).request("build-parser", {
+      let start = Date.now();
+      let parser = await get_lezer_worker(signal).request("build-parser", {
         code: parser_code,
       });
+      let time = Date.now() - start;
+
+      return { parser, time };
+      // return parser;
     },
     [parser_code, get_lezer_worker, do_run]
   );
+
+  let generated_parser_code = React.useMemo(
+    () => generated_parser.map((x) => x.parser),
+    [generated_parser]
+  );
+  let generated_parser_time = React.useMemo(
+    () => generated_parser.map((x) => x.time),
+    [generated_parser]
+  );
+
+  // let generated_parser_time = generated_parser.map((x) => x.time);
+
+  // let generated_parser_time = Failure.of(new Error("Not implemented"));
 
   let terms_file_result = usePromise(
     async (signal) => {
@@ -1235,6 +1253,9 @@ let Editor = ({ project_name }) => {
                 title="lezer grammar"
                 process={[generated_parser_code, parser]}
               />
+              {generated_parser_time
+                .map((time) => <Runtime>{round(time / 1000, 2)}s</Runtime>)
+                .or(null)}
               <div style={{ flex: 1 }} />
               <div
                 style={{
@@ -1242,11 +1263,9 @@ let Editor = ({ project_name }) => {
                   flexDirection: "row",
                   alignItems: "center",
                 }}
-                title="
-                Compile and run the grammar:
+                title="Compile and run the grammar:
                 this mainly exists because the parser might get into an infinite loop,
-                and reloading the page afterwards will then toggle this checkbox so you can fix the error.
-              "
+                and reloading the page afterwards will then toggle this checkbox so you can fix the error."
               >
                 <span style={{ opacity: 0.5 }}>run</span>
                 <div style={{ width: 8 }} />
@@ -1445,6 +1464,13 @@ let SimpleLink = styled.a`
   &:hover {
     color: #00e1ff;
   }
+`;
+
+let Runtime = styled.div`
+  font-size: 0.9em;
+  margin-left: 8px;
+  opacity: 0.7;
+  align-self: flex-end;
 `;
 
 let ProjectDropdownStyle = styled.div`
