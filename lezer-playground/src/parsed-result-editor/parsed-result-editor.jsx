@@ -170,11 +170,15 @@ let hide_positions = [
       cursor: syntaxTree(state).cursor(),
       enter: (cursor) => {
         if (cursor.name === "Error") {
+          if (cursor.from >= cursor.to) {
+            console.log(`Cursor from ${cursor.from} to ${cursor.to} 🤔`);
+            return;
+          }
           decorations.push(
-            Decoration.replace({ widget: new WarningSignWidget() }).range(
-              cursor.from,
-              cursor.to
-            )
+            Decoration.replace({
+              widget: new WarningSignWidget(),
+              inclusive: true,
+            }).range(cursor.from, cursor.to)
           );
         }
       },
