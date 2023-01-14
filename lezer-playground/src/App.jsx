@@ -397,6 +397,7 @@ let GeneralEditorStyles = styled.div`
     padding-top: 8px;
     padding-bottom: 8px;
     padding-right: 16px;
+    min-height: 100%;
   }
 `;
 
