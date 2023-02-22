@@ -1009,6 +1009,7 @@ let Editor = ({ project_name }) => {
       let parser = await get_lezer_worker(signal).request("build-parser", {
         code: parser_code,
       });
+      console.log(`parser:`, parser);
       let time = Date.now() - start;
 
       return { parser, time };
@@ -1149,9 +1150,7 @@ let Editor = ({ project_name }) => {
         url: new URL("./lezer/parser.js", window.location.href).toString(),
         import: (specifier, requested) => {
           if (specifier === "@lezer/lr") {
-            return {
-              LRParser: { deserialize: (x) => x },
-            };
+            return import("@lezer/lr");
           } else {
             if (javascript_result instanceof Failure) {
               // prettier-ignore
@@ -1173,7 +1172,7 @@ let Editor = ({ project_name }) => {
       },
     });
 
-    return LRParser.deserialize(parser_result.export.parser);
+    return parser_result.export.parser;
   }, [generated_parser_code, babel_worker, javascript_result]);
 
   let js_stuff = React.useMemo(

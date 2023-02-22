@@ -98,10 +98,12 @@ export let _iterate_trees = (context, tree, offset) => {
       }
     }
     verbose && console.groupEnd();
-  } else {
+  } else if (tree instanceof TreeBuffer) {
     verbose && console.group(`BUFFER ${offset}`);
     enter_treebuffer(tree, offset);
     verbose && console.groupEnd();
+  } else {
+    throw new Error(`Unknown tree type: ${tree}`);
   }
 };
 

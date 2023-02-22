@@ -9,8 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@codemirror/state": "^6.1.2",
-    "@codemirror/view": "^6.4.0",
+    "@codemirror/state": "^6.2.0",
+    "@codemirror/view": "^6.9.1",
     "lodash-es": "^4.17.21",
     "styled-components": "^5.3.6"
   }

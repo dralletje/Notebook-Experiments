@@ -1,6 +1,9 @@
 import { handleCalls } from "@dral/worker-typescript-magic/import-in-worker.js";
 
 import { buildParserFile } from "@lezer/generator";
+import { LocalTokenGroup } from "@lezer/lr";
+
+console.log(`LocalTokenGroup:`, LocalTokenGroup);
 
 let commands = {
   /**
@@ -10,7 +13,12 @@ let commands = {
    * @param {{ code: string }} data
    */
   "build-parser": async ({ code }) => {
-    return buildParserFile(code);
+    try {
+      return buildParserFile(code);
+    } catch (error) {
+      console.error("ASDASD", error);
+      throw error;
+    }
     // return buildParser(code);
   },
 };

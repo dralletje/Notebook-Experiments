@@ -9,6 +9,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@lezer/common": "^1.0.0"
+    "@lezer/common": "^1.0.2"
   }
 }

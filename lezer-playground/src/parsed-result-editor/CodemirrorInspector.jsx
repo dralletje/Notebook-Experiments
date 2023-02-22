@@ -314,6 +314,7 @@ let get_all_folds_WASM = (tree) => {
       }
     },
     enter_treebuffer: (tree, offset) => {
+      // debugger;
       let result_array = all_folds_zig(tree, offset);
       for (let i = 0; i < result_array.length; i += 4) {
         ranges_from_wasm.push({
