@@ -627,10 +627,44 @@ let PaneTab = ({ title, process }) => {
   );
 };
 
-export let App = () => {
-  const [path, setPath] = usePath();
+/**
+ * @returns {[URL, (url: URL | string) => void, (url: URL | string) => void]}
+ */
+let useUrl = () => {
+  let [url, setUrl] = React.useState(new URL(window.location.href));
+  React.useEffect(() => {
+    let handler = () => setUrl(new URL(window.location.href));
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, []);
 
-  return <Editor project_name={path.path} />;
+  // Also allow setting the URL, including navigation
+  let navigate = React.useCallback(
+    (/** @type {URL | string} */ url) => {
+      let next_url = new URL(url, window.location.href);
+      window.history.pushState({}, "", next_url);
+      setUrl(next_url);
+    },
+    [setUrl]
+  );
+
+  let navigate_silent = React.useCallback(
+    (/** @type {URL | string} */ url) => {
+      let next_url = new URL(url, window.location.href);
+      window.history.pushState({}, "", next_url);
+      setUrl(next_url);
+    },
+    [setUrl]
+  );
+
+  return [url, navigate, navigate_silent];
+};
+
+export let App = () => {
+  let [url] = useUrl();
+  let path = url.pathname;
+
+  return <Editor project_name={path} />;
 };
 
 class TermsFileNotReadyError extends Error {
@@ -672,7 +706,7 @@ let AppScroller = styled.div`
   scroll-snap-type: x mandatory;
 `;
 
-import { compact, head, range, round, sortBy, uniq } from "lodash-es";
+import { compact, head, isEmpty, range, round, sortBy, uniq } from "lodash-es";
 import {
   create_nested_editor_state,
   NestedEditorStatesField,
@@ -759,6 +793,12 @@ let LezerErrorEditor = ({ error }) => {
 
   return <CodeMirror state={initial_editor_state} />;
 };
+
+let PaneSelect = styled.select`
+  border: none;
+  font-size: 0.9em;
+  padding-inline: 4px;
+`;
 
 let requestIdleCallback = (fn) => {
   if ("requestIdleCallback" in window) {
@@ -1132,7 +1172,7 @@ let Editor = ({ project_name }) => {
     ]
   );
 
-  let parser = usePromise(async () => {
+  let parser_not_configured = usePromise(async () => {
     if (babel_worker == null) {
       throw Loading.of();
     }
@@ -1172,8 +1212,37 @@ let Editor = ({ project_name }) => {
       },
     });
 
-    return parser_result.export.parser;
+    return /** @type {LRParser} */ (parser_result.export.parser);
   }, [generated_parser_code, babel_worker, javascript_result]);
+
+  let [url, setUrl, setUrlSilent] = useUrl();
+  let _dialect = url.searchParams.get("dialect");
+  let dialect = typeof _dialect === "string" ? _dialect : undefined;
+  let set_dialect = (dialect) => {
+    console.log(`dialect:`, dialect);
+    let new_url = new URL(url);
+
+    if (dialect == null) {
+      new_url.searchParams.delete("dialect");
+    } else {
+      new_url.searchParams.set("dialect", dialect);
+    }
+    setUrlSilent(new_url);
+  };
+
+  // let [dialect, set_dialect] = React.useState(
+  //   /** @type {string | undefined} */ (undefined)
+  // );
+
+  let parser = React.useMemo(
+    () =>
+      parser_not_configured.map((x) =>
+        x.configure({
+          dialect: dialect,
+        })
+      ),
+    [parser_not_configured, dialect]
+  );
 
   let js_stuff = React.useMemo(
     () => javascript_result.map((x) => x.export),
@@ -1235,6 +1304,8 @@ let Editor = ({ project_name }) => {
     },
     [code_to_parse_viewupdate.view.dispatch]
   );
+
+  console.log(`parser:`, parser);
 
   return (
     <AppScroller>
@@ -1308,6 +1379,36 @@ let Editor = ({ project_name }) => {
               <span>demo text</span>
               <div style={{ minWidth: 8 }} />
               {/* <LoadingRingThing /> */}
+              <div style={{ flex: 1 }} />
+
+              {parser_in_betweens instanceof Success &&
+              // @ts-ignore
+              !isEmpty(parser_in_betweens.get().dialects) ? (
+                <>
+                  <span>dialect</span>
+                  <div style={{ minWidth: 8 }} />
+                  <PaneSelect
+                    value={dialect}
+                    onChange={(e) => {
+                      console.log(`e.target.value:`, e.target.value);
+                      set_dialect(
+                        e.target.value === "" ? undefined : e.target.value
+                      );
+                    }}
+                    style={{
+                      opacity: dialect === undefined ? 0.5 : 1,
+                    }}
+                  >
+                    <option value="">default</option>
+                    {parser instanceof Success
+                      ? // @ts-ignore
+                        Object.keys(parser.get().dialects).map((dialect) => (
+                          <option value={dialect}>{dialect}</option>
+                        ))
+                      : null}
+                  </PaneSelect>
+                </>
+              ) : null}
             </>
           }
         >
