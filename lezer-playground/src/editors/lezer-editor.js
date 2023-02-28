@@ -284,6 +284,9 @@ let scope_from_cursor = (doc, cursor) => {
             cursor.parent();
           }
         }
+
+        // Don't also register the RuleName as a reference
+        return false;
       }
 
       if (cursor.name === "RuleDeclaration") {
