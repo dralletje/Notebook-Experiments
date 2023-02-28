@@ -1049,7 +1049,6 @@ let Editor = ({ project_name }) => {
       let parser = await get_lezer_worker(signal).request("build-parser", {
         code: parser_code,
       });
-      console.log(`parser:`, parser);
       let time = Date.now() - start;
 
       return { parser, time };
@@ -1304,8 +1303,6 @@ let Editor = ({ project_name }) => {
     },
     [code_to_parse_viewupdate.view.dispatch]
   );
-
-  console.log(`parser:`, parser);
 
   return (
     <AppScroller>

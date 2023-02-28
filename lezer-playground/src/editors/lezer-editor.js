@@ -7,7 +7,7 @@ import {
   syntaxTree,
 } from "@codemirror/language";
 import { styleTags, tags as t } from "@lezer/highlight";
-import { Prec, StateField, Text } from "@codemirror/state";
+import { Prec, StateField, Text, EditorState } from "@codemirror/state";
 import { Tree, TreeCursor } from "@lezer/common";
 import { iterate_over_cursor } from "dral-lezer-helpers";
 import { LanguageStateField } from "@dral/codemirror-helpers";
@@ -15,36 +15,55 @@ import { acceptCompletion, autocompletion } from "@codemirror/autocomplete";
 import { isEmpty } from "lodash-es";
 
 let lezerStyleTags = styleTags({
-  LineComment: t.lineComment,
-  BlockComment: t.blockComment,
-  AnyChar: t.character,
-  Literal: t.string,
-  "tokens from grammar as empty prop extend specialize": t.keyword,
-  "@top @left @right @cut @external": t.modifier,
-  "@precedence @tokens @context @dialects @skip @detectDelim @conflict":
-    t.definitionKeyword,
-  "@extend @specialize": t.operatorKeyword,
-  "CharSet InvertedCharSet": t.regexp,
-  CharClass: t.atom,
-  RuleName: t.variableName,
-  "RuleDeclaration/RuleName InlineRule/RuleName TokensBody/RuleName":
-    t.definition(t.variableName),
-  PrecedenceName: t.labelName,
-  Name: t.name,
   "( )": t.paren,
   "[ ]": t.squareBracket,
   "{ }": t.brace,
   '"!" ~ "*" + ? |': t.operator,
   "=": t.punctuation,
 
+  LineComment: t.lineComment,
+  BlockComment: t.blockComment,
+  "from grammar as empty prop extend specialize": t.keyword,
+  "@top @left @right @cut @external": t.modifier,
+  "@precedence @tokens @context @dialects @skip @detectDelim @conflict @local tokens propSource @else":
+    t.definitionKeyword,
+  "@extend @specialize": t.operatorKeyword,
+  "CharSet InvertedCharSet": t.regexp,
+
+  AnyChar: t.character,
+  Literal: t.string,
+  CharClass: t.atom,
+
+  RuleName: t.variableName,
+  "RuleDeclaration/RuleName TokensBody/RuleName": t.definition(t.variableName),
+
+  // Make inline rules look more like part of the syntax,
+  // than references to separate rules (because they aren't)
+  "InlineRule/RuleName": t.special(t.definition(t.variableName)),
+  "InlineRule/Body/{ InlineRule/Body/}": t.special(t.brace),
+
+  // Make names imported from javascript files show up as external properties
+  Name: t.propertyName,
+
   "Call/RuleName": t.function(t.variableName),
-  "PrecedenceMarker!": t.className,
-  "Prop/AtName": t.propertyName,
   "ParamList/Name": t.variableName,
+
+  PrecedenceName: t.className,
+  "PrecedenceMarker!": t.className,
+
+  "Props...": t.meta,
+  "Prop/Literal Prop/Name": t.meta,
+
+  "AmbiguityMarker!": t.modifier,
   // propSource: t.keyword,
 });
 
 let lezer_syntax_classes = EditorView.theme({
+  // Default font color:
+  ".cm-content": {
+    color: "#655d8d",
+  },
+
   // Repeated so specificity is increased...
   // I need this to show the colors in the selected autocomplete...
   // TODO Ideally I'd just do a custom render or something on the autocomplete
@@ -56,7 +75,7 @@ let lezer_syntax_classes = EditorView.theme({
     fontWeight: 700,
   },
   ".important.important.important": {
-    color: "#947eff",
+    color: "#b6b6b6",
   },
   ".property.property.property": {
     color: "#cb00d7",
@@ -83,20 +102,27 @@ export let lezer_highlight = syntaxHighlighting(
     [
       { tag: t.lineComment, class: "comment" },
       { tag: t.blockComment, class: "comment" },
+      { tag: t.meta, class: "boring" },
+
       { tag: t.character, class: "literal" },
       { tag: t.string, class: "literal" },
       { tag: t.keyword, class: "important" },
       { tag: t.modifier, class: "green" },
       { tag: t.definitionKeyword, class: "very-important" },
-      { tag: t.operatorKeyword, class: "important" },
+      { tag: t.operatorKeyword, class: "very-important" },
       { tag: t.regexp, class: "literal" },
       { tag: t.atom, class: "literal" },
       { tag: t.variableName, class: "variable" },
       { tag: t.definition(t.variableName), class: "variable" },
+      {
+        tag: t.special(t.definition(t.variableName)),
+        class: "important",
+      },
       { tag: t.name, class: "variable" },
       { tag: t.paren, class: "very-important" },
       { tag: t.squareBracket, class: "boring" },
       { tag: t.brace, class: "boring" },
+      { tag: t.special(t.brace), class: "very-important" },
       // ~ * ? | +
       { tag: t.operator, class: "very-important" },
       // ~name
@@ -109,10 +135,10 @@ export let lezer_highlight = syntaxHighlighting(
       { tag: t.className, class: "property" },
       { tag: t.modifier, class: "very-important" },
       { tag: t.punctuation, class: "boring" },
-    ],
-    {
-      all: "boring",
-    }
+    ]
+    // {
+    //   all: "boring",
+    // }
   )
 );
 
@@ -129,13 +155,16 @@ export let lezer_highlight = syntaxHighlighting(
 // };
 
 /**
+ * @typedef DefinitionType
+ * @type {"token" | "rule" | "local-token" | "external-token" | "precedence"}
+ *
  * @typedef Scope
  * @type {{
  *  parent_scope: Scope?,
  *  child_scopes: Scope[],
  *  from: number,
  *  to: number,
- *  definitions: { [name: string]: Array<{ position: [number, number] }> },
+ *  definitions: { [name: string]: Array<{ position: [number, number], type: DefinitionType }> },
  *  references: Array<{ position: [number, number], name: string, definition: { position: [number, number] }? }>,
  * }}
  *
@@ -171,7 +200,18 @@ let scope_from_cursor = (doc, cursor) => {
               let name = "!" + doc.sliceString(cursor.from, cursor.to);
               definitions[name] = definitions[name] || [];
               definitions[name].push({
+                type: "precedence",
                 position: [cursor.from, cursor.to],
+              });
+            }
+
+            if (cursor.name === "RuleName") {
+              // Reference to token
+              let name = doc.sliceString(cursor.from, cursor.to);
+              references.push({
+                position: [cursor.from, cursor.to],
+                name,
+                definition: null,
               });
             }
           },
@@ -197,7 +237,10 @@ let scope_from_cursor = (doc, cursor) => {
         });
       }
 
-      if (cursor.name === "InlineRule") {
+      if (
+        cursor.name === "InlineRule" ||
+        cursor.name === "ExternalSpecializeDeclaration"
+      ) {
         if (cursor.firstChild()) {
           try {
             do {
@@ -214,6 +257,27 @@ let scope_from_cursor = (doc, cursor) => {
                 // TODO Add resolved references
                 references.push(...subscope.references);
                 return false;
+              }
+            } while (cursor.nextSibling());
+          } finally {
+            cursor.parent();
+          }
+        }
+      }
+
+      // "Token" only happens inside `@external tokens`
+      if (cursor.name === "Token") {
+        if (cursor.firstChild()) {
+          try {
+            do {
+              // @ts-expect-error
+              if (cursor.name === "RuleName") {
+                let name = doc.sliceString(cursor.from, cursor.to);
+                definitions[name] = definitions[name] || [];
+                definitions[name].push({
+                  type: "external-token",
+                  position: [cursor.from, cursor.to],
+                });
               }
             } while (cursor.nextSibling());
           } finally {
@@ -241,6 +305,7 @@ let scope_from_cursor = (doc, cursor) => {
                 let name = doc.sliceString(cursor.from, cursor.to);
                 definitions[name] ??= [];
                 definitions[name].push({
+                  type: "rule",
                   position: [cursor.from, cursor.to],
                 });
               }
@@ -293,6 +358,27 @@ let scope_from_cursor = (doc, cursor) => {
                     references.push(reference);
                   }
                 }
+              }
+            } while (cursor.nextSibling());
+          } finally {
+            cursor.parent();
+          }
+          return false;
+        }
+      }
+
+      if (cursor.name === "ElseToken") {
+        if (cursor.firstChild()) {
+          try {
+            do {
+              // @ts-expect-error
+              if (cursor.name === "RuleName") {
+                let name = doc.sliceString(cursor.from, cursor.to);
+                definitions[name] ??= [];
+                definitions[name].push({
+                  type: "local-token",
+                  position: [cursor.from, cursor.to],
+                });
               }
             } while (cursor.nextSibling());
           } finally {
@@ -620,6 +706,8 @@ const pseudo_prop_provider = (ctx) => {
   let options = [
     { label: "@isGroup", type: "property" },
     { label: "@name", type: "property" },
+    { label: "@dialect", type: "property" },
+    { label: "@export", type: "property" },
   ];
 
   return {
@@ -708,4 +796,8 @@ export let lezer_syntax_extensions = [
   lezer_extension,
   lezer_highlight,
   lezer_syntax_classes,
+
+  EditorState.languageData.of((state, pos, side) => {
+    return [{ wordChars: "~!@" }];
+  }),
 ];

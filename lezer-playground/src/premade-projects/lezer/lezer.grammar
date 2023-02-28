@@ -22,6 +22,9 @@ declaration[@isGroup=Declaration] {
   TokensDeclaration {
     at<"@tokens"> TokensBody { "{" tokenDeclaration* "}" }
   } |
+  LocalTokensDeclaration {
+    at<"@local"> kw<"tokens"> TokensBody { "{" (tokenDeclaration | ElseToken { at<"@else"> RuleName Props? })* "}" }
+  } |
   ExternalTokensDeclaration {
     at<"@external"> kw<"tokens"> Name kw<"from"> Literal externalTokenSet
   } |
