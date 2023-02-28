@@ -8,3 +8,5 @@ node_modules
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+prettier-playground

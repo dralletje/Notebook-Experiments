@@ -1,12 +1,14 @@
 {
   "name": "statebasednotebook",
   "private": true,
+  "packageManager": "yarn@3.0.0",
   "workspaces": [
     "web-app",
     "lezer-playground",
     "node-engine",
     "zig-playground",
-    "packages/*"
+    "packages/*",
+    "lezer-playground/packages/*"
   ],
   "version": "1.0.0",
   "description": "",

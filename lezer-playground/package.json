@@ -12,12 +12,13 @@
     "@codemirror/search": "^6.2.3",
     "@codemirror/state": "^6.2.0",
     "@codemirror/view": "^6.9.1",
-    "@dral/all-folds-zig": "*",
-    "@dral/find-positions-zig": "*",
+    "@dral/all-folds-zig": "workspace:*",
+    "@dral/find-positions-zig": "workspace:*",
     "@dral/lezer-inspector": "*",
-    "@dral/lezer-lezer-error": "*",
+    "@dral/lezer-lezer-error": "workspace:*",
     "@lezer/common": "^1.0.2",
     "@lezer/generator": "^1.2.2",
+    "@lezer/lezer": "latest",
     "@observablehq/graphviz": "^0.2.1",
     "@observablehq/stdlib": "^3.20.0",
     "bezier-easing": "^2.1.0",
@@ -34,12 +35,9 @@
     "styled-components": "^5.3.5",
     "uuid": "^8.3.2"
   },
-  "workspaces": {
-    "nohoist": [
-      "typescript",
-      "typescript/**"
-    ]
-  },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "start": "vite",
     "build": "vite build"
