@@ -1,7 +1,7 @@
 {
   "name": "statebasednotebook",
   "private": true,
-  "packageManager": "yarn@3.0.0",
+  "packageManager": "yarn@3.3.0",
   "workspaces": [
     "web-app",
     "lezer-playground",

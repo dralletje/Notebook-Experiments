@@ -214,7 +214,7 @@ let to_string = (ast) => {
 };
 
 /**
- * @param {import("./babel-helpers").AST} ast
+ * @param {import("./babel-helpers.js").AST} ast
  * @returns {{ [exported_as: string]: string }}
  */
 let get_exported = (ast) => {
