@@ -711,6 +711,7 @@ const pseudo_prop_provider = (ctx) => {
     { label: "@name", type: "property" },
     { label: "@dialect", type: "property" },
     { label: "@export", type: "property" },
+    { label: "@dynamicPrecedence", type: "property" },
   ];
 
   return {
@@ -801,6 +802,6 @@ export let lezer_syntax_extensions = [
   lezer_syntax_classes,
 
   EditorState.languageData.of((state, pos, side) => {
-    return [{ wordChars: "~!@" }];
+    return [{ wordChars: "~!@-" }];
   }),
 ];
