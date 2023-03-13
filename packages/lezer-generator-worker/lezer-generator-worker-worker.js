@@ -1,3 +1,4 @@
+import "./setup-env.js";
 import { handleCalls } from "@dral/worker-typescript-magic/import-in-worker.js";
 
 import { buildParserFile } from "@lezer/generator";
