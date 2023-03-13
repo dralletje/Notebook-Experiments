@@ -1126,6 +1126,7 @@ let Editor = ({ project_name }) => {
         "@codemirror/state": () => import("@codemirror/state"),
         "style-mod": () => import("style-mod"),
         "@lezer/lr": () => import("@lezer/lr"),
+        "@lezer/common": () => import("@lezer/common"),
       };
 
       try {

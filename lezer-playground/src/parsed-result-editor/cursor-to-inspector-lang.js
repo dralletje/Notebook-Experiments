@@ -377,7 +377,7 @@ export let cursor_to_inspector_lang = (cursor) => {
       if (/^[a-zA-Z_0-9]+$/.test(cursor.name)) {
         first_line_of_this_node += cursor.name;
       } else {
-        first_line_of_this_node += `"${cursor.name}"`;
+        first_line_of_this_node += JSON.stringify(cursor.name);
       }
     }
 

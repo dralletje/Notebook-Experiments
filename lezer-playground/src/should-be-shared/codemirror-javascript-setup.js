@@ -167,6 +167,7 @@ const syntax_colors = syntaxHighlighting(
       { tag: tags.className, class: "variable" },
       { tag: tags.propertyName, class: "property" },
       { tag: tags.comment, class: "comment" },
+      { tag: tags.operator, class: "important" },
 
       { tag: tags.special(tags.brace), fontWeight: 700 },
 
