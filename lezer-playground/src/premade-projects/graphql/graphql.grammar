@@ -409,19 +409,33 @@ Directive {
   "@" Name Arguments?
 }
 
+@local tokens {
+  // char { SourceCharacter | "\\" esc }
+  block_esc { "\\" $["\\\/bfnrt] | "u" hex hex hex hex }
+  block_end { '"""' }
+  @else block_char
+}
+@local tokens {
+  // char { SourceCharacter | "\\" esc }
+  string_esc { "\\" $["\\\/bfnrt] | "u" hex hex hex hex }
+  string_end { '"' }
+  @else string_char
+}
+
+@skip {} {
+  string {
+    '"""' (block_char | block_esc)* block_end |
+    '"' (string_char | string_esc)* string_end
+  }
+}
+
 @tokens {
   // https://spec.graphql.org/June2018/#SourceCharacter ???
   SourceCharacter {
     $[\u0009\u000A\u000D\u0020-\uFFFF]
   }
-  
-  LineComment { "#" ![\n]* }
-
-  string { '"' char* '"' }
-  char { $[\u{20}\u{21}\u{23}-\u{5b}\u{5d}-\u{10ffff}] | "\\" esc }
-  esc  { $["\\\/bfnrt] | "u" hex hex hex hex }
   hex  { $[0-9a-fA-F] }
-
+  LineComment { "#" ![\n]* }
   whitespace { $[ \n\r\t] }
 
   "query" "mutation" "subscription"
