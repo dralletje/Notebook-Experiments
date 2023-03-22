@@ -327,8 +327,10 @@ DirectiveDefinition {
   DirectiveLocations
 }
 DirectiveLocations {
-  "|"? DirectiveLocation |
-  DirectiveLocations "|" DirectiveLocation
+  // "|"? DirectiveLocation |
+  // DirectiveLocations "|" DirectiveLocation
+  // NOTE Lezer works beter with list than recursion
+  "|"? DirectiveLocation ("|" DirectiveLocation)*
 }
 DirectiveLocation {
   ExecutableDirectiveLocation |
@@ -438,7 +440,7 @@ Directive {
   LineComment { "#" ![\n]* }
   whitespace { $[ \n\r\t] }
 
-  "query" "mutation" "subscription"
+  "query" "mutation" "subscription" "directive"
   
   "extend type"[@name="extend_type", group="extend_keyword"]
   "extend schema"[@name="extend_schema", group="extend_keyword"]

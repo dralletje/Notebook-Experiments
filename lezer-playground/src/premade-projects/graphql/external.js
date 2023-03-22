@@ -18,11 +18,12 @@ export const highlighting = styleTags({
   "ObjectField/Name": t.propertyName,
   "Argument/Name": t.special(t.propertyName),
   "Field/Name": t.propertyName,
-  "FieldDefinition/Name": t.propertyName,
-  "@ Directive/Name": t.macroName,
+  "FieldDefinition/Name InputValueDefinition/Name": t.propertyName,
+  "@ Directive/Name DirectiveDefinition/Name": t.macroName,
   "TypeExtension/*/Name": t.definition(t.typeName),
   "TypeDefinition/*/Name": t.definition(t.typeName),
   "InterfaceTypeExtension/Name": t.definition(t.typeName),
+  TypeSystemDirectiveLocation: t.special(t.macroName),
 
   "FragmentName/Name": t.function(t.typeName),
   "OperationDefinition/Name": t.special(t.variableName),
@@ -32,7 +33,7 @@ export const highlighting = styleTags({
   "Field/Arguments": t.function(t.propertyName),
 
   extend_keyword: t.keyword,
-  "query mutation subscription": t.keyword,
+  "query mutation subscription directive": t.keyword,
   "type schema scalar interface union enum input": t.definitionKeyword,
   fragment: t.definitionKeyword,
   // TODO extend
