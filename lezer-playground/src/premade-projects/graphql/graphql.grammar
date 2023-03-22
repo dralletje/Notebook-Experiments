@@ -1,0 +1,500 @@
+@precedence {
+  // Prefer `ObjectTypeDefinition { "type" Name FieldsDefinition }`
+  // over `ObjectTypeDefinition { "type" Name } SelectionSet`
+  prefer-optional-definition-over-naked-selection-set
+
+  // For lists that can actually be empty, we need to tell lezer
+  // to prefer the (allowed) empty version to the empty version
+  // with error marker[^why-empty-lists]
+  non-error-empty-list
+}
+
+// 2.2 Document
+// https://spec.graphql.org/June2018/#sec-Language.Document
+@top Document {
+  list<Definition>
+}
+Definition {
+  ExecutableDefinition |
+  TypeSystemDefinition |
+  TypeSystemExtension
+}
+ExecutableDefinition {
+  OperationDefinition |
+  FragmentDefinition
+}
+
+// 2.3 Operations
+// https://spec.graphql.org/June2018/#sec-Language.Operations
+OperationType { "query" | "mutation" | "subscription" }
+OperationDefinition {
+  OperationType Name? VariableDefinitions? Directives? SelectionSet |
+  SelectionSet
+}
+
+// 2.4 Selection Sets
+// https://spec.graphql.org/June2018/#sec-Selection-Sets
+SelectionSet { "{" list<Selection> "}" }
+Selection {
+  Field |
+  FragmentSpread |
+  InlineFragment
+}
+
+// 2.5 Fields
+// https://spec.graphql.org/June2018/#sec-Language.Fields
+Field {
+  Alias? Name Arguments? Directives? SelectionSet?
+}
+
+// 2.6 Arguments
+// https://spec.graphql.org/June2018/#sec-Language.Arguments
+Arguments {
+  "(" list<Argument> ")"
+}
+Argument {
+  Name ":" Value
+}
+
+// 2.7 Field Alias
+// https://spec.graphql.org/June2018/#sec-Field-Alias
+Alias { Name ":" }
+
+// 2.8 Fragments
+FragmentSpread {
+  "..." FragmentName Directives?
+}
+FragmentDefinition {
+  "fragment" FragmentName TypeCondition Directives? SelectionSet
+}
+FragmentName {
+  Name
+  // but not `on`
+  // ^^^ How am I gonna express this :(
+}
+
+// 2.8.1 Type Conditions
+// https://spec.graphql.org/June2018/#sec-Type-Conditions
+// @dynamicPrecedence=1 to prevent parsing `... on X { }` as
+// `... on` (which is actually invalid) followed by `X { }`
+// TODO Ideally this would be done with a precedence,
+// .... but it seems like Lezer ignores all precedences
+// .... once GLR is enabled (by @extend)
+TypeCondition[@dynamicPrecedence=1] {
+  @extend[@name="on"]<Name, "on">
+  NamedType
+}
+
+// 2.8.2 Inline Fragments
+// https://spec.graphql.org/June2018/#sec-Inline-Fragments
+InlineFragment {
+  "..." TypeCondition? Directives? SelectionSet
+}
+
+// 2.9.6 Enum Value
+// https://spec.graphql.org/June2018/#sec-Enum-Value
+// @dynamicPrecedence=-1 to prefer BooleanValue and NullValue when "true", "false", or "null" is found.
+EnumValue[@dynamicPrecedence=-1] {
+  Name
+}
+
+// 2.9.7 List Value
+// https://spec.graphql.org/June2018/#sec-List-Value
+ListValue {
+  // NOTE This list can actually be empty, should chose version without error marker[^why-empty-lists]
+  "[" !non-error-empty-list "]" |
+  "[" list<Value> "]"
+}
+
+// 2.9.8 Input Object Values
+// https://spec.graphql.org/June2018/#sec-Input-Object-Values
+ObjectValue {
+  // NOTE This list can actually be empty, should chose version without error marker[^why-empty-lists]
+  "{" !non-error-empty-list "}" |
+  "{" list<ObjectField> "}"
+}
+ObjectField {
+  Name ":" Value
+}
+
+// 3 Type System Definition
+TypeSystemDefinition {
+  SchemaDefinition |
+  TypeDefinition |
+  DirectiveDefinition
+}
+
+// 3.1 Type System Extensions
+// https://spec.graphql.org/June2018/#sec-Type-System-Extensions
+TypeSystemExtension {
+  SchemaExtension |
+  TypeExtension
+}
+
+// 3.2 Schema
+SchemaDefinition {
+  "schema" Directives? "{" list<RootOperationTypeDefinition> "}"
+}
+RootOperationTypeDefinition {
+  OperationType ":" NamedType
+}
+
+// 3.2.2 Schema Extension
+// https://spec.graphql.org/June2018/#sec-Schema-Extension
+SchemaExtension {
+  "extend schema" Directives?
+  !prefer-optional-definition-over-naked-selection-set
+  "{" list<OperationTypeDefinition> "}" |
+  "extend schema" Directives
+}
+
+// Funny thing, this one doesn't have a section!
+// https://spec.graphql.org/June2018/#OperationTypeDefinition
+OperationTypeDefinition {
+  OperationType ":" NamedType
+}
+
+// 3.3 Descriptions
+Description { StringValue }
+
+// 3.4 Type Definitions
+TypeDefinition {
+  ScalarTypeDefinition |
+  ObjectTypeDefinition |
+  InterfaceTypeDefinition |
+  UnionTypeDefinition |
+  EnumTypeDefinition |
+  InputObjectTypeDefinition
+}
+
+// 3.4.3 Type Extensions
+// https://spec.graphql.org/June2018/#sec-Type-Extensions
+TypeExtension {
+  ScalarTypeExtension |
+  ObjectTypeExtension |
+  InterfaceTypeExtension |
+  UnionTypeExtension |
+  EnumTypeExtension |
+  InputObjectTypeExtension
+}
+
+// 3.5 Scalars
+ScalarTypeDefinition {
+  Description? "scalar" Name Directives?
+}
+
+// 3.5.6 Scalar Extensions
+// https://spec.graphql.org/June2018/#sec-Scalar-Extensions
+ScalarTypeExtension {
+  "extend scalar" Name Directives
+}
+
+// 3.6 Objects
+// https://spec.graphql.org/June2018/#sec-Objects
+ObjectTypeDefinition {
+  Description? "type" Name ImplementsInterfaces? Directives? FieldsDefinition?
+}
+ImplementsInterfaces {
+  "implements" "&"? NamedType |
+  ImplementsInterfaces "&" NamedType
+}
+FieldsDefinition {
+  !prefer-optional-definition-over-naked-selection-set
+  "{" list<FieldDefinition> "}"
+}
+FieldDefinition {
+  Description?
+  Name
+  ArgumentsDefinition?
+  ":"
+  Type
+  Directives?
+}
+
+// 3.6.1 Field Arguments
+// https://spec.graphql.org/June2018/#sec-Field-Arguments
+ArgumentsDefinition {
+  "("
+  list<InputValueDefinition>
+  ")"
+}
+InputValueDefinition {
+  Description?
+  Name
+  ":"
+  Type
+  DefaultValue?
+  Directives?
+}
+
+// 3.6.3 Object Extensions
+// https://spec.graphql.org/June2018/#sec-Object-Extensions
+ObjectTypeExtension {
+  "extend type" Name ImplementsInterfaces? Directives? FieldsDefinition |
+  "extend type" Name ImplementsInterfaces? Directives |
+  "extend type" Name ImplementsInterfaces
+}
+
+// 3.7 Interfaces
+// https://spec.graphql.org/June2018/#sec-Interfaces
+InterfaceTypeDefinition {
+  Description?
+  "interface" Name Directives?
+  FieldsDefinition?
+}
+
+
+// 3.7.1 Interface Extensions
+// https://spec.graphql.org/June2018/#sec-Interface-Extensions
+InterfaceTypeExtension {
+  "extend interface" Name Directives? FieldsDefinition |
+  "extend interface" Name Directives
+}
+
+// 3.8 Unions
+// https://spec.graphql.org/June2018/#sec-Unions
+UnionTypeDefinition {
+  Description? "union" Name Directives? UnionMemberTypes?
+}
+UnionMemberTypes {
+  "=" "|"? NamedType |
+  UnionMemberTypes "|" NamedType
+}
+
+
+// 3.8.1 Union Extensions
+// https://spec.graphql.org/June2018/#sec-Union-Extensions
+UnionTypeExtension {
+  "extend union" Name Directives? UnionMemberTypes |
+  "extend union" Name Directives
+}
+
+// 3.9 Enums
+// https://spec.graphql.org/June2018/#sec-Enums
+EnumTypeDefinition {
+  Description?
+  "enum"
+  Name Directives?
+  EnumValuesDefinition?
+}
+EnumValuesDefinition {
+  !prefer-optional-definition-over-naked-selection-set
+  "{" list<EnumValueDefinition> "}"
+}
+EnumValueDefinition {
+  Description?
+  EnumValue
+  Directives?
+}
+
+// 3.9.1 Enum Extensions
+// https://spec.graphql.org/June2018/#sec-Enum-Extensions
+EnumTypeExtension {
+  "extend enum" Name Directives? EnumValuesDefinition |
+  "extend enum" Name Directives
+}
+
+// 3.10 Input Objects
+// https://spec.graphql.org/June2018/#sec-Input-Objects
+InputObjectTypeDefinition {
+  Description?
+  "input"
+  Name
+  Directives?
+  InputFieldsDefinition?
+}
+InputFieldsDefinition {
+  !prefer-optional-definition-over-naked-selection-set
+  "{" list<InputValueDefinition> "}"
+}
+
+// 3.10.1 Input Object Extensions
+// https://spec.graphql.org/June2018/#sec-Input-Object-Extensions
+InputObjectTypeExtension {
+  "extend input" Name Directives? InputFieldsDefinition |
+  "extend input" Name Directives
+}
+
+// 3.13 Directives
+// https://spec.graphql.org/June2018/#sec-Type-System.Directives
+DirectiveDefinition {
+  Description?
+  "directive"
+  "@"
+  Name
+  ArgumentsDefinition?
+  "on"
+  DirectiveLocations
+}
+DirectiveLocations {
+  "|"? DirectiveLocation |
+  DirectiveLocations "|" DirectiveLocation
+}
+DirectiveLocation {
+  ExecutableDirectiveLocation |
+  TypeSystemDirectiveLocation
+}
+ExecutableDirectiveLocation {
+  "QUERY" |
+  "MUTATION" |
+  "SUBSCRIPTION" |
+  "FIELD" |
+  "FRAGMENT_DEFINITION" |
+  "FRAGMENT_SPREAD" |
+  "INLINE_FRAGMENT"
+}
+TypeSystemDirectiveLocation {
+  "SCHEMA" |
+  "SCALAR" |
+  "OBJECT" |
+  "FIELD_DEFINITION" |
+  "ARGUMENT_DEFINITION" |
+  "INTERFACE" |
+  "UNION" |
+  "ENUM" |
+  "ENUM_VALUE" |
+  "INPUT_OBJECT" |
+  "INPUT_FIELD_DEFINITION"
+}
+
+
+StringValue { string }
+BooleanValue {
+  @extend<Name, "true" | "false">
+}
+NullValue { @extend<Name, "null"> }
+
+Value {
+  Variable |
+  IntValue |
+  FloatValue |
+  StringValue |
+  BooleanValue |
+  NullValue |
+  EnumValue |
+  ListValue |
+  ObjectValue
+}
+
+// Variable https://spec.graphql.org/June2018/#sec-Language.Variables
+Variable {
+  "$" Name
+}
+VariableDefinitions {
+  "(" list<VariableDefinition> ")"
+}
+VariableDefinition {
+  Variable ":" Type DefaultValue?
+}
+DefaultValue { "=" Value }
+
+// Types https://spec.graphql.org/June2018/#sec-Type-References
+Type {
+  NamedType |
+  ListType |
+  NonNullType
+}
+NamedType { Name }
+ListType { "[" Type "]" }
+NonNullType { NamedType "!" | ListType "!" }
+
+// Directives https://spec.graphql.org/June2018/#sec-Language.Directives
+// NOTE Spec says `list<Directive>` here, but I made empty lists possible, and then this Node could be empty, which is problems!
+// .... So explicitly make this a non-empty list.[^why-empty-lists]
+Directives {
+  Directive Directive*
+  // list<Directive>
+}
+Directive {
+  "@" Name Arguments?
+}
+
+@tokens {
+  // https://spec.graphql.org/June2018/#SourceCharacter ???
+  SourceCharacter {
+    $[\u0009\u000A\u000D\u0020-\uFFFF]
+  }
+  
+  LineComment { "#" ![\n]* }
+
+  string { '"' char* '"' }
+  char { $[\u{20}\u{21}\u{23}-\u{5b}\u{5d}-\u{10ffff}] | "\\" esc }
+  esc  { $["\\\/bfnrt] | "u" hex hex hex hex }
+  hex  { $[0-9a-fA-F] }
+
+  whitespace { $[ \n\r\t] }
+
+  "query" "mutation" "subscription"
+  
+  "extend type"[@name="extend_type", group="extend_keyword"]
+  "extend schema"[@name="extend_schema", group="extend_keyword"]
+  "extend scalar"[@name="extend_scalar", group="extend_keyword"]
+  "extend interface"[@name="extend_interface", group="extend_keyword"]
+  "extend union"[@name="extend_union", group="extend_keyword"]
+  "extend enum"[@name="extend_enum", group="extend_keyword"]
+  "extend input"[@name="extend_input", group="extend_keyword"]
+
+  // These all don't need to @specialize/@extend, because they never exist in places that `Name` tokens can happen, so Lezer knows to keep them completely separate
+  "implements" "fragment" "on"
+  "type" "schema" "scalar" "interface" "union" "enum" "input"
+
+  // 2.1.8 Punctuators
+  // https://spec.graphql.org/June2018/#sec-Punctuators
+  "!"	"$"	"("	")"	"..."	":"	"="	"@"	"["	"]"	"{"	"|"	"}"
+
+  // Not mentioned in the spec as punctuation I think, but definitily part of punctuation
+  "&"
+
+  // 2.1.9 Names
+  // https://spec.graphql.org/June2018/#sec-Names
+  Name {
+    $[_A-Za-z] $[_0-9A-Za-z]*
+  }
+
+  @precedence {
+    FloatValue
+    IntValue
+  }
+
+  // 2.9.1 Int Value
+  // https://spec.graphql.org/June2018/#sec-Int-Value
+  IntValue { IntegerPart }
+  IntegerPart {
+    NegativeSign? "0" |
+    NegativeSign? NonZeroDigit Digit*
+  }
+  NegativeSign { "-" }
+  Digit { $[0-9] }
+  NonZeroDigit { $[1-9] }
+
+  // 2.9.1 Float Value
+  // https://spec.graphql.org/June2018/#sec-Float-Value
+  FloatValue {
+    IntegerPart FractionalPart |
+    IntegerPart ExponentPart |
+    IntegerPart FractionalPart ExponentPart
+  }
+  FractionalPart { "." Digit* }
+  ExponentPart { ExponentIndicator Sign? Digit* }
+  ExponentIndicator { "e" | "E" }
+  Sign { "+" | "-" }
+}
+
+// I love how commas are fully ignored!
+@skip { whitespace | "," | LineComment }
+
+// NOTE [^why-empty-lists]: Although the spec says lists should have
+// ....    at least one element, I found the lezers error recovery
+// ....    not well suited to fix that. So we parse it like it is
+// ....    fine, and just leave a "Error" token so we could detect
+// ....    it later 🤷‍♀️
+// ....    TODO PR on lezer to allow "parsable errors" for when one
+// ....    .... thinks it can do error recovery better than lezer?
+list<item> {
+  item item* |
+  ErrorEmptyList[group="⚠"] { () }
+}
+
+@external propSource highlighting from "./highlight"
+
+@detectDelim

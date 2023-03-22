@@ -990,6 +990,9 @@ let Editor = ({ project_name }) => {
       }
 
       await requestIdlePromise(signal);
+      await requestIdlePromise(signal);
+      await requestIdlePromise(signal);
+      await requestIdlePromise(signal);
 
       // Find empty Body's in the lezer parser, which will definitely lead to an infinite loop
       let lezer_parser = lezerLanguage.parser;
