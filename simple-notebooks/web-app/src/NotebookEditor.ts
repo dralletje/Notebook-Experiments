@@ -1,19 +1,7 @@
-import {
-  Compartment,
-  EditorState,
-  Extension,
-  Facet,
-  StateEffect,
-  StateField,
-  Transaction,
-  TransactionSpec,
-  StateEffectType,
-} from "@codemirror/state";
+import { EditorState, Facet, StateEffect, StateField } from "@codemirror/state";
 import { Cell, CellId } from "./notebook-types";
 import immer from "immer";
-import { compact, takeWhile, zip, remove, without } from "lodash";
 import { v4 as uuidv4 } from "uuid";
-import { NestedEditorStatesField } from "./packages/codemirror-nexus2/MultiEditor";
 
 /**
  * So this should be split into two files:
@@ -26,55 +14,6 @@ import { NestedEditorStatesField } from "./packages/codemirror-nexus2/MultiEdito
  */
 
 export type NotebookState = EditorState;
-
-export let RunCellEffect = StateEffect.define<{
-  cell_id: CellId;
-  at: number;
-}>();
-
-export let RunIfChangedCellEffect = StateEffect.define<{
-  cell_id: CellId;
-  at: number;
-}>();
-
-export let CellIdFacet = Facet.define<string, string>({
-  combine: (x) => x[0],
-});
-
-type StateEffectFromType<Type> = Type extends StateEffectType<infer X>
-  ? StateEffect<X>
-  : never;
-
-export let cell_dispatch_effect_effects = (
-  effect: StateEffectFromType<typeof CellDispatchEffect>
-) => {
-  let effects = effect.value.transaction.effects;
-  if (Array.isArray(effects)) {
-    return effects;
-  } else if (effects == null) {
-    return [];
-  } else {
-    return [effects];
-  }
-};
-
-// export let cellTransactionForTransaction =
-//   Facet.define<
-//     (
-//       transaction: Transaction,
-//       cell_state: EditorState
-//     ) => TransactionSpec | null
-//   >();
-
-export let FromCellTransactionEffect = StateEffect.define<{
-  cell_id: CellId;
-  transaction: Transaction;
-}>();
-
-export let CellDispatchEffect = StateEffect.define<{
-  cell_id: CellId;
-  transaction: TransactionSpec | Transaction;
-}>();
 
 export let empty_cell = (type: "code" | "text" = "code"): Cell => {
   return {

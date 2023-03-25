@@ -1,10 +1,6 @@
-import {
-  EditorState,
-  StateEffect,
-  StateEffectType,
-  StateField,
-} from "@codemirror/state";
-import { invertedEffects } from "../codemirror-nexus2/codemirror-shared-history";
+import { StateEffect, StateEffectType } from "@codemirror/state";
+import { invertedEffects } from "../codemirror-editor-in-chief/codemirror-shared-history";
+import { EditorInChiefStateField } from "../codemirror-editor-in-chief/EditorInChief";
 
 /**
  * @typedef CellPosition
@@ -20,7 +16,7 @@ import { invertedEffects } from "../codemirror-nexus2/codemirror-shared-history"
 export let CellOrderEffect = StateEffect.define();
 
 let CellOrderInvertedEffects = invertedEffects.of((transaction) => {
-  let cell_order = transaction.startState.field(CellOrderField);
+  let cell_order = transaction.startState.field(CellOrderField.field);
   /** @type {Array<StateEffect<any>>} */
   let inverted_effects = [];
   for (let effect of transaction.effects) {
@@ -37,7 +33,7 @@ let CellOrderInvertedEffects = invertedEffects.of((transaction) => {
   return inverted_effects;
 });
 
-export let CellOrderField = StateField.define({
+export let CellOrderField = EditorInChiefStateField.define({
   create() {
     return /** @type {string[]} */ ([]);
   },
@@ -79,5 +75,5 @@ export let CellOrderField = StateField.define({
     }
     return current_value;
   },
-  provide: () => CellOrderInvertedEffects,
+  // provide: () => CellOrderInvertedEffects,
 });

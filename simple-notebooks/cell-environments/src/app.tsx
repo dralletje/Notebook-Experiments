@@ -14,21 +14,26 @@ g = html`hi`;
 // ╠═╡ folded = false
 let SLIDER = () => 10;
 
+// ╔═╡ [cells.0fd86a8b-8e43-4117-bc9b-fb715bc94ac4]
+// ╠═╡ folded = false
+
+
+// ╔═╡ [cells.bec774b7-3812-48a2-bf51-c2c3984e3520]
+// ╠═╡ folded = false
+
+
 // ╔═╡ [cells.4475b605-222b-47ea-8331-5486f73e02d7]
 // ╠═╡ folded = false
 let x = SLIDER();
-
-// ╔═╡ [cells.552ffa9b-cc95-4dc8-b551-053cbde6e106]
-// ╠═╡ folded = false
-
 
 // ╔═╡ ["Cell Order"]
 // ╠═╡ "Cell Order" = [
 // ╠═╡   "7c20738c-9d68-4731-99de-e4663cbd2bee",
 // ╠═╡   "5fc2d017-918c-445c-8102-853c5d09b01c",
 // ╠═╡   "d96c0ce4-2f98-496b-a853-c539a5d10fdb",
-// ╠═╡   "4475b605-222b-47ea-8331-5486f73e02d7",
-// ╠═╡   "552ffa9b-cc95-4dc8-b551-053cbde6e106"
+// ╠═╡   "0fd86a8b-8e43-4117-bc9b-fb715bc94ac4",
+// ╠═╡   "bec774b7-3812-48a2-bf51-c2c3984e3520",
+// ╠═╡   "4475b605-222b-47ea-8331-5486f73e02d7"
 // ╠═╡ ]
 
 

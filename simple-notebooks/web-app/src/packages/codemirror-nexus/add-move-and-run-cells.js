@@ -1,23 +1,18 @@
 import { Prec, EditorSelection } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 
-import {
-  MoveToCellAboveEffect,
-  MoveToCellBelowEffect,
-} from "./codemirror-cell-movement";
+import { MoveToCellBelowEffect } from "./codemirror-cell-movement";
 import { format_with_prettier } from "../../yuck/format-javascript-with-prettier";
-import { SelectedCellsField } from "../../cell-selection";
-import { toggleComment } from "@codemirror/commands";
+import { SelectedCellsField } from "./cell-selection";
 import { range } from "lodash";
 import {
   CellAddEffect,
   CellDispatchEffect,
-  CellIdFacet,
+  EditorIdFacet,
   CellRemoveEffect,
   EditorInChiefEffect,
-  NestedEditorStatesField,
-  NexusEffect,
-} from "../codemirror-nexus2/MultiEditor";
+  EditorInChiefKeymap,
+} from "../codemirror-editor-in-chief/EditorInChief";
 import {
   CellMetaField,
   CellTypeFacet,
@@ -27,14 +22,13 @@ import {
 import { CellOrderField, CellOrderEffect } from "./cell-order.js";
 import { create_cell_state } from "../../App.jsx";
 
-export let notebook_keymap = keymap.of([
+export let notebook_keymap = EditorInChiefKeymap.of([
   {
     key: "Mod-/",
     run: ({ state, dispatch }) => {
-      let notebook = state.field(NestedEditorStatesField);
       let selected_cells = state.field(SelectedCellsField);
 
-      let cells = selected_cells.map((cell_id) => notebook.cells[cell_id]);
+      let cells = selected_cells.map((cell_id) => state.cell(cell_id));
 
       let selected_code_cells = cells.filter(
         (cell) => cell.facet(CellTypeFacet) === "code"
@@ -55,7 +49,7 @@ export let notebook_keymap = keymap.of([
         dispatch({
           effects: selected_code_cells.map((cell) =>
             CellDispatchEffect.of({
-              cell_id: cell.facet(CellIdFacet),
+              cell_id: cell.facet(EditorIdFacet),
               transaction: {
                 changes: range(1, cell.doc.lines + 1).map((line_number) => {
                   let line = cell.doc.line(line_number);
@@ -77,7 +71,7 @@ export let notebook_keymap = keymap.of([
         dispatch({
           effects: selected_code_cells.map((cell) =>
             CellDispatchEffect.of({
-              cell_id: cell.facet(CellIdFacet),
+              cell_id: cell.facet(EditorIdFacet),
               transaction: {
                 changes: range(1, cell.doc.lines + 1).map((line_number) => {
                   let line = cell.doc.line(line_number);
@@ -99,19 +93,18 @@ export let notebook_keymap = keymap.of([
   {
     key: "Mod-s",
     run: ({ state, dispatch }) => {
-      let notebook = state.field(NestedEditorStatesField);
       let cell_order = state.field(CellOrderField);
       let now = Date.now(); // Just in case map takes a lot of time ??
 
       let changed_cells = cell_order.filter((cell_id) => {
-        let cell = notebook.cells[cell_id];
+        let cell = state.editor(cell_id);
         if (cell.facet(CellTypeFacet) === "text") return false;
 
         return cell.doc.toString() !== cell.field(CellMetaField).code;
       });
 
       let prettified_results = changed_cells.map((cell_id) => {
-        let cell_state = notebook.cells[cell_id];
+        let cell_state = state.editor(cell_id);
         try {
           let { cursorOffset, formatted } = format_with_prettier({
             code: cell_state.doc.toString(),
@@ -150,7 +143,7 @@ export let notebook_keymap = keymap.of([
                   MutateCellMetaEffect.of((cell) => {
                     cell.code = formatted;
                     cell.is_waiting = true;
-                    cell.last_run = Date.now();
+                    cell.last_run = now;
                   }),
                 ],
               },
@@ -193,7 +186,7 @@ export let cell_keymap = Prec.high(
         // TODO Check if we are "outside" anything in the syntax tree
         // .... (Or allow blocks maybe? But not incomplete, nor inside strings or objects etc)
 
-        let cell_id = state.facet(CellIdFacet);
+        let cell_id = state.facet(EditorIdFacet);
 
         // TODO Should just not apply this to text cells to begin with 🤷‍♀️ but cba
         if (state.facet(CellTypeFacet) === "text") return false;
@@ -217,11 +210,11 @@ export let cell_keymap = Prec.high(
           unsaved_code: state.doc.sliceString(cursor, state.doc.length),
         };
 
-        // TODO Need two dispatches, because my Nexus can't handle a mix of NexusEffects and CellDispatchEffects in one transaction...
-        // .... So need something for this! Maybe make CellEditorStatesField look for the NexusEffects directly?
+        // TODO Need two dispatches, because my Nexus can't handle a mix of EditorInChiefEffects and CellDispatchEffects in one transaction...
+        // .... So need something for this! Maybe make CellEditorStatesField look for the EditorInChiefEffects directly?
         // .... Then Nexus effects can ONLY be used to modify the cell states... but what else is there?
-        // .... There might be later, so maybe NexusEffect should have a sibling called BroadcastEffect,
-        // .... Where a NexusEffect is actually for the nexus "completely" separate from the cell states, 🤔,
+        // .... There might be later, so maybe EditorInChiefEffect should have a sibling called BroadcastEffect,
+        // .... Where a EditorInChiefEffect is actually for the nexus "completely" separate from the cell states, 🤔,
         // .... and a BroadcastEffect is for the cell states only.
         dispatch({
           changes: {
@@ -252,7 +245,7 @@ export let cell_keymap = Prec.high(
     {
       key: "Mod-Enter",
       run: (view) => {
-        let cell_id = view.state.facet(CellIdFacet);
+        let cell_id = view.state.facet(EditorIdFacet);
 
         let cell_meta = view.state.field(CellMetaField);
         let code = view.state.doc.toString();
@@ -289,7 +282,7 @@ export let cell_keymap = Prec.high(
     {
       key: "Backspace",
       run: (view) => {
-        let cell_id = view.state.facet(CellIdFacet);
+        let cell_id = view.state.facet(EditorIdFacet);
         if (!view.state.selection.main.empty) return false;
 
         if (view.state.selection.main.from === 0) {
@@ -304,22 +297,20 @@ export let cell_keymap = Prec.high(
                 if (cell_index === 0) return [];
 
                 let previous_cell_id = cell_order[cell_index - 1];
-                let previous_cell_state = state.field(NestedEditorStatesField)
-                  .cells[previous_cell_id];
-                let current_cell_state = state.field(NestedEditorStatesField)
-                  .cells[cell_id];
+                let previous_cell_state = state.editor(previous_cell_id);
+                let current_cell_state = state.editor(cell_id);
 
                 return [
                   CellDispatchEffect.of({
                     cell_id: previous_cell_id,
                     transaction: {
                       selection: EditorSelection.cursor(
-                        previous_cell_state.doc.length
+                        previous_cell_state.doc.length + 2
                       ),
                       changes: {
                         from: previous_cell_state.doc.length,
                         to: previous_cell_state.doc.length,
-                        insert: current_cell_state.doc.toString(),
+                        insert: "\n\n" + current_cell_state.doc.toString(),
                       },
                     },
                   }),

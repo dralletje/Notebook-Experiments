@@ -30,8 +30,8 @@ export { isolateHistory, invertedEffects };
 import {
   CellDispatchEffect,
   NestedEditorStatesField,
-  CellIdFacet,
-} from "./MultiEditor";
+  EditorIdFacet,
+} from "./EditorInChief";
 import { compact } from "lodash-es";
 
 class ForCell<T> {
@@ -194,7 +194,7 @@ class NotebookTransaction {
     let cell_changes: { [cell_id: string]: ChangeSet } = {};
 
     for (let transaction of transactions_to_send_to_cells) {
-      let cell_id = transaction.state.facet(CellIdFacet);
+      let cell_id = transaction.state.facet(EditorIdFacet);
       if (cell_changes[cell_id] == null) {
         cell_changes[cell_id] = transaction.changes;
       } else {
@@ -593,7 +593,7 @@ class CellHistEvent {
       if (result.length) effects = effects.concat(result);
     }
     for (let transaction of transactions_to_send_to_cells) {
-      let cell_id = transaction.state.facet(CellIdFacet);
+      let cell_id = transaction.state.facet(EditorIdFacet);
       for (let invert of transaction.startState.facet(invertedEffects)) {
         let result = invert(transaction).map(
           (x) => new CellStateEffect(cell_id, x)

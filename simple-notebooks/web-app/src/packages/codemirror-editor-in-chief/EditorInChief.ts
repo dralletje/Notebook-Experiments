@@ -9,12 +9,13 @@ import {
   StateEffectType,
   EditorStateConfig,
 } from "@codemirror/state";
+import { keymap, KeyBinding } from "@codemirror/view";
 import immer from "immer";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 
-type CellId = string;
+type EditorId = string;
 
-export let CellIdFacet = Facet.define<CellId, CellId>({
+export let EditorIdFacet = Facet.define<EditorId, EditorId>({
   combine: (x) => x[0],
 });
 
@@ -38,27 +39,22 @@ export let cell_dispatch_effect_effects = (
   }
 };
 
-export let NexusEffect = StateEffect.define<StateEffect<any>>();
 export let EditorInChiefEffect = StateEffect.define<
-  | ((state: EditorState) => StateEffect<any>[] | StateEffect<any>)
+  | ((state: EditorInChief) => StateEffect<any>[] | StateEffect<any>)
   | StateEffect<any>[]
   | StateEffect<any>
 >();
 
-let expand_cell_effects_that_area_actually_meant_for_the_nexus =
+let expand_cell_effects_that_are_actually_meant_for_the_nexus =
   EditorState.transactionExtender.of((transaction) => {
     let moar_effects: Array<StateEffect<any>> = [];
     for (let effect of transaction.effects) {
       if (effect.is(CellDispatchEffect)) {
         for (let cell_effect of cell_dispatch_effect_effects(effect)) {
-          if (cell_effect.is(NexusEffect)) {
-            moar_effects.push(cell_effect.value);
-          }
-
           if (cell_effect.is(EditorInChiefEffect)) {
             let effects =
               typeof cell_effect.value === "function"
-                ? cell_effect.value(transaction.state)
+                ? cell_effect.value(new EditorInChief(transaction.state))
                 : cell_effect.value;
             if (Array.isArray(effects)) {
               moar_effects.push(...effects);
@@ -163,7 +159,7 @@ export let create_nested_editor_state = ({
   selection,
 }: {
   parent: EditorState;
-  cell_id: CellId;
+  cell_id: EditorId;
 
   doc?: EditorStateConfig["doc"];
   extensions?: EditorStateConfig["extensions"];
@@ -173,7 +169,7 @@ export let create_nested_editor_state = ({
     doc: doc,
     selection: selection,
     extensions: [
-      CellIdFacet.of(cell_id),
+      EditorIdFacet.of(cell_id),
       CellHasSelectionField,
       CellHasSelectionPlugin,
       parent.facet(NestedExtension) ?? [],
@@ -185,27 +181,26 @@ export let create_nested_editor_state = ({
 export let BlurAllCells = StateEffect.define<void>();
 
 export let CellDispatchEffect = StateEffect.define<{
-  cell_id: CellId;
+  cell_id: EditorId;
   transaction: TransactionSpec | Transaction;
 }>();
 
 export let CellAddEffect = StateEffect.define<{
-  cell_id: CellId;
+  cell_id: EditorId;
   state: EditorState;
 }>();
 export let CellRemoveEffect = StateEffect.define<{
-  cell_id: CellId;
+  cell_id: EditorId;
 }>();
 
 export let NestedEditorStatesField = StateField.define<{
-  cells: { [key: CellId]: EditorState };
+  cells: { [key: EditorId]: EditorState };
   /** So... I need this separate from the EditorState's selection,
    *  because EditorState.selection can't be empty/inactive
    *  ALSO: Screw multiple selections (for now) */
-  cell_with_current_selection: CellId | null;
+  cell_with_current_selection: EditorId | null;
 
-  /** Necessary because the cells views need to be updated with the transactions
-   *  🤩 Needs no cell_id because the emitter is on the transaction state 🤩 */
+  /** Necessary because the cells views need to be updated with the transactions */
   transactions_to_send_to_cells: Array<Transaction>;
 }>({
   create() {
@@ -227,7 +222,7 @@ export let NestedEditorStatesField = StateField.define<{
         } = state;
 
         // Tell typescript it doesn't need to care about WritableDraft >_>
-        let cells = _cells as any as { [key: CellId]: EditorState };
+        let cells = _cells as any as { [key: EditorId]: EditorState };
         let transactions_to_send_to_cells =
           _transactions_to_send_to_cells as any as Array<Transaction>;
 
@@ -255,9 +250,8 @@ export let NestedEditorStatesField = StateField.define<{
             cells[cell_id] = transaction.state;
 
             if (transaction.selection != null) {
-              console.log(`transaction.selection:`, transaction.selection);
               state.cell_with_current_selection =
-                transaction.startState.facet(CellIdFacet);
+                transaction.startState.facet(EditorIdFacet);
             }
           }
 
@@ -332,9 +326,9 @@ export let NestedEditorStatesField = StateField.define<{
 // Wanted to make this a normal function, but I need to memo some stuff,
 // So it's a hook now
 export let useNestedViewUpdate = (
-  viewupdate: GenericViewUpdate,
-  cell_id: CellId
-): GenericViewUpdate => {
+  viewupdate: GenericViewUpdate<EditorInChief>,
+  cell_id: EditorId
+): GenericViewUpdate<EditorState> => {
   // Wrap every transaction in CellDispatchEffect's
   let nested_dispatch = React.useMemo(() => {
     return (...transactions: import("@codemirror/state").TransactionSpec[]) => {
@@ -365,7 +359,7 @@ export let useNestedViewUpdate = (
       }
     );
     return all_cell_transactions.filter((transaction) => {
-      return transaction.startState.facet(CellIdFacet) === cell_id;
+      return transaction.startState.facet(EditorIdFacet) === cell_id;
     });
   }, [viewupdate.transactions]);
 
@@ -404,8 +398,218 @@ let inverted_add_remove_editor = invertedEffects.of((transaction) => {
   return inverted_effects;
 });
 
+const editor_state_extension = Symbol("Editor I can pass to codemirror");
+type EditorInChiefExtension =
+  | Extension
+  | { [editor_state_extension]: Extension };
+
+export type EditorInChiefTransactionSpec = {
+  effects: StateEffect<any> | StateEffect<any>[];
+};
+export class EditorInChiefTransaction {
+  state: EditorInChief;
+
+  constructor(
+    public startState: EditorInChief,
+    public transaction: Transaction
+  ) {
+    this.transaction = transaction;
+    this.state = new EditorInChief(this.transaction.state);
+  }
+
+  get effects() {
+    return this.transaction.effects;
+  }
+}
+
+type StateFieldSpec<T> = {
+  create: (state: EditorInChief) => T;
+  update: (value: T, tr: EditorInChiefTransaction) => T;
+  provide?: (value: T) => Extension | EditorInChiefExtension;
+};
+export class EditorInChiefStateFieldInit {
+  constructor(public init: Extension) {
+    this.init = init;
+  }
+  get [editor_state_extension](): Extension {
+    return this.init;
+  }
+}
+export class EditorInChiefStateField<T> {
+  constructor(private __field: StateField<T>) {
+    this.__field = __field;
+  }
+
+  get [editor_state_extension](): Extension {
+    return this.__field;
+  }
+
+  /** @deprecated */
+  get field() {
+    return this.__field;
+  }
+
+  init(init: (state: EditorInChief) => T) {
+    return new EditorInChiefStateFieldInit(
+      this.__field.init((state) => {
+        return init(new EditorInChief(state));
+      })
+    );
+  }
+
+  static define<T>(spec: StateFieldSpec<T>) {
+    return new EditorInChiefStateField(
+      StateField.define({
+        create: (state) => spec.create(new EditorInChief(state)),
+        update: (value, tr) => {
+          return spec.update(
+            value,
+            new EditorInChiefTransaction(new EditorInChief(tr.startState), tr)
+          );
+        },
+      })
+    );
+  }
+}
+
+type EditorInChiefCommand = (view: {
+  state: EditorInChief;
+  dispatch: (...specs: EditorInChiefTransactionSpec[]) => void;
+}) => boolean;
+type EditorInChiefKeyBinding = {
+  key: string;
+  linux?: string;
+  mac?: string;
+  win?: string;
+  preventDefault?: boolean;
+  run: EditorInChiefCommand;
+  scope?: KeyBinding["scope"];
+  shift?: EditorInChiefCommand;
+};
+
+export class EditorInChiefKeymap {
+  constructor(public extension: Extension) {
+    this.extension = extension;
+  }
+  get [editor_state_extension](): Extension {
+    return this.extension;
+  }
+
+  static of(shortcuts: EditorInChiefKeyBinding[]) {
+    return new EditorInChiefKeymap(
+      keymap.of(
+        shortcuts.map((shortcut) => {
+          return {
+            ...shortcut,
+            run: (view) => {
+              return shortcut.run({
+                state: new EditorInChief(view.state),
+                dispatch: (...specs) => {
+                  view.dispatch(
+                    ...specs.map((spec) => {
+                      return { effects: spec.effects };
+                    })
+                  );
+                },
+              });
+            },
+            shift:
+              shortcut.shift == null
+                ? null
+                : (view) => {
+                    return shortcut.shift({
+                      state: new EditorInChief(view.state),
+                      dispatch: (...specs) => {
+                        view.dispatch(
+                          ...specs.map((spec) => {
+                            return { effects: spec.effects };
+                          })
+                        );
+                      },
+                    });
+                  },
+          };
+        })
+      )
+    );
+  }
+}
+
+export class EditorInChief {
+  constructor(public editorstate: EditorState) {
+    this.editorstate = editorstate;
+  }
+
+  facet<T>(facet: Facet<any, T>) {
+    return this.editorstate.facet(facet);
+  }
+
+  field<T>(field: StateField<T> | EditorInChiefStateField<T>): T;
+  field<T>(
+    field: StateField<T> | EditorInChiefStateField<T>,
+    required: false
+  ): T | undefined;
+  field(field: StateField<any> | EditorInChiefStateField<any>, required?) {
+    if (field instanceof EditorInChiefStateField) {
+      return this.editorstate.field(field.field, required) as any;
+    } else {
+      return this.editorstate.field(field, required) as any;
+    }
+  }
+
+  update(...specs: EditorInChiefTransactionSpec[]) {
+    return new EditorInChiefTransaction(
+      this,
+      this.editorstate.update(...specs)
+    );
+  }
+
+  get editors() {
+    return this.editorstate.field(NestedEditorStatesField).cells;
+  }
+  editor(editor_id: EditorId): EditorState;
+  editor(editor_id: EditorId, required?: false): EditorState | undefined {
+    if (required !== false && !this.editors[editor_id]) {
+      throw new Error(`Editor with id ${editor_id} not found`);
+    }
+    return this.editors[editor_id];
+  }
+
+  static editors(editorstate: EditorState) {
+    return editorstate.field(NestedEditorStatesField).cells;
+  }
+
+  static create({
+    editors,
+    extensions = [],
+  }: {
+    editors: (editorstate: EditorState) => { [key: EditorId]: EditorState };
+    extensions?: EditorInChiefExtension[];
+  }) {
+    let extensions_with_state_fields = extensions.map((extension) =>
+      editor_state_extension in extension
+        ? extension[editor_state_extension]
+        : extension
+    );
+
+    return new EditorInChief(
+      EditorState.create({
+        extensions: [
+          nested_cell_states_basics,
+          NestedEditorStatesField.init((editorstate) => ({
+            cells: editors(editorstate),
+            transactions_to_send_to_cells: [],
+            cell_with_current_selection: null,
+          })),
+          extensions_with_state_fields,
+        ],
+      })
+    );
+  }
+}
+
 export let nested_cell_states_basics = [
   NestedEditorStatesField,
-  expand_cell_effects_that_area_actually_meant_for_the_nexus,
-  inverted_add_remove_editor,
+  expand_cell_effects_that_are_actually_meant_for_the_nexus,
+  // inverted_add_remove_editor,
 ];

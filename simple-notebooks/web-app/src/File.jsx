@@ -14,7 +14,10 @@ import { EditorState, Facet } from "@codemirror/state";
 //   CellTypeFacet,
 //   useViewUpdate,
 // } from "./NotebookEditor";
-import { SelectCellsEffect, SelectedCellsField } from "./cell-selection";
+import {
+  SelectCellsEffect,
+  SelectedCellsField,
+} from "./packages/codemirror-nexus/cell-selection";
 import { SelectionArea } from "./selection-area/SelectionArea";
 import { NotebookFilename, NotebookId } from "./notebook-types";
 import { CellList } from "./Notebook";
@@ -22,9 +25,10 @@ import { CellList } from "./Notebook";
 import { useViewUpdate } from "codemirror-x-react/viewupdate";
 import {
   BlurAllCells,
-  CellIdFacet,
+  EditorIdFacet,
+  EditorInChief,
   NestedEditorStatesField,
-} from "./packages/codemirror-nexus2/MultiEditor";
+} from "./packages/codemirror-editor-in-chief/EditorInChief";
 import { CellMetaField, CellTypeFacet } from "./NotebookEditor";
 import { CellOrderField } from "./packages/codemirror-nexus/cell-order.js";
 
@@ -74,8 +78,8 @@ let useEngine = (notebook, socket) => {
 
 /**
  * @param {{
- *  state: EditorState,
- *  onChange: (state: EditorState) => void,
+ *  state: EditorInChief,
+ *  onChange: (state: EditorInChief) => void,
  *  socket: Socket,
  *  files: { [filename: string]: { filename: string } },
  * }} props
@@ -83,17 +87,17 @@ let useEngine = (notebook, socket) => {
 export function File({ state, onChange, socket, files }) {
   let viewupdate = useViewUpdate(state, onChange);
 
-  let cell_editor_states = state.field(NestedEditorStatesField);
+  let cell_editor_states = state.editors;
 
   let notebook = React.useMemo(() => {
     return /** @type {import("./notebook-types").Notebook} */ ({
       id: state.facet(NotebookId),
       filename: state.facet(NotebookFilename),
       cell_order: state.field(CellOrderField),
-      cells: mapValues(cell_editor_states.cells, (cell_state) => {
+      cells: mapValues(cell_editor_states, (cell_state) => {
         let type = cell_state.facet(CellTypeFacet);
         return {
-          id: cell_state.facet(CellIdFacet),
+          id: cell_state.facet(EditorIdFacet),
           unsaved_code: cell_state.doc.toString(),
           ...cell_state.field(CellMetaField),
           type: type,
@@ -139,7 +143,8 @@ export function File({ state, onChange, socket, files }) {
 
   let engine = useEngine(notebook_with_filename, socket);
 
-  let selected_cells = viewupdate.state.field(SelectedCellsField);
+  // let selected_cells = viewupdate.state.field(SelectedCellsField);
+  let selected_cells = [];
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>

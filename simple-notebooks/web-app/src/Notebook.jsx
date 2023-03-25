@@ -1,7 +1,10 @@
 import React from "react";
 import styled from "styled-components";
-import { CodeMirror, Extension } from "codemirror-x-react";
-import { StateField } from "@codemirror/state";
+import { Extension } from "codemirror-x-react";
+import {
+  CodemirrorFromViewUpdate,
+  GenericViewUpdate,
+} from "codemirror-x-react/viewupdate.js";
 import { EditorView, placeholder, ViewPlugin } from "@codemirror/view";
 import { compact, isEqual, range } from "lodash";
 import { shallowEqualObjects } from "shallow-equal";
@@ -22,41 +25,24 @@ import {
 
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
 import { basic_javascript_setup } from "./yuck/codemirror-javascript-setup";
-import { SelectedCellsField } from "./cell-selection";
-// import {
-//   AddCellEffect,
-//   CellDispatchEffect,
-//   CellEditorStatesField,
-//   CellHasSelectionField,
-//   CellIdFacet,
-//   CellMetaField,
-//   CellTypeFacet,
-//   empty_cell,
-//   MoveCellEffect,
-//   MutateCellMetaEffect,
-//   RemoveCellEffect,
-//   ViewUpdate,
-// } from "./NotebookEditor";
+import { SelectedCellsField } from "./packages/codemirror-nexus/cell-selection";
 import { basic_markdown_setup } from "./yuck/basic-markdown-setup";
 import {
   CellAddEffect,
   CellDispatchEffect,
   CellRemoveEffect,
-  NestedEditorStatesField,
+  EditorInChief,
   useNestedViewUpdate,
-} from "./packages/codemirror-nexus2/MultiEditor";
+} from "./packages/codemirror-editor-in-chief/EditorInChief";
 import {
   CellMetaField,
   CellTypeFacet,
   MutateCellMetaEffect,
   empty_cell,
 } from "./NotebookEditor";
-import {
-  CodemirrorFromViewUpdate,
-  GenericViewUpdate,
-} from "codemirror-x-react/viewupdate.js";
 import { create_cell_state } from "./App.jsx";
 import { CellOrderEffect } from "./packages/codemirror-nexus/cell-order.js";
+import { LastCreatedCells } from "./packages/codemirror-nexus/last-created-cells.js";
 
 let CellContainer = styled.div`
   display: flex;
@@ -308,26 +294,11 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-export let LastCreatedCells = StateField.define({
-  create() {
-    return /** @type {import("./notebook-types").CellId[]} */ ([]);
-  },
-  update(value, tr) {
-    let previous_cell_ids = Object.keys(
-      tr.startState.field(NestedEditorStatesField).cells
-    );
-    let cell_ids = Object.keys(tr.state.field(NestedEditorStatesField).cells);
-    if (isEqual(previous_cell_ids, cell_ids)) return value;
-    let new_cell_ids = cell_ids.filter((id) => !previous_cell_ids.includes(id));
-    return new_cell_ids;
-  },
-});
-
 /**
  * @param {{
  *  notebook: import("./notebook-types").Notebook,
  *  engine: import("./notebook-types").EngineShadow,
- *  viewupdate: GenericViewUpdate,
+ *  viewupdate: GenericViewUpdate<EditorInChief>,
  * }} props
  */
 export let CellList = ({ notebook, engine, viewupdate }) => {
@@ -340,7 +311,8 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
   let last_created_cells =
     nexus_editorview.state.field(LastCreatedCells, false) ?? [];
 
-  let selected_cells = nexus_editorview.state.field(SelectedCellsField);
+  // let selected_cells = nexus_editorview.state.field(SelectedCellsField);
+  let selected_cells = [];
 
   return (
     <React.Fragment>
@@ -469,8 +441,8 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
 
                       <ErrorBoundary>
                         {nexus_editorview.state
-                          .field(NestedEditorStatesField)
-                          .cells[cell.id].facet(CellTypeFacet) === "text" ? (
+                          .editor(cell.id)
+                          .facet(CellTypeFacet) === "text" ? (
                           <TextCell
                             cell={cell}
                             viewupdate={viewupdate}
@@ -777,8 +749,8 @@ let CellMemo = React.memo(
   ) => {
     return (
       shallowEqualObjects(old_props, next_props) &&
-      old_viewupdate.state.field(NestedEditorStatesField).cells[cell_id] ===
-        next_viewupdate.state.field(NestedEditorStatesField).cells[cell_id] &&
+      old_viewupdate.state.editor(cell_id) ===
+        next_viewupdate.state.editor(cell_id) &&
       isEqual(old_cylinder, cylinder)
     );
   }

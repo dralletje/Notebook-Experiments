@@ -3,7 +3,6 @@ import "./App.css";
 
 import { produce } from "immer";
 import { io } from "socket.io-client";
-import { LastCreatedCells } from "./Notebook";
 import styled from "styled-components";
 import {
   EditorState,
@@ -12,12 +11,15 @@ import {
   StateField,
 } from "@codemirror/state";
 import { CellMetaField, CellTypeFacet } from "./NotebookEditor";
-import { SelectedCellsField, selected_cells_keymap } from "./cell-selection";
+import {
+  SelectedCellsField,
+  selected_cells_keymap,
+} from "./packages/codemirror-nexus/cell-selection";
 import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
 import {
   shared_history,
   historyKeymap,
-} from "./packages/codemirror-nexus2/codemirror-shared-history";
+} from "./packages/codemirror-editor-in-chief/codemirror-shared-history";
 import { mapValues } from "lodash";
 import {
   CellIdOrder,
@@ -28,16 +30,16 @@ import { File } from "./File";
 import { NotebookFilename, NotebookId } from "./notebook-types";
 // import { typescript_extension } from "./packages/typescript-server-webworker/codemirror-typescript.js";
 import {
-  NestedEditorStatesField,
+  EditorInChief,
   NestedExtension,
   create_nested_editor_state,
-  nested_cell_states_basics,
-} from "./packages/codemirror-nexus2/MultiEditor";
+} from "./packages/codemirror-editor-in-chief/EditorInChief";
 import { CellOrderField } from "./packages/codemirror-nexus/cell-order.js";
 import {
   cell_keymap,
   notebook_keymap,
 } from "./packages/codemirror-nexus/add-move-and-run-cells.js";
+import { LastCreatedCells } from "./packages/codemirror-nexus/last-created-cells.js";
 
 /**
  * @typedef WorkspaceSerialized
@@ -56,14 +58,14 @@ import {
  * @property {{
  *  [filename: string]: {
  *    filename: string,
- *    state: EditorState,
+ *    state: EditorInChief,
  *  }
  * }} files
  */
 
 let cell_id_order_from_notebook_facet = CellIdOrder.compute(
-  [CellOrderField],
-  (state) => state.field(CellOrderField)
+  [CellOrderField.field],
+  (state) => state.field(CellOrderField.field)
 );
 
 export let create_cell_state = (editorstate, cell) => {
@@ -85,35 +87,24 @@ export let create_cell_state = (editorstate, cell) => {
 
 /** @param {{ filename: string, notebook: import("./notebook-types").NotebookSerialized}} notebook */
 let notebook_to_state = ({ filename, notebook }) => {
-  let notebook_state = NestedEditorStatesField.init((editorstate) => {
-    return {
-      cells: mapValues(notebook.cells, (cell) =>
-        create_cell_state(editorstate, cell)
-      ),
-      transactions_to_send_to_cells: [],
-      cell_with_current_selection: null,
-    };
-  });
-
-  return EditorState.create({
+  return EditorInChief.create({
+    editors: (editorstate) =>
+      mapValues(notebook.cells, (cell) => create_cell_state(editorstate, cell)),
     extensions: [
-      notebook_state,
-      nested_cell_states_basics,
-
       CellOrderField.init(() => notebook.cell_order),
 
-      cell_id_order_from_notebook_facet,
-      cell_movement_extension_default,
+      // cell_id_order_from_notebook_facet,
+      // cell_movement_extension_default,
 
-      SelectedCellsField,
-      selected_cells_keymap,
-      LastCreatedCells,
+      // SelectedCellsField,
+      // selected_cells_keymap,
+      // LastCreatedCells,
 
-      NestedExtension.of(cell_keymap),
-      notebook_keymap,
+      // NestedExtension.of(cell_keymap),
+      // notebook_keymap,
 
-      NotebookId.of(notebook.id),
-      NotebookFilename.of(filename),
+      // NotebookId.of(notebook.id),
+      // NotebookFilename.of(filename),
 
       // This works so smooth omg
       [shared_history(), keymap.of(historyKeymap)],

@@ -1,15 +1,15 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
-import { CellId } from "./notebook-types";
+import { CellId } from "../../notebook-types";
+import { CellOrderEffect, CellOrderField } from "./cell-order";
 import {
-  CellOrderEffect,
-  CellOrderField,
-} from "./packages/codemirror-nexus/cell-order";
-import { CellRemoveEffect } from "./packages/codemirror-nexus2/MultiEditor";
+  CellRemoveEffect,
+  EditorInChiefKeymap,
+  EditorInChiefStateField,
+} from "../codemirror-editor-in-chief/EditorInChief";
 
 export let SelectCellsEffect = StateEffect.define<CellId[]>();
-
-export let SelectedCellsField = StateField.define<CellId[]>({
+export let SelectedCellsField = EditorInChiefStateField.define<CellId[]>({
   create() {
     return [];
   },
@@ -25,7 +25,7 @@ export let SelectedCellsField = StateField.define<CellId[]>({
 });
 
 // Keymap that interacts with the selected cells
-export let selected_cells_keymap = keymap.of([
+export let selected_cells_keymap = EditorInChiefKeymap.of([
   {
     key: "Backspace",
     run: ({ state, dispatch }) => {
