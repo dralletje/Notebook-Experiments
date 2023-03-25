@@ -1,7 +1,12 @@
 import React, { useLayoutEffect, useRef, useMemo } from "react";
 import styled from "styled-components";
 
-import { Compartment, StateEffect, Transaction } from "@codemirror/state";
+import {
+  Compartment,
+  StateEffect,
+  Transaction,
+  StateField,
+} from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 
 /** @type {React.Context<(...spec: any[]) => void>} */

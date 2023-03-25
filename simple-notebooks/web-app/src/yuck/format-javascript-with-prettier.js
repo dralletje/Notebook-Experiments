@@ -16,8 +16,7 @@ export let format_with_prettier = ({ code, cursor }) => {
     plugins: [prettier_typescript_parser],
     printWidth: 60,
     tabWidth: 2,
-    semi: false,
     cursorOffset: cursor,
-    useTabs: true,
+    // useTabs: true,
   });
 };

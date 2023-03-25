@@ -743,7 +743,7 @@ export let Cell = ({
           <Extension
             key="placeholder"
             deps={[]}
-            extension={placeholder("The rest is still unwritten...")}
+            extension={placeholder("The rest is still unwritten... ")}
           />
           <Extension
             key="basic-javascript-setup"

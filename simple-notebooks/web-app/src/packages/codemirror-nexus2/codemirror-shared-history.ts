@@ -603,15 +603,13 @@ class CellHistEvent {
     }
 
     if (!effects.length && notebook_tr.changes.empty) return null;
-    let x = new CellHistEvent(
+    return new CellHistEvent(
       notebook_tr.changes.invert(new NotebookText(notebook_tr.startDocs)),
       effects,
       undefined,
       selection || notebook_tr.startSelection,
       none
     );
-    console.log(`x:`, x);
-    return x;
   }
 
   static selection(selections: readonly CellEditorSelection[]) {
