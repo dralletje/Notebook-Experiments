@@ -3,12 +3,11 @@
   "private": true,
   "packageManager": "yarn@3.3.0",
   "workspaces": [
-    "web-app",
+    "simple-notebooks/web-app",
+    "simple-notebooks/node-engine",
     "lezer-playground",
-    "node-engine",
-    "zig-playground",
-    "packages/*",
-    "lezer-playground/packages/*"
+    "lezer-playground/packages/*",
+    "packages/*"
   ],
   "version": "1.0.0",
   "description": "",

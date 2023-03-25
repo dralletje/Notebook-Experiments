@@ -320,54 +320,59 @@ let insert_around_command = (str) => (view) => {
   return true;
 };
 
+let toggle_around_command = (str) => (view) => {
+  let { from, to } = view.state.selection.main;
+  if (view.state.selection.main.empty) {
+    view.dispatch({
+      changes: { from: from, to: to, insert: `${str}${str}` },
+      selection: EditorSelection.single(from + str.length),
+    });
+    return true;
+  }
+
+  if (
+    view.state.doc.sliceString(from - str.length, from) === str &&
+    view.state.doc.sliceString(to, to + str.length) === str
+  ) {
+    view.dispatch({
+      changes: [
+        { from: from - str.length, to: from, insert: "" },
+        { from: to, to: to + str.length, insert: "" },
+      ],
+    });
+    return true;
+  }
+
+  if (
+    view.state.doc.sliceString(from, from + str.length) === str &&
+    view.state.doc.sliceString(to - str.length, to) === str
+  ) {
+    view.dispatch({
+      changes: [
+        { from: from, to: from + str.length, insert: "" },
+        { from: to - str.length, to: to, insert: "" },
+      ],
+    });
+    return true;
+  }
+
+  view.dispatch({
+    changes: [
+      { from: from, to: from, insert: str },
+      { from: to, to: to, insert: str },
+    ],
+  });
+  return true;
+};
+
 let my_markdown_keymap = keymap.of([
   {
-    // TODO Add this for italic and strikethrough
     key: "Mod-b",
-    run: (view) => {
-      let { from, to } = view.state.selection.main;
-      if (view.state.selection.main.empty) {
-        view.dispatch({
-          changes: { from: from, to: to, insert: "****" },
-          selection: EditorSelection.single(from + 2),
-        });
-        return true;
-      }
-
-      if (
-        view.state.doc.sliceString(from - 2, from) === "**" &&
-        view.state.doc.sliceString(to, to + 2) === "**"
-      ) {
-        view.dispatch({
-          changes: [
-            { from: from - 2, to: from, insert: "" },
-            { from: to, to: to + 2, insert: "" },
-          ],
-        });
-        return true;
-      }
-
-      if (
-        view.state.doc.sliceString(from, from + 2) === "**" &&
-        view.state.doc.sliceString(to - 2, to) === "**"
-      ) {
-        view.dispatch({
-          changes: [
-            { from: from, to: from + 2, insert: "" },
-            { from: to - 2, to: to, insert: "" },
-          ],
-        });
-        return true;
-      }
-
-      view.dispatch({
-        changes: [
-          { from: from, to: from, insert: "**" },
-          { from: to, to: to, insert: "**" },
-        ],
-      });
-      return true;
-    },
+    run: toggle_around_command("**"),
+  },
+  {
+    key: "Mod-i",
+    run: toggle_around_command("_"),
   },
   {
     key: "`",

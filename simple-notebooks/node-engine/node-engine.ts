@@ -172,7 +172,7 @@ let empty_notebook = (): Notebook => ({
   cell_order: [],
 });
 
-let DIRECTORY = `../cell-environment/src`;
+const DIRECTORY = new URL(`../cell-environments/src`, import.meta.url).pathname;
 
 io.on("connection", (socket) => {
   let is_busy = false;
@@ -201,6 +201,7 @@ io.on("connection", (socket) => {
         // Show other files too?
       }
     }
+
     socket.emit("load-workspace-from-directory", workspace);
   });
 
