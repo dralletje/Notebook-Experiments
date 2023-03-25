@@ -120,7 +120,15 @@ export function File({ state, onChange, socket, files }) {
       }
       let should_cancel = runScopeHandlers(
         // @ts-ignore
-        viewupdate.view,
+        // AAAAAAAA This is a hack to get EditorInChief ViewUpdates to work
+        // ........ Else all keymaps will get an EditorInChief state, and they shouldn't!
+        // ........ They should get a _normal_ EditorState.
+        {
+          state: viewupdate.view.state.editorstate,
+          dispatch: (...spec) => {
+            viewupdate.view.dispatch(...spec);
+          },
+        },
         event,
         "editor"
       );
