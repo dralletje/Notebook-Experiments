@@ -19,7 +19,7 @@ import {
   MoveToCellAboveEffect,
   MoveToCellBelowEffect,
 } from "./codemirror-cell-movement";
-import { format_with_prettier } from "../../format-javascript-with-prettier";
+import { format_with_prettier } from "../../yuck/format-javascript-with-prettier";
 import { SelectedCellsField } from "../../cell-selection";
 import { toggleComment } from "@codemirror/commands";
 import { range } from "lodash";

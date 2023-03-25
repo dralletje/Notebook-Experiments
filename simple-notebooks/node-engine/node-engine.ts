@@ -6,17 +6,20 @@ import http from "node:http";
 import chalk from "chalk";
 import { join } from "node:path";
 
-import { mapValues, throttle } from "lodash-es";
+import { mapValues } from "lodash-es";
 
 import serialize from "./serialize.js";
-import { notebook_step, topological_sort_notebook } from "./notebook-step.js";
 import {
   load_notebook,
   NotNotebookError,
   save_notebook,
 } from "./save-and-load-notebook-file.js";
 
-import { readdir, stat } from "node:fs/promises";
+import { readdir, stat, mkdtemp } from "node:fs/promises";
+import { fork, exec as exec_callback } from "node:child_process";
+import { promisify } from "node:util";
+
+const exec = promisify(exec_callback);
 
 const app = express();
 app.use(cors());
@@ -84,55 +87,6 @@ export type Cell = {
   id: CellId;
 };
 
-let run_notebook = async (
-  filename: string,
-  notebook_ref: { current: Notebook },
-  engine: Engine,
-  onChange: (engine: Engine) => void
-) => {
-  let onChange_debounced = throttle(onChange, 0);
-
-  let did_change = true;
-  while (did_change === true) {
-    did_change = false;
-
-    // @ts-ignore
-    // parse_all_cells(notebook_ref.current, engine);
-    // let dag = cells_to_dag(notebook, engine);
-    // engine.dag = dag;
-    // return engine;
-
-    for (let [cell_id, cell] of Object.entries(notebook_ref.current.cells)) {
-      let cylinder = engine.cylinders[cell_id];
-      if (cylinder == null) {
-        engine.cylinders[cell_id] = {
-          id: cell_id,
-          name: cell_id,
-          last_run: -Infinity,
-          last_internal_run: -Infinity,
-          running: false,
-          waiting: false,
-          result: { type: "pending" },
-          variables: {},
-          upstream_cells: [],
-          invalidation_token: { call: () => Promise.resolve() },
-        };
-      }
-    }
-
-    await notebook_step(
-      engine,
-      { filename: filename, notebook: notebook_ref.current },
-      (fn) => {
-        did_change = true;
-        fn(engine);
-        onChange_debounced(engine);
-      }
-    );
-    onChange_debounced(engine);
-  }
-};
-
 let read_all_files = async (path: string) => {
   let files = [];
   let read_files_and_add = async (relative: string) => {
@@ -172,13 +126,109 @@ let empty_notebook = (): Notebook => ({
   cell_order: [],
 });
 
+let stream_seperator = async function* (
+  stream: AsyncIterableIterator<Buffer>,
+  separator = "\n"
+) {
+  let current_line = "";
+  for await (const chunk of stream) {
+    let [first_line, ...lines] = chunk.toString().split(separator);
+
+    current_line = current_line + first_line;
+
+    for (let line of lines) {
+      yield current_line;
+
+      current_line = line;
+    }
+  }
+};
+
 const DIRECTORY = new URL(`../cell-environments/src`, import.meta.url).pathname;
 
+let async = async (async) => async();
+
+let create_fork = async (signal, onChange) => {
+  let process = fork(
+    new URL(`./Circuit/Circuit.ts`, import.meta.url).pathname,
+    [],
+    {
+      env: { FORCE_COLOR: "true" },
+      signal: signal,
+      stdio: ["pipe", "pipe", "pipe", "ipc"],
+    }
+  );
+
+  process.on("spawn", () => {
+    async(async () => {
+      for await (let line of stream_seperator(
+        process.stdout[Symbol.asyncIterator]()
+      )) {
+        console.log(">", line);
+      }
+    });
+    async(async () => {
+      for await (let line of stream_seperator(
+        process.stderr[Symbol.asyncIterator]()
+      )) {
+        console.log("@", line);
+      }
+    });
+  });
+
+  process.on("message", (message: any) => {
+    if (message.type === "update-engine") {
+      // this.engine = message.engine;
+      // this.onChange(this.engine);
+      onChange(message.engine);
+    }
+  });
+  return process;
+};
+
+class Circuit {
+  process: Promise<import("child_process").ChildProcess>;
+
+  constructor(
+    public engine: Engine,
+    public onChange: (engine: Engine) => void,
+    public signal: AbortSignal
+  ) {
+    this.process = create_fork(this.signal, (engine) => {
+      this.engine = engine;
+      this.onChange(engine);
+    });
+
+    this.engine = engine;
+    this.onChange = onChange;
+  }
+
+  async update_notebook(notebook: Notebook) {
+    (await this.process).send({
+      type: "update-notebook",
+      notebook: notebook,
+    });
+  }
+
+  async exit() {
+    (await this.process).kill();
+  }
+
+  async restart() {
+    (await this.process).kill();
+    this.process = create_fork(this.signal, (engine) => {
+      this.engine = engine;
+      this.onChange(engine);
+    });
+  }
+}
+
 io.on("connection", (socket) => {
-  let is_busy = false;
+  let abort_controller = new AbortController();
+
   let workspace_ref: { [filename: string]: { current: Notebook } } = {};
 
-  let engines: { [filename: string]: Engine } = {};
+  let engines: { [filename: string]: Circuit } = {};
 
   socket.on("load-workspace-from-directory", async () => {
     let files = await read_all_files(DIRECTORY);
@@ -212,46 +262,37 @@ io.on("connection", (socket) => {
     });
 
     workspace_ref[notebook.filename] = { current: notebook.notebook };
-    engines[notebook.filename] ??= {
-      cylinders: {},
-      internal_run_counter: 1,
-      dag: {},
-      is_busy: false,
-    };
-    let engine = engines[notebook.filename];
-
-    if (engine.is_busy) return;
-    engine.is_busy = true;
-
-    await run_notebook(
-      notebook.filename,
-      workspace_ref[notebook.filename],
-      engine,
+    engines[notebook.filename] ??= new Circuit(
+      {
+        cylinders: {},
+        internal_run_counter: 1,
+        dag: {},
+        is_busy: false,
+      },
       (engine) => {
         socket.emit("engine", {
           filename: notebook.filename,
           engine: engine_to_json(engine),
         });
-      }
+      },
+      abort_controller.signal
     );
-    engine.is_busy = false;
+
+    let circuit = engines[notebook.filename];
+
+    circuit.update_notebook(notebook.notebook);
   });
 
-  // socket.on("save-workspace", async (workspace: Workspace) => {
-  //   for (let [filename, notebook] of Object.entries(workspace.files)) {
-  //     save_notebook(notebook, filename);
-  //   }
-  // });
+  socket.on("restart", async (filename) => {
+    engines[filename]?.restart();
+  });
 
   // Run notebook with all cells removed on disconnect
   socket.on("disconnect", () => {
     console.log(chalk.green.bold`DISCONNECTED`);
 
-    for (let [filename, engine] of Object.entries(engines)) {
-      workspace_ref[filename].current = empty_notebook();
-      if (!engine.is_busy) {
-        run_notebook(filename, { current: empty_notebook() }, engine, () => {});
-      }
+    for (let [filename, circuit] of Object.entries(engines)) {
+      circuit.exit();
     }
   });
 });

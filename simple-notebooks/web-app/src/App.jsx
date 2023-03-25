@@ -8,6 +8,7 @@ import styled from "styled-components";
 import { EditorState, Facet } from "@codemirror/state";
 import {
   CellEditorStatesField,
+  CellMetaField,
   CellPlugin,
   editor_state_for_cell,
   nested_cell_states_basics,
@@ -26,6 +27,7 @@ import {
 import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
 import { File } from "./File";
 import { NotebookFilename, NotebookId } from "./notebook-types";
+import { typescript_extension } from "./packages/typescript-server-webworker/codemirror-typescript.js";
 
 let cell_id_order_from_notebook_facet = CellIdOrder.compute(
   [CellEditorStatesField],
@@ -85,6 +87,42 @@ let notebook_to_state = ({ filename, notebook }) => {
 
       NotebookId.of(notebook.id),
       NotebookFilename.of(filename),
+
+      // typescript_extension((state) => {
+      //   let notebook = state.field(CellEditorStatesField);
+
+      //   let code = "";
+      //   let cursor = 0;
+      //   /** @type {{ [cell_id: string]: { start: number, end: number } }} */
+      //   let cell_map = {};
+
+      //   let type_references = `
+      //   /// <reference lib="es5" />
+      //   /// <reference lib="es2015" />
+      //   /// <reference lib="es2015.collection" />
+      //   /// <reference lib="es2015.core" />
+      //   /// <reference types="node" />
+      //   `;
+      //   code += type_references;
+      //   cursor += type_references.length;
+
+      //   for (let cell_id of notebook.cell_order) {
+      //     let cell_state = notebook.cells[cell_id];
+      //     let cell = cell_state.field(CellMetaField);
+      //     let unsaved_code = cell_state.doc.toString();
+
+      //     // Using unsaved code because I want typescript to be very optimistic
+      //     let code_to_add = unsaved_code;
+      //     cell_map[cell_id] = {
+      //       start: cursor,
+      //       end: cursor + code_to_add.length,
+      //     };
+      //     code += code_to_add + "\n";
+      //     cursor += code_to_add.length + 1;
+      //   }
+
+      //   return { code, cell_map };
+      // }),
 
       CellPlugin.of(
         EditorView.scrollMargins.of(() => ({ top: 100, bottom: 100 }))
@@ -147,43 +185,6 @@ let FileTab = styled.button`
 `;
 
 function App() {
-  // {
-  //   id: "1",
-  //   files: {
-  //     "app.js": {
-  //       filename: "app.js",
-  //       notebook: {
-  //         id: "1",
-  //         // cell_order: ["1", "2", "3"],
-  //         cells: {
-  //           1: {
-  //             id: "1",
-  //             type: "text",
-  //             code: "# My notebook",
-  //             unsaved_code: "# My notebook",
-  //             last_run: Date.now(),
-  //             is_waiting: true,
-  //           },
-  //           2: {
-  //             id: "2",
-  //             code: "let xs = [1,2,3,4]",
-  //             unsaved_code: "let xs = [1,2,3,4]",
-  //             last_run: Date.now(),
-  //             is_waiting: true,
-  //           },
-  //           3: {
-  //             id: "3",
-  //             code: "xs.map((x) => x * 2)",
-  //             unsaved_code: "xs.map((x) => x * 2)",
-  //             last_run: Date.now(),
-  //             is_waiting: true,
-  //           },
-  //         },
-  //       },
-  //     }
-  //   }
-  // }
-
   let [workspace, set_workspace] = React.useState(
     /** @type {Workspace | null} */ (null)
   );

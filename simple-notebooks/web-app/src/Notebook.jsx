@@ -6,12 +6,10 @@ import { EditorView, placeholder, ViewPlugin } from "@codemirror/view";
 import { compact, isEqual, range } from "lodash";
 import { shallowEqualObjects } from "shallow-equal";
 
-import { Inspector } from "./Inspector";
+import { Inspector } from "./yuck/Inspector";
 import { cell_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
 
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
-import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
-import { codemirror_interactive } from "./packages/codemirror-interactive/codemirror-interactive";
 
 import { Flipper, Flipped } from "react-flip-toolkit";
 
@@ -24,7 +22,7 @@ import {
 } from "ionicons/icons";
 
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
-import { basic_javascript_setup } from "./codemirror-javascript-setup";
+import { basic_javascript_setup } from "./yuck/codemirror-javascript-setup";
 import { SelectedCellsField } from "./cell-selection";
 import {
   AddCellEffect,
@@ -40,7 +38,7 @@ import {
   RemoveCellEffect,
   ViewUpdate,
 } from "./NotebookEditor";
-import { basic_markdown_setup } from "./basic-markdown-setup";
+import { basic_markdown_setup } from "./yuck/basic-markdown-setup";
 
 let CellContainer = styled.div`
   display: flex;
@@ -840,9 +838,6 @@ export let Cell = ({
             key="remove_selection_on_blur_extension"
             extension={remove_selection_on_blur_extension}
           />
-          {/* <Extension extension={codemirror_interactive} /> */}
-          <Extension extension={debug_syntax_plugin} />
-          {/* <Extension extension={inline_notebooks_extension} /> */}
         </NestedCodemirror>
       </EditorStyled>
     </CellStyle>
@@ -917,7 +912,6 @@ let TextCell = ({ cell_id, is_selected, did_just_get_created, viewupdate }) => {
         viewupdate={viewupdate}
       >
         <Extension key="markdown-setup" extension={basic_markdown_setup} />
-        {/* <Extension extension={debug_syntax_plugin} /> */}
         <Extension extension={CellHasSelectionPlugin} key="oof" />
         <Extension key="cell_keymap" extension={cell_keymap} />
       </NestedCodemirror>

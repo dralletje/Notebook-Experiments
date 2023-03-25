@@ -1,5 +1,5 @@
 import React from "react";
-import { CellList } from "./Notebook";
+import { CellList } from "../Notebook";
 import { EditorState } from "@codemirror/state";
 import {
   CellEditorStatesField,
@@ -8,25 +8,25 @@ import {
   editor_state_for_cell,
   nested_cell_states_basics,
   useViewUpdate,
-} from "./NotebookEditor";
+} from "../NotebookEditor";
 import { useRealMemo } from "use-real-memo";
 import {
   SelectCellsEffect,
   SelectedCellsField,
   selected_cells_keymap,
-} from "./cell-selection";
+} from "../cell-selection";
 import { keymap, runScopeHandlers } from "@codemirror/view";
 import {
   shared_history,
   historyKeymap,
-} from "./packages/codemirror-nexus/codemirror-shared-history";
+} from "../packages/codemirror-nexus/codemirror-shared-history";
 import { isEqual, mapValues } from "lodash";
 import {
   CellIdOrder,
   cell_movement_extension_default,
-} from "./packages/codemirror-nexus/codemirror-cell-movement";
-import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
-import { SelectionArea } from "./selection-area/SelectionArea";
+} from "../packages/codemirror-nexus/codemirror-cell-movement";
+import { notebook_keymap } from "../packages/codemirror-nexus/add-move-and-run-cells";
+import { SelectionArea } from "../selection-area/SelectionArea";
 
 let try_json = (str) => {
   try {
@@ -45,7 +45,7 @@ export let MetaNotebook = () => {
   let initial_notebook = React.useMemo(
     () =>
       CellEditorStatesField.init((editorstate) => {
-        /** @type {import("./notebook-types").Notebook} */
+        /** @type {import("../notebook-types").Notebook} */
         let notebook_from_json = try_json(
           localStorage.getItem("meta-notebook")
         ) ?? {
@@ -117,7 +117,7 @@ export let MetaNotebook = () => {
   let cell_editor_states = viewupdate.state.field(CellEditorStatesField);
 
   let notebook = React.useMemo(() => {
-    return /** @type {import("./notebook-types").Notebook} */ ({
+    return /** @type {import("../notebook-types").Notebook} */ ({
       cell_order: cell_editor_states.cell_order,
       cells: mapValues(cell_editor_states.cells, (cell_state) => {
         return {
