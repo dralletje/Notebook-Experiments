@@ -2,20 +2,6 @@ import { Prec, EditorSelection } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 
 import {
-  AddCellEffect,
-  CellDispatchEffect,
-  CellEditorStatesField,
-  CellIdFacet,
-  CellMetaField,
-  CellTypeFacet,
-  empty_cell,
-  MergeCellFromBelowEffect,
-  NexusEffect,
-  RemoveCellEffect,
-  RunCellEffect,
-  RunIfChangedCellEffect,
-} from "../../NotebookEditor";
-import {
   MoveToCellAboveEffect,
   MoveToCellBelowEffect,
 } from "./codemirror-cell-movement";
@@ -23,12 +9,29 @@ import { format_with_prettier } from "../../yuck/format-javascript-with-prettier
 import { SelectedCellsField } from "../../cell-selection";
 import { toggleComment } from "@codemirror/commands";
 import { range } from "lodash";
+import {
+  CellAddEffect,
+  CellDispatchEffect,
+  CellIdFacet,
+  CellRemoveEffect,
+  EditorInChiefEffect,
+  NestedEditorStatesField,
+  NexusEffect,
+} from "../codemirror-nexus2/MultiEditor";
+import {
+  CellMetaField,
+  CellTypeFacet,
+  MutateCellMetaEffect,
+  empty_cell,
+} from "../../NotebookEditor";
+import { CellOrderField, CellOrderEffect } from "./cell-order.js";
+import { create_cell_state } from "../../App.jsx";
 
 export let notebook_keymap = keymap.of([
   {
     key: "Mod-/",
     run: ({ state, dispatch }) => {
-      let notebook = state.field(CellEditorStatesField);
+      let notebook = state.field(NestedEditorStatesField);
       let selected_cells = state.field(SelectedCellsField);
 
       let cells = selected_cells.map((cell_id) => notebook.cells[cell_id]);
@@ -96,10 +99,11 @@ export let notebook_keymap = keymap.of([
   {
     key: "Mod-s",
     run: ({ state, dispatch }) => {
-      let notebook = state.field(CellEditorStatesField);
+      let notebook = state.field(NestedEditorStatesField);
+      let cell_order = state.field(CellOrderField);
       let now = Date.now(); // Just in case map takes a lot of time ??
 
-      let changed_cells = notebook.cell_order.filter((cell_id) => {
+      let changed_cells = cell_order.filter((cell_id) => {
         let cell = notebook.cells[cell_id];
         if (cell.facet(CellTypeFacet) === "text") return false;
 
@@ -142,9 +146,15 @@ export let notebook_keymap = keymap.of([
                   to: docLength,
                   insert: formatted,
                 },
+                effects: [
+                  MutateCellMetaEffect.of((cell) => {
+                    cell.code = formatted;
+                    cell.is_waiting = true;
+                    cell.last_run = Date.now();
+                  }),
+                ],
               },
             }),
-            RunCellEffect.of({ cell_id: cell_id, at: now }),
           ]
         ),
       });
@@ -158,16 +168,16 @@ export let cell_keymap = Prec.high(
     {
       key: "Shift-Enter",
       run: (view) => {
-        let cell_id = view.state.facet(CellIdFacet);
-
         // TODO Should just not apply this to text cells to begin with 🤷‍♀️ but cba
         if (view.state.facet(CellTypeFacet) === "text") return false;
 
         view.dispatch({
           effects: [
-            NexusEffect.of(
-              RunCellEffect.of({ cell_id: cell_id, at: Date.now() })
-            ),
+            MutateCellMetaEffect.of((cell) => {
+              cell.code = view.state.doc.toString();
+              cell.is_waiting = true;
+              cell.last_run = Date.now();
+            }),
           ],
         });
         return true;
@@ -220,12 +230,18 @@ export let cell_keymap = Prec.high(
             insert: "",
           },
           effects: [
-            NexusEffect.of(
-              AddCellEffect.of({
-                index: { after: cell_id },
-                cell: new_cell,
-              })
-            ),
+            EditorInChiefEffect.of((state) => {
+              return [
+                CellAddEffect.of({
+                  cell_id: new_cell.id,
+                  state: create_cell_state(state, new_cell),
+                }),
+                CellOrderEffect.of({
+                  cell_id: new_cell.id,
+                  index: { after: cell_id },
+                }),
+              ];
+            }),
             // MoveToCellBelowEffect.of({ start: "begin" }),
           ],
         });
@@ -237,15 +253,32 @@ export let cell_keymap = Prec.high(
       key: "Mod-Enter",
       run: (view) => {
         let cell_id = view.state.facet(CellIdFacet);
+
+        let cell_meta = view.state.field(CellMetaField);
+        let code = view.state.doc.toString();
+
+        let new_cell = empty_cell();
         view.dispatch({
           effects: [
-            NexusEffect.of(
-              RunIfChangedCellEffect.of({ cell_id: cell_id, at: Date.now() })
+            ...(cell_meta.code !== code
+              ? [
+                  MutateCellMetaEffect.of((cell) => {
+                    cell.code = code;
+                    cell.is_waiting = true;
+                    cell.last_run = Date.now();
+                  }),
+                ]
+              : []),
+            EditorInChiefEffect.of(
+              CellAddEffect.of({
+                cell_id: cell_id,
+                state: create_cell_state(new_cell),
+              })
             ),
-            NexusEffect.of(
-              AddCellEffect.of({
+            EditorInChiefEffect.of(
+              CellOrderEffect.of({
+                cell_id: new_cell.id,
                 index: { after: cell_id },
-                cell: empty_cell(),
               })
             ),
           ],
@@ -262,8 +295,41 @@ export let cell_keymap = Prec.high(
         if (view.state.selection.main.from === 0) {
           view.dispatch({
             effects: [
-              // Focus on previous cell
-              NexusEffect.of(MergeCellFromBelowEffect.of({ cell_id: cell_id })),
+              // 1. Add this cell's code to the previous cell
+              // 2. Remove current cell
+              // 3. Move cursor to end of previous cell
+              EditorInChiefEffect.of((state) => {
+                let cell_order = state.field(CellOrderField);
+                let cell_index = cell_order.indexOf(cell_id);
+                if (cell_index === 0) return [];
+
+                let previous_cell_id = cell_order[cell_index - 1];
+                let previous_cell_state = state.field(NestedEditorStatesField)
+                  .cells[previous_cell_id];
+                let current_cell_state = state.field(NestedEditorStatesField)
+                  .cells[cell_id];
+
+                return [
+                  CellDispatchEffect.of({
+                    cell_id: previous_cell_id,
+                    transaction: {
+                      selection: EditorSelection.cursor(
+                        previous_cell_state.doc.length
+                      ),
+                      changes: {
+                        from: previous_cell_state.doc.length,
+                        to: previous_cell_state.doc.length,
+                        insert: current_cell_state.doc.toString(),
+                      },
+                    },
+                  }),
+                  CellRemoveEffect.of({ cell_id: cell_id }),
+                  CellOrderEffect.of({
+                    cell_id: cell_id,
+                    index: null,
+                  }),
+                ];
+              }),
             ],
           });
           return true;

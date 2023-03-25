@@ -155,7 +155,7 @@ ${TOML.stringify({ code })}
 
   // Make sure every cell in the notebook is actually in the cell order
   // TODO Place it in a little bit nice position close to where it wants to be?
-  for (let cell_id of Object.keys(config.cells)) {
+  for (let cell_id of Object.keys(config.cells || {})) {
     if (!cell_order.includes(cell_id)) {
       cell_order.push(cell_id);
     }

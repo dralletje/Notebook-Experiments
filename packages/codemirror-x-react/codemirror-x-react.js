@@ -288,7 +288,7 @@ export let Extension = ({
       return;
     }
 
-    console.log("RECONFIGURING", { extension, deps });
+    // console.log("RECONFIGURING", { extension, deps });
     dispatch({
       effects: compartment.reconfigure(extension),
     });

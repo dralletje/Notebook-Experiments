@@ -6,18 +6,27 @@ import { runScopeHandlers } from "@codemirror/view";
 import { isEqual, mapValues, sortBy } from "lodash";
 import { EditorState, Facet } from "@codemirror/state";
 
-import {
-  BlurAllCells,
-  CellEditorStatesField,
-  CellIdFacet,
-  CellMetaField,
-  CellTypeFacet,
-  useViewUpdate,
-} from "./NotebookEditor";
+// import {
+//   BlurAllCells,
+//   CellEditorStatesField,
+//   CellIdFacet,
+//   CellMetaField,
+//   CellTypeFacet,
+//   useViewUpdate,
+// } from "./NotebookEditor";
 import { SelectCellsEffect, SelectedCellsField } from "./cell-selection";
 import { SelectionArea } from "./selection-area/SelectionArea";
 import { NotebookFilename, NotebookId } from "./notebook-types";
 import { CellList } from "./Notebook";
+
+import { useViewUpdate } from "codemirror-x-react/viewupdate";
+import {
+  BlurAllCells,
+  CellIdFacet,
+  NestedEditorStatesField,
+} from "./packages/codemirror-nexus2/MultiEditor";
+import { CellMetaField, CellTypeFacet } from "./NotebookEditor";
+import { CellOrderField } from "./packages/codemirror-nexus/cell-order.js";
 
 let AppStyle = styled.div`
   padding-top: 50px;
@@ -74,13 +83,13 @@ let useEngine = (notebook, socket) => {
 export function File({ state, onChange, socket, files }) {
   let viewupdate = useViewUpdate(state, onChange);
 
-  let cell_editor_states = state.field(CellEditorStatesField);
+  let cell_editor_states = state.field(NestedEditorStatesField);
 
   let notebook = React.useMemo(() => {
     return /** @type {import("./notebook-types").Notebook} */ ({
       id: state.facet(NotebookId),
       filename: state.facet(NotebookFilename),
-      cell_order: cell_editor_states.cell_order,
+      cell_order: state.field(CellOrderField),
       cells: mapValues(cell_editor_states.cells, (cell_state) => {
         let type = cell_state.facet(CellTypeFacet);
         return {
@@ -95,6 +104,8 @@ export function File({ state, onChange, socket, files }) {
       }),
     });
   }, [cell_editor_states]);
+
+  // console.log(`notebook:`, notebook);
 
   // Use the nexus' keymaps as shortcuts!
   // This passes on keydown events from the document to the nexus for handling.

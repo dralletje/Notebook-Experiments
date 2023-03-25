@@ -623,6 +623,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@codemirror/view@npm:^6.9.3":
+  version: 6.9.3
+  resolution: "@codemirror/view@npm:6.9.3"
+  dependencies:
+    "@codemirror/state": ^6.1.4
+    style-mod: ^4.0.0
+    w3c-keyname: ^2.2.4
+  checksum: 718ecbb021ca75eb89003f73c846a07d36a708dcfec8345f0f0dbcfc0d0df5ea6f114918694b2730a6d49e5e50502bcce79ce7ff94ce55748e068e5a35073755
+  languageName: node
+  linkType: hard
+
 "@cspotcode/source-map-support@npm:^0.8.0":
   version: 0.8.1
   resolution: "@cspotcode/source-map-support@npm:0.8.1"
@@ -651,7 +662,7 @@ __metadata:
   resolution: "@dral/codemirror-subtle-color-picker@workspace:packages/codemirror-subtle-color-picker"
   dependencies:
     "@codemirror/state": ^6.2.0
-    "@codemirror/view": ^6.9.1
+    "@codemirror/view": ^6.9.3
     react: ^18.2.0
     react-color: ^2.19.3
   languageName: unknown
@@ -728,7 +739,7 @@ __metadata:
     "@codemirror/language": ^6.6.0
     "@codemirror/search": ^6.2.3
     "@codemirror/state": ^6.2.0
-    "@codemirror/view": ^6.9.1
+    "@codemirror/view": ^6.9.3
     "@dral/all-folds-zig": "workspace:*"
     "@dral/find-positions-zig": "workspace:*"
     "@dral/lezer-inspector": "*"
@@ -762,9 +773,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@dral/notebook-app@*, @dral/notebook-app@workspace:web-app":
+"@dral/notebook-app@*, @dral/notebook-app@workspace:simple-notebooks/web-app":
   version: 0.0.0-use.local
-  resolution: "@dral/notebook-app@workspace:web-app"
+  resolution: "@dral/notebook-app@workspace:simple-notebooks/web-app"
   dependencies:
     "@codemirror/autocomplete": ^6.4.2
     "@codemirror/collab": ^6.0.0
@@ -815,9 +826,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@dral/notebook-engine@workspace:node-engine":
+"@dral/notebook-engine@workspace:simple-notebooks/node-engine":
   version: 0.0.0-use.local
-  resolution: "@dral/notebook-engine@workspace:node-engine"
+  resolution: "@dral/notebook-engine@workspace:simple-notebooks/node-engine"
   dependencies:
     "@babel/traverse": ^7.18.11
     "@dral/notebook-app": "*"

@@ -1,7 +1,11 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import { CellId } from "./notebook-types";
-import { CellEditorStatesField, RemoveCellEffect } from "./NotebookEditor";
+import {
+  CellOrderEffect,
+  CellOrderField,
+} from "./packages/codemirror-nexus/cell-order";
+import { CellRemoveEffect } from "./packages/codemirror-nexus2/MultiEditor";
 
 export let SelectCellsEffect = StateEffect.define<CellId[]>();
 
@@ -29,9 +33,10 @@ export let selected_cells_keymap = keymap.of([
       let selected_cells = state.field(SelectedCellsField);
       if (selected_cells.length > 0) {
         dispatch({
-          effects: selected_cells.map((cell_id) =>
-            RemoveCellEffect.of({ cell_id: cell_id })
-          ),
+          effects: selected_cells.flatMap((cell_id) => [
+            CellOrderEffect.of({ cell_id: cell_id, index: null }),
+            CellRemoveEffect.of({ cell_id: cell_id }),
+          ]),
         });
         return true;
       } else {
@@ -43,9 +48,9 @@ export let selected_cells_keymap = keymap.of([
     key: "Mod-a",
     run: ({ state, dispatch }) => {
       // Select all cells
-      let notebook = state.field(CellEditorStatesField);
+      let cell_order = state.field(CellOrderField);
       dispatch({
-        effects: [SelectCellsEffect.of(notebook.cell_order)],
+        effects: [SelectCellsEffect.of(CellOrderField)],
       });
       return true;
     },

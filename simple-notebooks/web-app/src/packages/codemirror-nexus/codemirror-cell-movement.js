@@ -8,12 +8,17 @@ import {
   StateEffectType,
 } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-// import { autocompletion, completionStatus } from "@codemirror/autocomplete";
 import {
   CellDispatchEffect,
-  CellPlugin,
+  NestedExtension,
   cell_dispatch_effect_effects,
-} from "../../NotebookEditor";
+} from "../codemirror-nexus2/MultiEditor";
+// import { autocompletion, completionStatus } from "@codemirror/autocomplete";
+// import {
+//   CellDispatchEffect,
+//   CellPlugin,
+//   cell_dispatch_effect_effects,
+// } from "../../NotebookEditor";
 
 // A lot of this file is an adaptation of https://github.com/fonsp/Pluto.jl/blob/ab85efca962d009c741d4ec66508d687806e9579/frontend/components/CellInput/cell_movement_plugin.js
 // Only this uses my new nexus-style stuff, and it has cooler column-preserving-stuff 🤩
@@ -63,6 +68,8 @@ let MoveFromCellAboveEffect = StateEffect.define({});
 let MoveFromCellBelowEffect = StateEffect.define({});
 
 // TODO? Make this a transaction-to-cell-transaction multiplexer?
+// TODO Or instead make it a function to apply to a view, that gets you back the
+// .... the desired effects.
 let delegate_moves_to_relative_cells = EditorState.transactionExtender.of(
   (transaction) => {
     let moar_effects = [];
@@ -101,6 +108,9 @@ let delegate_moves_to_relative_cells = EditorState.transactionExtender.of(
               continue;
             }
 
+            console.log(`cell_effect.value:`, cell_effect.value);
+            console.log(`cell_index:`, cell_order[cell_index + 1]);
+
             moar_effects.push(
               CellDispatchEffect.of({
                 cell_id: cell_order[cell_index + 1],
@@ -123,7 +133,7 @@ let delegate_moves_to_relative_cells = EditorState.transactionExtender.of(
   }
 );
 
-let viewplugin_for_cell = CellPlugin.of(
+let viewplugin_for_cell = NestedExtension.of(
   EditorView.updateListener.of(({ view, state, transactions }) => {
     for (let transaction of transactions) {
       for (let effect of transaction.effects) {
@@ -202,6 +212,8 @@ let viewplugin_for_cell = CellPlugin.of(
         }
 
         if (effect.is(MoveFromCellAboveEffect)) {
+          console.log("OHAY");
+
           let { start } = effect.value;
           if (start === "end") {
             view.dispatch({
@@ -408,8 +420,8 @@ export let arrows_move_between_cells_keymap = [
 export let cell_movement_extension_default = [
   cell_movement_extension,
   // Highest because it needs to handle keydown before the keymap normally does
-  CellPlugin.of(
+  NestedExtension.of(
     Prec.highest(prevent_holding_a_key_from_doing_things_across_cells)
   ),
-  CellPlugin.of(Prec.high(keymap.of(arrows_move_between_cells_keymap))),
+  NestedExtension.of(Prec.high(keymap.of(arrows_move_between_cells_keymap))),
 ];

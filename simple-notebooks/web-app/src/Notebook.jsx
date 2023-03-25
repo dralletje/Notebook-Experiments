@@ -7,7 +7,6 @@ import { compact, isEqual, range } from "lodash";
 import { shallowEqualObjects } from "shallow-equal";
 
 import { Inspector } from "./yuck/Inspector";
-import { cell_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
 
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 
@@ -24,21 +23,40 @@ import {
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
 import { basic_javascript_setup } from "./yuck/codemirror-javascript-setup";
 import { SelectedCellsField } from "./cell-selection";
+// import {
+//   AddCellEffect,
+//   CellDispatchEffect,
+//   CellEditorStatesField,
+//   CellHasSelectionField,
+//   CellIdFacet,
+//   CellMetaField,
+//   CellTypeFacet,
+//   empty_cell,
+//   MoveCellEffect,
+//   MutateCellMetaEffect,
+//   RemoveCellEffect,
+//   ViewUpdate,
+// } from "./NotebookEditor";
+import { basic_markdown_setup } from "./yuck/basic-markdown-setup";
 import {
-  AddCellEffect,
+  CellAddEffect,
   CellDispatchEffect,
-  CellEditorStatesField,
-  CellHasSelectionField,
-  CellIdFacet,
+  CellRemoveEffect,
+  NestedEditorStatesField,
+  useNestedViewUpdate,
+} from "./packages/codemirror-nexus2/MultiEditor";
+import {
   CellMetaField,
   CellTypeFacet,
-  empty_cell,
-  MoveCellEffect,
   MutateCellMetaEffect,
-  RemoveCellEffect,
-  ViewUpdate,
+  empty_cell,
 } from "./NotebookEditor";
-import { basic_markdown_setup } from "./yuck/basic-markdown-setup";
+import {
+  CodemirrorFromViewUpdate,
+  GenericViewUpdate,
+} from "codemirror-x-react/viewupdate.js";
+import { create_cell_state } from "./App.jsx";
+import { CellOrderEffect } from "./packages/codemirror-nexus/cell-order.js";
 
 let CellContainer = styled.div`
   display: flex;
@@ -63,49 +81,6 @@ let InspectorContainer = styled.div`
     min-height: 24px;
   }
 `;
-
-// TODO Move to NotebookEditor
-// .... (Should be part of multi-cell stuff)
-let CellHasSelectionPlugin = [
-  EditorView.editorAttributes.of((view) => {
-    let has_selection = view.state.field(CellHasSelectionField);
-    return { class: has_selection ? "has-selection" : "" };
-  }),
-  ViewPlugin.define((view) => {
-    let has_selection = view.state.field(CellHasSelectionField);
-    if (has_selection === true) {
-      Promise.resolve().then(() => {
-        // Make sure the editor isn't removed yet :O
-        if (view.dom.isConnected) {
-          view.focus();
-        }
-      });
-    }
-
-    return {
-      update: (update) => {
-        let had_selection = update.startState.field(CellHasSelectionField);
-        let needs_selection = update.state.field(CellHasSelectionField);
-        if (had_selection !== needs_selection) {
-          let has_focus = view.dom.contains(document.activeElement);
-          if (has_focus === needs_selection) return;
-
-          if (needs_selection) {
-            update.view.focus();
-          } else {
-            update.view.dom.blur();
-          }
-        }
-      },
-    };
-  }),
-  EditorView.theme({
-    ".cm-editor:not(.has-selection) .cm-selectionBackground": {
-      // Need to figure out what precedence I should give this thing so I don't need !important
-      background: "none !important",
-    },
-  }),
-];
 
 let NOISE_BACKGROUND = new URL("./noise-background.png", import.meta.url).href;
 export let EditorStyled = styled.div`
@@ -246,10 +221,10 @@ let DragAndDropList = ({ children, nexus_editorview, cell_order }) => {
       onDragEnd={({ draggableId, destination, source }) => {
         if (destination) {
           nexus_editorview.dispatch({
-            effects: MoveCellEffect.of({
+            effects: CellOrderEffect.of({
               cell_id: draggableId,
-              from: source.index,
-              to: destination.index,
+              // from: source.index,
+              index: destination.index,
             }),
           });
         }
@@ -339,9 +314,9 @@ export let LastCreatedCells = StateField.define({
   },
   update(value, tr) {
     let previous_cell_ids = Object.keys(
-      tr.startState.field(CellEditorStatesField).cells
+      tr.startState.field(NestedEditorStatesField).cells
     );
-    let cell_ids = Object.keys(tr.state.field(CellEditorStatesField).cells);
+    let cell_ids = Object.keys(tr.state.field(NestedEditorStatesField).cells);
     if (isEqual(previous_cell_ids, cell_ids)) return value;
     let new_cell_ids = cell_ids.filter((id) => !previous_cell_ids.includes(id));
     return new_cell_ids;
@@ -352,7 +327,7 @@ export let LastCreatedCells = StateField.define({
  * @param {{
  *  notebook: import("./notebook-types").Notebook,
  *  engine: import("./notebook-types").EngineShadow,
- *  viewupdate: import("./NotebookEditor").ViewUpdate,
+ *  viewupdate: GenericViewUpdate,
  * }} props
  */
 export let CellList = ({ notebook, engine, viewupdate }) => {
@@ -385,9 +360,13 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
               let new_cell = empty_cell();
               nexus_editorview.dispatch({
                 effects: [
-                  AddCellEffect.of({
+                  CellAddEffect.of({
+                    cell_id: new_cell.id,
+                    state: create_cell_state(nexus_editorview.state, new_cell),
+                  }),
+                  CellOrderEffect.of({
+                    cell_id: new_cell.id,
                     index: 0,
-                    cell: new_cell,
                   }),
                   CellDispatchEffect.of({
                     cell_id: new_cell.id,
@@ -436,7 +415,11 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                             onClick: () => {
                               nexus_editorview.dispatch({
                                 effects: [
-                                  RemoveCellEffect.of({ cell_id: cell.id }),
+                                  CellOrderEffect.of({
+                                    index: null,
+                                    cell_id: cell.id,
+                                  }),
+                                  CellRemoveEffect.of({ cell_id: cell.id }),
                                 ],
                               });
                             },
@@ -486,9 +469,9 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
 
                       <ErrorBoundary>
                         {nexus_editorview.state
-                          .field(CellEditorStatesField)
+                          .field(NestedEditorStatesField)
                           .cells[cell.id].facet(CellTypeFacet) === "text" ? (
-                          <TextCellMemo
+                          <TextCell
                             cell={cell}
                             viewupdate={viewupdate}
                             is_selected={selected_cells.includes(cell.id)}
@@ -534,9 +517,16 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                         let new_cell = empty_cell();
                         nexus_editorview.dispatch({
                           effects: [
-                            AddCellEffect.of({
+                            CellAddEffect.of({
+                              cell_id: new_cell.id,
+                              state: create_cell_state(
+                                nexus_editorview.state,
+                                new_cell
+                              ),
+                            }),
+                            CellOrderEffect.of({
+                              cell_id: new_cell.id,
                               index: my_index + 1,
-                              cell: new_cell,
                             }),
                             CellDispatchEffect.of({
                               cell_id: new_cell.id,
@@ -558,9 +548,16 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                         let new_cell = empty_cell("text");
                         nexus_editorview.dispatch({
                           effects: [
-                            AddCellEffect.of({
+                            CellAddEffect.of({
+                              cell_id: new_cell.id,
+                              state: create_cell_state(
+                                nexus_editorview.state,
+                                new_cell
+                              ),
+                            }),
+                            CellOrderEffect.of({
+                              cell_id: new_cell.id,
                               index: my_index + 1,
-                              cell: new_cell,
                             }),
                             CellDispatchEffect.of({
                               cell_id: new_cell.id,
@@ -579,9 +576,16 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                       let new_cell = empty_cell();
                       nexus_editorview.dispatch({
                         effects: [
-                          AddCellEffect.of({
+                          CellAddEffect.of({
+                            cell_id: new_cell.id,
+                            state: create_cell_state(
+                              nexus_editorview.state,
+                              new_cell
+                            ),
+                          }),
+                          CellOrderEffect.of({
+                            cell_id: new_cell.id,
                             index: my_index + 1,
-                            cell: new_cell,
                           }),
                           CellDispatchEffect.of({
                             cell_id: new_cell.id,
@@ -601,88 +605,6 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
     </React.Fragment>
   );
 };
-
-// TODO Should be part of NotebookEditor
-export let NestedCodemirror = React.forwardRef(
-  (
-    /** @type {{ viewupdate: ViewUpdate, cell_id: import("./notebook-types").CellId, children: React.ReactNode }} */ {
-      viewupdate,
-      cell_id,
-      children,
-    },
-    /** @type {import("react").ForwardedRef<EditorView>} */ _ref
-  ) => {
-    let initial_editor_state = React.useMemo(() => {
-      return viewupdate.startState.field(CellEditorStatesField).cells[cell_id];
-    }, []);
-
-    // prettier-ignore
-    let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
-    React.useImperativeHandle(_ref, () => editorview_ref.current);
-
-    // prettier-ignore
-    let last_viewupdate_ref = React.useRef(/** @type {ViewUpdate} */ (/** @type {any} */ (null)));
-    React.useLayoutEffect(() => {
-      // Make sure we don't update from the same viewupdate twice
-      if (last_viewupdate_ref.current === viewupdate) {
-        return;
-      }
-      last_viewupdate_ref.current = viewupdate;
-
-      // Because we get one `viewupdate` for multiple transactions happening,
-      // and `.transactions_to_send_to_cells` gets cleared after every transactions,
-      // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
-      let cell_transactions = viewupdate.transactions.flatMap((transaction) => {
-        return transaction.state.field(CellEditorStatesField)
-          .transactions_to_send_to_cells;
-      });
-
-      let transaction_for_this_cell = [];
-      let current_state = editorview_ref.current.state;
-      for (let transaction of cell_transactions) {
-        if (transaction.startState.facet(CellIdFacet) == cell_id) {
-          if (transaction.startState !== current_state) {
-            continue;
-          }
-
-          current_state = transaction.state;
-          transaction_for_this_cell.push(transaction);
-        }
-      }
-      if (transaction_for_this_cell.length > 0) {
-        editorview_ref.current.update(transaction_for_this_cell);
-      }
-    }, [viewupdate]);
-
-    return (
-      <CodeMirror
-        state={initial_editor_state}
-        ref={editorview_ref}
-        dispatch={(transactions, editorview) => {
-          // viewupdate.view.dispatch({
-          //   effects: transactions.map((tr) =>
-          //     CellDispatchEffect.of({
-          //       cell_id: cell_id,
-          //       transaction: tr,
-          //     })
-          //   ),
-          // });
-          viewupdate.view.dispatch(
-            ...transactions.map((tr) => ({
-              annotations: tr.annotations,
-              effects: CellDispatchEffect.of({
-                cell_id: cell_id,
-                transaction: tr,
-              }),
-            }))
-          );
-        }}
-      >
-        {children}
-      </CodeMirror>
-    );
-  }
-);
 
 /** @param {Selection | null} selection */
 function* ranges(selection) {
@@ -716,7 +638,7 @@ let remove_selection_on_blur_extension = EditorView.domEventHandlers({
  *  cylinder: import("./notebook-types").CylinderShadow,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
- *  viewupdate: ViewUpdate,
+ *  viewupdate: GenericViewUpdate,
  * }} props
  */
 export let Cell = ({
@@ -726,7 +648,8 @@ export let Cell = ({
   did_just_get_created,
   viewupdate,
 }) => {
-  let state = viewupdate.state.field(CellEditorStatesField).cells[cell_id];
+  let nested_viewupdate = useNestedViewUpdate(viewupdate, cell_id);
+  let state = nested_viewupdate.state;
   let type = state.facet(CellTypeFacet);
   let cell = {
     id: cell_id,
@@ -813,10 +736,9 @@ export let Cell = ({
           marginTop: folded ? 0 : undefined,
         }}
       >
-        <NestedCodemirror
+        <CodemirrorFromViewUpdate
           ref={editorview_ref}
-          cell_id={cell.id}
-          viewupdate={viewupdate}
+          viewupdate={nested_viewupdate}
         >
           <Extension
             key="placeholder"
@@ -827,9 +749,6 @@ export let Cell = ({
             key="basic-javascript-setup"
             extension={basic_javascript_setup}
           />
-          <Extension key="cell_keymap" extension={cell_keymap} />
-
-          <Extension key="oof" extension={CellHasSelectionPlugin} />
           <Extension
             key="set_is_focused_extension"
             extension={set_is_focused_extension}
@@ -838,7 +757,7 @@ export let Cell = ({
             key="remove_selection_on_blur_extension"
             extension={remove_selection_on_blur_extension}
           />
-        </NestedCodemirror>
+        </CodemirrorFromViewUpdate>
       </EditorStyled>
     </CellStyle>
   );
@@ -858,8 +777,8 @@ let CellMemo = React.memo(
   ) => {
     return (
       shallowEqualObjects(old_props, next_props) &&
-      old_viewupdate.state.field(CellEditorStatesField).cells[cell_id] ===
-        next_viewupdate.state.field(CellEditorStatesField).cells[cell_id] &&
+      old_viewupdate.state.field(NestedEditorStatesField).cells[cell_id] ===
+        next_viewupdate.state.field(NestedEditorStatesField).cells[cell_id] &&
       isEqual(old_cylinder, cylinder)
     );
   }
@@ -871,10 +790,12 @@ let CellMemo = React.memo(
  *  cell: import("./notebook-types").Cell,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
- *  viewupdate: ViewUpdate,
+ *  viewupdate: GenericViewUpdate,
  * }} props
  */
 let TextCell = ({ cell_id, is_selected, did_just_get_created, viewupdate }) => {
+  let nested_viewupdate = useNestedViewUpdate(viewupdate, cell_id);
+
   // prettier-ignore
   let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));
 
@@ -906,33 +827,15 @@ let TextCell = ({ cell_id, is_selected, did_just_get_created, viewupdate }) => {
       data-cell-id={cell_id}
       className={compact([is_selected && "selected", "cell-editor"]).join(" ")}
     >
-      <NestedCodemirror
+      <CodemirrorFromViewUpdate
         ref={editorview_ref}
-        cell_id={cell_id}
-        viewupdate={viewupdate}
+        viewupdate={nested_viewupdate}
       >
         <Extension key="markdown-setup" extension={basic_markdown_setup} />
-        <Extension extension={CellHasSelectionPlugin} key="oof" />
-        <Extension key="cell_keymap" extension={cell_keymap} />
-      </NestedCodemirror>
+      </CodemirrorFromViewUpdate>
     </TextCellStyle>
   );
 };
-
-// Idk
-let TextCellMemo = React.memo(
-  TextCell,
-  (
-    { viewupdate: old_viewupdate, cell_id: old_cell_id, ...old_props },
-    { viewupdate: next_viewupdate, cell_id, ...next_props }
-  ) => {
-    return (
-      shallowEqualObjects(old_props, next_props) &&
-      old_viewupdate.state.field(CellEditorStatesField).cells[cell_id] ===
-        next_viewupdate.state.field(CellEditorStatesField).cells[cell_id]
-    );
-  }
-);
 
 let TextCellStyle = styled.div`
   flex: 1 1 0px;

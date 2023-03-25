@@ -29,7 +29,7 @@ export class GenericViewUpdate {
     return this.view.state;
   }
   get startState() {
-    return this.transactions[0]?.state ?? this.view.state;
+    return this.transactions[0]?.startState ?? this.view.state;
   }
 }
 
@@ -140,9 +140,7 @@ export let CodemirrorFromViewUpdate = React.forwardRef(
       last_viewupdate_ref.current = viewupdate;
 
       if (viewupdate.transactions.length > 0) {
-        if (
-          viewupdate.transactions[0].startState !== editorview_ref.current.state
-        ) {
+        if (viewupdate.startState !== editorview_ref.current.state) {
           // TODO Now just warning, might need to `.setState`?
           console.warn(`ViewUpdate is not in sync with the EditorView`);
           editorview_ref.current.setState(viewupdate.state);

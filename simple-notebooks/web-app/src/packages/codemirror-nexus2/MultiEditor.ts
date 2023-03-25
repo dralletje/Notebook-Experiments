@@ -26,18 +26,25 @@ type StateEffectFromType<Type> = Type extends StateEffectType<infer X>
 
 export let cell_dispatch_effect_effects = (
   effect: StateEffectFromType<typeof CellDispatchEffect>
-) => {
+): StateEffect<any>[] => {
   let effects = effect.value.transaction.effects;
   if (Array.isArray(effects)) {
     return effects;
   } else if (effects == null) {
     return [];
   } else {
+    // @ts-ignore
     return [effects];
   }
 };
 
 export let NexusEffect = StateEffect.define<StateEffect<any>>();
+export let EditorInChiefEffect = StateEffect.define<
+  | ((state: EditorState) => StateEffect<any>[] | StateEffect<any>)
+  | StateEffect<any>[]
+  | StateEffect<any>
+>();
+
 let expand_cell_effects_that_area_actually_meant_for_the_nexus =
   EditorState.transactionExtender.of((transaction) => {
     let moar_effects: Array<StateEffect<any>> = [];
@@ -46,6 +53,18 @@ let expand_cell_effects_that_area_actually_meant_for_the_nexus =
         for (let cell_effect of cell_dispatch_effect_effects(effect)) {
           if (cell_effect.is(NexusEffect)) {
             moar_effects.push(cell_effect.value);
+          }
+
+          if (cell_effect.is(EditorInChiefEffect)) {
+            let effects =
+              typeof cell_effect.value === "function"
+                ? cell_effect.value(transaction.state)
+                : cell_effect.value;
+            if (Array.isArray(effects)) {
+              moar_effects.push(...effects);
+            } else {
+              moar_effects.push(effects);
+            }
           }
         }
       }
@@ -64,11 +83,6 @@ let expand_cell_effects_that_area_actually_meant_for_the_nexus =
 //       cell_state: EditorState
 //     ) => TransactionSpec | null
 //   >();
-
-export let CellDispatchEffect = StateEffect.define<{
-  cell_id: CellId;
-  transaction: TransactionSpec | Transaction;
-}>();
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -118,7 +132,11 @@ let CellHasSelectionPlugin = [
           if (has_focus === needs_selection) return;
 
           if (needs_selection) {
-            update.view.focus();
+            try {
+              // TODO Somehow this crashes when the backspace-merge-with-previous-cell happens...
+              // .... Yet.. it works fine ?!
+              update.view.focus();
+            } catch (e) {}
           } else {
             update.view.dom.blur();
           }
@@ -165,6 +183,19 @@ export let create_nested_editor_state = ({
 };
 
 export let BlurAllCells = StateEffect.define<void>();
+
+export let CellDispatchEffect = StateEffect.define<{
+  cell_id: CellId;
+  transaction: TransactionSpec | Transaction;
+}>();
+
+export let CellAddEffect = StateEffect.define<{
+  cell_id: CellId;
+  state: EditorState;
+}>();
+export let CellRemoveEffect = StateEffect.define<{
+  cell_id: CellId;
+}>();
 
 export let NestedEditorStatesField = StateField.define<{
   cells: { [key: CellId]: EditorState };
@@ -215,7 +246,7 @@ export let NestedEditorStatesField = StateField.define<{
 
             if (cell_state == null) {
               // prettier-ignore
-              console.log(`⚠ CellDispatchEffect for Cell(${cell_id}) but no cell state exists`);
+              console.log(`⚠ CellDispatchEffect for Cell(${cell_id}) but no cell state exists`, { effect });
               continue;
             }
 
@@ -224,9 +255,20 @@ export let NestedEditorStatesField = StateField.define<{
             cells[cell_id] = transaction.state;
 
             if (transaction.selection != null) {
+              console.log(`transaction.selection:`, transaction.selection);
               state.cell_with_current_selection =
                 transaction.startState.facet(CellIdFacet);
             }
+          }
+
+          if (effect.is(CellAddEffect)) {
+            let { cell_id, state: cell_state } = effect.value;
+            cells[cell_id] = cell_state;
+          }
+
+          if (effect.is(CellRemoveEffect)) {
+            let { cell_id } = effect.value;
+            delete cells[cell_id];
           }
         }
 
@@ -335,7 +377,35 @@ export let useNestedViewUpdate = (
   }, [nested_transactions, nested_editor_state, nested_dispatch]);
 };
 
+import { invertedEffects } from "@codemirror/commands";
+
+let inverted_add_remove_editor = invertedEffects.of((transaction) => {
+  /** @type {Array<StateEffect<any>>} */
+  let inverted_effects = [];
+  for (let effect of transaction.effects) {
+    if (effect.is(CellAddEffect)) {
+      inverted_effects.push(
+        CellRemoveEffect.of({
+          cell_id: effect.value.cell_id,
+        })
+      );
+    } else if (effect.is(CellRemoveEffect)) {
+      let { cell_id } = effect.value;
+      let cell_state = transaction.startState.field(NestedEditorStatesField)
+        .cells[cell_id];
+      inverted_effects.push(
+        CellAddEffect.of({
+          cell_id: cell_id,
+          state: cell_state,
+        })
+      );
+    }
+  }
+  return inverted_effects;
+});
+
 export let nested_cell_states_basics = [
   NestedEditorStatesField,
   expand_cell_effects_that_area_actually_meant_for_the_nexus,
+  inverted_add_remove_editor,
 ];
