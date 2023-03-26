@@ -3,14 +3,14 @@ import styled from "styled-components";
 import { Inspector as BasicInspector } from "inspector-x-react";
 import "@observablehq/inspector/src/style.css";
 import { compact, isEqual } from "lodash";
-import { deserialize } from "./deserialize-value-to-show";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import { EditorState, Prec } from "@codemirror/state";
-import { indentUnit, syntaxHighlighting } from "@codemirror/language";
-import { javascript_syntax_highlighting } from "../codemirror-javascript/codemirror-javascript";
-import { javascript } from "@codemirror/lang-javascript";
+import { indentUnit } from "@codemirror/language";
 import { Decoration, EditorView } from "@codemirror/view";
 import { ReactWidget } from "react-codemirror-widget";
+
+import { deserialize } from "./deserialize-value-to-show";
+import { javascript_syntax_highlighting } from "../codemirror-javascript/syntax-highlighting";
 
 let InspectorStyle = styled.div`
   --syntax_normal: #848484;

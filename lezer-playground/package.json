@@ -18,21 +18,14 @@
     "@dral/lezer-lezer-error": "workspace:*",
     "@lezer/common": "^1.0.2",
     "@lezer/generator": "^1.2.2",
-    "@observablehq/graphviz": "^0.2.1",
-    "@observablehq/stdlib": "^3.20.0",
     "bezier-easing": "^2.1.0",
-    "buffer": "^6.0.3",
-    "events": "^3.3.0",
     "lodash-es": "^4.17.21",
-    "prettier": "^2.7.1",
     "process": "^0.11.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^4.6.0",
-    "shallow-equal": "^1.2.1",
     "style-mod": "^4.0.0",
-    "styled-components": "^5.3.5",
-    "uuid": "^8.3.2"
+    "styled-components": "^5.3.5"
   },
   "workspaces": [
     "packages/*"

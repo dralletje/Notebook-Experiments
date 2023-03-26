@@ -134,7 +134,7 @@ let markdown_styling_base_theme = EditorView.baseTheme({
     color: "var(--accent-color)",
   },
   ".task-marker": {
-    "margin-left": "-25px",
+    "margin-left": "-1em",
   },
   ".hr": {
     "border-top": "1px solid rgba(255, 255, 255, 0.2)",
