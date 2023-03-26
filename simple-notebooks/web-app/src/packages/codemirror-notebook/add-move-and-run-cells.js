@@ -2,7 +2,7 @@ import { Prec, EditorSelection } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 
 import { MoveToCellBelowEffect } from "./cell-movement";
-import { format_with_prettier } from "../../yuck/format-javascript-with-prettier";
+import { format_with_prettier } from "../../javascript/format-javascript-with-prettier";
 import { SelectedCellsField } from "./cell-selection";
 import { range } from "lodash";
 import {

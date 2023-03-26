@@ -11,7 +11,7 @@ import { shallowEqualObjects } from "shallow-equal";
 
 import { Inspector } from "./yuck/Inspector";
 
-import { basic_javascript_setup } from "./yuck/codemirror-javascript-setup";
+import { basic_javascript_setup } from "./javascript/codemirror-javascript-setup";
 import { useNestedViewUpdate } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import {
   CellMetaField,

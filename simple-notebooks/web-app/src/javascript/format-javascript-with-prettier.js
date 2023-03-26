@@ -1,5 +1,5 @@
 import prettier from "prettier";
-import prettier_javascript_parser from "prettier/parser-babel";
+// import prettier_javascript_parser from "prettier/parser-babel";
 import prettier_typescript_parser from "prettier/parser-typescript";
 
 /**

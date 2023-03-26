@@ -7,7 +7,7 @@ import { deserialize } from "./deserialize-value-to-show";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import { EditorState, Prec } from "@codemirror/state";
 import { indentUnit, syntaxHighlighting } from "@codemirror/language";
-import { javascript_syntax_highlighting } from "./codemirror-javascript-setup";
+import { javascript_syntax_highlighting } from "../javascript/codemirror-javascript-setup";
 import { javascript } from "@codemirror/lang-javascript";
 import { Decoration, EditorView } from "@codemirror/view";
 import { ReactWidget } from "react-codemirror-widget";
