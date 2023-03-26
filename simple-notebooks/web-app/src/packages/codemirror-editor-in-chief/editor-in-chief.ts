@@ -26,7 +26,7 @@ type StateEffectFromType<Type> = Type extends StateEffectType<infer X>
   : never;
 
 export let cell_dispatch_effect_effects = (
-  effect: StateEffectFromType<typeof CellDispatchEffect>
+  effect: StateEffectFromType<typeof EditorDispatchEffect>
 ): StateEffect<any>[] => {
   let effects = effect.value.transaction.effects;
   if (Array.isArray(effects)) {
@@ -49,7 +49,7 @@ let expand_cell_effects_that_are_actually_meant_for_the_nexus =
   EditorState.transactionExtender.of((transaction) => {
     let moar_effects: Array<StateEffect<any>> = [];
     for (let effect of transaction.effects) {
-      if (effect.is(CellDispatchEffect)) {
+      if (effect.is(EditorDispatchEffect)) {
         for (let cell_effect of cell_dispatch_effect_effects(effect)) {
           if (cell_effect.is(EditorInChiefEffect)) {
             let effects =
@@ -180,10 +180,11 @@ export let create_nested_editor_state = ({
 
 export let BlurAllCells = StateEffect.define<void>();
 
-export let CellDispatchEffect = StateEffect.define<{
+export let EditorDispatchEffect = StateEffect.define<{
   cell_id: EditorId;
   transaction: TransactionSpec | Transaction;
 }>();
+export let CellDispatchEffect = EditorDispatchEffect;
 
 export let CellAddEffect = StateEffect.define<{
   cell_id: EditorId;
@@ -235,13 +236,13 @@ export let NestedEditorStatesField = StateField.define<{
         }
 
         for (let effect of transaction.effects) {
-          if (effect.is(CellDispatchEffect)) {
+          if (effect.is(EditorDispatchEffect)) {
             let { cell_id, transaction: spec } = effect.value;
             let cell_state = cells[cell_id];
 
             if (cell_state == null) {
               // prettier-ignore
-              console.log(`⚠ CellDispatchEffect for Cell(${cell_id}) but no cell state exists`, { effect });
+              console.log(`⚠ EditorDispatchEffect for Cell(${cell_id}) but no cell state exists`, { effect });
               continue;
             }
 
@@ -329,13 +330,13 @@ export let useNestedViewUpdate = (
   viewupdate: GenericViewUpdate<EditorInChief>,
   cell_id: EditorId
 ): GenericViewUpdate<EditorState> => {
-  // Wrap every transaction in CellDispatchEffect's
+  // Wrap every transaction in EditorDispatchEffect's
   let nested_dispatch = React.useMemo(() => {
     return (...transactions: import("@codemirror/state").TransactionSpec[]) => {
       viewupdate.view.dispatch(
         ...transactions.map((tr) => ({
           annotations: tr.annotations,
-          effects: CellDispatchEffect.of({
+          effects: EditorDispatchEffect.of({
             cell_id: cell_id,
             transaction: tr,
           }),
@@ -429,7 +430,7 @@ export class EditorInChiefTransaction {
 type StateFieldSpec<T> = {
   create: (state: EditorInChief) => T;
   update: (value: T, tr: EditorInChiefTransaction) => T;
-  provide?: (field: StateFieldSpec<T>) => Extension | EditorInChiefExtension;
+  provide?: (field: StateField<T>) => Extension | EditorInChiefExtension;
 };
 export class EditorInChiefStateFieldInit {
   constructor(public init: Extension) {
@@ -493,6 +494,24 @@ type EditorInChiefKeyBinding = {
   shift?: EditorInChiefCommand;
 };
 
+class EditorInChiefView {
+  constructor(private view: EditorView) {
+    this.view = view;
+  }
+
+  get state() {
+    return new EditorInChief(this.view.state);
+  }
+
+  dispatch(...specs: EditorInChiefTransactionSpec[]) {
+    this.view.dispatch(
+      ...specs.map((spec) => {
+        return { effects: spec.effects };
+      })
+    );
+  }
+}
+
 export class EditorInChiefKeymap {
   constructor(public extension: Extension) {
     this.extension = extension;
@@ -507,33 +526,8 @@ export class EditorInChiefKeymap {
         shortcuts.map((shortcut) => {
           return {
             ...shortcut,
-            run: (view) => {
-              return shortcut.run({
-                state: new EditorInChief(view.state),
-                dispatch: (...specs) => {
-                  view.dispatch(
-                    ...specs.map((spec) => {
-                      return { effects: spec.effects };
-                    })
-                  );
-                },
-              });
-            },
-            shift:
-              shortcut.shift == null
-                ? null
-                : (view) => {
-                    return shortcut.shift({
-                      state: new EditorInChief(view.state),
-                      dispatch: (...specs) => {
-                        view.dispatch(
-                          ...specs.map((spec) => {
-                            return { effects: spec.effects };
-                          })
-                        );
-                      },
-                    });
-                  },
+            run: (view) => shortcut.run(new EditorInChiefView(view)),
+            shift: (view) => shortcut.run(new EditorInChiefView(view)),
           };
         })
       )
@@ -613,7 +607,9 @@ export class EditorInChief {
     return new EditorInChief(
       EditorState.create({
         extensions: [
-          nested_cell_states_basics,
+          NestedEditorStatesField,
+          expand_cell_effects_that_are_actually_meant_for_the_nexus,
+          inverted_add_remove_editor,
           NestedEditorStatesField.init((editorstate) => ({
             cells: editors(editorstate),
             transactions_to_send_to_cells: [],
@@ -625,9 +621,3 @@ export class EditorInChief {
     );
   }
 }
-
-export let nested_cell_states_basics = [
-  NestedEditorStatesField,
-  expand_cell_effects_that_are_actually_meant_for_the_nexus,
-  inverted_add_remove_editor,
-];

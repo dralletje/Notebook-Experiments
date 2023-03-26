@@ -6,7 +6,10 @@
 import { EditorState } from "@codemirror/state";
 import { create_worker, post_message } from "./typescript-server-webworker";
 import { EditorView, keymap } from "@codemirror/view";
-import { CellEditorStatesField, updateListener } from "../../NotebookEditor";
+import {
+  CellEditorStatesField,
+  updateListener,
+} from "../codemirror-notebook/cell";
 
 /**
  * @typedef CellAndCodeMap

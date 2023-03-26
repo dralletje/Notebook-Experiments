@@ -4,7 +4,10 @@ import "./App.css";
 import { produce } from "immer";
 import { io } from "socket.io-client";
 import styled from "styled-components";
-import { CellMetaField, CellTypeFacet } from "./NotebookEditor";
+import {
+  CellMetaField,
+  CellTypeFacet,
+} from "./packages/codemirror-notebook/cell";
 import {
   SelectedCellsField,
   selected_cells_keymap,
@@ -18,7 +21,7 @@ import { mapValues } from "lodash";
 import {
   CellIdOrder,
   cell_movement_extension_default,
-} from "./packages/codemirror-notebook/codemirror-cell-movement";
+} from "./packages/codemirror-notebook/cell-movement";
 import { File } from "./File";
 import { NotebookFilename, NotebookId } from "./notebook-types";
 // import { typescript_extension } from "./packages/typescript-server-webworker/codemirror-typescript.js";

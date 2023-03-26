@@ -5,6 +5,16 @@ export {};
 // ╠═╡ folded = false
 x = 1020;
 
+// ╔═╡ [cells.149b391a-9ceb-4272-9269-7fe8879441eb]
+// ╠═╡ type = "text"
+// # Hey there!
+// 
+// - How do you do?
+// - [x] I'm great
+// Cool cool
+// Yeah
+// - [ ]
+
 // ╔═╡ [cells.9415d440-7760-4387-b8d2-91fdd240b1e2]
 // ╠═╡ folded = false
 y = x + 10
@@ -15,7 +25,9 @@ import fetch from "node-fetch"
 
 // ╔═╡ [cells.f476ea0d-ebcb-4e68-b45a-745496566e84]
 // ╠═╡ folded = false
-{x:[1,2,3,4]}
+x = do {
+	let x = 10
+}
 
 // ╔═╡ [cells.c55451ac-66a5-42ec-a765-c4b243bfd7ed]
 // ╠═╡ folded = false
@@ -27,6 +39,7 @@ let text = await response.text()
 
 // ╔═╡ ["Cell Order"]
 // ╠═╡ "Cell Order" = [
+// ╠═╡   "149b391a-9ceb-4272-9269-7fe8879441eb",
 // ╠═╡   "9415d440-7760-4387-b8d2-91fdd240b1e2",
 // ╠═╡   "9cb73be2-9ccc-4b36-b3b2-30fba249adde",
 // ╠═╡   "6e0249f4-3b09-4364-8dcf-ac6b32223d1f",

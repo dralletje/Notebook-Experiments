@@ -17,9 +17,11 @@ import {
   BlurAllCells,
   EditorIdFacet,
   EditorInChief,
-  NestedEditorStatesField,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
-import { CellMetaField, CellTypeFacet } from "./NotebookEditor";
+import {
+  CellMetaField,
+  CellTypeFacet,
+} from "./packages/codemirror-notebook/cell";
 import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
 
 let AppStyle = styled.div`

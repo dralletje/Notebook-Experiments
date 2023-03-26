@@ -1,5 +1,5 @@
 import { Facet, StateEffect, StateField } from "@codemirror/state";
-import { Cell, CellId } from "./notebook-types";
+import { Cell, CellId } from "../../notebook-types";
 import immer from "immer";
 import { v4 as uuidv4 } from "uuid";
 

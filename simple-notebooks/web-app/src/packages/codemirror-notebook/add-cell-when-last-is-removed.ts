@@ -1,7 +1,7 @@
 import { EditorState, Extension } from "@codemirror/state";
 import { CellAddEffect } from "../codemirror-editor-in-chief/editor-in-chief";
 import { CellOrderField, CellOrderEffect } from "./cell-order";
-import { empty_cell } from "../../NotebookEditor";
+import { empty_cell } from "./cell";
 import { create_cell_state } from "../../App";
 
 export let add_single_cell_when_all_cells_are_removed =
