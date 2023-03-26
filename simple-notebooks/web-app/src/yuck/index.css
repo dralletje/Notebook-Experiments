@@ -19,6 +19,8 @@ body {
   background-color: #121212;
   color: white;
 
+  /* background: url("./noise-background.png"), rgba(5, 5, 5, 0.9); */
+
   overscroll-behavior: none;
 }
 

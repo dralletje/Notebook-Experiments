@@ -25,7 +25,7 @@ import {
 
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
 import { basic_javascript_setup } from "./yuck/codemirror-javascript-setup";
-import { SelectedCellsField } from "./packages/codemirror-nexus/cell-selection";
+import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selection";
 import { basic_markdown_setup } from "./yuck/basic-markdown-setup";
 import {
   CellAddEffect,
@@ -33,7 +33,7 @@ import {
   CellRemoveEffect,
   EditorInChief,
   useNestedViewUpdate,
-} from "./packages/codemirror-editor-in-chief/EditorInChief";
+} from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,
@@ -41,19 +41,20 @@ import {
   empty_cell,
 } from "./NotebookEditor";
 import { create_cell_state } from "./App.jsx";
-import { CellOrderEffect } from "./packages/codemirror-nexus/cell-order.js";
-import { LastCreatedCells } from "./packages/codemirror-nexus/last-created-cells.js";
+import {
+  CellOrderEffect,
+  CellOrderField,
+} from "./packages/codemirror-notebook/cell-order.js";
+import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
 
 let CellContainer = styled.div`
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 
   will-change: transform;
 `;
-
-let InspectorHoverBackground = styled.div``;
 
 let InspectorContainer = styled.div`
   /* padding-left: calc(16px + 4px);
@@ -68,12 +69,10 @@ let InspectorContainer = styled.div`
   }
 `;
 
-let NOISE_BACKGROUND = new URL("./noise-background.png", import.meta.url).href;
 export let EditorStyled = styled.div`
   /* background-color: rgba(0, 0, 0, 0.4); */
-  background-color: rgb(23 23 23 / 40%);
-  background-image: url(${NOISE_BACKGROUND});
-
+  /* background-color: rgb(23 23 23 / 40%); */
+  background-color: #141414;
   & .cm-content {
     padding: 16px !important;
   }
@@ -86,7 +85,7 @@ let CellStyle = styled.div`
   /* background-color: rgba(0, 0, 0, 0.4); */
   /* I like transparency better for when the backdrop color changes
      but it isn't great when dragging */
-  background-color: #121212;
+  /* background-color: #121212; */
 
   font-family: Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro",
     monospace;
@@ -150,23 +149,8 @@ let CellStyle = styled.div`
   transform: scaleX(1);
   transform-origin: top left;
 
-  transition: filter 0.2s ease-in-out, transform 0.2s ease-in-out;
-
-  & ${InspectorHoverBackground} {
-    position: relative;
-
-    &::after {
-      content: "";
-      position: absolute;
-      inset: -8px 0 -8px 0;
-      background-color: #001c21;
-      z-index: -1;
-      pointer-events: none;
-
-      transition: opacity 0.2s ease-in-out;
-      opacity: 0;
-    }
-  }
+  transition: filter 0.2s ease-in-out, transform 0.2s ease-in-out,
+    background-color 0.2s ease-in-out;
 
   .dragging &,
   ${CellContainer}:has(.drag-handle:hover) &,
@@ -177,9 +161,7 @@ let CellStyle = styled.div`
     transform: translateX(-2px) translateY(-2px);
     z-index: 1;
 
-    & ${InspectorHoverBackground}::after {
-      opacity: 1;
-    }
+    background-color: #121212;
   }
   .dragging & {
     --prexisting-transform: translateX(-2px) translateY(-2px);
@@ -201,12 +183,12 @@ let DragAndDropListStyle = styled.div`
   flex-direction: column;
 `;
 
-let DragAndDropList = ({ children, nexus_editorview, cell_order }) => {
+let DragAndDropList = ({ children, editor_in_chief, cell_order }) => {
   return (
     <DragDropContext
       onDragEnd={({ draggableId, destination, source }) => {
         if (destination) {
-          nexus_editorview.dispatch({
+          editor_in_chief.dispatch({
             effects: CellOrderEffect.of({
               cell_id: draggableId,
               // from: source.index,
@@ -296,62 +278,134 @@ class ErrorBoundary extends React.Component {
 
 /**
  * @param {{
+ *  editor_in_chief: import("codemirror-x-react/viewupdate.js").EditorView<EditorInChief>,
+ *  cell: import("./notebook-types.js").Cell,
+ * }} props
+ */
+let cell_actions = ({ editor_in_chief, cell }) => [
+  {
+    title: (
+      <ContextMenuItem
+        icon={<IonIcon icon={codeOutline} />}
+        label="Add Code Cell Below"
+        shortcut="⌘K"
+      />
+    ),
+    onClick: () => {
+      let cell_order = editor_in_chief.state.field(CellOrderField);
+      let my_index = cell_order.indexOf(cell.id);
+      let new_cell = empty_cell();
+      editor_in_chief.dispatch({
+        effects: [
+          CellAddEffect.of({
+            cell_id: new_cell.id,
+            state: create_cell_state(editor_in_chief.state, new_cell),
+          }),
+          CellOrderEffect.of({
+            cell_id: new_cell.id,
+            index: my_index + 1,
+          }),
+          CellDispatchEffect.of({
+            cell_id: new_cell.id,
+            transaction: { selection: { anchor: 0 } },
+          }),
+        ],
+      });
+    },
+  },
+  {
+    title: (
+      <ContextMenuItem
+        icon={<IonIcon icon={textOutline} />}
+        label="Add Text Above"
+      />
+    ),
+    onClick: () => {
+      let cell_order = editor_in_chief.state.field(CellOrderField);
+      let my_index = cell_order.indexOf(cell.id);
+      let new_cell = empty_cell("text");
+      editor_in_chief.dispatch({
+        effects: [
+          CellAddEffect.of({
+            cell_id: new_cell.id,
+            state: create_cell_state(editor_in_chief.state, new_cell),
+          }),
+          CellOrderEffect.of({
+            cell_id: new_cell.id,
+            index: my_index,
+          }),
+          CellDispatchEffect.of({
+            cell_id: new_cell.id,
+            transaction: { selection: { anchor: 0 } },
+          }),
+        ],
+      });
+    },
+  },
+  {
+    title: (
+      <ContextMenuItem
+        icon={<IonIcon icon={planetOutline} />}
+        label="Delete"
+        shortcut="⌘K"
+      />
+    ),
+    onClick: () => {
+      editor_in_chief.dispatch({
+        effects: [
+          CellOrderEffect.of({
+            index: null,
+            cell_id: cell.id,
+          }),
+          CellRemoveEffect.of({ cell_id: cell.id }),
+        ],
+      });
+    },
+  },
+  {
+    title: (
+      <ContextMenuItem icon={<IonIcon icon={eyeOutline} />} label="Fold" />
+    ),
+    onClick: () => {
+      editor_in_chief.dispatch({
+        effects: CellDispatchEffect.of({
+          cell_id: cell.id,
+          transaction: {
+            effects: MutateCellMetaEffect.of((cell) => {
+              cell.folded = !cell.folded;
+            }),
+          },
+        }),
+      });
+    },
+  },
+];
+
+/**
+ * @param {{
  *  notebook: import("./notebook-types").Notebook,
  *  engine: import("./notebook-types").EngineShadow,
  *  viewupdate: GenericViewUpdate<EditorInChief>,
  * }} props
  */
 export let CellList = ({ notebook, engine, viewupdate }) => {
-  let nexus_editorview = viewupdate.view;
+  let editor_in_chief = viewupdate.view;
 
   /**
    * Keep track of what cells are just created by the users,
    * so we can animate them in 🤩
    */
   let last_created_cells =
-    nexus_editorview.state.field(LastCreatedCells, false) ?? [];
+    editor_in_chief.state.field(LastCreatedCells, false) ?? [];
 
-  // let selected_cells = nexus_editorview.state.field(SelectedCellsField);
-  let selected_cells = [];
+  let selected_cells = editor_in_chief.state.field(SelectedCellsField);
 
   return (
     <React.Fragment>
       <DragAndDropList
         cell_order={notebook.cell_order}
-        nexus_editorview={nexus_editorview}
+        editor_in_chief={editor_in_chief}
       >
-        <div
-          style={{
-            height: 0,
-            position: "relative",
-          }}
-        >
-          <AddButton
-            data-can-start-selection={false}
-            onClick={() => {
-              let new_cell = empty_cell();
-              nexus_editorview.dispatch({
-                effects: [
-                  CellAddEffect.of({
-                    cell_id: new_cell.id,
-                    state: create_cell_state(nexus_editorview.state, new_cell),
-                  }),
-                  CellOrderEffect.of({
-                    cell_id: new_cell.id,
-                    index: 0,
-                  }),
-                  CellDispatchEffect.of({
-                    cell_id: new_cell.id,
-                    transaction: { selection: { anchor: 0 } },
-                  }),
-                ],
-              });
-            }}
-          >
-            + <span className="show-me-later">add cell</span>
-          </AddButton>
-        </div>
-
         {notebook.cell_order
           .map((cell_id) => notebook.cells[cell_id])
           .map((cell, index) => (
@@ -375,48 +429,7 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                       }
                     >
                       <ContextMenuWrapper
-                        options={[
-                          {
-                            title: (
-                              <ContextMenuItem
-                                icon={<IonIcon icon={planetOutline} />}
-                                label="Delete"
-                                shortcut="⌘K"
-                              />
-                            ),
-                            onClick: () => {
-                              nexus_editorview.dispatch({
-                                effects: [
-                                  CellOrderEffect.of({
-                                    index: null,
-                                    cell_id: cell.id,
-                                  }),
-                                  CellRemoveEffect.of({ cell_id: cell.id }),
-                                ],
-                              });
-                            },
-                          },
-                          {
-                            title: (
-                              <ContextMenuItem
-                                icon={<IonIcon icon={eyeOutline} />}
-                                label="Fold"
-                              />
-                            ),
-                            onClick: () => {
-                              nexus_editorview.dispatch({
-                                effects: CellDispatchEffect.of({
-                                  cell_id: cell.id,
-                                  transaction: {
-                                    effects: MutateCellMetaEffect.of((cell) => {
-                                      cell.folded = !cell.folded;
-                                    }),
-                                  },
-                                }),
-                              });
-                            },
-                          },
-                        ]}
+                        options={cell_actions({ editor_in_chief, cell })}
                       >
                         <div
                           style={{
@@ -424,7 +437,7 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                           }}
                           {...provided.dragHandleProps}
                           onClick={() => {
-                            nexus_editorview.dispatch({
+                            editor_in_chief.dispatch({
                               effects: CellDispatchEffect.of({
                                 cell_id: cell.id,
                                 transaction: {
@@ -440,7 +453,7 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                       </ContextMenuWrapper>
 
                       <ErrorBoundary>
-                        {nexus_editorview.state
+                        {editor_in_chief.state
                           .editor(cell.id)
                           .facet(CellTypeFacet) === "text" ? (
                           <TextCell
@@ -468,109 +481,6 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                   </Flipped>
                 )}
               </Draggable>
-              <div
-                style={{
-                  height: 0,
-                  position: "relative",
-                }}
-              >
-                <ContextMenuWrapper
-                  options={[
-                    {
-                      title: (
-                        <ContextMenuItem
-                          icon={<IonIcon icon={codeOutline} />}
-                          label="Add Code Cell"
-                          shortcut="⌘K"
-                        />
-                      ),
-                      onClick: () => {
-                        let my_index = notebook.cell_order.indexOf(cell.id);
-                        let new_cell = empty_cell();
-                        nexus_editorview.dispatch({
-                          effects: [
-                            CellAddEffect.of({
-                              cell_id: new_cell.id,
-                              state: create_cell_state(
-                                nexus_editorview.state,
-                                new_cell
-                              ),
-                            }),
-                            CellOrderEffect.of({
-                              cell_id: new_cell.id,
-                              index: my_index + 1,
-                            }),
-                            CellDispatchEffect.of({
-                              cell_id: new_cell.id,
-                              transaction: { selection: { anchor: 0 } },
-                            }),
-                          ],
-                        });
-                      },
-                    },
-                    {
-                      title: (
-                        <ContextMenuItem
-                          icon={<IonIcon icon={textOutline} />}
-                          label="Add Text Cell"
-                        />
-                      ),
-                      onClick: () => {
-                        let my_index = notebook.cell_order.indexOf(cell.id);
-                        let new_cell = empty_cell("text");
-                        nexus_editorview.dispatch({
-                          effects: [
-                            CellAddEffect.of({
-                              cell_id: new_cell.id,
-                              state: create_cell_state(
-                                nexus_editorview.state,
-                                new_cell
-                              ),
-                            }),
-                            CellOrderEffect.of({
-                              cell_id: new_cell.id,
-                              index: my_index + 1,
-                            }),
-                            CellDispatchEffect.of({
-                              cell_id: new_cell.id,
-                              transaction: { selection: { anchor: 0 } },
-                            }),
-                          ],
-                        });
-                      },
-                    },
-                  ]}
-                >
-                  <AddButton
-                    data-can-start-selection={false}
-                    onClick={() => {
-                      let my_index = notebook.cell_order.indexOf(cell.id);
-                      let new_cell = empty_cell();
-                      nexus_editorview.dispatch({
-                        effects: [
-                          CellAddEffect.of({
-                            cell_id: new_cell.id,
-                            state: create_cell_state(
-                              nexus_editorview.state,
-                              new_cell
-                            ),
-                          }),
-                          CellOrderEffect.of({
-                            cell_id: new_cell.id,
-                            index: my_index + 1,
-                          }),
-                          CellDispatchEffect.of({
-                            cell_id: new_cell.id,
-                            transaction: { selection: { anchor: 0 } },
-                          }),
-                        ],
-                      });
-                    }}
-                  >
-                    + <span className="show-me-later">add cell</span>
-                  </AddButton>
-                </ContextMenuWrapper>
-              </div>
             </React.Fragment>
           ))}
       </DragAndDropList>
@@ -695,11 +605,9 @@ export let Cell = ({
         is_selected && "selected",
       ]).join(" ")}
     >
-      <InspectorHoverBackground>
-        <InspectorContainer>
-          <Inspector value={cylinder?.result} />
-        </InspectorContainer>
-      </InspectorHoverBackground>
+      <InspectorContainer>
+        <Inspector value={cylinder?.result} />
+      </InspectorContainer>
 
       <EditorStyled
         className="cell-editor"
@@ -853,45 +761,5 @@ let TextCellStyle = styled.div`
   .dragging & {
     --prexisting-transform: translateX(-2px) translateY(-2px);
     animation: shake 0.2s ease-in-out infinite alternate;
-  }
-`;
-
-let AddButton = styled.button`
-  position: absolute;
-  top: calc(100% - 1rem);
-  transform: translateY(-25%);
-  z-index: 1000;
-  left: calc(100% - 20px);
-  color: #ffffff82;
-  border: none;
-  white-space: pre;
-
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-
-  opacity: 0;
-  transition: opacity 0.2s ease-in-out;
-
-  .cell-container:focus-within + div &,
-  .cell-container:hover + div &,
-  div:hover > &,
-  div:has(+ .cell-container:hover) &,
-  div:has(+ .cell-container:focus-within) & {
-    opacity: 1;
-  }
-
-  & .show-me-later {
-    display: none;
-    font-size: 0.8rem;
-  }
-  &:hover .show-me-later,
-  dialog[open] + div > & > .show-me-later {
-    display: inline;
-  }
-  /* Hehe */
-  dialog[open] + div > & {
-    background-color: white;
-    color: black;
   }
 `;

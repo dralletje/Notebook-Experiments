@@ -47,6 +47,10 @@ const in_request_animation_frame = (fn) => {
  * @property {number} y
  */
 
+/**
+ * @param {{ on_selection: (selection: string[]) => void, children: import("react").ReactNode }} props
+ * @returns {import("react").ReactElement}
+ */
 export const SelectionArea = ({ on_selection, children }) => {
   /** @type {import("react").MutableRefObject<MouseEvent | null>} */
   const mouse_position_ref = React.useRef(null);
@@ -138,7 +142,9 @@ export const SelectionArea = ({ on_selection, children }) => {
         );
       });
 
-      on_selection(in_selection.map((x) => x.dataset.cellId));
+      on_selection(
+        in_selection.map((x) => /** @type {string} */ (x.dataset.cellId))
+      );
       set_selection({ start: selection.start, end: new_selection_end });
     });
 

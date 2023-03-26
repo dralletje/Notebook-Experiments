@@ -1,36 +1,26 @@
 import React from "react";
 
-import { io, Socket } from "socket.io-client";
 import styled from "styled-components";
 import { runScopeHandlers } from "@codemirror/view";
 import { isEqual, mapValues, sortBy } from "lodash";
-import { EditorState, Facet } from "@codemirror/state";
+import { useViewUpdate } from "codemirror-x-react/viewupdate";
 
-// import {
-//   BlurAllCells,
-//   CellEditorStatesField,
-//   CellIdFacet,
-//   CellMetaField,
-//   CellTypeFacet,
-//   useViewUpdate,
-// } from "./NotebookEditor";
 import {
   SelectCellsEffect,
   SelectedCellsField,
-} from "./packages/codemirror-nexus/cell-selection";
+} from "./packages/codemirror-notebook/cell-selection";
 import { SelectionArea } from "./selection-area/SelectionArea";
 import { NotebookFilename, NotebookId } from "./notebook-types";
 import { CellList } from "./Notebook";
 
-import { useViewUpdate } from "codemirror-x-react/viewupdate";
 import {
   BlurAllCells,
   EditorIdFacet,
   EditorInChief,
   NestedEditorStatesField,
-} from "./packages/codemirror-editor-in-chief/EditorInChief";
+} from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import { CellMetaField, CellTypeFacet } from "./NotebookEditor";
-import { CellOrderField } from "./packages/codemirror-nexus/cell-order.js";
+import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
 
 let AppStyle = styled.div`
   padding-top: 50px;
@@ -45,7 +35,7 @@ let AppStyle = styled.div`
 
 /**
  * @param {{ filename: string, notebook: import("./notebook-types").NotebookSerialized }} notebook
- * @param {Socket} socket
+ * @param {import("socket.io-client").Socket} socket
  * @returns {import("./notebook-types").EngineShadow}
  */
 let useEngine = (notebook, socket) => {
@@ -80,7 +70,7 @@ let useEngine = (notebook, socket) => {
  * @param {{
  *  state: EditorInChief,
  *  onChange: (state: EditorInChief) => void,
- *  socket: Socket,
+ *  socket: import("socket.io-client").Socket,
  *  files: { [filename: string]: { filename: string } },
  * }} props
  */
@@ -151,8 +141,7 @@ export function File({ state, onChange, socket, files }) {
 
   let engine = useEngine(notebook_with_filename, socket);
 
-  // let selected_cells = viewupdate.state.field(SelectedCellsField);
-  let selected_cells = [];
+  let selected_cells = viewupdate.state.field(SelectedCellsField);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>

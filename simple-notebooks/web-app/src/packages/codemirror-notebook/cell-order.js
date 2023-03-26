@@ -1,6 +1,6 @@
 import { StateEffect, StateEffectType } from "@codemirror/state";
 import { invertedEffects } from "../codemirror-editor-in-chief/codemirror-shared-history";
-import { EditorInChiefStateField } from "../codemirror-editor-in-chief/EditorInChief";
+import { EditorInChiefStateField } from "../codemirror-editor-in-chief/editor-in-chief";
 
 /**
  * @typedef CellPosition
@@ -75,5 +75,5 @@ export let CellOrderField = EditorInChiefStateField.define({
     }
     return current_value;
   },
-  // provide: () => CellOrderInvertedEffects,
+  provide: () => CellOrderInvertedEffects,
 });

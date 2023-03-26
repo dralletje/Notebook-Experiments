@@ -1,4 +1,4 @@
-import { EditorInChiefStateField } from "../codemirror-editor-in-chief/EditorInChief";
+import { EditorInChiefStateField } from "../codemirror-editor-in-chief/editor-in-chief";
 
 export let LastCreatedCells = EditorInChiefStateField.define({
   create() {

@@ -4,18 +4,12 @@ import "./App.css";
 import { produce } from "immer";
 import { io } from "socket.io-client";
 import styled from "styled-components";
-import {
-  EditorState,
-  StateEffect,
-  StateEffectType,
-  StateField,
-} from "@codemirror/state";
 import { CellMetaField, CellTypeFacet } from "./NotebookEditor";
 import {
   SelectedCellsField,
   selected_cells_keymap,
-} from "./packages/codemirror-nexus/cell-selection";
-import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
+} from "./packages/codemirror-notebook/cell-selection";
+import { keymap } from "@codemirror/view";
 import {
   shared_history,
   historyKeymap,
@@ -24,8 +18,7 @@ import { mapValues } from "lodash";
 import {
   CellIdOrder,
   cell_movement_extension_default,
-} from "./packages/codemirror-nexus/codemirror-cell-movement";
-// import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
+} from "./packages/codemirror-notebook/codemirror-cell-movement";
 import { File } from "./File";
 import { NotebookFilename, NotebookId } from "./notebook-types";
 // import { typescript_extension } from "./packages/typescript-server-webworker/codemirror-typescript.js";
@@ -33,13 +26,14 @@ import {
   EditorInChief,
   NestedExtension,
   create_nested_editor_state,
-} from "./packages/codemirror-editor-in-chief/EditorInChief";
-import { CellOrderField } from "./packages/codemirror-nexus/cell-order.js";
+} from "./packages/codemirror-editor-in-chief/editor-in-chief";
+import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
 import {
   cell_keymap,
   notebook_keymap,
-} from "./packages/codemirror-nexus/add-move-and-run-cells.js";
-import { LastCreatedCells } from "./packages/codemirror-nexus/last-created-cells.js";
+} from "./packages/codemirror-notebook/add-move-and-run-cells.js";
+import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
+import { add_single_cell_when_all_cells_are_removed } from "./packages/codemirror-notebook/add-cell-when-last-is-removed";
 
 /**
  * @typedef WorkspaceSerialized
@@ -99,6 +93,7 @@ let notebook_to_state = ({ filename, notebook }) => {
       SelectedCellsField,
       selected_cells_keymap,
       LastCreatedCells,
+      add_single_cell_when_all_cells_are_removed,
 
       NestedExtension.of(cell_keymap),
       notebook_keymap,

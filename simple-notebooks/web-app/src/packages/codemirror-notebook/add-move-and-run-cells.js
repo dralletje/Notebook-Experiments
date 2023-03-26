@@ -12,7 +12,7 @@ import {
   CellRemoveEffect,
   EditorInChiefEffect,
   EditorInChiefKeymap,
-} from "../codemirror-editor-in-chief/EditorInChief";
+} from "../codemirror-editor-in-chief/editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,
@@ -28,7 +28,7 @@ export let notebook_keymap = EditorInChiefKeymap.of([
     run: ({ state, dispatch }) => {
       let selected_cells = state.field(SelectedCellsField);
 
-      let cells = selected_cells.map((cell_id) => state.cell(cell_id));
+      let cells = selected_cells.map((cell_id) => state.editor(cell_id));
 
       let selected_code_cells = cells.filter(
         (cell) => cell.facet(CellTypeFacet) === "code"
@@ -262,10 +262,10 @@ export let cell_keymap = Prec.high(
                   }),
                 ]
               : []),
-            EditorInChiefEffect.of(
+            EditorInChiefEffect.of((editor_in_chief) =>
               CellAddEffect.of({
                 cell_id: cell_id,
-                state: create_cell_state(new_cell),
+                state: create_cell_state(editor_in_chief, new_cell),
               })
             ),
             EditorInChiefEffect.of(
@@ -288,9 +288,6 @@ export let cell_keymap = Prec.high(
         if (view.state.selection.main.from === 0) {
           view.dispatch({
             effects: [
-              // 1. Add this cell's code to the previous cell
-              // 2. Remove current cell
-              // 3. Move cursor to end of previous cell
               EditorInChiefEffect.of((state) => {
                 let cell_order = state.field(CellOrderField);
                 let cell_index = cell_order.indexOf(cell_id);

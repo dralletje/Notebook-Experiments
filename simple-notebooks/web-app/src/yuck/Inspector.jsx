@@ -73,9 +73,10 @@ let AAAAA = styled.div`
   }
   & .cm-scroller {
     padding-bottom: 8px;
+    padding-top: 8px;
   }
   .folded & .cm-scroller {
-    padding-bottom: 0px;
+    /* padding-bottom: 0px; */
   }
 
   & .sticky-left,
@@ -208,12 +209,12 @@ export let InspectorNoMemo = ({ value }) => {
     }
   }, [value]);
 
-  if (
-    result_deserialized.type === "return" &&
-    result_deserialized.value instanceof Node
-  ) {
-    return <Render node={result_deserialized.value} />;
-  }
+  // if (
+  //   result_deserialized.type === "return" &&
+  //   result_deserialized.value instanceof Node
+  // ) {
+  //   return <Render node={result_deserialized.value} />;
+  // }
 
   return (
     <PlaceInsideExpression expression={value?.name}>

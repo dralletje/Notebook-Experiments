@@ -31,7 +31,7 @@ import {
   CellDispatchEffect,
   NestedEditorStatesField,
   EditorIdFacet,
-} from "./EditorInChief";
+} from "./editor-in-chief";
 import { compact } from "lodash-es";
 
 class ForCell<T> {

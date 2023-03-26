@@ -1,39 +1,28 @@
 // ╔═╡ DRAL_NOTEBOOK_VERSION = "0.0.1"
 export {};
 
-// ╔═╡ [cells.7c20738c-9d68-4731-99de-e4663cbd2bee]
-// ╠═╡ type = "text"
-// # Sample code file!
-// Ready for a next level notebook experience? ${hi}
+// ╔═╡ [cells.f476ea0d-ebcb-4e68-b45a-745496566e84]
+// ╠═╡ folded = false
+10;
 
-// ╔═╡ [cells.bec774b7-3812-48a2-bf51-c2c3984e3520]
+// ╔═╡ [cells.9cb73be2-9ccc-4b36-b3b2-30fba249adde]
+// ╠═╡ folded = false
+x = 1020;
+
+// ╔═╡ [cells.9415d440-7760-4387-b8d2-91fdd240b1e2]
+// ╠═╡ folded = false
+y = x + 10
+
+// ╔═╡ [cells.a1a52a18-9396-4995-90a8-e932db83d7f7]
 // ╠═╡ folded = false
 
-
-// ╔═╡ [cells.0fd86a8b-8e43-4117-bc9b-fb715bc94ac4]
-// ╠═╡ folded = false
-90
-
-// ╔═╡ [cells.d96c0ce4-2f98-496b-a853-c539a5d10fdb]
-// ╠═╡ folded = false
-let SLIDER = () => 10;
-
-// ╔═╡ [cells.5fc2d017-918c-445c-8102-853c5d09b01c]
-// ╠═╡ folded = false
-g = html`hi`;
-
-// ╔═╡ [cells.4475b605-222b-47ea-8331-5486f73e02d7]
-// ╠═╡ folded = false
-let x = SLIDER();
 
 // ╔═╡ ["Cell Order"]
 // ╠═╡ "Cell Order" = [
-// ╠═╡   "7c20738c-9d68-4731-99de-e4663cbd2bee",
-// ╠═╡   "bec774b7-3812-48a2-bf51-c2c3984e3520",
-// ╠═╡   "0fd86a8b-8e43-4117-bc9b-fb715bc94ac4",
-// ╠═╡   "d96c0ce4-2f98-496b-a853-c539a5d10fdb",
-// ╠═╡   "5fc2d017-918c-445c-8102-853c5d09b01c",
-// ╠═╡   "4475b605-222b-47ea-8331-5486f73e02d7"
+// ╠═╡   "f476ea0d-ebcb-4e68-b45a-745496566e84",
+// ╠═╡   "9cb73be2-9ccc-4b36-b3b2-30fba249adde",
+// ╠═╡   "9415d440-7760-4387-b8d2-91fdd240b1e2",
+// ╠═╡   "a1a52a18-9396-4995-90a8-e932db83d7f7"
 // ╠═╡ ]
 
 

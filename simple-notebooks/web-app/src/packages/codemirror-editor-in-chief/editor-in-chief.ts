@@ -395,6 +395,10 @@ let inverted_add_remove_editor = invertedEffects.of((transaction) => {
       );
     }
   }
+
+  if (inverted_effects.length > 0) {
+    console.log(`inverted_effects:`, inverted_effects);
+  }
   return inverted_effects;
 });
 
@@ -429,7 +433,7 @@ export class EditorInChiefTransaction {
 type StateFieldSpec<T> = {
   create: (state: EditorInChief) => T;
   update: (value: T, tr: EditorInChiefTransaction) => T;
-  provide?: (value: T) => Extension | EditorInChiefExtension;
+  provide?: (field: StateFieldSpec<T>) => Extension | EditorInChiefExtension;
 };
 export class EditorInChiefStateFieldInit {
   constructor(public init: Extension) {
@@ -471,6 +475,8 @@ export class EditorInChiefStateField<T> {
             new EditorInChiefTransaction(new EditorInChief(tr.startState), tr)
           );
         },
+        provide: (field) =>
+          editor_in_chief_extensions_to_codemirror(spec.provide?.(field)),
       })
     );
   }
@@ -539,6 +545,19 @@ export class EditorInChiefKeymap {
   }
 }
 
+let editor_in_chief_extensions_to_codemirror = (
+  extensions: Array<Extension | EditorInChiefExtension> | EditorInChiefExtension
+): Extension =>
+  Array.isArray(extensions)
+    ? extensions.map((extension) =>
+        editor_state_extension in extension
+          ? extension[editor_state_extension]
+          : extension
+      )
+    : extensions == null
+    ? null
+    : editor_in_chief_extensions_to_codemirror([extensions]);
+
 export class EditorInChief {
   constructor(public editorstate: EditorState) {
     this.editorstate = editorstate;
@@ -590,11 +609,8 @@ export class EditorInChief {
     editors: (editorstate: EditorState) => { [key: EditorId]: EditorState };
     extensions?: EditorInChiefExtension[];
   }) {
-    let extensions_with_state_fields = extensions.map((extension) =>
-      editor_state_extension in extension
-        ? extension[editor_state_extension]
-        : extension
-    );
+    let extensions_with_state_fields =
+      editor_in_chief_extensions_to_codemirror(extensions);
 
     return new EditorInChief(
       EditorState.create({
@@ -615,5 +631,5 @@ export class EditorInChief {
 export let nested_cell_states_basics = [
   NestedEditorStatesField,
   expand_cell_effects_that_are_actually_meant_for_the_nexus,
-  // inverted_add_remove_editor,
+  inverted_add_remove_editor,
 ];
