@@ -9,9 +9,9 @@ import {
 } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import {
-  CellDispatchEffect,
+  EditorDispatchEffect,
+  EditorInChiefEffect,
   NestedExtension,
-  cell_dispatch_effect_effects,
 } from "../codemirror-editor-in-chief/editor-in-chief";
 
 // A lot of this file is an adaptation of https://github.com/fonsp/Pluto.jl/blob/ab85efca962d009c741d4ec66508d687806e9579/frontend/components/CellInput/cell_movement_plugin.js
@@ -51,81 +51,57 @@ export let CellIdOrder = Facet.define({
   combine: (x) => x[0],
 });
 
-/** @type {StateEffectType<{ start: CellRelativeSelection, screenGoalColumn?: number }>} */
-export let MoveToCellAboveEffect = StateEffect.define({});
-/** @type {StateEffectType<{ start: CellRelativeSelection, screenGoalColumn?: number }>} */
-export let MoveToCellBelowEffect = StateEffect.define({});
+/**
+ * @typedef CursorDestination
+ * @type {{ at: CellRelativeSelection, screenGoalColumn?: number }}
+ */
 
-/** @type {StateEffectType<{ start: CellRelativeSelection, screenGoalColumn?: number }>} */
+/** @type {StateEffectType<CursorDestination>} */
 let MoveFromCellAboveEffect = StateEffect.define({});
-/** @type {StateEffectType<{ start: CellRelativeSelection, screenGoalColumn?: number }>} */
+/** @type {StateEffectType<CursorDestination>} */
 let MoveFromCellBelowEffect = StateEffect.define({});
 
-// TODO? Make this a transaction-to-cell-transaction multiplexer?
-// TODO Or instead make it a function to apply to a view, that gets you back the
-// .... the desired effects.
-let delegate_moves_to_relative_cells = EditorState.transactionExtender.of(
-  (transaction) => {
-    let moar_effects = [];
-
-    let cell_order = transaction.startState.facet(CellIdOrder);
-    for (let effect of transaction.effects) {
-      if (effect.is(CellDispatchEffect)) {
-        let { cell_id, transaction } = effect.value;
-        for (let cell_effect of cell_dispatch_effect_effects(effect)) {
-          if (cell_effect.is(MoveToCellAboveEffect)) {
-            let { start } = cell_effect.value;
-
-            let cell_index = cell_order.indexOf(cell_id);
-            if (cell_order[cell_index - 1] == null) {
-              console.log(`Can't move up`);
-              continue;
-            }
-
-            moar_effects.push(
-              CellDispatchEffect.of({
-                cell_id: cell_order[cell_index - 1],
-                transaction: {
-                  effects: [MoveFromCellBelowEffect.of(cell_effect.value)],
-                },
-              })
-            );
-          }
-          if (cell_effect.is(MoveToCellBelowEffect)) {
-            let { start } = cell_effect.value;
-
-            console.log("Heyooo");
-
-            let cell_index = cell_order.indexOf(cell_id);
-            if (cell_order[cell_index + 1] == null) {
-              console.log(`Can't move down`);
-              continue;
-            }
-
-            console.log(`cell_effect.value:`, cell_effect.value);
-            console.log(`cell_index:`, cell_order[cell_index + 1]);
-
-            moar_effects.push(
-              CellDispatchEffect.of({
-                cell_id: cell_order[cell_index + 1],
-                transaction: {
-                  effects: [MoveFromCellAboveEffect.of(cell_effect.value)],
-                },
-              })
-            );
-          }
-        }
-      }
-    }
-    if (moar_effects.length !== 0) {
-      return {
-        effects: moar_effects,
-      };
-    } else {
+/**
+ * @param {CursorDestination} destination
+ */
+let move_to_cell_above = (destination) => {
+  return EditorInChiefEffect.of((state, cell_id) => {
+    let cell_order = state.facet(CellIdOrder);
+    let cell_index = cell_order.indexOf(cell_id);
+    if (cell_order[cell_index - 1] == null) {
+      console.log(`CELL MOVEMENT: Can't move up from "${cell_id}"`);
       return null;
     }
-  }
-);
+
+    return EditorDispatchEffect.of({
+      cell_id: cell_order[cell_index - 1],
+      transaction: {
+        effects: [MoveFromCellBelowEffect.of(destination)],
+      },
+    });
+  });
+};
+
+/**
+ * @param {CursorDestination} destination
+ */
+let move_to_cell_below = (destination) => {
+  return EditorInChiefEffect.of((state, cell_id) => {
+    let cell_order = state.facet(CellIdOrder);
+    let cell_index = cell_order.indexOf(cell_id);
+    if (cell_order[cell_index + 1] == null) {
+      console.log(`CELL MOVEMENT: Can't move down from "${cell_id}"`);
+      return null;
+    }
+
+    return EditorDispatchEffect.of({
+      cell_id: cell_order[cell_index + 1],
+      transaction: {
+        effects: [MoveFromCellAboveEffect.of(destination)],
+      },
+    });
+  });
+};
 
 let viewplugin_for_cell = NestedExtension.of(
   EditorView.updateListener.of(({ view, state, transactions }) => {
@@ -143,8 +119,7 @@ let viewplugin_for_cell = NestedExtension.of(
         // Eventually I should copy a modified version of moveVertically into here, but for now this will do.
 
         if (effect.is(MoveFromCellBelowEffect)) {
-          let { start, screenGoalColumn } = effect.value;
-          console.log(`start, screenGoalColumn:`, start, screenGoalColumn);
+          let { at: start, screenGoalColumn } = effect.value;
           if (start === "end") {
             view.dispatch({
               selection: EditorSelection.cursor(state.doc.length),
@@ -201,14 +176,11 @@ let viewplugin_for_cell = NestedExtension.of(
             });
           }
 
-          console.log("FORCE FOCUS");
           view.focus();
         }
 
         if (effect.is(MoveFromCellAboveEffect)) {
-          console.log("OHAY");
-
-          let { start } = effect.value;
+          let { at: start } = effect.value;
           if (start === "end") {
             view.dispatch({
               selection: EditorSelection.cursor(state.doc.length),
@@ -240,7 +212,6 @@ let viewplugin_for_cell = NestedExtension.of(
             });
           }
 
-          console.log("FORCE FOCUS");
           view.focus();
         }
       }
@@ -248,16 +219,11 @@ let viewplugin_for_cell = NestedExtension.of(
   })
 );
 
-export let cell_movement_extension = [
-  delegate_moves_to_relative_cells,
-  viewplugin_for_cell,
-];
-
 // Don't-accidentally-remove-cells-plugin
 // Because we need some extra info about the key, namely if it is on repeat or not,
 // we can't use a keymap (keymaps don't give us the event with `repeat` property),
 // so we use a custom keydown event handler.
-export let prevent_holding_a_key_from_doing_things_across_cells =
+let prevent_holding_a_key_from_doing_things_across_cells =
   EditorView.domEventHandlers({
     keydown: (event, view) => {
       // TODO We could also require a re-press after a force focus, because
@@ -331,9 +297,9 @@ export let arrows_move_between_cells_keymap = [
       let screen_goal_column = rect == null ? 0 : rect.left;
       view.dispatch({
         effects: [
-          MoveToCellAboveEffect.of({
-            start: selection,
-            // screenGoalColumn: screen_goal_column,
+          move_to_cell_above({
+            at: selection,
+            screenGoalColumn: screen_goal_column,
           }),
         ],
       });
@@ -354,9 +320,9 @@ export let arrows_move_between_cells_keymap = [
       let screen_goal_column = rect == null ? 0 : rect.left;
       view.dispatch({
         effects: [
-          MoveToCellBelowEffect.of({
-            start: selection,
-            // screenGoalColumn: screen_goal_column,
+          move_to_cell_below({
+            at: selection,
+            screenGoalColumn: screen_goal_column,
           }),
         ],
       });
@@ -373,7 +339,7 @@ export let arrows_move_between_cells_keymap = [
       if (!view.moveByChar(selection, false).eq(selection)) return false;
 
       view.dispatch({
-        effects: [MoveToCellAboveEffect.of({ start: "end" })],
+        effects: [move_to_cell_above({ at: "end" })],
       });
       return true;
     },
@@ -386,7 +352,7 @@ export let arrows_move_between_cells_keymap = [
       if (!view.moveByChar(selection, true).eq(selection)) return false;
 
       view.dispatch({
-        effects: [MoveToCellBelowEffect.of({ start: "begin" })],
+        effects: [move_to_cell_below({ at: "begin" })],
       });
       return true;
     },
@@ -395,7 +361,7 @@ export let arrows_move_between_cells_keymap = [
     key: "PageUp",
     run: (view) => {
       view.dispatch({
-        effects: [MoveToCellAboveEffect.of({ start: "begin" })],
+        effects: [move_to_cell_above({ at: "begin" })],
       });
       return true;
     },
@@ -404,15 +370,15 @@ export let arrows_move_between_cells_keymap = [
     key: "PageDown",
     run: (view) => {
       view.dispatch({
-        effects: [MoveToCellBelowEffect.of({ start: "begin" })],
+        effects: [move_to_cell_below({ at: "begin" })],
       });
       return true;
     },
   },
 ];
 
-export let cell_movement_extension_default = [
-  cell_movement_extension,
+export let cell_movement_extension = [
+  viewplugin_for_cell,
   // Highest because it needs to handle keydown before the keymap normally does
   NestedExtension.of(
     Prec.highest(prevent_holding_a_key_from_doing_things_across_cells)

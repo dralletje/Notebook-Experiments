@@ -144,7 +144,7 @@ let AAAAA = styled.div`
   & .cm-editor {
     color: var(--cm-editor-text-color);
   }
-  & .cm-editor.cm-focused:not(.__) {
+  & .cm-editor.cm-focused {
     outline: unset;
   }
 

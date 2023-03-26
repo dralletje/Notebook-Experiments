@@ -17,7 +17,6 @@ import {
   EditorDispatchEffect,
   CellAddEffect,
   CellRemoveEffect,
-  useNestedViewUpdate,
   cell_dispatch_effect_effects,
   NestedExtension,
   EditorIdFacet,
@@ -28,9 +27,10 @@ import {
   CellHasSelectionField,
   CellHasSelectionEffect,
 } from "./cell-has-selection-extension";
+import { extract_nested_viewupdate } from "./extract-nested-viewupdate";
 
 export {
-  useNestedViewUpdate,
+  extract_nested_viewupdate,
   NestedEditorStatesField,
   EditorIdFacet,
   NestedExtension,
@@ -198,9 +198,17 @@ export class EditorInChiefKeymap {
   }
 }
 
+let EditorInChiefCache = new WeakMap<EditorState, EditorInChief>();
+
 export class EditorInChief {
   constructor(public editorstate: EditorState) {
     this.editorstate = editorstate;
+
+    if (EditorInChiefCache.has(editorstate)) {
+      return EditorInChiefCache.get(editorstate);
+    } else {
+      EditorInChiefCache.set(editorstate, this);
+    }
   }
 
   facet<T>(facet: Facet<any, T>) {

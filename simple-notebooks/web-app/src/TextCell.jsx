@@ -8,7 +8,7 @@ import {
 import { EditorView } from "@codemirror/view";
 import { compact } from "lodash";
 import { basic_markdown_setup } from "./codemirror-markdown/codemirror-markdown";
-import { useNestedViewUpdate } from "./packages/codemirror-editor-in-chief/editor-in-chief";
+import { extract_nested_viewupdate } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 
 let local_style = EditorView.theme({
   "& .cm-scroller": {
@@ -23,8 +23,11 @@ let local_style = EditorView.theme({
   "&  .cm-selectionBackground": {
     background: "hsl(0deg 0% 59% / 30%)",
   },
-  "& .cm-focused .cm-selectionBackground": {
+  "&.cm-focused .cm-selectionBackground": {
     background: "hsl(215deg 64% 59% / 48%)",
+  },
+  "&.cm-focused": {
+    outline: "unset",
   },
 
   // Cursor style
@@ -58,7 +61,7 @@ export let TextCell = ({
   did_just_get_created,
   viewupdate,
 }) => {
-  let nested_viewupdate = useNestedViewUpdate(viewupdate, cell_id);
+  let nested_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
 
   // prettier-ignore
   let editorview_ref = React.useRef(/** @type {EditorView} */ (/** @type {any} */ (null)));

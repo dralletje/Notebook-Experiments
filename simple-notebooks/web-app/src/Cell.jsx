@@ -12,7 +12,10 @@ import { shallowEqualObjects } from "shallow-equal";
 import { Inspector } from "./yuck/Inspector";
 
 import { basic_javascript_setup } from "./codemirror-javascript/codemirror-javascript";
-import { useNestedViewUpdate } from "./packages/codemirror-editor-in-chief/editor-in-chief";
+import {
+  CellHasSelectionField,
+  extract_nested_viewupdate,
+} from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,
@@ -144,10 +147,10 @@ let local_style = EditorView.theme({
   "&  .cm-selectionBackground": {
     background: "hsl(0deg 0% 59% / 30%)",
   },
-  "& .cm-focused .cm-selectionBackground": {
+  "&.cm-focused .cm-selectionBackground": {
     background: "hsl(215deg 64% 59% / 48%)",
   },
-  "& .cm-focused:not(.__)": {
+  "&.cm-focused": {
     outline: "unset",
   },
 
@@ -222,7 +225,7 @@ export let Cell = ({
   did_just_get_created,
   viewupdate,
 }) => {
-  let nested_viewupdate = useNestedViewUpdate(viewupdate, cell_id);
+  let nested_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
   let state = nested_viewupdate.state;
   let type = state.facet(CellTypeFacet);
   let cell = {
@@ -277,7 +280,9 @@ export let Cell = ({
   // NOTE Can also use CellHasSelectionField, but that will keep the cell open
   // .... when I click somewhere else... but it now closes abruptly... hmmmm
   // let folded = state.field(CellHasSelectionField) ? false : cell.folded;
-  let folded = is_focused ? false : cell.folded;
+  let folded = nested_viewupdate.state.field(CellHasSelectionField)
+    ? false
+    : cell.folded;
   let forced_unfolded = cell.folded && is_focused;
 
   return (
@@ -301,37 +306,39 @@ export let Cell = ({
         <Inspector value={cylinder?.result} />
       </InspectorContainer>
 
-      <EditorStyled
-        className="cell-editor"
-        style={{
-          height: folded ? 0 : undefined,
-          marginTop: folded ? 0 : undefined,
-        }}
-      >
-        <CodemirrorFromViewUpdate
-          ref={editorview_ref}
-          viewupdate={nested_viewupdate}
+      {!folded && (
+        <EditorStyled
+          className="cell-editor"
+          style={{
+            display: folded ? "none" : undefined,
+            marginTop: folded ? 0 : undefined,
+          }}
         >
-          <Extension
-            key="placeholder"
-            deps={[]}
-            extension={placeholder("The rest is still unwritten... ")}
-          />
-          <Extension
-            key="basic-javascript-setup"
-            extension={basic_javascript_setup}
-          />
-          <Extension
-            key="set_is_focused_extension"
-            extension={set_is_focused_extension}
-          />
-          <Extension
-            key="remove_selection_on_blur_extension"
-            extension={remove_selection_on_blur_extension}
-          />
-          <Extension key="local_style" extension={local_style} />
-        </CodemirrorFromViewUpdate>
-      </EditorStyled>
+          <CodemirrorFromViewUpdate
+            ref={editorview_ref}
+            viewupdate={nested_viewupdate}
+          >
+            <Extension
+              key="placeholder"
+              deps={[]}
+              extension={placeholder("The rest is still unwritten... ")}
+            />
+            <Extension
+              key="basic-javascript-setup"
+              extension={basic_javascript_setup}
+            />
+            <Extension
+              key="set_is_focused_extension"
+              extension={set_is_focused_extension}
+            />
+            <Extension
+              key="remove_selection_on_blur_extension"
+              extension={remove_selection_on_blur_extension}
+            />
+            <Extension key="local_style" extension={local_style} />
+          </CodemirrorFromViewUpdate>
+        </EditorStyled>
+      )}
     </CellStyle>
   );
 };

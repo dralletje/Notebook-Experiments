@@ -20,7 +20,7 @@ import {
 import { mapValues } from "lodash";
 import {
   CellIdOrder,
-  cell_movement_extension_default,
+  cell_movement_extension,
 } from "./packages/codemirror-notebook/cell-movement";
 import { File } from "./File";
 import { NotebookFilename, NotebookId } from "./notebook-types";
@@ -91,7 +91,7 @@ let notebook_to_state = ({ filename, notebook }) => {
       CellOrderField.init(() => notebook.cell_order),
 
       cell_id_order_from_notebook_facet,
-      cell_movement_extension_default,
+      cell_movement_extension,
 
       SelectedCellsField,
       selected_cells_keymap,

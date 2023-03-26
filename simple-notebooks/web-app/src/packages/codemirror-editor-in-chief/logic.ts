@@ -9,10 +9,8 @@ import {
   StateEffectType,
   EditorStateConfig,
 } from "@codemirror/state";
-import React from "react";
 import immer from "immer";
 import { invertedEffects } from "@codemirror/commands";
-import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 import { EditorInChief } from "./editor-in-chief";
 import {
   CellHasSelectionEffect,
@@ -20,7 +18,7 @@ import {
   cell_has_selection_extension,
 } from "./cell-has-selection-extension";
 
-type EditorId = string;
+export type EditorId = string;
 
 export let EditorIdFacet = Facet.define<EditorId, EditorId>({
   combine: (x) => x[0],
@@ -55,10 +53,15 @@ export let expand_cell_effects_that_are_actually_meant_for_the_nexus =
           if (cell_effect.is(EditorInChiefEffect)) {
             let effects =
               typeof cell_effect.value === "function"
-                ? cell_effect.value(new EditorInChief(transaction.state))
+                ? cell_effect.value(
+                    new EditorInChief(transaction.state),
+                    effect.value.cell_id
+                  )
                 : cell_effect.value;
             if (Array.isArray(effects)) {
               moar_effects.push(...effects);
+            } else if (effects == null) {
+              // do nothing
             } else {
               moar_effects.push(effects);
             }
@@ -111,9 +114,13 @@ export let EditorDispatchEffect = StateEffect.define<{
 }>();
 
 export let EditorInChiefEffect = StateEffect.define<
-  | ((state: EditorInChief) => StateEffect<any>[] | StateEffect<any>)
+  | ((
+      state: EditorInChief,
+      editor_id: EditorId
+    ) => StateEffect<any>[] | StateEffect<any>)
   | StateEffect<any>[]
   | StateEffect<any>
+  | null
 >();
 
 export let CellAddEffect = StateEffect.define<{
@@ -186,6 +193,10 @@ export let NestedEditorStatesField = StateField.define<{
             }
           }
 
+          if (effect.is(BlurAllCells)) {
+            state.cell_with_current_selection = null;
+          }
+
           if (effect.is(CellAddEffect)) {
             let { cell_id, state: cell_state } = effect.value;
             cells[cell_id] = cell_state;
@@ -197,33 +208,16 @@ export let NestedEditorStatesField = StateField.define<{
           }
         }
 
-        // "Hack" to make BlurAllCells work
-        // TODO Ideally we do this "together" with the other effects,
-        // .... because in an edge case there might be an explicit selection
-        // .... "after" the BlurAllCells effect, and we'd want to respect that
-        for (let effect of transaction.effects) {
-          if (effect.is(BlurAllCells)) {
-            state.cell_with_current_selection = null;
-          }
-        }
-
         for (let [cell_id, cell] of Object.entries(cells)) {
-          if (state.cell_with_current_selection === cell_id) {
-            if (!cell.field(CellHasSelectionField)) {
-              let transaction = cell.update({
-                effects: CellHasSelectionEffect.of(true),
-              });
-              transactions_to_send_to_cells.push(transaction);
-              cells[cell_id] = transaction.state;
-            }
-          } else {
-            if (cell.field(CellHasSelectionField)) {
-              let transaction = cell.update({
-                effects: CellHasSelectionEffect.of(false),
-              });
-              transactions_to_send_to_cells.push(transaction);
-              cells[cell_id] = transaction.state;
-            }
+          let should_be_focussed =
+            state.cell_with_current_selection === cell_id;
+
+          if (should_be_focussed !== cell.field(CellHasSelectionField)) {
+            let transaction = cell.update({
+              effects: CellHasSelectionEffect.of(should_be_focussed),
+            });
+            transactions_to_send_to_cells.push(transaction);
+            cells[cell_id] = transaction.state;
           }
         }
 
@@ -253,54 +247,6 @@ export let NestedEditorStatesField = StateField.define<{
     }
   },
 });
-
-// Wanted to make this a normal function, but I need to memo some stuff,
-// So it's a hook now
-export let useNestedViewUpdate = (
-  viewupdate: GenericViewUpdate<EditorInChief>,
-  cell_id: EditorId
-): GenericViewUpdate<EditorState> => {
-  // Wrap every transaction in EditorDispatchEffect's
-  let nested_dispatch = React.useMemo(() => {
-    return (...transactions: import("@codemirror/state").TransactionSpec[]) => {
-      viewupdate.view.dispatch(
-        ...transactions.map((tr) => ({
-          annotations: tr.annotations,
-          effects: EditorDispatchEffect.of({
-            cell_id: cell_id,
-            transaction: tr,
-          }),
-        }))
-      );
-    };
-  }, [viewupdate.view.dispatch]);
-
-  let nested_editor_state = React.useMemo(() => {
-    return viewupdate.state.field(NestedEditorStatesField).cells[cell_id];
-  }, [viewupdate.state]);
-
-  let nested_transactions = React.useMemo(() => {
-    // Because we get one `viewupdate` for multiple transactions happening,
-    // and `.transactions_to_send_to_cells` gets cleared after every transactions,
-    // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
-    let all_cell_transactions = viewupdate.transactions.flatMap(
-      (transaction) => {
-        return transaction.state.field(NestedEditorStatesField)
-          .transactions_to_send_to_cells;
-      }
-    );
-    return all_cell_transactions.filter((transaction) => {
-      return transaction.startState.facet(EditorIdFacet) === cell_id;
-    });
-  }, [viewupdate.transactions]);
-
-  return React.useMemo(() => {
-    return new GenericViewUpdate(nested_transactions, {
-      state: nested_editor_state,
-      dispatch: nested_dispatch,
-    });
-  }, [nested_transactions, nested_editor_state, nested_dispatch]);
-};
 
 export let inverted_add_remove_editor = invertedEffects.of((transaction) => {
   /** @type {Array<StateEffect<any>>} */

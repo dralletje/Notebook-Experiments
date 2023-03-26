@@ -1,7 +1,7 @@
 import { Prec, EditorSelection } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 
-import { MoveToCellBelowEffect } from "./cell-movement";
+// import { MoveToCellBelowEffect } from "./cell-movement";
 import { format_with_prettier } from "../../codemirror-javascript/format-javascript-with-prettier";
 import { SelectedCellsField } from "./cell-selection";
 import { range } from "lodash";
@@ -12,6 +12,7 @@ import {
   CellRemoveEffect,
   EditorInChiefEffect,
   EditorInChiefKeymap,
+  EditorDispatchEffect,
 } from "../codemirror-editor-in-chief/editor-in-chief";
 import {
   CellMetaField,
@@ -233,18 +234,16 @@ export let cell_keymap = Prec.high(
                   cell_id: new_cell.id,
                   index: { after: cell_id },
                 }),
-                // CellDispatchEffect.of({
-                //   cell_id: cell_id,
-                //   transaction: {
-                //     effects: [MoveToCellBelowEffect.of({ start: "begin" })],
-                //   },
-                // }),
+                EditorDispatchEffect.of({
+                  cell_id: new_cell.id,
+                  transaction: { selection: EditorSelection.cursor(0) },
+                }),
               ];
             }),
             // MoveToCellBelowEffect.of({ start: "begin" }),
           ],
         });
-        dispatch({ effects: MoveToCellBelowEffect.of({ start: "begin" }) });
+        // dispatch({ effects: MoveToCellBelowEffect.of({ start: "begin" }) });
         return true;
       },
     },

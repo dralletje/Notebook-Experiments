@@ -32,7 +32,7 @@ import {
   NestedEditorStatesField,
   EditorIdFacet,
 } from "./editor-in-chief";
-import { compact } from "lodash-es";
+import { compact } from "lodash";
 
 class ForCell<T> {
   constructor(
