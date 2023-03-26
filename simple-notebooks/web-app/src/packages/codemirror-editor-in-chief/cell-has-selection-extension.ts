@@ -1,14 +1,14 @@
 import { EditorView, ViewPlugin } from "@codemirror/view";
 import { StateEffect, StateField } from "@codemirror/state";
 
-export let CellHasSelectionEffect = StateEffect.define<boolean>();
-export let CellHasSelectionField = StateField.define<boolean>({
+export let EditorHasSelectionEffect = StateEffect.define<boolean>();
+export let EditorHasSelectionField = StateField.define<boolean>({
   create() {
     return false;
   },
   update(value, transaction) {
     for (let effect of transaction.effects) {
-      if (effect.is(CellHasSelectionEffect)) {
+      if (effect.is(EditorHasSelectionEffect)) {
         value = effect.value;
       }
     }
@@ -17,13 +17,13 @@ export let CellHasSelectionField = StateField.define<boolean>({
 });
 
 export let cell_has_selection_extension = [
-  CellHasSelectionField,
+  EditorHasSelectionField,
   EditorView.editorAttributes.of((view) => {
-    let has_selection = view.state.field(CellHasSelectionField);
+    let has_selection = view.state.field(EditorHasSelectionField);
     return { class: has_selection ? "has-selection" : "" };
   }),
   ViewPlugin.define((view) => {
-    let has_selection = view.state.field(CellHasSelectionField);
+    let has_selection = view.state.field(EditorHasSelectionField);
     if (has_selection === true) {
       Promise.resolve().then(() => {
         // Make sure the editor isn't removed yet :O
@@ -35,8 +35,8 @@ export let cell_has_selection_extension = [
 
     return {
       update: (update) => {
-        let had_selection = update.startState.field(CellHasSelectionField);
-        let needs_selection = update.state.field(CellHasSelectionField);
+        let had_selection = update.startState.field(EditorHasSelectionField);
+        let needs_selection = update.state.field(EditorHasSelectionField);
         if (had_selection !== needs_selection) {
           let has_focus = view.dom.contains(document.activeElement);
           if (has_focus === needs_selection) return;

@@ -6,13 +6,12 @@ import { format_with_prettier } from "../../codemirror-javascript/format-javascr
 import { SelectedCellsField } from "./cell-selection";
 import { range } from "lodash";
 import {
-  CellAddEffect,
-  CellDispatchEffect,
+  EditorAddEffect,
+  EditorDispatchEffect,
   EditorIdFacet,
-  CellRemoveEffect,
+  EditorRemoveEffect,
   EditorInChiefEffect,
   EditorInChiefKeymap,
-  EditorDispatchEffect,
 } from "../codemirror-editor-in-chief/editor-in-chief";
 import {
   CellMetaField,
@@ -49,7 +48,7 @@ export let notebook_keymap = EditorInChiefKeymap.of([
         // Remove `//` from all lines in all selected cells
         dispatch({
           effects: selected_code_cells.map((cell) =>
-            CellDispatchEffect.of({
+            EditorDispatchEffect.of({
               cell_id: cell.facet(EditorIdFacet),
               transaction: {
                 changes: range(1, cell.doc.lines + 1).map((line_number) => {
@@ -71,7 +70,7 @@ export let notebook_keymap = EditorInChiefKeymap.of([
       } else {
         dispatch({
           effects: selected_code_cells.map((cell) =>
-            CellDispatchEffect.of({
+            EditorDispatchEffect.of({
               cell_id: cell.facet(EditorIdFacet),
               transaction: {
                 changes: range(1, cell.doc.lines + 1).map((line_number) => {
@@ -131,7 +130,7 @@ export let notebook_keymap = EditorInChiefKeymap.of([
       dispatch({
         effects: prettified_results.flatMap(
           ({ cursorOffset, docLength, formatted, cell_id }) => [
-            CellDispatchEffect.of({
+            EditorDispatchEffect.of({
               cell_id,
               transaction: {
                 selection: EditorSelection.cursor(cursorOffset),
@@ -211,7 +210,7 @@ export let cell_keymap = Prec.high(
           unsaved_code: state.doc.sliceString(cursor, state.doc.length),
         };
 
-        // TODO Need two dispatches, because my Nexus can't handle a mix of EditorInChiefEffects and CellDispatchEffects in one transaction...
+        // TODO Need two dispatches, because my Nexus can't handle a mix of EditorInChiefEffects and EditorDispatchEffects in one transaction...
         // .... So need something for this! Maybe make CellEditorStatesField look for the EditorInChiefEffects directly?
         // .... Then Nexus effects can ONLY be used to modify the cell states... but what else is there?
         // .... There might be later, so maybe EditorInChiefEffect should have a sibling called BroadcastEffect,
@@ -226,7 +225,7 @@ export let cell_keymap = Prec.high(
           effects: [
             EditorInChiefEffect.of((state) => {
               return [
-                CellAddEffect.of({
+                EditorAddEffect.of({
                   cell_id: new_cell.id,
                   state: create_cell_state(state, new_cell),
                 }),
@@ -268,7 +267,7 @@ export let cell_keymap = Prec.high(
                 ]
               : []),
             EditorInChiefEffect.of((editor_in_chief) =>
-              CellAddEffect.of({
+              EditorAddEffect.of({
                 cell_id: cell_id,
                 state: create_cell_state(editor_in_chief, new_cell),
               })
@@ -303,7 +302,7 @@ export let cell_keymap = Prec.high(
                 let current_cell_state = state.editor(cell_id);
 
                 return [
-                  CellDispatchEffect.of({
+                  EditorDispatchEffect.of({
                     cell_id: previous_cell_id,
                     transaction: {
                       selection: EditorSelection.cursor(
@@ -316,7 +315,7 @@ export let cell_keymap = Prec.high(
                       },
                     },
                   }),
-                  CellRemoveEffect.of({ cell_id: cell_id }),
+                  EditorRemoveEffect.of({ cell_id: cell_id }),
                   CellOrderEffect.of({
                     cell_id: cell_id,
                     index: null,

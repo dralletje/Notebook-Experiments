@@ -3,7 +3,7 @@ import { keymap } from "@codemirror/view";
 import { CellId } from "../../notebook-types";
 import { CellOrderEffect, CellOrderField } from "./cell-order";
 import {
-  CellRemoveEffect,
+  EditorRemoveEffect,
   EditorInChiefKeymap,
   EditorInChiefStateField,
 } from "../codemirror-editor-in-chief/editor-in-chief";
@@ -35,7 +35,7 @@ export let selected_cells_keymap = EditorInChiefKeymap.of([
         dispatch({
           effects: selected_cells.flatMap((cell_id) => [
             CellOrderEffect.of({ cell_id: cell_id, index: null }),
-            CellRemoveEffect.of({ cell_id: cell_id }),
+            EditorRemoveEffect.of({ cell_id: cell_id }),
           ]),
         });
         return true;

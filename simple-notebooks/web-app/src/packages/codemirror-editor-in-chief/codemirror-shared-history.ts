@@ -28,7 +28,7 @@ import { isolateHistory, invertedEffects } from "@codemirror/commands";
 export { isolateHistory, invertedEffects };
 
 import {
-  CellDispatchEffect,
+  EditorDispatchEffect,
   NestedEditorStatesField,
   EditorIdFacet,
 } from "./editor-in-chief";
@@ -857,14 +857,14 @@ class HistoryState {
       let rest = branch.length == 1 ? none : branch.slice(0, branch.length - 1);
       if (event.mapped) rest = addMappingToBranch(rest, event.mapped!);
       // DRAL: Instead of "just" applying the changes, we need to apply the changes all
-      // ....  wrapped in CellDispatchEffect's
+      // ....  wrapped in EditorDispatchEffect's
       return state.update({
         changes: undefined,
         selection: undefined,
         effects: compact([
           ...event.effects.map(({ cell_id, value: effect }) => {
             if (cell_id == null) return effect;
-            return CellDispatchEffect.of({
+            return EditorDispatchEffect.of({
               transaction: { effects: effect },
               cell_id: cell_id,
             });
@@ -872,7 +872,7 @@ class HistoryState {
           ...event.changes.items.map(({ cell_id, value: change }) => {
             // TODO Changes can only happen on an actual editor, so this should never be null
             if (cell_id == null) return null;
-            return CellDispatchEffect.of({
+            return EditorDispatchEffect.of({
               // @ts-ignore
               transaction: { changes: change },
               cell_id: cell_id,
@@ -881,7 +881,7 @@ class HistoryState {
           // TODO Same here, selection should never have a null cell_id
           event.startSelection?.cell_id == null
             ? null
-            : CellDispatchEffect.of({
+            : EditorDispatchEffect.of({
                 transaction: {
                   selection: event.startSelection.value,
                   scrollIntoView: true,

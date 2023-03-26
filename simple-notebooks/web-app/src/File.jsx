@@ -14,7 +14,7 @@ import { NotebookFilename, NotebookId } from "./notebook-types";
 import { CellList } from "./Notebook";
 
 import {
-  BlurAllCells,
+  BlurEditorInChiefEffect,
   EditorIdFacet,
   EditorInChief,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
@@ -153,7 +153,7 @@ export function File({ state, onChange, socket, files }) {
             viewupdate.view.dispatch({
               effects: [
                 SelectCellsEffect.of(new_selected_cells),
-                BlurAllCells.of(),
+                BlurEditorInChiefEffect.of(),
               ],
             });
           }

@@ -13,8 +13,8 @@ import immer from "immer";
 import { invertedEffects } from "@codemirror/commands";
 import { EditorInChief } from "./editor-in-chief";
 import {
-  CellHasSelectionEffect,
-  CellHasSelectionField,
+  EditorHasSelectionEffect,
+  EditorHasSelectionField,
   cell_has_selection_extension,
 } from "./cell-has-selection-extension";
 
@@ -24,7 +24,7 @@ export let EditorIdFacet = Facet.define<EditorId, EditorId>({
   combine: (x) => x[0],
 });
 
-export let NestedExtension = Facet.define<Extension>({ static: true });
+export let EditorExtension = Facet.define<Extension>({ static: true });
 
 type StateEffectFromType<Type> = Type extends StateEffectType<infer X>
   ? StateEffect<X>
@@ -100,13 +100,13 @@ export let create_nested_editor_state = ({
     extensions: [
       EditorIdFacet.of(cell_id),
       cell_has_selection_extension,
-      parent.facet(NestedExtension) ?? [],
+      parent.facet(EditorExtension) ?? [],
       extensions ?? [],
     ],
   });
 };
 
-export let BlurAllCells = StateEffect.define<void>();
+export let BlurEditorInChiefEffect = StateEffect.define<void>();
 
 export let EditorDispatchEffect = StateEffect.define<{
   cell_id: EditorId;
@@ -123,11 +123,11 @@ export let EditorInChiefEffect = StateEffect.define<
   | null
 >();
 
-export let CellAddEffect = StateEffect.define<{
+export let EditorAddEffect = StateEffect.define<{
   cell_id: EditorId;
   state: EditorState;
 }>();
-export let CellRemoveEffect = StateEffect.define<{
+export let EditorRemoveEffect = StateEffect.define<{
   cell_id: EditorId;
 }>();
 
@@ -165,11 +165,11 @@ export let NestedEditorStatesField = StateField.define<{
           _transactions_to_send_to_cells as any as Array<Transaction>;
 
         if (
-          transaction.startState.facet(NestedExtension) !==
-          transaction.state.facet(NestedExtension)
+          transaction.startState.facet(EditorExtension) !==
+          transaction.state.facet(EditorExtension)
         ) {
           // prettier-ignore
-          throw new Error(`Please don't change the NestedExtension facet yet... please`);
+          throw new Error(`Please don't change the EditorExtension facet yet... please`);
         }
 
         for (let effect of transaction.effects) {
@@ -179,7 +179,7 @@ export let NestedEditorStatesField = StateField.define<{
 
             if (cell_state == null) {
               // prettier-ignore
-              console.log(`⚠ EditorDispatchEffect for Cell(${cell_id}) but no cell state exists`, { effect });
+              console.log(`⚠ EditorDispatchEffect for Editor(${cell_id}) but no cell state exists`, { effect });
               continue;
             }
 
@@ -193,16 +193,16 @@ export let NestedEditorStatesField = StateField.define<{
             }
           }
 
-          if (effect.is(BlurAllCells)) {
+          if (effect.is(BlurEditorInChiefEffect)) {
             state.cell_with_current_selection = null;
           }
 
-          if (effect.is(CellAddEffect)) {
+          if (effect.is(EditorAddEffect)) {
             let { cell_id, state: cell_state } = effect.value;
             cells[cell_id] = cell_state;
           }
 
-          if (effect.is(CellRemoveEffect)) {
+          if (effect.is(EditorRemoveEffect)) {
             let { cell_id } = effect.value;
             delete cells[cell_id];
           }
@@ -212,9 +212,9 @@ export let NestedEditorStatesField = StateField.define<{
           let should_be_focussed =
             state.cell_with_current_selection === cell_id;
 
-          if (should_be_focussed !== cell.field(CellHasSelectionField)) {
+          if (should_be_focussed !== cell.field(EditorHasSelectionField)) {
             let transaction = cell.update({
-              effects: CellHasSelectionEffect.of(should_be_focussed),
+              effects: EditorHasSelectionEffect.of(should_be_focussed),
             });
             transactions_to_send_to_cells.push(transaction);
             cells[cell_id] = transaction.state;
@@ -252,18 +252,18 @@ export let inverted_add_remove_editor = invertedEffects.of((transaction) => {
   /** @type {Array<StateEffect<any>>} */
   let inverted_effects = [];
   for (let effect of transaction.effects) {
-    if (effect.is(CellAddEffect)) {
+    if (effect.is(EditorAddEffect)) {
       inverted_effects.push(
-        CellRemoveEffect.of({
+        EditorRemoveEffect.of({
           cell_id: effect.value.cell_id,
         })
       );
-    } else if (effect.is(CellRemoveEffect)) {
+    } else if (effect.is(EditorRemoveEffect)) {
       let { cell_id } = effect.value;
       let cell_state = transaction.startState.field(NestedEditorStatesField)
         .cells[cell_id];
       inverted_effects.push(
-        CellAddEffect.of({
+        EditorAddEffect.of({
           cell_id: cell_id,
           state: cell_state,
         })

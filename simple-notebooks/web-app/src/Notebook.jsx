@@ -17,9 +17,9 @@ import {
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
 import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selection";
 import {
-  CellAddEffect,
+  EditorAddEffect,
   EditorDispatchEffect,
-  CellRemoveEffect,
+  EditorRemoveEffect,
   EditorInChief,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import {
@@ -165,7 +165,7 @@ let cell_actions = ({ editor_in_chief, cell }) => [
       let new_cell = empty_cell();
       editor_in_chief.dispatch({
         effects: [
-          CellAddEffect.of({
+          EditorAddEffect.of({
             cell_id: new_cell.id,
             state: create_cell_state(editor_in_chief.state, new_cell),
           }),
@@ -194,7 +194,7 @@ let cell_actions = ({ editor_in_chief, cell }) => [
       let new_cell = empty_cell("text");
       editor_in_chief.dispatch({
         effects: [
-          CellAddEffect.of({
+          EditorAddEffect.of({
             cell_id: new_cell.id,
             state: create_cell_state(editor_in_chief.state, new_cell),
           }),
@@ -225,7 +225,7 @@ let cell_actions = ({ editor_in_chief, cell }) => [
             index: null,
             cell_id: cell.id,
           }),
-          CellRemoveEffect.of({ cell_id: cell.id }),
+          EditorRemoveEffect.of({ cell_id: cell.id }),
         ],
       });
     },

@@ -13,19 +13,19 @@ import {
   inverted_add_remove_editor,
   expand_cell_effects_that_are_actually_meant_for_the_nexus,
   create_nested_editor_state,
-  BlurAllCells,
+  BlurEditorInChiefEffect,
   EditorDispatchEffect,
-  CellAddEffect,
-  CellRemoveEffect,
+  EditorAddEffect,
+  EditorRemoveEffect,
   cell_dispatch_effect_effects,
-  NestedExtension,
+  EditorExtension,
   EditorIdFacet,
   EditorInChiefEffect,
 } from "./logic";
 
 import {
-  CellHasSelectionField,
-  CellHasSelectionEffect,
+  EditorHasSelectionField,
+  EditorHasSelectionEffect,
 } from "./cell-has-selection-extension";
 import { extract_nested_viewupdate } from "./extract-nested-viewupdate";
 
@@ -33,18 +33,17 @@ export {
   extract_nested_viewupdate,
   NestedEditorStatesField,
   EditorIdFacet,
-  NestedExtension,
+  EditorExtension,
   cell_dispatch_effect_effects,
-  CellRemoveEffect,
-  CellAddEffect,
-  CellHasSelectionField,
-  CellHasSelectionEffect,
+  EditorRemoveEffect,
+  EditorAddEffect,
+  EditorHasSelectionField,
+  EditorHasSelectionEffect,
   create_nested_editor_state,
-  BlurAllCells,
+  BlurEditorInChiefEffect,
   EditorDispatchEffect,
   EditorInChiefEffect,
 };
-export let CellDispatchEffect = EditorDispatchEffect;
 
 type EditorId = string;
 

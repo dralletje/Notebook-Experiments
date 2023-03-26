@@ -27,7 +27,7 @@ import { NotebookFilename, NotebookId } from "./notebook-types";
 // import { typescript_extension } from "./packages/typescript-server-webworker/codemirror-typescript.js";
 import {
   EditorInChief,
-  NestedExtension,
+  EditorExtension,
   create_nested_editor_state,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
@@ -98,7 +98,7 @@ let notebook_to_state = ({ filename, notebook }) => {
       LastCreatedCells,
       add_single_cell_when_all_cells_are_removed,
 
-      NestedExtension.of(cell_keymap),
+      EditorExtension.of(cell_keymap),
       notebook_keymap,
 
       NotebookId.of(notebook.id),

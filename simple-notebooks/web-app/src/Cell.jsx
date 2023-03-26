@@ -13,7 +13,7 @@ import { Inspector } from "./yuck/Inspector";
 
 import { basic_javascript_setup } from "./codemirror-javascript/codemirror-javascript";
 import {
-  CellHasSelectionField,
+  EditorHasSelectionField,
   extract_nested_viewupdate,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import {
@@ -277,10 +277,10 @@ export let Cell = ({
     });
   }, [set_is_focused]);
 
-  // NOTE Can also use CellHasSelectionField, but that will keep the cell open
+  // NOTE Can also use EditorHasSelectionField, but that will keep the cell open
   // .... when I click somewhere else... but it now closes abruptly... hmmmm
-  // let folded = state.field(CellHasSelectionField) ? false : cell.folded;
-  let folded = nested_viewupdate.state.field(CellHasSelectionField)
+  // let folded = state.field(EditorHasSelectionField) ? false : cell.folded;
+  let folded = nested_viewupdate.state.field(EditorHasSelectionField)
     ? false
     : cell.folded;
   let forced_unfolded = cell.folded && is_focused;

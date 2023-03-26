@@ -1,6 +1,5 @@
 import {
   EditorSelection,
-  EditorState,
   Facet,
   Prec,
   SelectionRange,
@@ -11,7 +10,7 @@ import { EditorView, keymap } from "@codemirror/view";
 import {
   EditorDispatchEffect,
   EditorInChiefEffect,
-  NestedExtension,
+  EditorExtension,
 } from "../codemirror-editor-in-chief/editor-in-chief";
 
 // A lot of this file is an adaptation of https://github.com/fonsp/Pluto.jl/blob/ab85efca962d009c741d4ec66508d687806e9579/frontend/components/CellInput/cell_movement_plugin.js
@@ -103,7 +102,7 @@ let move_to_cell_below = (destination) => {
   });
 };
 
-let viewplugin_for_cell = NestedExtension.of(
+let viewplugin_for_cell = EditorExtension.of(
   EditorView.updateListener.of(({ view, state, transactions }) => {
     for (let transaction of transactions) {
       for (let effect of transaction.effects) {
@@ -280,6 +279,9 @@ let prevent_holding_a_key_from_doing_things_across_cells =
     },
   });
 
+/**
+ * @type {import("@codemirror/view").KeyBinding[]}
+ */
 export let arrows_move_between_cells_keymap = [
   {
     key: "ArrowUp",
@@ -295,6 +297,7 @@ export let arrows_move_between_cells_keymap = [
       //   read: () => {
       let rect = view.coordsAtPos(selection.from);
       let screen_goal_column = rect == null ? 0 : rect.left;
+      console.log(`UP:`, selection.goalColumn);
       view.dispatch({
         effects: [
           move_to_cell_above({
@@ -318,13 +321,9 @@ export let arrows_move_between_cells_keymap = [
       //   read: () => {
       let rect = view.coordsAtPos(selection.from);
       let screen_goal_column = rect == null ? 0 : rect.left;
+      console.log(`DOWN:`, selection.goalColumn);
       view.dispatch({
-        effects: [
-          move_to_cell_below({
-            at: selection,
-            screenGoalColumn: screen_goal_column,
-          }),
-        ],
+        effects: [move_to_cell_below({ at: selection })],
       });
       //   },
       // });
@@ -380,8 +379,8 @@ export let arrows_move_between_cells_keymap = [
 export let cell_movement_extension = [
   viewplugin_for_cell,
   // Highest because it needs to handle keydown before the keymap normally does
-  NestedExtension.of(
+  EditorExtension.of(
     Prec.highest(prevent_holding_a_key_from_doing_things_across_cells)
   ),
-  NestedExtension.of(Prec.high(keymap.of(arrows_move_between_cells_keymap))),
+  EditorExtension.of(Prec.high(keymap.of(arrows_move_between_cells_keymap))),
 ];
