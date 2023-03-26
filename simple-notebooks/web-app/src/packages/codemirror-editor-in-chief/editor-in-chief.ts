@@ -12,8 +12,6 @@ import {
   NestedEditorStatesField,
   inverted_add_remove_editor,
   expand_cell_effects_that_are_actually_meant_for_the_nexus,
-  CellHasSelectionField,
-  CellHasSelectionEffect,
   create_nested_editor_state,
   BlurAllCells,
   EditorDispatchEffect,
@@ -25,6 +23,11 @@ import {
   EditorIdFacet,
   EditorInChiefEffect,
 } from "./logic";
+
+import {
+  CellHasSelectionField,
+  CellHasSelectionEffect,
+} from "./cell-has-selection-extension";
 
 export {
   useNestedViewUpdate,
@@ -163,13 +166,13 @@ export class EditorInChiefView {
     return new EditorInChief(this.view.state);
   }
 
-  dispatch(...specs: EditorInChiefTransactionSpec[]) {
+  dispatch = (...specs: EditorInChiefTransactionSpec[]) => {
     this.view.dispatch(
       ...specs.map((spec) => {
         return { effects: spec.effects };
       })
     );
-  }
+  };
 }
 
 export class EditorInChiefKeymap {

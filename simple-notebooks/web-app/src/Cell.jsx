@@ -11,7 +11,7 @@ import { shallowEqualObjects } from "shallow-equal";
 
 import { Inspector } from "./yuck/Inspector";
 
-import { basic_javascript_setup } from "./javascript/codemirror-javascript-setup";
+import { basic_javascript_setup } from "./codemirror-javascript/codemirror-javascript";
 import { useNestedViewUpdate } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import {
   CellMetaField,
@@ -32,11 +32,80 @@ let InspectorContainer = styled.div`
 `;
 
 export let EditorStyled = styled.div`
+  --cm-editor-text-color: #008c85;
+  --cm-matchingBracket-color: white;
+  --cm-matchingBracket-bg-color: #c58c237a;
+  --cm-placeholder-text-color: rgb(255 255 255 / 20%);
+  --cm-selection-background: hsl(215deg 64% 59% / 48%);
+  --cm-selection-background-blurred: hsl(0deg 0% 59% / 30%);
+
   /* background-color: rgba(0, 0, 0, 0.4); */
   /* background-color: rgb(23 23 23 / 40%); */
   background-color: #141414;
   & .cm-content {
     padding: 16px !important;
+  }
+
+  & .cm-editor .cm-content,
+  & .cm-editor .cm-scroller,
+  & .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
+    font-family: inherit;
+  }
+
+  &:focus-within .cm-editor .cm-matchingBracket {
+    color: var(--cm-matchingBracket-color) !important;
+    font-weight: 700;
+    background-color: var(--cm-matchingBracket-bg-color);
+    border-radius: 2px;
+  }
+
+  & .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+    height: unset;
+  }
+
+  & .cm-editor .cm-selectionBackground {
+    background: var(--cm-selection-background-blurred);
+  }
+  & .cm-editor.cm-focused .cm-selectionBackground {
+    background: var(--cm-selection-background);
+  }
+
+  & .cm-editor {
+    color: var(--cm-editor-text-color);
+  }
+  & .cm-editor.cm-focused:not(.__) {
+    outline: unset;
+  }
+
+  & .cm-selectionMatch {
+    background: none !important;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+  }
+  @media (prefers-color-scheme: dark) {
+    & .cm-selectionMatch {
+      background: none !important;
+      text-shadow: 0 0 13px rgb(255 255 255);
+    }
+  }
+
+  & .cm-editor .cm-matchingBracket,
+  & .cm-editor .cm-nonmatchingBracket {
+    background-color: unset;
+    color: unset;
+  }
+
+  & .cm-editor .cm-placeholder {
+    color: var(--cm-placeholder-text-color);
+    font-style: italic;
+  }
+
+  /* HEYYYYY */
+  & .cm-editor {
+    height: 100%;
+  }
+
+  & .cm-cursor {
+    border-left-color: #dcdcdc !important;
   }
 `;
 
@@ -99,7 +168,7 @@ let CellStyle = styled.div`
   &.selected::after {
     content: "";
     position: absolute;
-    inset: -0.5rem;
+    inset: -0.26rem;
     left: -1rem;
     background-color: #20a5ba24;
     pointer-events: none;

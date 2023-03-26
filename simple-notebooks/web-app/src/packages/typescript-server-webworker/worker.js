@@ -409,15 +409,6 @@ let initialize_vfs = async () => {
 
 let env_promise = initialize_vfs();
 
-/**
- * @typedef MyMessages
- * @type {
- *  | { type: "update-notebook-file", code: string }
- *  | { type: "get-me-completions", position: number }
- *  | { type: "request-info-at-position", position: number }
- * }
- */
-
 let commands = {
   /** @param {{ code: string }} data */
   "update-notebook-file": async ({ code }) => {
@@ -428,7 +419,6 @@ let commands = {
     } catch (error) {
       env.createFile(NOTEBOOK_FILE, code);
     }
-    console.log("DONE?");
   },
   /** @param {{ position: number }} data */
   "request-completions": async ({ position }) => {

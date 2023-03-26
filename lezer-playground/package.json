@@ -11,7 +11,7 @@
     "@codemirror/language": "^6.6.0",
     "@codemirror/search": "^6.2.3",
     "@codemirror/state": "^6.2.0",
-    "@codemirror/view": "^6.9.3",
+    "@codemirror/view": "^6.9.1",
     "@dral/all-folds-zig": "workspace:*",
     "@dral/find-positions-zig": "workspace:*",
     "@dral/lezer-inspector": "*",

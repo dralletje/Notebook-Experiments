@@ -1,22 +1,54 @@
-:root {
-  /* TODO Get this out of here, but still themable? IDK */
-  --cm-editor-text-color: #008c85;
-  --cm-matchingBracket-color: white;
-  --cm-matchingBracket-bg-color: #c58c237a;
-  --cm-placeholder-text-color: rgb(255 255 255 / 20%);
-  --cm-selection-background: hsl(215deg 64% 59% / 48%);
-  --cm-selection-background-blurred: hsl(0deg 0% 59% / 30%);
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+:root {
   color-scheme: dark;
 }
 
-@keyframes opacity {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
+html {
+  background-color: #121212;
+  color: white;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Tiny bit nicer default for experiments.. should be overridden! */
+  background-color: #121212;
+  color: white;
+
+  /* background: url("./noise-background.png"), rgba(5, 5, 5, 0.9); */
+
+  overscroll-behavior: none;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  padding: 0;
+}
+
+button {
+  all: unset;
 }
 
 @keyframes shake {
@@ -38,14 +70,4 @@
   60% {
     transform: var(--prexisting-transform) translate3d(4px, 0, 0) rotateZ(1deg);
   }
-}
-
-kbd {
-  vertical-align: middle;
-  background-color: black;
-  color: white;
-  padding: 8px 24px;
-  border-radius: 16px;
-  border: solid 4px white;
-  animation: opacity 0.2s ease-in-out;
 }

@@ -46,15 +46,6 @@ let CellContainer = styled.div`
   will-change: transform;
 `;
 
-export let EditorStyled = styled.div`
-  /* background-color: rgba(0, 0, 0, 0.4); */
-  /* background-color: rgb(23 23 23 / 40%); */
-  background-color: #141414;
-  & .cm-content {
-    padding: 16px !important;
-  }
-`;
-
 let DragAndDropListStyle = styled.div`
   display: flex;
   flex-direction: column;

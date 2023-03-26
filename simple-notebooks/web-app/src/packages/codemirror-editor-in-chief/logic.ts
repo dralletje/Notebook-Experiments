@@ -9,10 +9,16 @@ import {
   StateEffectType,
   EditorStateConfig,
 } from "@codemirror/state";
+import React from "react";
 import immer from "immer";
-import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 import { invertedEffects } from "@codemirror/commands";
+import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 import { EditorInChief } from "./editor-in-chief";
+import {
+  CellHasSelectionEffect,
+  CellHasSelectionField,
+  cell_has_selection_extension,
+} from "./cell-has-selection-extension";
 
 type EditorId = string;
 
@@ -67,79 +73,6 @@ export let expand_cell_effects_that_are_actually_meant_for_the_nexus =
     return null;
   });
 
-// export let cellTransactionForTransaction =
-//   Facet.define<
-//     (
-//       transaction: Transaction,
-//       cell_state: EditorState
-//     ) => TransactionSpec | null
-//   >();
-
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
-import { EditorView, ViewPlugin } from "@codemirror/view";
-import React from "react";
-
-export let CellHasSelectionEffect = StateEffect.define<boolean>();
-export let CellHasSelectionField = StateField.define<boolean>({
-  create() {
-    return false;
-  },
-  update(value, transaction) {
-    for (let effect of transaction.effects) {
-      if (effect.is(CellHasSelectionEffect)) {
-        value = effect.value;
-      }
-    }
-    return value;
-  },
-});
-
-let CellHasSelectionPlugin = [
-  EditorView.editorAttributes.of((view) => {
-    let has_selection = view.state.field(CellHasSelectionField);
-    return { class: has_selection ? "has-selection" : "" };
-  }),
-  ViewPlugin.define((view) => {
-    let has_selection = view.state.field(CellHasSelectionField);
-    if (has_selection === true) {
-      Promise.resolve().then(() => {
-        // Make sure the editor isn't removed yet :O
-        if (view.dom.isConnected) {
-          view.focus();
-        }
-      });
-    }
-
-    return {
-      update: (update) => {
-        let had_selection = update.startState.field(CellHasSelectionField);
-        let needs_selection = update.state.field(CellHasSelectionField);
-        if (had_selection !== needs_selection) {
-          let has_focus = view.dom.contains(document.activeElement);
-          if (has_focus === needs_selection) return;
-
-          if (needs_selection) {
-            try {
-              // TODO Somehow this crashes when the backspace-merge-with-previous-cell happens...
-              // .... Yet.. it works fine ?!
-              update.view.focus();
-            } catch (e) {}
-          } else {
-            update.view.dom.blur();
-          }
-        }
-      },
-    };
-  }),
-  EditorView.theme({
-    "&:not(.has-selection) .cm-selectionBackground": {
-      // Need to figure out what precedence I should give this thing so I don't need !important
-      background: "none !important",
-    },
-  }),
-];
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -163,8 +96,7 @@ export let create_nested_editor_state = ({
     selection: selection,
     extensions: [
       EditorIdFacet.of(cell_id),
-      CellHasSelectionField,
-      CellHasSelectionPlugin,
+      cell_has_selection_extension,
       parent.facet(NestedExtension) ?? [],
       extensions ?? [],
     ],
