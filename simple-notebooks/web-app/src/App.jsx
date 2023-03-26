@@ -93,18 +93,18 @@ let notebook_to_state = ({ filename, notebook }) => {
     extensions: [
       CellOrderField.init(() => notebook.cell_order),
 
-      // cell_id_order_from_notebook_facet,
-      // cell_movement_extension_default,
+      cell_id_order_from_notebook_facet,
+      cell_movement_extension_default,
 
-      // SelectedCellsField,
-      // selected_cells_keymap,
-      // LastCreatedCells,
+      SelectedCellsField,
+      selected_cells_keymap,
+      LastCreatedCells,
 
-      // NestedExtension.of(cell_keymap),
-      // notebook_keymap,
+      NestedExtension.of(cell_keymap),
+      notebook_keymap,
 
-      // NotebookId.of(notebook.id),
-      // NotebookFilename.of(filename),
+      NotebookId.of(notebook.id),
+      NotebookFilename.of(filename),
 
       // This works so smooth omg
       [shared_history(), keymap.of(historyKeymap)],

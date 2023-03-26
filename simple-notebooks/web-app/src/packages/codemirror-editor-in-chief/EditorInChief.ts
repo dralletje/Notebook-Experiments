@@ -417,6 +417,10 @@ export class EditorInChiefTransaction {
     this.state = new EditorInChief(this.transaction.state);
   }
 
+  annotation(x) {
+    return this.transaction.annotation(x);
+  }
+
   get effects() {
     return this.transaction.effects;
   }

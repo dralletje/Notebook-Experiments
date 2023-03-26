@@ -88,6 +88,7 @@ export function File({ state, onChange, socket, files }) {
   let viewupdate = useViewUpdate(state, onChange);
 
   let cell_editor_states = state.editors;
+  let cell_order = state.field(CellOrderField);
 
   let notebook = React.useMemo(() => {
     return /** @type {import("./notebook-types").Notebook} */ ({
@@ -107,9 +108,7 @@ export function File({ state, onChange, socket, files }) {
         };
       }),
     });
-  }, [cell_editor_states]);
-
-  // console.log(`notebook:`, notebook);
+  }, [cell_editor_states, cell_order]);
 
   // Use the nexus' keymaps as shortcuts!
   // This passes on keydown events from the document to the nexus for handling.
@@ -123,6 +122,7 @@ export function File({ state, onChange, socket, files }) {
         // AAAAAAAA This is a hack to get EditorInChief ViewUpdates to work
         // ........ Else all keymaps will get an EditorInChief state, and they shouldn't!
         // ........ They should get a _normal_ EditorState.
+        // viewupdate.view,
         {
           state: viewupdate.view.state.editorstate,
           dispatch: (...spec) => {
