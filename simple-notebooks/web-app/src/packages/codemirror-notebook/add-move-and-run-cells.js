@@ -233,6 +233,12 @@ export let cell_keymap = Prec.high(
                   cell_id: new_cell.id,
                   index: { after: cell_id },
                 }),
+                // CellDispatchEffect.of({
+                //   cell_id: cell_id,
+                //   transaction: {
+                //     effects: [MoveToCellBelowEffect.of({ start: "begin" })],
+                //   },
+                // }),
               ];
             }),
             // MoveToCellBelowEffect.of({ start: "begin" }),

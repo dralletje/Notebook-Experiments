@@ -395,10 +395,6 @@ let inverted_add_remove_editor = invertedEffects.of((transaction) => {
       );
     }
   }
-
-  if (inverted_effects.length > 0) {
-    console.log(`inverted_effects:`, inverted_effects);
-  }
   return inverted_effects;
 });
 
@@ -581,6 +577,8 @@ export class EditorInChief {
   }
 
   update(...specs: EditorInChiefTransactionSpec[]) {
+    // Instead of `expand_cell_effects_that_are_actually_meant_for_the_nexus` transactionExtender,
+    // I would like to "extend" the transaction here. This makes it possible to keep the order of effects right.
     return new EditorInChiefTransaction(
       this,
       this.editorstate.update(...specs)

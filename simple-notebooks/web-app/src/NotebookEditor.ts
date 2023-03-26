@@ -1,4 +1,4 @@
-import { EditorState, Facet, StateEffect, StateField } from "@codemirror/state";
+import { Facet, StateEffect, StateField } from "@codemirror/state";
 import { Cell, CellId } from "./notebook-types";
 import immer from "immer";
 import { v4 as uuidv4 } from "uuid";
@@ -12,8 +12,6 @@ import { v4 as uuidv4 } from "uuid";
  *    This allows putting EditorStates inside of a parent EditorState, and make transactions and all
  *    work for it. This would be most that is currently in this file.
  */
-
-export type NotebookState = EditorState;
 
 export let empty_cell = (type: "code" | "text" = "code"): Cell => {
   return {
@@ -60,20 +58,3 @@ export let CellTypeFacet = Facet.define<
   combine: (x) => x[0],
   static: true,
 });
-
-export let CellHasSelectionEffect = StateEffect.define<boolean>();
-export let CellHasSelectionField = StateField.define<boolean>({
-  create() {
-    return false;
-  },
-  update(value, transaction) {
-    for (let effect of transaction.effects) {
-      if (effect.is(CellHasSelectionEffect)) {
-        value = effect.value;
-      }
-    }
-    return value;
-  },
-});
-
-export let BlurAllCells = StateEffect.define<void>();
