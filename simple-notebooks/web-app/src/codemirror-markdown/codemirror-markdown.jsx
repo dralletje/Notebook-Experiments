@@ -15,7 +15,7 @@ import {
 import { defaultKeymap, indentLess, indentMore } from "@codemirror/commands";
 import { range } from "lodash";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { indentUnit, syntaxTree } from "@codemirror/language";
+import { ensureSyntaxTree, indentUnit, syntaxTree } from "@codemirror/language";
 import emoji from "node-emoji";
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
 
@@ -67,31 +67,47 @@ let markdown_styling_base_theme = EditorView.baseTheme({
     },
   },
 
+  ".cm-line": {
+    "&:has(.header-mark)": {
+      "margin-left": "-24px",
+    },
+  },
+
   ".header-mark": {
     "font-variant-numeric": "tabular-nums",
-    "margin-left": "calc(-1.8em - 5px)",
+    // "margin-left": "calc(-1.8em - 5px)",
     opacity: 0.3,
     "font-size": "0.8em",
+    width: "20px",
     display: "inline-block",
-    "&.header-mark-h1": {
-      "margin-right": "5px",
-      "margin-left": "calc(-1.8em - 6px)",
-    },
-    "&.header-mark-h2": {
-      "margin-right": "7px",
-    },
-    "&.header-mark-h3": {
-      "margin-right": "9px",
-    },
-    "&.header-mark-h4": {
-      "margin-right": "10px",
-    },
-    "&.header-mark-h5": {
-      "margin-right": "11px",
-    },
-    "&.header-mark-h6": {
-      "margin-right": "12px",
-    },
+    // display: "inline-block",
+    // "&.header-mark-h1": {
+    //   "margin-right": "5px",
+    //   "margin-left": "calc(-1.8em - 6px)",
+    // },
+    // "&.header-mark-h2": {
+    //   "margin-right": "7px",
+    // },
+    // "&.header-mark-h3": {
+    //   "margin-right": "9px",
+    // },
+    // "&.header-mark-h4": {
+    //   "margin-right": "10px",
+    // },
+    // "&.header-mark-h5": {
+    //   "margin-right": "11px",
+    // },
+    // "&.header-mark-h6": {
+    //   "margin-right": "12px",
+    // },
+  },
+  ".header-mark-space": {
+    width: "4px",
+    display: "inline-block",
+
+    // ".header-mark-h1 &": {
+    //   height: "2em",
+    // },
   },
 
   ".link-mark": {
@@ -190,7 +206,7 @@ let markdown_styling_base_theme = EditorView.baseTheme({
     outline: "1px solid #ffffff36",
     display: "inline-block",
     padding: "0 5px",
-    margin: "0 4px",
+    margin: "0 2px",
     "border-radius": "2px",
   },
   ".cm-line.has-fenced-code": {
@@ -415,24 +431,38 @@ let my_markdown_keymap = keymap.of([
 ]);
 
 let markdown_mark_to_decoration = {
-  CodeMark: Decoration.mark({ class: "code-mark" }),
-  EmphasisMark: Decoration.mark({ class: "emphasis-mark" }),
-  StrikethroughMark: Decoration.mark({ class: "strikethrough-mark" }),
-  LinkMark: Decoration.mark({ class: "link-mark" }),
-  SubscriptMark: Decoration.mark({ class: "subscript-mark", inclusive: false }),
-  SuperscriptMark: Decoration.mark({
-    class: "superscript-mark",
+  CodeMark: Decoration.mark({ class: "code-mark mark" }),
+  EmphasisMark: Decoration.mark({ class: "emphasis-mark mark" }),
+  StrikethroughMark: Decoration.mark({ class: "strikethrough-mark mark" }),
+  SubscriptMark: Decoration.mark({
+    class: "subscript-mark mark",
     inclusive: false,
   }),
+  SuperscriptMark: Decoration.mark({
+    class: "superscript-mark mark",
+    inclusive: false,
+  }),
+
+  LinkMark: Decoration.mark({ class: "link-mark" }),
 };
+
 let markdown_inline_decorations = {
-  Emphasis: Decoration.mark({ class: "emphasis" }),
-  Strikethrough: Decoration.mark({ class: "strikethrough" }),
-  StrongEmphasis: Decoration.mark({ class: "strong-emphasis" }),
-  Subscript: Decoration.mark({ tagName: "sub", inclusive: false }),
-  Superscript: Decoration.mark({ tagName: "sup", inclusive: false }),
-  Link: Decoration.mark({ class: "link" }),
+  Emphasis: Decoration.mark({ class: "emphasis text-decoration" }),
+  Strikethrough: Decoration.mark({ class: "strikethrough text-decoration" }),
+  StrongEmphasis: Decoration.mark({ class: "strong-emphasis text-decoration" }),
+  Subscript: Decoration.mark({ tagName: "sub", class: "text-decoration" }),
+  Superscript: Decoration.mark({
+    tagName: "sup",
+    class: "text-decoration",
+  }),
+  InlineCode: Decoration.mark({
+    tagName: "code",
+    class: "inline-code text-decoration",
+  }),
+
+  // These two are more complex, might be better to do them in a separate extension
   URL: Decoration.mark({ class: "url" }),
+  Link: Decoration.mark({ class: "link" }),
 };
 let markdown_inline_decorations_extension = [
   EditorView.baseTheme({
@@ -643,36 +673,95 @@ let show_hard_breaks = [
   }),
 ];
 
-let XXX = EditorView.updateListener.of((update) => {
-  if (update.selectionSet) {
-    let selection = update.state.selection.main;
-    if (!selection.empty) return true;
-    let tree = syntaxTree(update.state);
-    let thing = tree.cursorAt(selection.head, selection.assoc);
-    console.log(`selection.assoc:`, selection.assoc);
-    console.log(`thing:`, thing.toString());
-    if (thing.name === "SuperscriptMark") {
-      console.log(`selection.head:`, selection.head);
-      console.log(`selection.assoc:`, selection.assoc);
-      console.log(`selection.assoc * -1:`, selection.assoc * -1);
+let marks_to_avoid = [
+  "SubscriptMark",
+  "SuperscriptMark",
+  "CodeMark",
+  "StrikethroughMark",
+  "EmphasisMark",
+];
 
-      let yes = EditorSelection.cursor(
+let XXX = EditorState.transactionFilter.of((transaction) => {
+  let selection = transaction.newSelection.main;
+  if (!selection.empty) return transaction;
+
+  // Weirdly enough, when `assoc` is 0, lezer returns the wrong node.
+  // So in that case I assume
+  let assoc = selection.assoc || 1;
+
+  // When the document has changed I need to get the new syntax tree using the new state,
+  // which is expensive to calculate...
+  // Lets hope the document doesn't change too often...
+  let tree = transaction.docChanged
+    ? ensureSyntaxTree(transaction.state, selection.head, 50)
+    : ensureSyntaxTree(transaction.startState, selection.head, 50);
+
+  for (let mark of marks_to_avoid) {
+    if (tree.cursorAt(selection.head, assoc).name !== mark) continue;
+
+    console.log("#1");
+
+    // Just do `assoc * -1`? Typescript doesn't like that..
+    /** @type {1 | -1} */
+    let better_assoc = assoc === 1 ? -1 : 1;
+
+    if (tree.cursorAt(selection.head, better_assoc).name === mark)
+      return transaction;
+
+    if (transaction.docChanged) {
+      // prettier-ignore
+      console.log("⚠ RECALCULATING THE WHOLE STATE in markdown transactionFilter");
+    }
+
+    let new_selection = EditorSelection.create([
+      EditorSelection.cursor(
         selection.head,
-        selection.assoc * -1,
+        better_assoc,
         selection.bidiLevel,
         selection.goalColumn
-      );
-      update.view.dispatch({
-        selection: yes,
-      });
-    }
+      ),
+    ]);
+    return [transaction, { selection: new_selection, sequential: true }];
   }
-  return true;
+  return transaction;
 });
 
 export let basic_markdown_setup = [
   XXX,
   markdown_styling_base_theme,
+
+  EditorView.theme({
+    ".mark": {
+      display: "inline-block", // Allows for `transform` and `width`
+      "white-space": "pre", // Makes sure it doesn't wrap when the width is tight
+      width: 0, // Make the width tight
+      transform: `scaleX(0)`, // And also make the intrinsic width 0
+    },
+    "&.has-selection .text-decoration:has(.selection-mark) > .mark": {
+      // "white-space": "pre", // Makes sure it doesn't wrap when the width is tight
+      width: "unset", // Make the width tight
+      transform: `unset`, // And also make the intrinsic width 0
+    },
+  }),
+
+  EditorView.decorations.compute(["selection"], (state) => {
+    let tree = syntaxTree(state);
+    let decorations = [];
+
+    console.log("SAYWHAAAT");
+
+    let assoc = state.selection.main.assoc || 1;
+
+    // let cursor = tree.cursorAt(state.selection.main.head, assoc)
+    return Decoration.set(
+      Decoration.mark({
+        class: "selection-mark",
+      }).range(
+        Math.min(state.selection.main.head, state.selection.main.head + assoc),
+        Math.max(state.selection.main.head, state.selection.main.head + assoc)
+      )
+    );
+  }),
 
   EditorState.tabSize.of(4),
   indentUnit.of("\t"),
@@ -744,20 +833,37 @@ export let basic_markdown_setup = [
           let node = cursor.node;
           let header_tag = node.parent ? headers[node.parent.name] : "h1";
           if (header_tag == null) return;
+
+          if (doc.sliceString(cursor.to, cursor.to + 1) !== " ") {
+            // No space after header, so not _yet_ an header for me
+            return;
+          }
+
           decorations.push(
             Decoration.replace({
               inclusive: false,
               widget: new ReactWidget(
                 (
-                  <span className={`header-mark header-mark-${header_tag}`}>
-                    {header_tag}
+                  <span style={{ fontSize: "1em" }}>
+                    <span className={`header-mark header-mark-${header_tag}`}>
+                      {header_tag}
+                    </span>
                   </span>
                 )
               ),
             }).range(cursor.from, cursor.to)
           );
+          decorations.push(
+            Decoration.replace({
+              widget: new ReactWidget(<span className={`header-mark-space`} />),
+            }).range(cursor.to, cursor.to + 1)
+          );
         }
         if (cursor.name in headers) {
+          if (!doc.sliceString(cursor.from, cursor.to).includes(" ")) {
+            // No space after header, so not _yet_ an header for me
+            return;
+          }
           decorations.push(
             Decoration.mark({
               tagName: headers[cursor.name],
@@ -792,14 +898,6 @@ export let basic_markdown_setup = [
           );
         }
 
-        if (cursor.name === "InlineCode") {
-          decorations.push(
-            Decoration.mark({
-              tagName: "code",
-              class: "inline-code",
-            }).range(cursor.from, cursor.to)
-          );
-        }
         if (cursor.name === "QuoteMark") {
           let extra_space = doc.sliceString(cursor.to, cursor.to + 1) === " ";
           decorations.push(

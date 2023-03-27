@@ -7,13 +7,12 @@ x = await new Promise((resolve) =>
   setTimeout(resolve, 1000)
 );
 
-// ╔═╡ [cells.282334c6-78e4-457e-9ba5-d0195169bfc7]
+// ╔═╡ [cells.bfd916a3-3996-4ea7-b87c-555e19387e3c]
 // ╠═╡ type = "text"
-// ## Todo
 // - [ ] **Typechecking/autocomplete**
 // Currently I _do_ have a webworker-typescript thingy, and I _could_ use that.
 // But I don't want to! I want to "just" connect to an LSP that has access to
-// all the dependencies and maybe even a `.tsconfig`.
+// all the dependencies and maybe even a a`.tsconfig`.
 // - [ ] **Sidebar with subnotebooks**
 // 	- [ ] **Meta notebook**
 // 	A notebook that can interact with the codemirror instances (and ofcourse, editor-in-chief)
@@ -26,15 +25,21 @@ x = await new Promise((resolve) =>
 // 	Eventually there should be some way to manage multiple files, create an environment,
 // 	blablablabla.
 
-// ╔═╡ [cells.58c2aaef-21f5-4be4-b53a-1c81993a0979]
+// ╔═╡ [cells.b673c31e-9c3f-4bcc-9629-dfd504e8980f]
 // ╠═╡ type = "text"
-// # A^baa^A
+// # H^a^ asdasd kjla sdklajsdkljads kljdas kljasdadasd~h~ aasdkj
+// 
+// [asd](http://google.com)
+// 
+// ```
+// Hey there
+// ```
 
 // ╔═╡ [cells.6f02384d-2362-4167-92ca-ef2f5707d375]
 // ╠═╡ type = "text"
 // # My Notebook!
 // Pretty cool, huh?
-// Type markdown in a natural way, write code without restrictions. `x`
+// Type markdown in a natural way, write code without restrictions. `x + 10` a
 
 // ╔═╡ [cells.21227430-c866-4c20-a0a3-c48047edbadf]
 // ╠═╡ folded = false
@@ -55,8 +60,8 @@ z = await new Promise(
 // ╔═╡ ["Cell Order"]
 // ╠═╡ "Cell Order" = [
 // ╠═╡   "6f02384d-2362-4167-92ca-ef2f5707d375",
-// ╠═╡   "58c2aaef-21f5-4be4-b53a-1c81993a0979",
-// ╠═╡   "282334c6-78e4-457e-9ba5-d0195169bfc7",
+// ╠═╡   "b673c31e-9c3f-4bcc-9629-dfd504e8980f",
+// ╠═╡   "bfd916a3-3996-4ea7-b87c-555e19387e3c",
 // ╠═╡   "21227430-c866-4c20-a0a3-c48047edbadf",
 // ╠═╡   "c372df60-f0f0-4480-882e-5d0918452837",
 // ╠═╡   "4578b1f8-fc43-4812-9b5a-cb9580937a54",
