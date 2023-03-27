@@ -1,5 +1,4 @@
 import React, { useLayoutEffect, useRef, useMemo } from "react";
-
 import { Compartment, StateEffect, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 
@@ -205,8 +204,7 @@ export let Extension = ({
     });
     return () => {
       dispatch({
-        // @ts-ignore
-        effects: compartment.reconfigure(null),
+        effects: compartment.reconfigure([]),
       });
     };
   }, [dispatch]);

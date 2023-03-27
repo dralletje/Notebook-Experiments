@@ -20,6 +20,7 @@ export class GenericViewUpdate<S extends EditorState> {
   view: EditorView<S>;
   transactions: ReturnType<S["update"]>[];
   state: S;
+  startState: S;
 }
 
 export let CodemirrorFromViewUpdate: any;
