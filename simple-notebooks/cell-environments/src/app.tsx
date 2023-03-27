@@ -27,9 +27,11 @@ x = await new Promise((resolve) =>
 
 // ╔═╡ [cells.b673c31e-9c3f-4bcc-9629-dfd504e8980f]
 // ╠═╡ type = "text"
-// # H^a^ asdasd kjla sdklajsdkljads kljdas kljasdadasd~h~ aasdkj
+// # H^2^O~5~ asd kjla sdklajsdkljads kljdas kljasda
 // 
-// [asd](http://google.com)
+// a[^2]
+// 
+// [asd](http://google)
 // 
 // ```
 // Hey there

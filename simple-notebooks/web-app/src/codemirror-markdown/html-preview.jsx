@@ -1,8 +1,6 @@
-import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { indentUnit, syntaxTree } from "@codemirror/language";
-
+import React from "react";
+import { syntaxTree } from "@codemirror/language";
 import {
-  EditorState,
   RangeSetBuilder,
   RangeValue,
   Range,
@@ -11,26 +9,13 @@ import {
   StateEffect,
   StateEffectType,
   MapMode,
-  EditorSelection,
 } from "@codemirror/state";
-import {
-  Decoration,
-  drawSelection,
-  EditorView,
-  keymap,
-  placeholder,
-} from "@codemirror/view";
-import { defaultKeymap, indentLess, indentMore } from "@codemirror/commands";
-import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
-import { iterate_over_cursor, iterate_with_cursor } from "dral-lezer-helpers";
-import { range } from "lodash";
+import { Decoration, EditorView } from "@codemirror/view";
+import { iterate_with_cursor } from "dral-lezer-helpers";
 import { ReactWidget, useEditorView } from "react-codemirror-widget";
-import React from "react";
-import emoji from "node-emoji";
 
 import { IonIcon } from "@ionic/react";
 import { eyeOutline, eye } from "ionicons/icons";
-import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
 class EZRange extends RangeValue {
   eq() {

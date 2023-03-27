@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  EditorState,
-  RangeSetBuilder,
-  RangeValue,
-  EditorSelection,
-} from "@codemirror/state";
+import { EditorState, RangeSetBuilder, RangeValue } from "@codemirror/state";
 import {
   Decoration,
   drawSelection,
@@ -15,7 +10,7 @@ import {
 import { defaultKeymap, indentLess, indentMore } from "@codemirror/commands";
 import { range } from "lodash";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { ensureSyntaxTree, indentUnit, syntaxTree } from "@codemirror/language";
+import { indentUnit, syntaxTree } from "@codemirror/language";
 import emoji from "node-emoji";
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
 
@@ -28,6 +23,9 @@ import {
   javascript_syntax_highlighting,
   my_javascript_parser,
 } from "../codemirror-javascript/syntax-highlighting.js";
+import { markdown_text_decorations } from "./text-marks.js";
+import { markdown_headers } from "./headers.jsx";
+import { show_hard_breaks } from "./show-hard-breaks.js";
 
 let markdown_styling_base_theme = EditorView.baseTheme({
   "& .cm-content": {
@@ -38,78 +36,6 @@ let markdown_styling_base_theme = EditorView.baseTheme({
   "& .cm-scroller": {
     overflow: "visible",
   },
-
-  "h1, h2, h3, h4, h5, h6": {
-    display: "inline-block",
-  },
-  h1: {
-    "font-size": "2em",
-    "font-weight": "bold",
-    ".cm-line:has(&)": {
-      "margin-top": `0.2em`,
-      "margin-bottom": `0.3em`,
-    },
-  },
-  h2: {
-    "font-size": "1.5em",
-    "font-weight:": "bold",
-    ".cm-line:has(&)": {
-      "margin-top": `0.2em`,
-      "margin-bottom": `0.2em`,
-    },
-  },
-  h3: {
-    "font-size": "1.1em",
-    "font-weight:": "bold",
-    ".cm-line:has(&)": {
-      "margin-top": `0.2em`,
-      "margin-bottom": `0.1em`,
-    },
-  },
-
-  ".cm-line": {
-    "&:has(.header-mark)": {
-      "margin-left": "-24px",
-    },
-  },
-
-  ".header-mark": {
-    "font-variant-numeric": "tabular-nums",
-    // "margin-left": "calc(-1.8em - 5px)",
-    opacity: 0.3,
-    "font-size": "0.8em",
-    width: "20px",
-    display: "inline-block",
-    // display: "inline-block",
-    // "&.header-mark-h1": {
-    //   "margin-right": "5px",
-    //   "margin-left": "calc(-1.8em - 6px)",
-    // },
-    // "&.header-mark-h2": {
-    //   "margin-right": "7px",
-    // },
-    // "&.header-mark-h3": {
-    //   "margin-right": "9px",
-    // },
-    // "&.header-mark-h4": {
-    //   "margin-right": "10px",
-    // },
-    // "&.header-mark-h5": {
-    //   "margin-right": "11px",
-    // },
-    // "&.header-mark-h6": {
-    //   "margin-right": "12px",
-    // },
-  },
-  ".header-mark-space": {
-    width: "4px",
-    display: "inline-block",
-
-    // ".header-mark-h1 &": {
-    //   height: "2em",
-    // },
-  },
-
   ".link-mark": {
     opacity: 0.5,
   },
@@ -198,16 +124,8 @@ let markdown_styling_base_theme = EditorView.baseTheme({
     "font-family":
       "source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace",
   },
-  ".code-mark": {
+  ".fenced-code .code-mark": {
     opacity: "0.5",
-  },
-  ".inline-code": {
-    "font-size": "0.9em",
-    outline: "1px solid #ffffff36",
-    display: "inline-block",
-    padding: "0 5px",
-    margin: "0 2px",
-    "border-radius": "2px",
   },
   ".cm-line.has-fenced-code": {
     "background-color": "#141414",
@@ -253,15 +171,6 @@ class EZRange extends RangeValue {
   }
 }
 
-let headers = {
-  ATXHeading1: "h1",
-  ATXHeading2: "h2",
-  ATXHeading3: "h3",
-  ATXHeading4: "h4",
-  ATXHeading5: "h5",
-  ATXHeading6: "h6",
-};
-
 let TaskMarkerWidget = ({ checked, start, end }) => {
   let view = useEditorView();
 
@@ -281,93 +190,7 @@ let TaskMarkerWidget = ({ checked, start, end }) => {
   );
 };
 
-let insert_around_command = (str) => (view) => {
-  let { from, to } = view.state.selection.main;
-  if (from === to) return false;
-
-  view.dispatch({
-    changes: [
-      { from: from, to: from, insert: str },
-      { from: to, to: to, insert: str },
-    ],
-  });
-  return true;
-};
-
-let toggle_around_command = (str) => (view) => {
-  let { from, to } = view.state.selection.main;
-  if (view.state.selection.main.empty) {
-    view.dispatch({
-      changes: { from: from, to: to, insert: `${str}${str}` },
-      selection: EditorSelection.single(from + str.length),
-    });
-    return true;
-  }
-
-  if (
-    view.state.doc.sliceString(from - str.length, from) === str &&
-    view.state.doc.sliceString(to, to + str.length) === str
-  ) {
-    view.dispatch({
-      changes: [
-        { from: from - str.length, to: from, insert: "" },
-        { from: to, to: to + str.length, insert: "" },
-      ],
-    });
-    return true;
-  }
-
-  if (
-    view.state.doc.sliceString(from, from + str.length) === str &&
-    view.state.doc.sliceString(to - str.length, to) === str
-  ) {
-    view.dispatch({
-      changes: [
-        { from: from, to: from + str.length, insert: "" },
-        { from: to - str.length, to: to, insert: "" },
-      ],
-    });
-    return true;
-  }
-
-  view.dispatch({
-    changes: [
-      { from: from, to: from, insert: str },
-      { from: to, to: to, insert: str },
-    ],
-  });
-  return true;
-};
-
 let my_markdown_keymap = keymap.of([
-  {
-    key: "Mod-b",
-    run: toggle_around_command("**"),
-  },
-  {
-    key: "Mod-i",
-    run: toggle_around_command("_"),
-  },
-  {
-    key: "`",
-    run: insert_around_command("`"),
-  },
-  {
-    key: "*",
-    run: insert_around_command("*"),
-  },
-  {
-    key: "~",
-    run: insert_around_command("~"),
-  },
-  {
-    key: "_",
-    run: insert_around_command("_"),
-  },
-  {
-    key: "^",
-    run: insert_around_command("^"),
-  },
   {
     key: "Shift-Enter",
     run: (view) => {
@@ -430,80 +253,26 @@ let my_markdown_keymap = keymap.of([
   },
 ]);
 
-let markdown_mark_to_decoration = {
-  CodeMark: Decoration.mark({ class: "code-mark mark" }),
-  EmphasisMark: Decoration.mark({ class: "emphasis-mark mark" }),
-  StrikethroughMark: Decoration.mark({ class: "strikethrough-mark mark" }),
-  SubscriptMark: Decoration.mark({
-    class: "subscript-mark mark",
-    inclusive: false,
-  }),
-  SuperscriptMark: Decoration.mark({
-    class: "superscript-mark mark",
-    inclusive: false,
-  }),
-
-  LinkMark: Decoration.mark({ class: "link-mark" }),
-};
-
-let markdown_inline_decorations = {
-  Emphasis: Decoration.mark({ class: "emphasis text-decoration" }),
-  Strikethrough: Decoration.mark({ class: "strikethrough text-decoration" }),
-  StrongEmphasis: Decoration.mark({ class: "strong-emphasis text-decoration" }),
-  Subscript: Decoration.mark({ tagName: "sub", class: "text-decoration" }),
-  Superscript: Decoration.mark({
-    tagName: "sup",
-    class: "text-decoration",
-  }),
-  InlineCode: Decoration.mark({
-    tagName: "code",
-    class: "inline-code text-decoration",
-  }),
-
-  // These two are more complex, might be better to do them in a separate extension
-  URL: Decoration.mark({ class: "url" }),
-  Link: Decoration.mark({ class: "link" }),
-};
-let markdown_inline_decorations_extension = [
-  EditorView.baseTheme({
-    ".emphasis-mark": {
-      opacity: "0.5",
-      "letter-spacing": "-0.1em",
-      transform: "translateX(-0.05em)",
-    },
-    ".strikethrough-mark": {
-      "text-decoration": "line-through",
-      "text-decoration-color": "transparent",
-      opacity: "0.5",
-    },
-    ".superscript-mark, .subscript-mark": {
-      opacity: "0.3",
-    },
-
-    ".strikethrough": {
-      "text-decoration": "line-through",
-    },
-    ".emphasis": {
-      "font-style": "italic",
-    },
-    ".strong-emphasis": {
-      "font-weight": "bold",
-    },
-  }),
+let link_decorations_extension = [
   // These are separate because they need "lower precedence" so they don't "slice" the bigger elements:
   // `*sad*` would become `<em><mark>*</mark>sad</em><mark><em>*</em></mark>` (confusing)
   // instead of `<em><mark>*</mark>sad<mark>*</mark></em>` (normal)
   DecorationsFromTree(({ cursor, mutable_decorations }) => {
-    if (cursor.name in markdown_mark_to_decoration) {
+    if (cursor.name === "LinkMark") {
       mutable_decorations.push(
-        markdown_mark_to_decoration[cursor.name].range(cursor.from, cursor.to)
+        Decoration.mark({ class: "link-mark" }).range(cursor.from, cursor.to)
       );
     }
   }),
   DecorationsFromTree(({ cursor, mutable_decorations }) => {
-    if (cursor.name in markdown_inline_decorations) {
+    if (cursor.name === "URL") {
       mutable_decorations.push(
-        markdown_inline_decorations[cursor.name].range(cursor.from, cursor.to)
+        Decoration.mark({ class: "url" }).range(cursor.from, cursor.to)
+      );
+    }
+    if (cursor.name === "Link") {
+      mutable_decorations.push(
+        Decoration.mark({ class: "link" }).range(cursor.from, cursor.to)
       );
     }
   }),
@@ -654,114 +423,8 @@ let search_block_or_inline_decorations = ({
   }
 };
 
-// Show ⏎ at the end of `  ` (two spaces) lines
-let show_hard_breaks = [
-  EditorView.baseTheme({
-    ".hard-break::after": {
-      content: '"⏎"',
-      color: "rgba(255, 255, 255, 0.2)",
-    },
-  }),
-  DecorationsFromTree(({ cursor, mutable_decorations }) => {
-    if (cursor.name === "HardBreak") {
-      mutable_decorations.push(
-        Decoration.mark({
-          class: "hard-break",
-        }).range(cursor.from, cursor.to)
-      );
-    }
-  }),
-];
-
-let marks_to_avoid = [
-  "SubscriptMark",
-  "SuperscriptMark",
-  "CodeMark",
-  "StrikethroughMark",
-  "EmphasisMark",
-];
-
-let XXX = EditorState.transactionFilter.of((transaction) => {
-  let selection = transaction.newSelection.main;
-  if (!selection.empty) return transaction;
-
-  // Weirdly enough, when `assoc` is 0, lezer returns the wrong node.
-  // So in that case I assume
-  let assoc = selection.assoc || 1;
-
-  // When the document has changed I need to get the new syntax tree using the new state,
-  // which is expensive to calculate...
-  // Lets hope the document doesn't change too often...
-  let tree = transaction.docChanged
-    ? ensureSyntaxTree(transaction.state, selection.head, 50)
-    : ensureSyntaxTree(transaction.startState, selection.head, 50);
-
-  for (let mark of marks_to_avoid) {
-    if (tree.cursorAt(selection.head, assoc).name !== mark) continue;
-
-    console.log("#1");
-
-    // Just do `assoc * -1`? Typescript doesn't like that..
-    /** @type {1 | -1} */
-    let better_assoc = assoc === 1 ? -1 : 1;
-
-    if (tree.cursorAt(selection.head, better_assoc).name === mark)
-      return transaction;
-
-    if (transaction.docChanged) {
-      // prettier-ignore
-      console.log("⚠ RECALCULATING THE WHOLE STATE in markdown transactionFilter");
-    }
-
-    let new_selection = EditorSelection.create([
-      EditorSelection.cursor(
-        selection.head,
-        better_assoc,
-        selection.bidiLevel,
-        selection.goalColumn
-      ),
-    ]);
-    return [transaction, { selection: new_selection, sequential: true }];
-  }
-  return transaction;
-});
-
 export let basic_markdown_setup = [
-  XXX,
   markdown_styling_base_theme,
-
-  EditorView.theme({
-    ".mark": {
-      display: "inline-block", // Allows for `transform` and `width`
-      "white-space": "pre", // Makes sure it doesn't wrap when the width is tight
-      width: 0, // Make the width tight
-      transform: `scaleX(0)`, // And also make the intrinsic width 0
-    },
-    "&.has-selection .text-decoration:has(.selection-mark) > .mark": {
-      // "white-space": "pre", // Makes sure it doesn't wrap when the width is tight
-      width: "unset", // Make the width tight
-      transform: `unset`, // And also make the intrinsic width 0
-    },
-  }),
-
-  EditorView.decorations.compute(["selection"], (state) => {
-    let tree = syntaxTree(state);
-    let decorations = [];
-
-    console.log("SAYWHAAAT");
-
-    let assoc = state.selection.main.assoc || 1;
-
-    // let cursor = tree.cursorAt(state.selection.main.head, assoc)
-    return Decoration.set(
-      Decoration.mark({
-        class: "selection-mark",
-      }).range(
-        Math.min(state.selection.main.head, state.selection.main.head + assoc),
-        Math.max(state.selection.main.head, state.selection.main.head + assoc)
-      )
-    );
-  }),
 
   EditorState.tabSize.of(4),
   indentUnit.of("\t"),
@@ -773,9 +436,11 @@ export let basic_markdown_setup = [
   }),
 
   // TODO Tricky one, seems to not respect `scope`?
-  javascript_syntax_highlighting,
+  // javascript_syntax_highlighting,
 
-  markdown_inline_decorations_extension,
+  markdown_text_decorations,
+  link_decorations_extension,
+  markdown_headers,
 
   // TODO Compute based on syntaxtree 😅
   EditorView.decorations.compute(["doc"], (state) => {
@@ -828,47 +493,6 @@ export let basic_markdown_setup = [
               }).range(cursor.from, cursor.to)
             );
           }
-        }
-        if (cursor.name === "HeaderMark") {
-          let node = cursor.node;
-          let header_tag = node.parent ? headers[node.parent.name] : "h1";
-          if (header_tag == null) return;
-
-          if (doc.sliceString(cursor.to, cursor.to + 1) !== " ") {
-            // No space after header, so not _yet_ an header for me
-            return;
-          }
-
-          decorations.push(
-            Decoration.replace({
-              inclusive: false,
-              widget: new ReactWidget(
-                (
-                  <span style={{ fontSize: "1em" }}>
-                    <span className={`header-mark header-mark-${header_tag}`}>
-                      {header_tag}
-                    </span>
-                  </span>
-                )
-              ),
-            }).range(cursor.from, cursor.to)
-          );
-          decorations.push(
-            Decoration.replace({
-              widget: new ReactWidget(<span className={`header-mark-space`} />),
-            }).range(cursor.to, cursor.to + 1)
-          );
-        }
-        if (cursor.name in headers) {
-          if (!doc.sliceString(cursor.from, cursor.to).includes(" ")) {
-            // No space after header, so not _yet_ an header for me
-            return;
-          }
-          decorations.push(
-            Decoration.mark({
-              tagName: headers[cursor.name],
-            }).range(cursor.from, cursor.to)
-          );
         }
         if (cursor.name === "FencedCode") {
           let line_from = doc.lineAt(cursor.from);
@@ -961,9 +585,6 @@ export let basic_markdown_setup = [
     iterate_with_cursor({
       tree,
       enter: (cursor) => {
-        if (cursor.name === "HeaderMark") {
-          ranges.add(cursor.from, cursor.to, new EZRange());
-        }
         if (cursor.name === "Emoji") {
           let text = doc.sliceString(cursor.from, cursor.to);
           if (emoji.hasEmoji(text)) {
@@ -1002,7 +623,6 @@ export let basic_markdown_setup = [
   }),
 
   show_hard_breaks,
-
   my_markdown_keymap,
   keymap.of([
     {
