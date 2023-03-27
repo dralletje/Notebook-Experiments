@@ -211,7 +211,7 @@ export let cell_keymap = Prec.high(
         };
 
         // TODO Need two dispatches, because my Nexus can't handle a mix of EditorInChiefEffects and EditorDispatchEffects in one transaction...
-        // .... So need something for this! Maybe make CellEditorStatesField look for the EditorInChiefEffects directly?
+        // .... So need something for this! Maybe make CellEditorsField look for the EditorInChiefEffects directly?
         // .... Then Nexus effects can ONLY be used to modify the cell states... but what else is there?
         // .... There might be later, so maybe EditorInChiefEffect should have a sibling called BroadcastEffect,
         // .... Where a EditorInChiefEffect is actually for the nexus "completely" separate from the cell states, 🤔,

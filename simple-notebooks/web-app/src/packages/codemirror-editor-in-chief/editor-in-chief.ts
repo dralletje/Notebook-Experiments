@@ -9,7 +9,7 @@ import {
 import { EditorView, keymap, KeyBinding } from "@codemirror/view";
 
 import {
-  NestedEditorStatesField,
+  EditorsField,
   inverted_add_remove_editor,
   expand_cell_effects_that_are_actually_meant_for_the_nexus,
   create_nested_editor_state,
@@ -30,7 +30,7 @@ import { extract_nested_viewupdate } from "./extract-nested-viewupdate";
 
 export {
   extract_nested_viewupdate,
-  NestedEditorStatesField,
+  EditorsField,
   EditorIdFacet,
   EditorExtension,
   EditorRemoveEffect,
@@ -38,9 +38,9 @@ export {
   EditorHasSelectionField,
   EditorHasSelectionEffect,
   create_nested_editor_state,
-  BlurEditorInChiefEffect,
   EditorDispatchEffect,
   EditorInChiefEffect,
+  BlurEditorInChiefEffect,
 };
 
 type EditorId = string;
@@ -235,7 +235,7 @@ export class EditorInChief {
   }
 
   get editors() {
-    return this.editorstate.field(NestedEditorStatesField).cells;
+    return this.editorstate.field(EditorsField).cells;
   }
   editor(editor_id: EditorId): EditorState;
   editor(editor_id: EditorId, required?: false): EditorState | undefined {
@@ -246,7 +246,7 @@ export class EditorInChief {
   }
 
   static editors(editorstate: EditorState) {
-    return editorstate.field(NestedEditorStatesField).cells;
+    return editorstate.field(EditorsField).cells;
   }
 
   static create({
@@ -262,10 +262,10 @@ export class EditorInChief {
     return new EditorInChief(
       EditorState.create({
         extensions: [
-          NestedEditorStatesField,
+          EditorsField,
           expand_cell_effects_that_are_actually_meant_for_the_nexus,
           inverted_add_remove_editor,
-          NestedEditorStatesField.init((editorstate) => ({
+          EditorsField.init((editorstate) => ({
             cells: editors(editorstate),
             transactions_to_send_to_cells: [],
             cell_with_current_selection: null,

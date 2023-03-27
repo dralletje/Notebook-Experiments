@@ -108,7 +108,7 @@ let notebook_to_state = ({ filename, notebook }) => {
       [shared_history(), keymap.of(historyKeymap)],
 
       // typescript_extension((state) => {
-      //   let notebook = state.field(CellEditorStatesField);
+      //   let notebook = state.field(CellEditorsField);
 
       //   let code = "";
       //   let cursor = 0;

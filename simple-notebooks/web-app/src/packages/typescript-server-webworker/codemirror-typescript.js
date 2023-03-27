@@ -6,10 +6,11 @@
 import { EditorState } from "@codemirror/state";
 import { create_worker, post_message } from "./typescript-server-webworker";
 import { EditorView, keymap } from "@codemirror/view";
+import { CellEditorsField, updateListener } from "../codemirror-notebook/cell";
 import {
-  CellEditorStatesField,
-  updateListener,
-} from "../codemirror-notebook/cell";
+  EditorInChief,
+  EditorInChiefKeymap,
+} from "../codemirror-editor-in-chief/editor-in-chief.js";
 
 /**
  * @typedef CellAndCodeMap
@@ -30,7 +31,7 @@ import {
 // });
 
 /**
- * @param {(state: EditorState) => CellAndCodeMap} get_cells
+ * @param {(state: EditorInChief) => CellAndCodeMap} get_cells
  */
 export let typescript_extension = (get_cells) => {
   console.log("Yes");
@@ -43,7 +44,7 @@ export let typescript_extension = (get_cells) => {
       let code_and_cell_map = get_cells(update.state);
       console.log(`code:`, code_and_cell_map);
 
-      let notebook = update.state.field(CellEditorStatesField);
+      let notebook = update.state.field(CellEditorsField);
       console.log(
         `notebook.cell_with_current_selection:`,
         notebook.cell_with_current_selection
@@ -88,19 +89,19 @@ export let typescript_extension = (get_cells) => {
       //     code: code_and_cell_map.code,
       //   },
       // }).then((x) => {
-      //   let notebook = update.state.field(CellEditorStatesField);
+      //   let notebook = update.state.field(CellEditorsField);
       //   console.log(
       //     `notebook.cell_with_current_selection:`,
       //     notebook.cell_with_current_selection
       //   );
       // });
     }),
-    keymap.of([
+    EditorInChiefKeymap.of([
       {
         key: "Ctrl-Space",
         run: ({ state, dispatch }) => {
           let code_and_cell_map = get_cells(state);
-          let notebook = state.field(CellEditorStatesField);
+          let notebook = state.field(CellEditorsField);
 
           if (
             notebook.cell_with_current_selection &&

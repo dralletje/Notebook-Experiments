@@ -174,10 +174,11 @@ let local_style = EditorView.theme({
   },
 });
 
+/** @returns {import("./notebook-types").CylinderShadow} */
 let default_cylinder = () => {
   return {
     last_run: -Infinity,
-    result: null,
+    result: { type: "return", value: { 0: { type: "undefined", value: "" } } },
     running: false,
     waiting: false,
   };
@@ -225,6 +226,7 @@ export let Cell = ({
   did_just_get_created,
   viewupdate,
 }) => {
+  console.log(`cylinder:`, cylinder);
   let nested_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
   let state = nested_viewupdate.state;
   let type = state.facet(CellTypeFacet);

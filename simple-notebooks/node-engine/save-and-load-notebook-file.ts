@@ -133,7 +133,7 @@ ${TOML.stringify({ code })}
     DRAL_NOTEBOOK_VERSION: string;
     cells: { [cell_id: CellId]: Cell };
     "Cell Order": { "Cell Order": CellId[] };
-  } = merge({}, ...configs);
+  } = merge({ cells: {} }, ...configs);
 
   if (config.DRAL_NOTEBOOK_VERSION == null) {
     throw new NotNotebookError();

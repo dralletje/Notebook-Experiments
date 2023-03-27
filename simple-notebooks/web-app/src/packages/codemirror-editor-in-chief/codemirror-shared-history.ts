@@ -29,7 +29,7 @@ export { isolateHistory, invertedEffects };
 
 import {
   EditorDispatchEffect,
-  NestedEditorStatesField,
+  EditorsField,
   EditorIdFacet,
 } from "./editor-in-chief";
 import { compact } from "lodash";
@@ -140,24 +140,23 @@ class NotebookTransaction {
   }
 
   private get states(): ForCell<EditorState>[] {
-    let cells = Object.entries(
-      this.state.field(NestedEditorStatesField).cells
-    ).map(([cell_id, state]) => new ForCell(cell_id, state));
+    let cells = Object.entries(this.state.field(EditorsField).cells).map(
+      ([cell_id, state]) => new ForCell(cell_id, state)
+    );
 
     return [...cells, new ForCell(null, this.state)];
   }
 
   private get startStates(): ForCell<EditorState>[] {
-    let cells = Object.entries(
-      this.startState.field(NestedEditorStatesField).cells
-    ).map(([cell_id, state]) => new ForCell(cell_id, state));
+    let cells = Object.entries(this.startState.field(EditorsField).cells).map(
+      ([cell_id, state]) => new ForCell(cell_id, state)
+    );
 
     return [...cells, new ForCell(null, this.state)];
   }
 
   private get cell_transactions() {
-    return this.state.field(NestedEditorStatesField)
-      .transactions_to_send_to_cells;
+    return this.state.field(EditorsField).transactions_to_send_to_cells;
   }
 
   get docs() {
@@ -169,7 +168,7 @@ class NotebookTransaction {
   }
 
   get startSelection() {
-    let cell_states = this.startState.field(NestedEditorStatesField);
+    let cell_states = this.startState.field(EditorsField);
     let cell_with_current_selection = cell_states.cell_with_current_selection;
 
     if (cell_with_current_selection != null) {
@@ -582,9 +581,8 @@ class CellHistEvent {
 
     let effects: readonly CellStateEffect<any>[] = none;
 
-    let transactions_to_send_to_cells = notebook_tr.state.field(
-      NestedEditorStatesField
-    ).transactions_to_send_to_cells;
+    let transactions_to_send_to_cells =
+      notebook_tr.state.field(EditorsField).transactions_to_send_to_cells;
 
     for (let invert of raw_transaction.startState.facet(invertedEffects)) {
       let result = invert(raw_transaction).map(

@@ -80,21 +80,21 @@ let run_notebook = async (
     // return engine;
 
     for (let [cell_id, cell] of Object.entries(notebook_ref.current.cells)) {
-      let cylinder = engine.cylinders[cell_id];
-      if (cylinder == null) {
-        engine.cylinders[cell_id] = {
-          id: cell_id,
-          name: cell_id,
-          last_run: -Infinity,
-          last_internal_run: -Infinity,
-          running: false,
-          waiting: false,
-          result: { type: "pending" },
-          variables: {},
-          upstream_cells: [],
-          invalidation_token: { call: () => Promise.resolve() },
-        };
-      }
+      engine.cylinders[cell_id] ??= {
+        id: cell_id,
+        name: cell_id,
+        last_run: -Infinity,
+        last_internal_run: -Infinity,
+        running: false,
+        waiting: false,
+        result: {
+          type: "return",
+          value: { 0: { type: "undefined", value: "" } },
+        },
+        variables: {},
+        upstream_cells: [],
+        invalidation_token: { call: () => Promise.resolve() },
+      };
     }
 
     await notebook_step(
@@ -146,7 +146,6 @@ process.on("message", async (message: CircuitMessage) => {
 
     if (engine.is_busy) return;
     engine.is_busy = true;
-    console.log(`notebook_ref:`, notebook_ref);
 
     await run_notebook(
       notebook.filename,

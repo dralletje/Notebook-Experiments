@@ -2,48 +2,37 @@
 export {};
 
 // ╔═╡ [cells.149b391a-9ceb-4272-9269-7fe8879441eb]
-// ╠═╡ type = "text"
-// # Hey
-// 
-// - How do you do?  
-// - [x] Cool
-// 
-// Cool cool  
-// Yeah
-// 
-// - [ ] Hey Cool
-// - [ ] How many
-// 
-// :grin:
-
-// ╔═╡ [cells.9cb73be2-9ccc-4b36-b3b2-30fba249adde]
 // ╠═╡ folded = false
-x = 1020;
+// This cell was in the cell order but not in the notebook
 
-// ╔═╡ [cells.19dd38b3-f50f-42ea-aab8-284fd8e5cbe6]
+// ╔═╡ [cells.c14d7ee4-2af9-4f28-9e10-2150b7eceb8c]
 // ╠═╡ folded = false
-y = x + 10;
 
-// ╔═╡ [cells.6e0249f4-3b09-4364-8dcf-ac6b32223d1f]
-// ╠═╡ folded = false
-import fetch from "node-fetch";
 
-// ╔═╡ [cells.c55451ac-66a5-42ec-a765-c4b243bfd7ed]
+// ╔═╡ [cells.8c443ba5-aed9-4f91-9e4e-7eb7d7066903]
 // ╠═╡ folded = false
-let response = await fetch("http://google.com");
 
-// ╔═╡ [cells.0da4b657-ed9f-4d38-93d2-f3111e32b1f2]
+
+// ╔═╡ [cells.f4d4e6e4-e328-4733-b40d-4ad36a240f83]
 // ╠═╡ folded = false
-let text = await response.text()
+
+
+// ╔═╡ [cells.721d3927-5870-486f-820f-2662cd9fdcc9]
+// ╠═╡ folded = false
+
+
+// ╔═╡ [cells.6ff8c3b2-d377-49fb-a79c-38c05f6880fb]
+// ╠═╡ folded = false
+
 
 // ╔═╡ ["Cell Order"]
 // ╠═╡ "Cell Order" = [
 // ╠═╡   "149b391a-9ceb-4272-9269-7fe8879441eb",
-// ╠═╡   "9cb73be2-9ccc-4b36-b3b2-30fba249adde",
-// ╠═╡   "19dd38b3-f50f-42ea-aab8-284fd8e5cbe6",
-// ╠═╡   "6e0249f4-3b09-4364-8dcf-ac6b32223d1f",
-// ╠═╡   "c55451ac-66a5-42ec-a765-c4b243bfd7ed",
-// ╠═╡   "0da4b657-ed9f-4d38-93d2-f3111e32b1f2"
+// ╠═╡   "c14d7ee4-2af9-4f28-9e10-2150b7eceb8c",
+// ╠═╡   "8c443ba5-aed9-4f91-9e4e-7eb7d7066903",
+// ╠═╡   "f4d4e6e4-e328-4733-b40d-4ad36a240f83",
+// ╠═╡   "721d3927-5870-486f-820f-2662cd9fdcc9",
+// ╠═╡   "6ff8c3b2-d377-49fb-a79c-38c05f6880fb"
 // ╠═╡ ]
 
 

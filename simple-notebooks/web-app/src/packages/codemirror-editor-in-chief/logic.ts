@@ -131,7 +131,7 @@ export let EditorRemoveEffect = StateEffect.define<{
   editor_id: EditorId;
 }>();
 
-export let NestedEditorStatesField = StateField.define<{
+export let EditorsField = StateField.define<{
   cells: { [key: EditorId]: EditorState };
   /** So... I need this separate from the EditorState's selection,
    *  because EditorState.selection can't be empty/inactive
@@ -243,7 +243,7 @@ export let NestedEditorStatesField = StateField.define<{
       });
     } catch (error) {
       console.error(error);
-      throw new Error(`Error while updating NestedEditorStatesField: ${error}`);
+      throw new Error(`Error while updating EditorsField: ${error}`);
     }
   },
 });
@@ -260,8 +260,8 @@ export let inverted_add_remove_editor = invertedEffects.of((transaction) => {
       );
     } else if (effect.is(EditorRemoveEffect)) {
       let { editor_id } = effect.value;
-      let cell_state = transaction.startState.field(NestedEditorStatesField)
-        .cells[editor_id];
+      let cell_state =
+        transaction.startState.field(EditorsField).cells[editor_id];
       inverted_effects.push(
         EditorAddEffect.of({
           editor_id: editor_id,
