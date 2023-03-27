@@ -1,5 +1,5 @@
 import { invertedEffects } from "@codemirror/commands";
-import { Facet, StateEffect, StateField } from "@codemirror/state";
+import { Annotation, Facet, StateEffect, StateField } from "@codemirror/state";
 import immer from "immer";
 import { v4 as uuidv4 } from "uuid";
 
@@ -14,6 +14,8 @@ export let empty_cell = (type: "code" | "text" = "code"): Cell => {
     last_run: -Infinity,
   };
 };
+
+export let NudgeCell = Annotation.define();
 
 type CellMeta = {
   code: string;

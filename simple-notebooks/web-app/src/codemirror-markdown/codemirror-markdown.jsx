@@ -17,12 +17,17 @@ import { range } from "lodash";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { indentUnit, syntaxTree } from "@codemirror/language";
 import emoji from "node-emoji";
+import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
 
 import { ReactWidget, useEditorView } from "react-codemirror-widget";
 import { iterate_over_cursor, iterate_with_cursor } from "dral-lezer-helpers";
 import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
 import { html_preview_extensions } from "./html-preview.jsx";
+import {
+  javascript_syntax_highlighting,
+  my_javascript_parser,
+} from "../codemirror-javascript/syntax-highlighting.js";
 
 let markdown_styling_base_theme = EditorView.baseTheme({
   "& .cm-content": {
@@ -104,6 +109,7 @@ let markdown_styling_base_theme = EditorView.baseTheme({
   },
 
   ".cm-line.list-item:has(.list-mark)": {
+    "margin-top": "0.3em",
     "margin-left": "-1em",
   },
   ".cm-line.order-list-item:has(.list-mark)": {
@@ -112,13 +118,6 @@ let markdown_styling_base_theme = EditorView.baseTheme({
   ".cm-line.list-item:not(:has(.list-mark))": {
     /* Most likely need to tweak this for other em's */
     /* "margin-left": "5px", */
-  },
-  ".cm-line.list-item": {
-    "margin-top": "0.3em",
-    /* "margin-bottom": "0.3em", */
-  },
-  ".cm-line.list-item + .cm-line.list-item": {
-    "margin-top": "0",
   },
 
   ".list-mark": {
@@ -142,6 +141,7 @@ let markdown_styling_base_theme = EditorView.baseTheme({
   },
   ".task-marker": {
     "margin-left": "-1em",
+    transform: "translateX(-0.5em)",
   },
   ".hr": {
     "border-top": "1px solid rgba(255, 255, 255, 0.2)",
@@ -194,8 +194,8 @@ let markdown_styling_base_theme = EditorView.baseTheme({
     "border-radius": "2px",
   },
   ".cm-line.has-fenced-code": {
-    border: "solid 1px #ffffff36",
-    "border-radius": "5px",
+    "background-color": "#141414",
+    border: "solid 1px #ffffff14",
   },
   ".cm-line.has-fenced-code + .cm-line.has-fenced-code": {
     "border-top": "none",
@@ -349,12 +349,18 @@ let my_markdown_keymap = keymap.of([
     run: insert_around_command("_"),
   },
   {
+    key: "^",
+    run: insert_around_command("^"),
+  },
+  {
     key: "Shift-Enter",
     run: (view) => {
       let { from, to } = view.state.selection.main;
+      let current_line = view.state.doc.lineAt(from);
+      let indentation = current_line.text.match(/^\s*/)[0];
       view.dispatch({
-        changes: { from: from, to: to, insert: "\n" },
-        selection: { anchor: from + 1 },
+        changes: { from: from, to: to, insert: `\n${indentation}` },
+        selection: { anchor: from + 1 + indentation.length },
       });
       return true;
     },
@@ -387,7 +393,9 @@ let my_markdown_keymap = keymap.of([
           return true;
         }
 
-        let insert = "\n- [ ] ";
+        let current_line = view.state.doc.lineAt(cursor);
+        let indentation = current_line.text.match(/^\s*/)[0];
+        let insert = `\n${indentation}- [ ] `;
         view.dispatch({
           changes: { from: cursor, to: cursor, insert: insert },
           selection: { anchor: cursor + insert.length },
@@ -411,13 +419,20 @@ let markdown_mark_to_decoration = {
   EmphasisMark: Decoration.mark({ class: "emphasis-mark" }),
   StrikethroughMark: Decoration.mark({ class: "strikethrough-mark" }),
   LinkMark: Decoration.mark({ class: "link-mark" }),
+  SubscriptMark: Decoration.mark({ class: "subscript-mark", inclusive: false }),
+  SuperscriptMark: Decoration.mark({
+    class: "superscript-mark",
+    inclusive: false,
+  }),
 };
 let markdown_inline_decorations = {
-  Emphasis: "emphasis",
-  Strikethrough: "strikethrough",
-  StrongEmphasis: "strong-emphasis",
-  Link: "link",
-  URL: "url",
+  Emphasis: Decoration.mark({ class: "emphasis" }),
+  Strikethrough: Decoration.mark({ class: "strikethrough" }),
+  StrongEmphasis: Decoration.mark({ class: "strong-emphasis" }),
+  Subscript: Decoration.mark({ tagName: "sub", inclusive: false }),
+  Superscript: Decoration.mark({ tagName: "sup", inclusive: false }),
+  Link: Decoration.mark({ class: "link" }),
+  URL: Decoration.mark({ class: "url" }),
 };
 let markdown_inline_decorations_extension = [
   EditorView.baseTheme({
@@ -430,6 +445,9 @@ let markdown_inline_decorations_extension = [
       "text-decoration": "line-through",
       "text-decoration-color": "transparent",
       opacity: "0.5",
+    },
+    ".superscript-mark, .subscript-mark": {
+      opacity: "0.3",
     },
 
     ".strikethrough": {
@@ -455,9 +473,7 @@ let markdown_inline_decorations_extension = [
   DecorationsFromTree(({ cursor, mutable_decorations }) => {
     if (cursor.name in markdown_inline_decorations) {
       mutable_decorations.push(
-        Decoration.mark({
-          class: markdown_inline_decorations[cursor.name],
-        }).range(cursor.from, cursor.to)
+        markdown_inline_decorations[cursor.name].range(cursor.from, cursor.to)
       );
     }
   }),
@@ -627,16 +643,52 @@ let show_hard_breaks = [
   }),
 ];
 
+let XXX = EditorView.updateListener.of((update) => {
+  if (update.selectionSet) {
+    let selection = update.state.selection.main;
+    if (!selection.empty) return true;
+    let tree = syntaxTree(update.state);
+    let thing = tree.cursorAt(selection.head, selection.assoc);
+    console.log(`selection.assoc:`, selection.assoc);
+    console.log(`thing:`, thing.toString());
+    if (thing.name === "SuperscriptMark") {
+      console.log(`selection.head:`, selection.head);
+      console.log(`selection.assoc:`, selection.assoc);
+      console.log(`selection.assoc * -1:`, selection.assoc * -1);
+
+      let yes = EditorSelection.cursor(
+        selection.head,
+        selection.assoc * -1,
+        selection.bidiLevel,
+        selection.goalColumn
+      );
+      update.view.dispatch({
+        selection: yes,
+      });
+    }
+  }
+  return true;
+});
+
 export let basic_markdown_setup = [
+  XXX,
   markdown_styling_base_theme,
 
   EditorState.tabSize.of(4),
   indentUnit.of("\t"),
   placeholder("The rest is still unwritten..."),
-  markdown({ addKeymap: false, base: markdownLanguage }),
+  markdown({
+    addKeymap: false,
+    base: markdownLanguage,
+    defaultCodeLanguage: my_javascript_parser,
+  }),
+
+  // TODO Tricky one, seems to not respect `scope`?
+  javascript_syntax_highlighting,
 
   markdown_inline_decorations_extension,
 
+  // TODO Compute based on syntaxtree 😅
   EditorView.decorations.compute(["doc"], (state) => {
     let tree = syntaxTree(state);
     let decorations = [];
@@ -694,6 +746,7 @@ export let basic_markdown_setup = [
           if (header_tag == null) return;
           decorations.push(
             Decoration.replace({
+              inclusive: false,
               widget: new ReactWidget(
                 (
                   <span className={`header-mark header-mark-${header_tag}`}>
@@ -863,6 +916,7 @@ export let basic_markdown_setup = [
   keymap.of(defaultKeymap),
   drawSelection(),
 
+  // TODO Would love to have this, but needs more looking at to work with list items and task markers
   // awesome_line_wrapping,
   EditorView.lineWrapping,
 ];

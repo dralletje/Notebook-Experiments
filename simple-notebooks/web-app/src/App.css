@@ -71,3 +71,31 @@ button {
     transform: var(--prexisting-transform) translate3d(4px, 0, 0) rotateZ(1deg);
   }
 }
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.cell-text:has(+ .cell-text) {
+  margin-bottom: 20px;
+}
+.cell-text + .cell-text {
+  margin-top: 20px;
+}
+
+.cell-text + .cell-text .cell-editor::before {
+  animation: appear 1s;
+
+  content: "";
+  position: absolute;
+  top: -20px;
+  left: 0;
+  right: 0;
+  background-color: #ffffff0f;
+  height: 1px;
+}

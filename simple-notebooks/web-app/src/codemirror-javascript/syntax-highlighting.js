@@ -75,6 +75,12 @@ const customJsHighlight = styleTags({
   'String/"\\""': t.punctuation,
 });
 
+export let my_javascript_parser = new LanguageSupport(
+  tsxLanguage.configure({
+    props: [customJsHighlight],
+  })
+);
+
 let syntax_classes = EditorView.theme({
   ".very-important": {
     color: IMPORTANT_COLOR,
@@ -202,7 +208,7 @@ const syntax_colors = syntaxHighlighting(
       { tag: tags.controlOperator, class: "very-important" },
 
       // JSX
-      { tag: tags.content, class: "literal" },
+      // { tag: tags.content, class: "literal" },
       { tag: tags.attributeValue, class: "literal" },
       { tag: tags.angleBracket, class: "boring" },
       { tag: tags.attributeName, class: "property" },
@@ -219,15 +225,9 @@ const syntax_colors = syntaxHighlighting(
     ],
     {
       // all: { color: `var(--cm-editor-text-color)` },
-      scope: javascriptLanguage,
+      scope: my_javascript_parser.language,
     }
   )
-);
-
-let my_javascript_parser = new LanguageSupport(
-  tsxLanguage.configure({
-    props: [customJsHighlight],
-  })
 );
 
 // TODO Another that I can't do here: Fix the fact that `<div />` and `<Inspector />`
@@ -267,7 +267,6 @@ export let javascript_syntax_highlighting = [
   Prec.lowest(candy_stick_colors),
   syntax_colors,
   syntax_classes,
-  my_javascript_parser,
   lowercase_jsx_identifiers,
   color_type_imports_like_other_type_stuff,
 ];

@@ -10,7 +10,10 @@ import { Decoration, EditorView } from "@codemirror/view";
 import { ReactWidget } from "react-codemirror-widget";
 
 import { deserialize } from "./deserialize-value-to-show";
-import { javascript_syntax_highlighting } from "../codemirror-javascript/syntax-highlighting";
+import {
+  javascript_syntax_highlighting,
+  my_javascript_parser,
+} from "../codemirror-javascript/syntax-highlighting";
 
 let InspectorStyle = styled.div`
   --syntax_normal: #848484;
@@ -186,6 +189,7 @@ let PlaceInsideExpression = ({ expression, children }) => {
       extensions: [
         EditorState.tabSize.of(4),
         indentUnit.of("\t"),
+        my_javascript_parser,
         javascript_syntax_highlighting,
         EditorView.editable.of(false),
       ],

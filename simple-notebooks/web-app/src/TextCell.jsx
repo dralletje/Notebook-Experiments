@@ -9,6 +9,7 @@ import { EditorView } from "@codemirror/view";
 import { compact } from "lodash";
 import { basic_markdown_setup } from "./codemirror-markdown/codemirror-markdown";
 import { extract_nested_viewupdate } from "./packages/codemirror-editor-in-chief/editor-in-chief";
+import { NudgeCell } from "./packages/codemirror-notebook/cell";
 
 let local_style = EditorView.theme({
   "& .cm-scroller": {
@@ -78,6 +79,25 @@ export let TextCell = ({
       );
     }
   }, []);
+
+  React.useEffect(() => {
+    for (let transaction of nested_viewupdate.transactions) {
+      if (transaction.annotation(NudgeCell)) {
+        cell_wrapper_ref.current.animate(
+          {
+            transform: [
+              "translateX(0)",
+              "translateX(-5px)",
+              "translateX(5px)",
+              "translateX(-5px)",
+              "translateX(0)",
+            ],
+          },
+          { duration: 200 }
+        );
+      }
+    }
+  }, [nested_viewupdate.transactions]);
 
   return (
     <TextCellStyle

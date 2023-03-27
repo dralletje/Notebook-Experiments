@@ -1,8 +1,6 @@
 import React from "react";
-import "./App.css";
-
 import { produce } from "immer";
-import { io } from "socket.io-client";
+import { mapValues } from "lodash";
 import styled from "styled-components";
 import {
   CellMetaField,
@@ -17,7 +15,6 @@ import {
   shared_history,
   historyKeymap,
 } from "./packages/codemirror-editor-in-chief/codemirror-shared-history";
-import { mapValues } from "lodash";
 import {
   CellIdOrder,
   cell_movement_extension,
@@ -41,7 +38,8 @@ import {
 import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
 import { add_single_cell_when_all_cells_are_removed } from "./packages/codemirror-notebook/add-cell-when-last-is-removed";
 import { useSocket } from "./use/use-socket.js";
-import { EditorState } from "@codemirror/state";
+
+import "./App.css";
 
 /**
  * @typedef WorkspaceSerialized

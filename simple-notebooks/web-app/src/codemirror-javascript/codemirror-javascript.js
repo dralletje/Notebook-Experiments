@@ -14,9 +14,13 @@ import {
   highlightSelectionMatches,
   selectNextOccurrence,
 } from "@codemirror/search";
-import { javascript_syntax_highlighting } from "./syntax-highlighting.js";
+import {
+  javascript_syntax_highlighting,
+  my_javascript_parser,
+} from "./syntax-highlighting.js";
 
 export let basic_javascript_setup = [
+  my_javascript_parser,
   javascript_syntax_highlighting,
 
   EditorState.tabSize.of(2),

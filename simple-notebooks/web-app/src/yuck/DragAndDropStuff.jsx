@@ -13,7 +13,11 @@ import {
   CellOrderField,
 } from "../packages/codemirror-notebook/cell-order";
 import { ContextMenuWrapper } from "../packages/react-contextmenu/react-contextmenu";
-import { MutateCellMetaEffect } from "../packages/codemirror-notebook/cell";
+import {
+  CellTypeFacet,
+  MutateCellMetaEffect,
+} from "../packages/codemirror-notebook/cell";
+import { compact } from "lodash";
 
 let DragAndDropListStyle = styled.div`
   display: flex;
@@ -50,7 +54,9 @@ export let DragAndDropList = ({ children, editor_in_chief }) => {
             ref={provided.innerRef}
           >
             <Flipper flipKey={cell_order.join(",")} spring={"stiff"}>
-              <div data-can-start-cell-selection>{children}</div>
+              <div data-can-start-cell-selection className="flex flex-col">
+                {children}
+              </div>
             </Flipper>
             {provided.placeholder}
           </DragAndDropListStyle>
@@ -69,6 +75,15 @@ let CellContainer = styled.div`
   will-change: transform;
 `;
 
+/**
+ * @param {{
+ *  children: React.ReactNode,
+ *  cell_id: import("../packages/codemirror-notebook/cell").CellId,
+ *  index: number,
+ *  editor_in_chief: import("codemirror-x-react/viewupdate.js").EditorView<EditorInChief>,
+ *  context_options: any[]
+ * }} props
+ */
 export let DragAndDropItem = ({
   children,
   cell_id,
@@ -76,6 +91,7 @@ export let DragAndDropItem = ({
   editor_in_chief,
   context_options,
 }) => {
+  let cell_type = editor_in_chief.state.editor(cell_id).facet(CellTypeFacet);
   return (
     <Draggable draggableId={cell_id} index={index}>
       {(provided, snapshot) => (
@@ -89,11 +105,13 @@ export let DragAndDropItem = ({
             data-can-start-selection={false}
             ref={provided.innerRef}
             {...provided.draggableProps}
-            className={
-              (snapshot.isDragging && !snapshot.dropAnimation
+            className={compact([
+              snapshot.isDragging && !snapshot.dropAnimation
                 ? "dragging"
-                : "") + " cell-container"
-            }
+                : null,
+              "cell-container",
+              `cell-${cell_type}`,
+            ]).join(" ")}
           >
             <ContextMenuWrapper options={context_options}>
               <div

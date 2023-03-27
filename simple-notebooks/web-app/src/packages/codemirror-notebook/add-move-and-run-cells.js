@@ -17,6 +17,7 @@ import {
   CellMetaField,
   CellTypeFacet,
   MutateCellMetaEffect,
+  NudgeCell,
   empty_cell,
 } from "./cell";
 import { CellOrderField, CellOrderEffect } from "./cell-order.js";
@@ -188,9 +189,10 @@ export let cell_keymap = Prec.high(
         // .... (Or allow blocks maybe? But not incomplete, nor inside strings or objects etc)
 
         let cell_id = state.facet(EditorIdFacet);
+        let cell_type = state.facet(CellTypeFacet);
 
         // TODO Should just not apply this to text cells to begin with 🤷‍♀️ but cba
-        if (state.facet(CellTypeFacet) === "text") return false;
+        // if (state.facet(CellTypeFacet) === "text") return false;
 
         let current_line = state.doc.lineAt(cursor);
         if (current_line.number === 1)
@@ -207,16 +209,10 @@ export let cell_keymap = Prec.high(
         if (previous_line.text.trim() !== "") return false;
 
         let new_cell = {
-          ...empty_cell(),
+          ...empty_cell(cell_type),
           unsaved_code: state.doc.sliceString(cursor, state.doc.length),
         };
 
-        // TODO Need two dispatches, because my Nexus can't handle a mix of EditorInChiefEffects and EditorDispatchEffects in one transaction...
-        // .... So need something for this! Maybe make CellEditorsField look for the EditorInChiefEffects directly?
-        // .... Then Nexus effects can ONLY be used to modify the cell states... but what else is there?
-        // .... There might be later, so maybe EditorInChiefEffect should have a sibling called BroadcastEffect,
-        // .... Where a EditorInChiefEffect is actually for the nexus "completely" separate from the cell states, 🤔,
-        // .... and a BroadcastEffect is for the cell states only.
         dispatch({
           changes: {
             from: Math.max(previous_line.from - 1, 0),
@@ -241,10 +237,8 @@ export let cell_keymap = Prec.high(
                 }),
               ];
             }),
-            // MoveToCellBelowEffect.of({ start: "begin" }),
           ],
         });
-        // dispatch({ effects: MoveToCellBelowEffect.of({ start: "begin" }) });
         return true;
       },
     },
@@ -255,6 +249,8 @@ export let cell_keymap = Prec.high(
 
         let cell_meta = view.state.field(CellMetaField);
         let code = view.state.doc.toString();
+
+        if (view.state.facet(CellTypeFacet) === "text") return false;
 
         let new_cell = empty_cell();
         view.dispatch({
@@ -291,6 +287,7 @@ export let cell_keymap = Prec.high(
       key: "Backspace",
       run: (view) => {
         let cell_id = view.state.facet(EditorIdFacet);
+        let cell_type = view.state.facet(CellTypeFacet);
         if (!view.state.selection.main.empty) return false;
 
         if (view.state.selection.main.from === 0) {
@@ -303,7 +300,39 @@ export let cell_keymap = Prec.high(
 
                 let previous_cell_id = cell_order[cell_index - 1];
                 let previous_cell_state = state.editor(previous_cell_id);
-                let current_cell_state = state.editor(cell_id);
+                let previous_cell_type =
+                  previous_cell_state.facet(CellTypeFacet);
+
+                // You can't merge with a cell of a different type
+                // But you can remove the current cell if it is empty
+                if (previous_cell_type !== cell_type) {
+                  if (view.state.doc.length === 0) {
+                    return [
+                      EditorDispatchEffect.of({
+                        editor_id: previous_cell_id,
+                        transaction: {
+                          selection: EditorSelection.cursor(
+                            previous_cell_state.doc.length
+                          ),
+                        },
+                      }),
+                      EditorRemoveEffect.of({ editor_id: cell_id }),
+                      CellOrderEffect.of({
+                        cell_id: cell_id,
+                        index: null,
+                      }),
+                    ];
+                  } else {
+                    return [
+                      EditorDispatchEffect.of({
+                        editor_id: cell_id,
+                        transaction: {
+                          annotations: NudgeCell.of(true),
+                        },
+                      }),
+                    ];
+                  }
+                }
 
                 return [
                   EditorDispatchEffect.of({
@@ -315,7 +344,7 @@ export let cell_keymap = Prec.high(
                       changes: {
                         from: previous_cell_state.doc.length,
                         to: previous_cell_state.doc.length,
-                        insert: "\n\n" + current_cell_state.doc.toString(),
+                        insert: "\n\n" + view.state.doc.toString(),
                       },
                     },
                   }),

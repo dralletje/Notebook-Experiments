@@ -13,30 +13,39 @@ export class CellErrorBoundary extends React.Component {
   render() {
     if (this.state.error) {
       return (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            padding: 16,
-            backgroundColor: "#2c0000",
-            borderRadius: 10,
-          }}
-        >
-          <h3>Codemirror Crashed</h3>
+        <div className="flex flex-col p-4 bg-red-900 rounded-md text-red-100">
+          <h3 className="font-mono">Codemirror Crashed</h3>
           <pre
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
+            className="font-mono whitespace-pre-wrap text-red-500"
+            // style={{
+            //   display: "flex",
+            //   flexDirection: "column",
+            //   alignItems: "center",
+            //   justifyContent: "center",
+            //   height: "100%",
 
-              whiteSpace: "pre-wrap",
-              color: "#c90000",
-            }}
+            //   whiteSpace: "pre-wrap",
+            //   color: "#c90000",
+            // }}
           >
             {this.state.error?.message}
           </pre>
+          <button
+            className="
+              font-mono 
+              bg-red-700 hover:bg-red-500 transition-colors 
+              cursor-pointer 
+              self-start 
+              px-4
+              rounded-sm
+              mt-2
+            "
+            onClick={() => {
+              this.setState({ error: null });
+            }}
+          >
+            retry
+          </button>
         </div>
       );
     }

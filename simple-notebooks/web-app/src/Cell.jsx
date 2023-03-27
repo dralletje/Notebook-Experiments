@@ -19,6 +19,7 @@ import {
 import {
   CellMetaField,
   CellTypeFacet,
+  NudgeCell,
 } from "./packages/codemirror-notebook/cell";
 
 let InspectorContainer = styled.div`
@@ -217,6 +218,7 @@ export let Cell = ({
   viewupdate,
 }) => {
   let nested_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
+
   let state = nested_viewupdate.state;
   let type = state.facet(CellTypeFacet);
   let cell = {
@@ -245,6 +247,25 @@ export let Cell = ({
       );
     }
   }, []);
+
+  React.useEffect(() => {
+    for (let transaction of nested_viewupdate.transactions) {
+      if (transaction.annotation(NudgeCell)) {
+        cell_wrapper_ref.current.animate(
+          {
+            transform: [
+              "translateX(0)",
+              "translateX(-5px)",
+              "translateX(5px)",
+              "translateX(-5px)",
+              "translateX(0)",
+            ],
+          },
+          { duration: 200 }
+        );
+      }
+    }
+  }, [nested_viewupdate.transactions]);
 
   let [is_focused, set_is_focused] = React.useState(false);
   let set_is_focused_extension = React.useMemo(() => {
