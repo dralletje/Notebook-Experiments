@@ -44,7 +44,7 @@ import {
 
 /**
  * Facet required for the cell movement plugin to work.
- * @type {Facet<import("./notebook-types").CellId[], import("./notebook-types").CellId[]>}
+ * @type {Facet<import("./cell").CellId[], import("./cell").CellId[]>}
  */
 export let CellIdOrder = Facet.define({
   combine: (x) => x[0],

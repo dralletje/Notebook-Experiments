@@ -26,7 +26,7 @@ import { File } from "./Notebook";
 import {
   NotebookFilename,
   NotebookId,
-} from "./packages/codemirror-notebook/notebook-types";
+} from "./packages/codemirror-notebook/cell";
 // import { typescript_extension } from "./packages/typescript-server-webworker/codemirror-typescript.js";
 import {
   EditorInChief,
@@ -49,7 +49,7 @@ import { EditorState } from "@codemirror/state";
  * @property {{
  *  [filename: string]: {
  *    filename: string,
- *    notebook: import("./packages/codemirror-notebook/notebook-types").NotebookSerialized,
+ *    notebook: import("./packages/codemirror-notebook/cell").NotebookSerialized,
  *  }
  * }} files
  */
@@ -72,7 +72,7 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
 
 /**
  * @param {EditorState} editorstate
- * @param {import("./packages/codemirror-notebook/notebook-types").Cell} cell
+ * @param {import("./packages/codemirror-notebook/cell").Cell} cell
  */
 export let create_cell_state = (editorstate, cell) => {
   return create_nested_editor_state({
@@ -91,7 +91,7 @@ export let create_cell_state = (editorstate, cell) => {
   });
 };
 
-/** @param {{ filename: string, notebook: import("./packages/codemirror-notebook/notebook-types").NotebookSerialized}} notebook */
+/** @param {{ filename: string, notebook: import("./packages/codemirror-notebook/cell").NotebookSerialized}} notebook */
 let notebook_to_state = ({ filename, notebook }) => {
   return EditorInChief.create({
     editors: (editorstate) => {

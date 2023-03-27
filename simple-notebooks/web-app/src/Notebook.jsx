@@ -13,7 +13,7 @@ import { SelectionArea } from "./selection-area/SelectionArea";
 import {
   NotebookFilename,
   NotebookId,
-} from "./packages/codemirror-notebook/notebook-types";
+} from "./packages/codemirror-notebook/cell";
 
 import {
   BlurEditorInChiefEffect,
@@ -88,7 +88,7 @@ export function File({ state, onChange, socket, files }) {
     editor_in_chief.state.field(LastCreatedCells, false) ?? [];
 
   let notebook = React.useMemo(() => {
-    return /** @type {import("./packages/codemirror-notebook/notebook-types").Notebook} */ ({
+    return /** @type {import("./packages/codemirror-notebook/cell").Notebook} */ ({
       id: state.facet(NotebookId),
       filename: state.facet(NotebookFilename),
       cell_order: state.field(CellOrderField),
@@ -179,7 +179,7 @@ export function File({ state, onChange, socket, files }) {
 /**
  * @param {{
  *  editor_in_chief: import("codemirror-x-react/viewupdate.js").EditorView<EditorInChief>,
- *  cell: import("./packages/codemirror-notebook/notebook-types.js").Cell,
+ *  cell: import("./packages/codemirror-notebook/cell.js").Cell,
  * }} props
  */
 let cell_actions = ({ editor_in_chief, cell }) => [

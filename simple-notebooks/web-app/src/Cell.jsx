@@ -28,7 +28,7 @@ let InspectorContainer = styled.div`
 
   font-size: 16px;
   .folded & {
-    min-height: 55px;
+    min-height: 45px;
   }
 `;
 
@@ -180,7 +180,7 @@ let local_style = EditorView.theme({
   },
 });
 
-/** @returns {import("./packages/codemirror-notebook/notebook-types").CylinderShadow} */
+/** @returns {import("./packages/codemirror-notebook/cell").CylinderShadow} */
 let default_cylinder = () => {
   return {
     last_run: -Infinity,
@@ -218,8 +218,8 @@ let remove_selection_on_blur_extension = EditorView.domEventHandlers({
 
 /**
  * @param {{
- *  cell_id: import("./packages/codemirror-notebook/notebook-types").CellId,
- *  cylinder: import("./packages/codemirror-notebook/notebook-types").CylinderShadow,
+ *  cell_id: import("./packages/codemirror-notebook/cell").CellId,
+ *  cylinder: import("./packages/codemirror-notebook/cell").CylinderShadow,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
  *  viewupdate: GenericViewUpdate,
@@ -282,22 +282,24 @@ export let Cell = ({
     : cell.folded;
   let forced_unfolded = cell.folded && is_focused;
 
+  let classes = compact([
+    cylinder.running && "running",
+    (cylinder.waiting ||
+      (cylinder.last_run ?? -Infinity) < (cell.last_run ?? -Infinity)) &&
+      "pending",
+    cylinder.result?.type === "throw" && "error",
+    cylinder.result?.type === "return" && "success",
+    folded && "folded",
+    forced_unfolded && "force-unfolded",
+    cell.unsaved_code !== cell.code && "modified",
+    is_selected && "selected",
+  ]).join(" ");
+
   return (
     <CellStyle
       ref={cell_wrapper_ref}
       data-cell-id={cell.id}
-      className={compact([
-        cylinder.running && "running",
-        (cylinder.waiting ||
-          (cylinder.last_run ?? -Infinity) < (cell.last_run ?? -Infinity)) &&
-          "pending",
-        cylinder.result?.type === "throw" && "error",
-        cylinder.result?.type === "return" && "success",
-        folded && "folded",
-        forced_unfolded && "force-unfolded",
-        cell.unsaved_code !== cell.code && "modified",
-        is_selected && "selected",
-      ]).join(" ")}
+      className={`font-mono ${classes}`}
     >
       <InspectorContainer>
         <Inspector value={cylinder?.result} />

@@ -48,7 +48,7 @@ let local_style = EditorView.theme({
 
 /**
  * @param {{
- *  cell_id: import("./packages/codemirror-notebook/notebook-types").CellId,
+ *  cell_id: import("./packages/codemirror-notebook/cell").CellId,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
  *  viewupdate: GenericViewUpdate,

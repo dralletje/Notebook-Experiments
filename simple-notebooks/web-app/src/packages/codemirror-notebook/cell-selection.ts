@@ -1,6 +1,6 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
-import { CellId } from "./notebook-types";
+import { CellId } from "./cell";
 import { CellOrderEffect, CellOrderField } from "./cell-order";
 import {
   EditorRemoveEffect,

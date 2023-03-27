@@ -4,6 +4,7 @@ import { Flipper, Flipped } from "react-flip-toolkit";
 import styled from "styled-components";
 
 import {
+  BlurEditorInChiefEffect,
   EditorDispatchEffect,
   EditorInChief,
 } from "../packages/codemirror-editor-in-chief/editor-in-chief";
@@ -78,7 +79,12 @@ export let DragAndDropItem = ({
   return (
     <Draggable draggableId={cell_id} index={index}>
       {(provided, snapshot) => (
-        <Flipped flipId={cell_id}>
+        <Flipped
+          translate
+          // Scale animation screws with codemirrors cursor calculations :/
+          scale={false}
+          flipId={cell_id}
+        >
           <CellContainer
             data-can-start-selection={false}
             ref={provided.innerRef}
@@ -97,14 +103,17 @@ export let DragAndDropItem = ({
                 {...provided.dragHandleProps}
                 onClick={() => {
                   editor_in_chief.dispatch({
-                    effects: EditorDispatchEffect.of({
-                      editor_id: cell_id,
-                      transaction: {
-                        effects: MutateCellMetaEffect.of((cell) => {
-                          cell.folded = !cell.folded;
-                        }),
-                      },
-                    }),
+                    effects: [
+                      EditorDispatchEffect.of({
+                        editor_id: cell_id,
+                        transaction: {
+                          effects: MutateCellMetaEffect.of((cell) => {
+                            cell.folded = !cell.folded;
+                          }),
+                        },
+                      }),
+                      BlurEditorInChiefEffect.of(),
+                    ],
                   });
                 }}
                 className="drag-handle"

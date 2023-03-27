@@ -13,17 +13,31 @@ export class CellErrorBoundary extends React.Component {
   render() {
     if (this.state.error) {
       return (
-        <pre
+        <div
           style={{
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
+            padding: 16,
+            backgroundColor: "#2c0000",
+            borderRadius: 10,
           }}
         >
-          {this.state.error.stack}
-        </pre>
+          <h3>Codemirror Crashed</h3>
+          <pre
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+
+              whiteSpace: "pre-wrap",
+              color: "#c90000",
+            }}
+          >
+            {this.state.error?.message}
+          </pre>
+        </div>
       );
     }
 

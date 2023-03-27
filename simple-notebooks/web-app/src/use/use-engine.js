@@ -1,9 +1,9 @@
 import React from "react";
 
 /**
- * @param {{ filename: string, notebook: import("../packages/codemirror-notebook/notebook-types").NotebookSerialized }} notebook
+ * @param {{ filename: string, notebook: import("../packages/codemirror-notebook/cell").NotebookSerialized }} notebook
  * @param {import("socket.io-client").Socket} socket
- * @returns {import("../packages/codemirror-notebook/notebook-types").EngineShadow}
+ * @returns {import("../packages/codemirror-notebook/cell").EngineShadow}
  */
 export let useEngine = (notebook, socket) => {
   let [engine, set_engine] = React.useState({ cylinders: {} });

@@ -1,3 +1,5 @@
+// Added this so VSCode extension can autocomplete
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
