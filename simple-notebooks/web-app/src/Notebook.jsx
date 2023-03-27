@@ -166,7 +166,7 @@ let cell_actions = ({ editor_in_chief, cell }) => [
       editor_in_chief.dispatch({
         effects: [
           EditorAddEffect.of({
-            cell_id: new_cell.id,
+            editor_id: new_cell.id,
             state: create_cell_state(editor_in_chief.state, new_cell),
           }),
           CellOrderEffect.of({
@@ -174,7 +174,7 @@ let cell_actions = ({ editor_in_chief, cell }) => [
             index: my_index + 1,
           }),
           EditorDispatchEffect.of({
-            cell_id: new_cell.id,
+            editor_id: new_cell.id,
             transaction: { selection: { anchor: 0 } },
           }),
         ],
@@ -195,7 +195,7 @@ let cell_actions = ({ editor_in_chief, cell }) => [
       editor_in_chief.dispatch({
         effects: [
           EditorAddEffect.of({
-            cell_id: new_cell.id,
+            editor_id: new_cell.id,
             state: create_cell_state(editor_in_chief.state, new_cell),
           }),
           CellOrderEffect.of({
@@ -203,7 +203,7 @@ let cell_actions = ({ editor_in_chief, cell }) => [
             index: my_index,
           }),
           EditorDispatchEffect.of({
-            cell_id: new_cell.id,
+            editor_id: new_cell.id,
             transaction: { selection: { anchor: 0 } },
           }),
         ],
@@ -225,7 +225,7 @@ let cell_actions = ({ editor_in_chief, cell }) => [
             index: null,
             cell_id: cell.id,
           }),
-          EditorRemoveEffect.of({ cell_id: cell.id }),
+          EditorRemoveEffect.of({ editor_id: cell.id }),
         ],
       });
     },
@@ -237,7 +237,7 @@ let cell_actions = ({ editor_in_chief, cell }) => [
     onClick: () => {
       editor_in_chief.dispatch({
         effects: EditorDispatchEffect.of({
-          cell_id: cell.id,
+          editor_id: cell.id,
           transaction: {
             effects: MutateCellMetaEffect.of((cell) => {
               cell.folded = !cell.folded;
@@ -308,7 +308,7 @@ export let CellList = ({ notebook, engine, viewupdate }) => {
                           onClick={() => {
                             editor_in_chief.dispatch({
                               effects: EditorDispatchEffect.of({
-                                cell_id: cell.id,
+                                editor_id: cell.id,
                                 transaction: {
                                   effects: MutateCellMetaEffect.of((cell) => {
                                     cell.folded = !cell.folded;

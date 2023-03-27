@@ -68,7 +68,7 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
 export let create_cell_state = (editorstate, cell) => {
   return create_nested_editor_state({
     parent: editorstate,
-    cell_id: cell.id,
+    editor_id: cell.id,
     doc: cell.unsaved_code ?? cell.code,
     extensions: [
       CellMetaField.init(() => ({
@@ -209,6 +209,7 @@ function App() {
 
   React.useEffect(() => {
     socket.emit("load-workspace-from-directory");
+    // @ts-ignore
     socket.once("load-workspace-from-directory", (workspace) => {
       console.log(`workspace:`, workspace);
       set_workspace(serialized_workspace_to_workspace(workspace));

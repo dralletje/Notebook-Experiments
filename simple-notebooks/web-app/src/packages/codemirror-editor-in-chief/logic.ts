@@ -15,8 +15,8 @@ import { EditorInChief } from "./editor-in-chief";
 import {
   EditorHasSelectionEffect,
   EditorHasSelectionField,
-  cell_has_selection_extension,
-} from "./cell-has-selection-extension";
+  editor_has_selection_extension,
+} from "./editor-has-selection-extension";
 
 export type EditorId = string;
 
@@ -55,7 +55,7 @@ export let expand_cell_effects_that_are_actually_meant_for_the_nexus =
               typeof cell_effect.value === "function"
                 ? cell_effect.value(
                     new EditorInChief(transaction.state),
-                    effect.value.cell_id
+                    effect.value.editor_id
                   )
                 : cell_effect.value;
             if (Array.isArray(effects)) {
@@ -82,13 +82,13 @@ export let expand_cell_effects_that_are_actually_meant_for_the_nexus =
 
 export let create_nested_editor_state = ({
   parent,
-  cell_id,
+  editor_id,
   doc,
   extensions,
   selection,
 }: {
   parent: EditorState;
-  cell_id: EditorId;
+  editor_id: EditorId;
 
   doc?: EditorStateConfig["doc"];
   extensions?: EditorStateConfig["extensions"];
@@ -98,8 +98,8 @@ export let create_nested_editor_state = ({
     doc: doc,
     selection: selection,
     extensions: [
-      EditorIdFacet.of(cell_id),
-      cell_has_selection_extension,
+      EditorIdFacet.of(editor_id),
+      editor_has_selection_extension,
       parent.facet(EditorExtension) ?? [],
       extensions ?? [],
     ],
@@ -109,7 +109,7 @@ export let create_nested_editor_state = ({
 export let BlurEditorInChiefEffect = StateEffect.define<void>();
 
 export let EditorDispatchEffect = StateEffect.define<{
-  cell_id: EditorId;
+  editor_id: EditorId;
   transaction: TransactionSpec | Transaction;
 }>();
 
@@ -124,11 +124,11 @@ export let EditorInChiefEffect = StateEffect.define<
 >();
 
 export let EditorAddEffect = StateEffect.define<{
-  cell_id: EditorId;
+  editor_id: EditorId;
   state: EditorState;
 }>();
 export let EditorRemoveEffect = StateEffect.define<{
-  cell_id: EditorId;
+  editor_id: EditorId;
 }>();
 
 export let NestedEditorStatesField = StateField.define<{
@@ -174,18 +174,18 @@ export let NestedEditorStatesField = StateField.define<{
 
         for (let effect of transaction.effects) {
           if (effect.is(EditorDispatchEffect)) {
-            let { cell_id, transaction: spec } = effect.value;
-            let cell_state = cells[cell_id];
+            let { editor_id, transaction: spec } = effect.value;
+            let cell_state = cells[editor_id];
 
             if (cell_state == null) {
               // prettier-ignore
-              console.log(`⚠ EditorDispatchEffect for Editor(${cell_id}) but no cell state exists`, { effect });
+              console.log(`⚠ EditorDispatchEffect for Editor(${editor_id}) but no cell state exists`, { effect });
               continue;
             }
 
             let transaction = cell_state.update(spec);
             transactions_to_send_to_cells.push(transaction);
-            cells[cell_id] = transaction.state;
+            cells[editor_id] = transaction.state;
 
             if (transaction.selection != null) {
               state.cell_with_current_selection =
@@ -198,26 +198,26 @@ export let NestedEditorStatesField = StateField.define<{
           }
 
           if (effect.is(EditorAddEffect)) {
-            let { cell_id, state: cell_state } = effect.value;
-            cells[cell_id] = cell_state;
+            let { editor_id, state: cell_state } = effect.value;
+            cells[editor_id] = cell_state;
           }
 
           if (effect.is(EditorRemoveEffect)) {
-            let { cell_id } = effect.value;
-            delete cells[cell_id];
+            let { editor_id } = effect.value;
+            delete cells[editor_id];
           }
         }
 
-        for (let [cell_id, cell] of Object.entries(cells)) {
+        for (let [editor_id, cell] of Object.entries(cells)) {
           let should_be_focussed =
-            state.cell_with_current_selection === cell_id;
+            state.cell_with_current_selection === editor_id;
 
           if (should_be_focussed !== cell.field(EditorHasSelectionField)) {
             let transaction = cell.update({
               effects: EditorHasSelectionEffect.of(should_be_focussed),
             });
             transactions_to_send_to_cells.push(transaction);
-            cells[cell_id] = transaction.state;
+            cells[editor_id] = transaction.state;
           }
         }
 
@@ -227,17 +227,17 @@ export let NestedEditorStatesField = StateField.define<{
         //   cellTransactionForTransaction
         // );
         // if (cell_transaction_makers?.length !== 0) {
-        //   for (let [cell_id, cell_state] of Object.entries(cells)) {
+        //   for (let [editor_id, cell_state] of Object.entries(cells)) {
         //     let current_cell_state = cell_state;
         //     for (let cell_transaction_maker of cell_transaction_makers) {
         //       let specs_to_add = cell_transaction_maker(transaction, cell_state);
         //       if (specs_to_add) {
         //         let transaction = cell_state.update(specs_to_add);
-        //         transactions_to_send_to_cells[cell_id].push(transaction);
+        //         transactions_to_send_to_cells[editor_id].push(transaction);
         //         current_cell_state = transaction.state;
         //       }
         //     }
-        //     cells[cell_id] = current_cell_state;
+        //     cells[editor_id] = current_cell_state;
         //   }
         // }
       });
@@ -255,16 +255,16 @@ export let inverted_add_remove_editor = invertedEffects.of((transaction) => {
     if (effect.is(EditorAddEffect)) {
       inverted_effects.push(
         EditorRemoveEffect.of({
-          cell_id: effect.value.cell_id,
+          editor_id: effect.value.editor_id,
         })
       );
     } else if (effect.is(EditorRemoveEffect)) {
-      let { cell_id } = effect.value;
+      let { editor_id } = effect.value;
       let cell_state = transaction.startState.field(NestedEditorStatesField)
-        .cells[cell_id];
+        .cells[editor_id];
       inverted_effects.push(
         EditorAddEffect.of({
-          cell_id: cell_id,
+          editor_id: editor_id,
           state: cell_state,
         })
       );

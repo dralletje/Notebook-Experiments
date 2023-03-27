@@ -73,7 +73,7 @@ let move_to_cell_above = (destination) => {
     }
 
     return EditorDispatchEffect.of({
-      cell_id: cell_order[cell_index - 1],
+      editor_id: cell_order[cell_index - 1],
       transaction: {
         effects: [MoveFromCellBelowEffect.of(destination)],
       },
@@ -94,7 +94,7 @@ let move_to_cell_below = (destination) => {
     }
 
     return EditorDispatchEffect.of({
-      cell_id: cell_order[cell_index + 1],
+      editor_id: cell_order[cell_index + 1],
       transaction: {
         effects: [MoveFromCellAboveEffect.of(destination)],
       },

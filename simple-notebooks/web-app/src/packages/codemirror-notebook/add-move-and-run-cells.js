@@ -49,7 +49,7 @@ export let notebook_keymap = EditorInChiefKeymap.of([
         dispatch({
           effects: selected_code_cells.map((cell) =>
             EditorDispatchEffect.of({
-              cell_id: cell.facet(EditorIdFacet),
+              editor_id: cell.facet(EditorIdFacet),
               transaction: {
                 changes: range(1, cell.doc.lines + 1).map((line_number) => {
                   let line = cell.doc.line(line_number);
@@ -71,7 +71,7 @@ export let notebook_keymap = EditorInChiefKeymap.of([
         dispatch({
           effects: selected_code_cells.map((cell) =>
             EditorDispatchEffect.of({
-              cell_id: cell.facet(EditorIdFacet),
+              editor_id: cell.facet(EditorIdFacet),
               transaction: {
                 changes: range(1, cell.doc.lines + 1).map((line_number) => {
                   let line = cell.doc.line(line_number);
@@ -131,7 +131,7 @@ export let notebook_keymap = EditorInChiefKeymap.of([
         effects: prettified_results.flatMap(
           ({ cursorOffset, docLength, formatted, cell_id }) => [
             EditorDispatchEffect.of({
-              cell_id,
+              editor_id: cell_id,
               transaction: {
                 selection: EditorSelection.cursor(cursorOffset),
                 changes: {
@@ -226,7 +226,7 @@ export let cell_keymap = Prec.high(
             EditorInChiefEffect.of((state) => {
               return [
                 EditorAddEffect.of({
-                  cell_id: new_cell.id,
+                  editor_id: new_cell.id,
                   state: create_cell_state(state, new_cell),
                 }),
                 CellOrderEffect.of({
@@ -234,7 +234,7 @@ export let cell_keymap = Prec.high(
                   index: { after: cell_id },
                 }),
                 EditorDispatchEffect.of({
-                  cell_id: new_cell.id,
+                  editor_id: new_cell.id,
                   transaction: { selection: EditorSelection.cursor(0) },
                 }),
               ];
@@ -268,7 +268,7 @@ export let cell_keymap = Prec.high(
               : []),
             EditorInChiefEffect.of((editor_in_chief) =>
               EditorAddEffect.of({
-                cell_id: cell_id,
+                editor_id: cell_id,
                 state: create_cell_state(editor_in_chief, new_cell),
               })
             ),
@@ -303,7 +303,7 @@ export let cell_keymap = Prec.high(
 
                 return [
                   EditorDispatchEffect.of({
-                    cell_id: previous_cell_id,
+                    editor_id: previous_cell_id,
                     transaction: {
                       selection: EditorSelection.cursor(
                         previous_cell_state.doc.length + 2
@@ -315,7 +315,7 @@ export let cell_keymap = Prec.high(
                       },
                     },
                   }),
-                  EditorRemoveEffect.of({ cell_id: cell_id }),
+                  EditorRemoveEffect.of({ editor_id: cell_id }),
                   CellOrderEffect.of({
                     cell_id: cell_id,
                     index: null,

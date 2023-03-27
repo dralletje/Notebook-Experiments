@@ -20,15 +20,7 @@ export {};
 // ╠═╡ folded = false
 x = 1020;
 
-// ╔═╡ [cells.c6edb4f4-8c3b-4195-b574-ac1d8e58487a]
-// ╠═╡ folded = false
-
-
-// ╔═╡ [cells.40ab1740-96c4-4454-a450-aee266144cd4]
-// ╠═╡ folded = false
-
-
-// ╔═╡ [cells.9415d440-7760-4387-b8d2-91fdd240b1e2]
+// ╔═╡ [cells.19dd38b3-f50f-42ea-aab8-284fd8e5cbe6]
 // ╠═╡ folded = false
 y = x + 10;
 
@@ -48,9 +40,7 @@ let text = await response.text()
 // ╠═╡ "Cell Order" = [
 // ╠═╡   "149b391a-9ceb-4272-9269-7fe8879441eb",
 // ╠═╡   "9cb73be2-9ccc-4b36-b3b2-30fba249adde",
-// ╠═╡   "c6edb4f4-8c3b-4195-b574-ac1d8e58487a",
-// ╠═╡   "40ab1740-96c4-4454-a450-aee266144cd4",
-// ╠═╡   "9415d440-7760-4387-b8d2-91fdd240b1e2",
+// ╠═╡   "19dd38b3-f50f-42ea-aab8-284fd8e5cbe6",
 // ╠═╡   "6e0249f4-3b09-4364-8dcf-ac6b32223d1f",
 // ╠═╡   "c55451ac-66a5-42ec-a765-c4b243bfd7ed",
 // ╠═╡   "0da4b657-ed9f-4d38-93d2-f3111e32b1f2"

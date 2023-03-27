@@ -44,19 +44,19 @@ let nested_viewupdate_weakmap = new ManyKeysWeakmap<
 
 export let extract_nested_viewupdate = (
   viewupdate: GenericViewUpdate<EditorInChief>,
-  cell_id: EditorId
+  editor_id: EditorId
 ): GenericViewUpdate<EditorState> => {
   // Wrap every transaction in EditorDispatchEffect's
   let nested_dispatch = weakmap_get_or_create({
     weakmap: nested_dispatch_weakmap,
-    key: [viewupdate.view.dispatch, cell_id],
+    key: [viewupdate.view.dispatch, editor_id],
     create: () => {
       return (...transactions) => {
         viewupdate.view.dispatch(
           ...transactions.map((tr) => ({
             annotations: tr.annotations,
             effects: EditorDispatchEffect.of({
-              cell_id: cell_id,
+              editor_id: editor_id,
               transaction: tr,
             }),
           }))
@@ -67,14 +67,14 @@ export let extract_nested_viewupdate = (
 
   let nested_editor_state = weakmap_get_or_create({
     weakmap: nested_editorstate_weakmap,
-    key: [viewupdate.state, cell_id],
+    key: [viewupdate.state, editor_id],
     create: () =>
-      viewupdate.state.field(NestedEditorStatesField).cells[cell_id],
+      viewupdate.state.field(NestedEditorStatesField).cells[editor_id],
   });
 
   let nested_transactions = weakmap_get_or_create({
     weakmap: nested_transactions_weakmap,
-    key: [viewupdate.transactions, cell_id],
+    key: [viewupdate.transactions, editor_id],
     create: () => {
       // Because we get one `viewupdate` for multiple transactions happening,
       // and `.transactions_to_send_to_cells` gets cleared after every transactions,
@@ -86,7 +86,7 @@ export let extract_nested_viewupdate = (
         }
       );
       return all_cell_transactions.filter((transaction) => {
-        return transaction.startState.facet(EditorIdFacet) === cell_id;
+        return transaction.startState.facet(EditorIdFacet) === editor_id;
       });
     },
   });

@@ -35,7 +35,7 @@ export let selected_cells_keymap = EditorInChiefKeymap.of([
         dispatch({
           effects: selected_cells.flatMap((cell_id) => [
             CellOrderEffect.of({ cell_id: cell_id, index: null }),
-            EditorRemoveEffect.of({ cell_id: cell_id }),
+            EditorRemoveEffect.of({ editor_id: cell_id }),
           ]),
         });
         return true;
@@ -50,7 +50,7 @@ export let selected_cells_keymap = EditorInChiefKeymap.of([
       // Select all cells
       let cell_order = state.field(CellOrderField);
       dispatch({
-        effects: [SelectCellsEffect.of(CellOrderField)],
+        effects: [SelectCellsEffect.of(cell_order)],
       });
       return true;
     },

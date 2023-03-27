@@ -2,11 +2,12 @@ import { zip } from "lodash";
 
 const baseMap = Symbol("baseMap");
 
-class Value {
-  constructor(value) {
-    this.value = value;
-  }
-}
+// class Value {
+//   constructor(value) {
+//     this.value = value;
+//   }
+// }
+let Value = Symbol("Value");
 
 function getLastMap({ [baseMap]: map }, keys, create = undefined) {
   if (!Array.isArray(keys)) {

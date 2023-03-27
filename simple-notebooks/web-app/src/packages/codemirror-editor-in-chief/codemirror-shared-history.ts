@@ -866,7 +866,7 @@ class HistoryState {
             if (cell_id == null) return effect;
             return EditorDispatchEffect.of({
               transaction: { effects: effect },
-              cell_id: cell_id,
+              editor_id: cell_id,
             });
           }),
           ...event.changes.items.map(({ cell_id, value: change }) => {
@@ -875,7 +875,7 @@ class HistoryState {
             return EditorDispatchEffect.of({
               // @ts-ignore
               transaction: { changes: change },
-              cell_id: cell_id,
+              editor_id: cell_id,
             });
           }),
           // TODO Same here, selection should never have a null cell_id
@@ -886,7 +886,7 @@ class HistoryState {
                   selection: event.startSelection.value,
                   scrollIntoView: true,
                 },
-                cell_id: event.startSelection.cell_id,
+                editor_id: event.startSelection.cell_id,
               }),
         ]),
         annotations: fromHistory.of({ side, rest }),

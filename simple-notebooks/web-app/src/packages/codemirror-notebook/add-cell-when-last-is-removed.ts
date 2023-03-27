@@ -25,7 +25,7 @@ export let add_single_cell_when_all_cells_are_removed =
       return {
         effects: [
           EditorAddEffect.of({
-            cell_id: new_cell.id,
+            editor_id: new_cell.id,
             state: create_cell_state(transaction.state, new_cell),
           }),
           CellOrderEffect.of({

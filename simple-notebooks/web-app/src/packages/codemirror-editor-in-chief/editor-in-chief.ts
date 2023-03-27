@@ -17,7 +17,6 @@ import {
   EditorDispatchEffect,
   EditorAddEffect,
   EditorRemoveEffect,
-  cell_dispatch_effect_effects,
   EditorExtension,
   EditorIdFacet,
   EditorInChiefEffect,
@@ -26,7 +25,7 @@ import {
 import {
   EditorHasSelectionField,
   EditorHasSelectionEffect,
-} from "./cell-has-selection-extension";
+} from "./editor-has-selection-extension";
 import { extract_nested_viewupdate } from "./extract-nested-viewupdate";
 
 export {
@@ -34,7 +33,6 @@ export {
   NestedEditorStatesField,
   EditorIdFacet,
   EditorExtension,
-  cell_dispatch_effect_effects,
   EditorRemoveEffect,
   EditorAddEffect,
   EditorHasSelectionField,

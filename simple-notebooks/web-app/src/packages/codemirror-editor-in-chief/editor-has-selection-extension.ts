@@ -16,7 +16,7 @@ export let EditorHasSelectionField = StateField.define<boolean>({
   },
 });
 
-export let cell_has_selection_extension = [
+export let editor_has_selection_extension = [
   EditorHasSelectionField,
   EditorView.editorAttributes.of((view) => {
     let has_selection = view.state.field(EditorHasSelectionField);
