@@ -209,7 +209,11 @@ let PlaceInsideExpression = ({ expression, children }) => {
                     placeholder_index
                   ),
               Decoration.replace({
-                widget: new ReactWidget(children ?? "undefined"),
+                widget: new ReactWidget(
+                  children ?? (
+                    <span style={{ color: "#229945" }}>undefined</span>
+                  )
+                ),
               }).range(
                 placeholder_index,
                 placeholder_index + "__RESULT_PLACEHOLDER__".length

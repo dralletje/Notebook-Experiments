@@ -53,25 +53,13 @@ let CellStyle = styled.div`
   flex: 1 1 0px;
   min-width: 0px;
 
-  /* background-color: rgba(0, 0, 0, 0.4); */
-  /* I like transparency better for when the backdrop color changes
-     but it isn't great when dragging */
-  /* background-color: #121212; */
-
   font-family: Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro",
     monospace;
 
-  & ${InspectorContainer} {
-    transition: all 0.2s ease-in-out;
-  }
   &.modified {
     & ${EditorStyled} {
       background-color: rgb(14 27 39);
       border: solid 1px #778cb514;
-    }
-    & ${InspectorContainer} {
-      transition: all 1s ease-in-out;
-      /* opacity: 0.3; */
     }
   }
 
@@ -112,7 +100,6 @@ let CellStyle = styled.div`
   }
 
   border-radius: 3px;
-  /* box-shadow: rgba(255, 255, 255, 0) 0px 0px 20px; */
   filter: drop-shadow(0 0px 0px rgba(255, 255, 255, 0));
   transform: scaleX(1);
   transform-origin: top left;
@@ -123,12 +110,8 @@ let CellStyle = styled.div`
   .dragging &,
   .cell-container:has(.drag-handle:hover) &,
   .cell-container:has(.menu:focus) & {
-    /* box-shadow: rgba(255, 255, 255, 0.1) 0px 0px 20px; */
-    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.1));
-    /* transform: scaleX(1.05); */
     transform: translateX(-2px) translateY(-2px);
     z-index: 1;
-
     background-color: #121212;
   }
   .dragging & {
@@ -139,7 +122,8 @@ let CellStyle = styled.div`
 
 let local_style = EditorView.theme({
   "& .cm-content": {
-    padding: "16px !important",
+    margin: "16px",
+    padding: "0px",
   },
   "& .cm-content, & .cm-scroller, & .cm-tooltip-autocomplete .cm-completionLabel":
     {
@@ -274,13 +258,12 @@ export let Cell = ({
     });
   }, [set_is_focused]);
 
-  // NOTE Can also use EditorHasSelectionField, but that will keep the cell open
-  // .... when I click somewhere else... but it now closes abruptly... hmmmm
-  // let folded = state.field(EditorHasSelectionField) ? false : cell.folded;
-  let folded = nested_viewupdate.state.field(EditorHasSelectionField)
-    ? false
-    : cell.folded;
-  let forced_unfolded = cell.folded && is_focused;
+  let modified = cell.unsaved_code !== cell.code;
+  let folded =
+    nested_viewupdate.state.field(EditorHasSelectionField) || modified
+      ? false
+      : cell.folded;
+  let forced_unfolded = cell.folded === true && folded === false;
 
   let classes = compact([
     cylinder.running && "running",
@@ -291,7 +274,7 @@ export let Cell = ({
     cylinder.result?.type === "return" && "success",
     folded && "folded",
     forced_unfolded && "force-unfolded",
-    cell.unsaved_code !== cell.code && "modified",
+    modified && "modified",
     is_selected && "selected",
   ]).join(" ");
 
@@ -305,39 +288,43 @@ export let Cell = ({
         <Inspector value={cylinder?.result} />
       </InspectorContainer>
 
+      {/*
+      TODO Would be cool to not render when folded, but for now that breaks moving
+      .... into this cell from a cell above it.
       {!folded && (
-        <EditorStyled
-          className="cell-editor"
-          style={{
-            display: folded ? "none" : undefined,
-            marginTop: folded ? 0 : undefined,
-          }}
+        */}
+      <EditorStyled
+        className="cell-editor"
+        style={{
+          display: folded ? "none" : undefined,
+          marginTop: folded ? 0 : undefined,
+        }}
+      >
+        <CodemirrorFromViewUpdate
+          ref={editorview_ref}
+          viewupdate={nested_viewupdate}
         >
-          <CodemirrorFromViewUpdate
-            ref={editorview_ref}
-            viewupdate={nested_viewupdate}
-          >
-            <Extension
-              key="placeholder"
-              deps={[]}
-              extension={placeholder("The rest is still unwritten... ")}
-            />
-            <Extension
-              key="basic-javascript-setup"
-              extension={basic_javascript_setup}
-            />
-            <Extension
-              key="set_is_focused_extension"
-              extension={set_is_focused_extension}
-            />
-            <Extension
-              key="remove_selection_on_blur_extension"
-              extension={remove_selection_on_blur_extension}
-            />
-            <Extension key="local_style" extension={local_style} />
-          </CodemirrorFromViewUpdate>
-        </EditorStyled>
-      )}
+          <Extension
+            key="placeholder"
+            deps={[]}
+            extension={placeholder("The rest is still unwritten... ")}
+          />
+          <Extension
+            key="basic-javascript-setup"
+            extension={basic_javascript_setup}
+          />
+          <Extension
+            key="set_is_focused_extension"
+            extension={set_is_focused_extension}
+          />
+          <Extension
+            key="remove_selection_on_blur_extension"
+            extension={remove_selection_on_blur_extension}
+          />
+          <Extension key="local_style" extension={local_style} />
+        </CodemirrorFromViewUpdate>
+      </EditorStyled>
+      {/* )} */}
     </CellStyle>
   );
 };

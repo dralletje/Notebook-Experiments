@@ -116,13 +116,6 @@ let TextCellStyle = styled.div`
     pointer-events: none;
   }
 
-  .cm-scroller {
-    overflow: visible;
-  }
-
-  border-radius: 3px;
-  /* box-shadow: rgba(255, 255, 255, 0) 0px 0px 20px; */
-  filter: drop-shadow(0 0px 0px rgba(255, 255, 255, 0));
   transform: scaleX(1);
   transform-origin: top left;
 

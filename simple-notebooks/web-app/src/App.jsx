@@ -71,12 +71,12 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
 );
 
 /**
- * @param {EditorState} editorstate
+ * @param {EditorInChief} editorstate
  * @param {import("./packages/codemirror-notebook/cell").Cell} cell
  */
 export let create_cell_state = (editorstate, cell) => {
   return create_nested_editor_state({
-    parent: editorstate,
+    parent: editorstate.editorstate,
     editor_id: cell.id,
     doc: cell.unsaved_code ?? cell.code,
     extensions: [

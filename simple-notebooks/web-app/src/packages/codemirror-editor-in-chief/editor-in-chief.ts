@@ -288,7 +288,7 @@ export class EditorInChief {
     editors,
     extensions = [],
   }: {
-    editors: (editorstate: EditorState) => { [key: EditorId]: EditorState };
+    editors: (editorstate: EditorInChief) => { [key: EditorId]: EditorState };
     extensions?: EditorInChiefExtension[];
   }) {
     let extensions_with_state_fields =
@@ -301,7 +301,7 @@ export class EditorInChief {
           expand_cell_effects_that_are_actually_meant_for_the_nexus,
           inverted_add_remove_editor,
           EditorsField.init((editorstate) => ({
-            cells: editors(editorstate),
+            cells: editors(new EditorInChief(editorstate)),
             transactions_to_send_to_cells: [],
             cell_with_current_selection: null,
           })),

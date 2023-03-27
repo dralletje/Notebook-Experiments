@@ -1,7 +1,6 @@
 import React from "react";
 
 import styled from "styled-components";
-import { runScopeHandlers } from "@codemirror/view";
 import { isEqual, mapValues } from "lodash";
 import { useViewUpdate } from "codemirror-x-react/viewupdate";
 
@@ -18,21 +17,13 @@ import {
 import {
   BlurEditorInChiefEffect,
   EditorIdFacet,
-  EditorAddEffect,
-  EditorDispatchEffect,
-  EditorRemoveEffect,
   EditorInChief,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,
-  MutateCellMetaEffect,
-  empty_cell,
 } from "./packages/codemirror-notebook/cell";
-import {
-  CellOrderEffect,
-  CellOrderField,
-} from "./packages/codemirror-notebook/cell-order.js";
+import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
 import { useEngine } from "./use/use-engine";
 
 import { IonIcon } from "@ionic/react";
@@ -43,7 +34,6 @@ import {
   textOutline,
 } from "ionicons/icons";
 import { ContextMenuItem } from "./packages/react-contextmenu/react-contextmenu";
-import { create_cell_state } from "./App.jsx";
 import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
 
 import { CellMemo } from "./Cell.jsx";
@@ -51,6 +41,8 @@ import { TextCell } from "./TextCell.jsx";
 import { CellErrorBoundary } from "./yuck/CellErrorBoundary.jsx";
 import { DragAndDropItem, DragAndDropList } from "./yuck/DragAndDropStuff.jsx";
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
+import { actions } from "./commands.js";
+import { Sidebar } from "./Sidebar.jsx";
 
 let AppStyle = styled.div`
   padding-top: 50px;
@@ -59,7 +51,9 @@ let AppStyle = styled.div`
   margin-right: 20px;
 
   flex: 1;
-  flex-basis: min(700px, 100vw - 200px, 100%);
+  flex-basis: min(900px, 100vw - 200px, 100%);
+  flex-grow: 0;
+
   min-width: 0;
 `;
 
@@ -171,6 +165,9 @@ export function File({ state, onChange, socket, files }) {
           </DragAndDropList>
         </AppStyle>
         <div style={{ flex: 1 }} />
+        {/* <div style={{ width: 400, display: "flex", alignItems: "stretch" }}>
+          <Sidebar editor_in_chief={editor_in_chief} />
+        </div> */}
       </SelectionArea>
     </div>
   );
@@ -190,27 +187,8 @@ let cell_actions = ({ editor_in_chief, cell }) => [
         label="Add Text Above"
       />
     ),
-    onClick: () => {
-      let cell_order = editor_in_chief.state.field(CellOrderField);
-      let my_index = cell_order.indexOf(cell.id);
-      let new_cell = empty_cell("text");
-      editor_in_chief.dispatch({
-        effects: [
-          EditorAddEffect.of({
-            editor_id: new_cell.id,
-            state: create_cell_state(editor_in_chief.state, new_cell),
-          }),
-          CellOrderEffect.of({
-            cell_id: new_cell.id,
-            index: my_index,
-          }),
-          EditorDispatchEffect.of({
-            editor_id: new_cell.id,
-            transaction: { selection: { anchor: 0 } },
-          }),
-        ],
-      });
-    },
+    onClick: () =>
+      actions.add_text_above.run({ editor_in_chief, cell_id: cell.id }),
   },
   {
     title: (
@@ -220,27 +198,8 @@ let cell_actions = ({ editor_in_chief, cell }) => [
         shortcut="⌘K"
       />
     ),
-    onClick: () => {
-      let cell_order = editor_in_chief.state.field(CellOrderField);
-      let my_index = cell_order.indexOf(cell.id);
-      let new_cell = empty_cell();
-      editor_in_chief.dispatch({
-        effects: [
-          EditorAddEffect.of({
-            editor_id: new_cell.id,
-            state: create_cell_state(editor_in_chief.state, new_cell),
-          }),
-          CellOrderEffect.of({
-            cell_id: new_cell.id,
-            index: my_index + 1,
-          }),
-          EditorDispatchEffect.of({
-            editor_id: new_cell.id,
-            transaction: { selection: { anchor: 0 } },
-          }),
-        ],
-      });
-    },
+    onClick: () =>
+      actions.add_code_below.run({ editor_in_chief, cell_id: cell.id }),
   },
   {
     title: (
@@ -250,33 +209,13 @@ let cell_actions = ({ editor_in_chief, cell }) => [
         shortcut="⌘K"
       />
     ),
-    onClick: () => {
-      editor_in_chief.dispatch({
-        effects: [
-          CellOrderEffect.of({
-            index: null,
-            cell_id: cell.id,
-          }),
-          EditorRemoveEffect.of({ editor_id: cell.id }),
-        ],
-      });
-    },
+    onClick: () =>
+      actions.delete_cell.run({ editor_in_chief, cell_id: cell.id }),
   },
   {
     title: (
       <ContextMenuItem icon={<IonIcon icon={eyeOutline} />} label="Fold" />
     ),
-    onClick: () => {
-      editor_in_chief.dispatch({
-        effects: EditorDispatchEffect.of({
-          editor_id: cell.id,
-          transaction: {
-            effects: MutateCellMetaEffect.of((cell) => {
-              cell.folded = !cell.folded;
-            }),
-          },
-        }),
-      });
-    },
+    onClick: () => actions.fold_cell.run({ editor_in_chief, cell_id: cell.id }),
   },
 ];

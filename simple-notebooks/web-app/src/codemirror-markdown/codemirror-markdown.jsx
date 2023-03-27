@@ -30,18 +30,24 @@ let markdown_styling_base_theme = EditorView.baseTheme({
     "accent-color": "var(--accent-color)",
     color: "white",
   },
+  "& .cm-scroller": {
+    overflow: "visible",
+  },
+
   "h1, h2, h3, h4, h5, h6": {
     display: "inline-block",
   },
   h1: {
-    "font-size": "1.5em",
+    "font-size": "2em",
+    "font-weight": "bold",
     ".cm-line:has(&)": {
       "margin-top": `0.2em`,
       "margin-bottom": `0.3em`,
     },
   },
   h2: {
-    "font-size": "1.3em",
+    "font-size": "1.5em",
+    "font-weight:": "bold",
     ".cm-line:has(&)": {
       "margin-top": `0.2em`,
       "margin-bottom": `0.2em`,
@@ -49,6 +55,7 @@ let markdown_styling_base_theme = EditorView.baseTheme({
   },
   h3: {
     "font-size": "1.1em",
+    "font-weight:": "bold",
     ".cm-line:has(&)": {
       "margin-top": `0.2em`,
       "margin-bottom": `0.1em`,
@@ -654,6 +661,16 @@ export let basic_markdown_setup = [
     iterate_with_cursor({
       tree,
       enter: (cursor) => {
+        if (cursor.name === "HorizontalRule") {
+          let line = doc.lineAt(cursor.from);
+          decorations.push(
+            Decoration.replace({
+              widget: new ReactWidget(<hr />),
+              inclusive: true,
+            }).range(line.from, line.to)
+          );
+        }
+
         if (cursor.name === "Emoji") {
           let text = doc.sliceString(cursor.from, cursor.to);
           if (emoji.hasEmoji(text)) {
