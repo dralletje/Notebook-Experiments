@@ -48,8 +48,7 @@ let local_style = EditorView.theme({
 
 /**
  * @param {{
- *  cell_id: import("./notebook-types").CellId,
- *  cell: import("./notebook-types").Cell,
+ *  cell_id: import("./packages/codemirror-notebook/notebook-types").CellId,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
  *  viewupdate: GenericViewUpdate,
@@ -72,18 +71,10 @@ export let TextCell = ({
     if (did_just_get_created) {
       cell_wrapper_ref.current.animate(
         [
-          {
-            clipPath: `inset(100% 0 0 0)`,
-            transform: "translateY(-100%)",
-          },
-          {
-            clipPath: `inset(0 0 0 0)`,
-            transform: "translateY(0%)",
-          },
+          { clipPath: `inset(100% 0 0 0)`, transform: "translateY(-100%)" },
+          { clipPath: `inset(0 0 0 0)`, transform: "translateY(0%)" },
         ],
-        {
-          duration: 200,
-        }
+        { duration: 200 }
       );
     }
   }, []);

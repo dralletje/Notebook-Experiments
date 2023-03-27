@@ -139,6 +139,34 @@ export class EditorInChiefStateField<T> {
   }
 }
 
+// export class EditorInChiefStateFacet<I,O> {
+//   constructor(private __facet: Facet<I,O>) {
+//     this.__facet = __facet;
+//   }
+//   /** @deprecated */
+//   get facet() {
+//     return this.__facet;
+//   }
+//   of(value: I): EditorInChiefExtension {
+//     return this.__facet.of(value)
+//   }
+//   static define<I,O>(config: Parameters<typeof Facet["define"]>[0]) {
+//     return new EditorInChiefStateFacet(
+//       Facet.define({
+//         create: (state) => spec.create(new EditorInChief(state)),
+//         update: (value, tr) => {
+//           return spec.update(
+//             value,
+//             new EditorInChiefTransaction(new EditorInChief(tr.startState), tr)
+//           );
+//         },
+//         provide: (field) =>
+//           editor_in_chief_extensions_to_codemirror(spec.provide?.(field)),
+//       })
+//     );
+//   }
+// }
+
 type EditorInChiefCommand = (view: {
   state: EditorInChief;
   dispatch: (...specs: EditorInChiefTransactionSpec[]) => void;
@@ -211,6 +239,13 @@ export class EditorInChief {
   facet<T>(facet: Facet<any, T>) {
     return this.editorstate.facet(facet);
   }
+  // facet<T>(facet: Facet<any, T> | EditorInChiefFacet<any, T>) {
+  //   if (facet instanceof EditorInChiefFacet) {
+  //     return this.editorstate.facet(facet.facet);
+  //   } else {
+  //     return this.editorstate.facet(facet);
+  //   }
+  // }
 
   field<T>(field: StateField<T> | EditorInChiefStateField<T>): T;
   field<T>(

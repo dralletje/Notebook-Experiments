@@ -1,22 +1,23 @@
 import React from "react";
+
 import styled from "styled-components";
-import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
+import { runScopeHandlers } from "@codemirror/view";
+import { isEqual, mapValues } from "lodash";
+import { useViewUpdate } from "codemirror-x-react/viewupdate";
 
-import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
-
-import { Flipper, Flipped } from "react-flip-toolkit";
-
-import { IonIcon } from "@ionic/react";
 import {
-  codeOutline,
-  eyeOutline,
-  planetOutline,
-  textOutline,
-} from "ionicons/icons";
-
-import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu";
-import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selection";
+  SelectCellsEffect,
+  SelectedCellsField,
+} from "./packages/codemirror-notebook/cell-selection";
+import { SelectionArea } from "./selection-area/SelectionArea";
 import {
+  NotebookFilename,
+  NotebookId,
+} from "./packages/codemirror-notebook/notebook-types";
+
+import {
+  BlurEditorInChiefEffect,
+  EditorIdFacet,
   EditorAddEffect,
   EditorDispatchEffect,
   EditorRemoveEffect,
@@ -28,129 +29,189 @@ import {
   MutateCellMetaEffect,
   empty_cell,
 } from "./packages/codemirror-notebook/cell";
-import { create_cell_state } from "./App.jsx";
 import {
   CellOrderEffect,
   CellOrderField,
 } from "./packages/codemirror-notebook/cell-order.js";
+import { useEngine } from "./use/use-engine";
+
+import { IonIcon } from "@ionic/react";
+import {
+  codeOutline,
+  eyeOutline,
+  planetOutline,
+  textOutline,
+} from "ionicons/icons";
+import { ContextMenuItem } from "./packages/react-contextmenu/react-contextmenu";
+import { create_cell_state } from "./App.jsx";
 import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
+
 import { CellMemo } from "./Cell.jsx";
 import { TextCell } from "./TextCell.jsx";
+import { CellErrorBoundary } from "./yuck/CellErrorBoundary.jsx";
+import { DragAndDropItem, DragAndDropList } from "./yuck/DragAndDropStuff.jsx";
+import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
 
-let CellContainer = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  margin-bottom: 0.5rem;
+let AppStyle = styled.div`
+  padding-top: 50px;
+  min-height: 100vh;
+  padding-bottom: 100px;
+  margin-right: 20px;
 
-  will-change: transform;
+  flex: 1;
+  flex-basis: min(700px, 100vw - 200px, 100%);
+  min-width: 0;
 `;
-
-let DragAndDropListStyle = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-let DragAndDropList = ({ children, editor_in_chief, cell_order }) => {
-  return (
-    <DragDropContext
-      onDragEnd={({ draggableId, destination, source }) => {
-        if (destination) {
-          editor_in_chief.dispatch({
-            effects: CellOrderEffect.of({
-              cell_id: draggableId,
-              // from: source.index,
-              index: destination.index,
-            }),
-          });
-        }
-      }}
-    >
-      <Droppable droppableId="cells">
-        {(provided) => (
-          <DragAndDropListStyle
-            {...provided.droppableProps}
-            ref={provided.innerRef}
-          >
-            <Flipper flipKey={cell_order.join(",")} spring={"stiff"}>
-              <div data-can-start-cell-selection>{children}</div>
-            </Flipper>
-            {provided.placeholder}
-          </DragAndDropListStyle>
-        )}
-      </Droppable>
-    </DragDropContext>
-  );
-};
 
 /**
  * @param {{
- *  icon: import("react").ReactElement,
- *  label: string,
- *  shortcut?: string,
+ *  state: EditorInChief,
+ *  onChange: (state: EditorInChief) => void,
+ *  socket: import("socket.io-client").Socket,
+ *  files: { [filename: string]: { filename: string } },
  * }} props
  */
-let ContextMenuItem = ({ icon, label, shortcut }) => {
+export function File({ state, onChange, socket, files }) {
+  let viewupdate = useViewUpdate(state, onChange);
+  useCodemirrorKeyhandler(viewupdate);
+
+  let cell_editor_states = state.editors;
+  let cell_order = state.field(CellOrderField);
+  let selected_cells = viewupdate.state.field(SelectedCellsField);
+  let editor_in_chief = viewupdate.view;
+
+  /**
+   * Keep track of what cells are just created by the users,
+   * so we can animate them in 🤩
+   */
+  let last_created_cells =
+    editor_in_chief.state.field(LastCreatedCells, false) ?? [];
+
+  let notebook = React.useMemo(() => {
+    return /** @type {import("./packages/codemirror-notebook/notebook-types").Notebook} */ ({
+      id: state.facet(NotebookId),
+      filename: state.facet(NotebookFilename),
+      cell_order: state.field(CellOrderField),
+      cells: mapValues(cell_editor_states, (cell_state) => {
+        let type = cell_state.facet(CellTypeFacet);
+        return {
+          id: cell_state.facet(EditorIdFacet),
+          unsaved_code: cell_state.doc.toString(),
+          ...cell_state.field(CellMetaField),
+          type: type,
+
+          // Uhhhh TODO??
+          ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
+        };
+      }),
+    });
+  }, [cell_editor_states, cell_order]);
+
+  let notebook_with_filename = React.useMemo(() => {
+    return {
+      filename: state.facet(NotebookFilename),
+      notebook: notebook,
+    };
+  }, [notebook, state.facet(NotebookFilename)]);
+
+  let engine = useEngine(notebook_with_filename, socket);
+
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        whiteSpace: "pre",
-      }}
-    >
-      <span style={{ flex: "0 1 content", transform: "translateY(2px)" }}>
-        {icon}
-      </span>
-      <div style={{ minWidth: 8 }} />
-      <span>{label}</span>
-      <div style={{ flex: "1 0 40px" }} />
-      {shortcut && (
-        <div style={{ opacity: 0.5, fontSize: "0.8em" }}>{shortcut}</div>
-      )}
+    <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
+      <SelectionArea
+        on_selection={(new_selected_cells) => {
+          if (!isEqual(new_selected_cells, selected_cells)) {
+            viewupdate.view.dispatch({
+              effects: [
+                SelectCellsEffect.of(new_selected_cells),
+                BlurEditorInChiefEffect.of(),
+              ],
+            });
+          }
+        }}
+      >
+        <AppStyle>
+          <DragAndDropList editor_in_chief={editor_in_chief}>
+            {cell_order
+              .map((cell_id) => notebook.cells[cell_id])
+              .map((cell, index) => (
+                <DragAndDropItem
+                  key={cell.id}
+                  index={index}
+                  cell_id={cell.id}
+                  editor_in_chief={editor_in_chief}
+                  context_options={cell_actions({ editor_in_chief, cell })}
+                >
+                  <CellErrorBoundary>
+                    {editor_in_chief.state
+                      .editor(cell.id)
+                      .facet(CellTypeFacet) === "text" ? (
+                      <TextCell
+                        cell_id={cell.id}
+                        viewupdate={viewupdate}
+                        is_selected={selected_cells.includes(cell.id)}
+                        did_just_get_created={last_created_cells.includes(
+                          cell.id
+                        )}
+                      />
+                    ) : (
+                      <CellMemo
+                        cell_id={cell.id}
+                        viewupdate={viewupdate}
+                        cylinder={engine.cylinders[cell.id]}
+                        is_selected={selected_cells.includes(cell.id)}
+                        did_just_get_created={last_created_cells.includes(
+                          cell.id
+                        )}
+                      />
+                    )}
+                  </CellErrorBoundary>
+                </DragAndDropItem>
+              ))}
+          </DragAndDropList>
+        </AppStyle>
+        <div style={{ flex: 1 }} />
+      </SelectionArea>
     </div>
   );
-};
-
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { error };
-  }
-
-  render() {
-    if (this.state.error) {
-      return (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-          }}
-        >
-          Error
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
 }
 
 /**
  * @param {{
  *  editor_in_chief: import("codemirror-x-react/viewupdate.js").EditorView<EditorInChief>,
- *  cell: import("./notebook-types.js").Cell,
+ *  cell: import("./packages/codemirror-notebook/notebook-types.js").Cell,
  * }} props
  */
 let cell_actions = ({ editor_in_chief, cell }) => [
+  {
+    title: (
+      <ContextMenuItem
+        icon={<IonIcon icon={textOutline} />}
+        label="Add Text Above"
+      />
+    ),
+    onClick: () => {
+      let cell_order = editor_in_chief.state.field(CellOrderField);
+      let my_index = cell_order.indexOf(cell.id);
+      let new_cell = empty_cell("text");
+      editor_in_chief.dispatch({
+        effects: [
+          EditorAddEffect.of({
+            editor_id: new_cell.id,
+            state: create_cell_state(editor_in_chief.state, new_cell),
+          }),
+          CellOrderEffect.of({
+            cell_id: new_cell.id,
+            index: my_index,
+          }),
+          EditorDispatchEffect.of({
+            editor_id: new_cell.id,
+            transaction: { selection: { anchor: 0 } },
+          }),
+        ],
+      });
+    },
+  },
   {
     title: (
       <ContextMenuItem
@@ -172,35 +233,6 @@ let cell_actions = ({ editor_in_chief, cell }) => [
           CellOrderEffect.of({
             cell_id: new_cell.id,
             index: my_index + 1,
-          }),
-          EditorDispatchEffect.of({
-            editor_id: new_cell.id,
-            transaction: { selection: { anchor: 0 } },
-          }),
-        ],
-      });
-    },
-  },
-  {
-    title: (
-      <ContextMenuItem
-        icon={<IonIcon icon={textOutline} />}
-        label="Add Text Above"
-      />
-    ),
-    onClick: () => {
-      let cell_order = editor_in_chief.state.field(CellOrderField);
-      let my_index = cell_order.indexOf(cell.id);
-      let new_cell = empty_cell("text");
-      editor_in_chief.dispatch({
-        effects: [
-          EditorAddEffect.of({
-            editor_id: new_cell.id,
-            state: create_cell_state(editor_in_chief.state, new_cell),
-          }),
-          CellOrderEffect.of({
-            cell_id: new_cell.id,
-            index: my_index,
           }),
           EditorDispatchEffect.of({
             editor_id: new_cell.id,
@@ -248,111 +280,3 @@ let cell_actions = ({ editor_in_chief, cell }) => [
     },
   },
 ];
-
-/**
- * @param {{
- *  notebook: import("./notebook-types").Notebook,
- *  engine: import("./notebook-types").EngineShadow,
- *  viewupdate: GenericViewUpdate<EditorInChief>,
- * }} props
- */
-export let CellList = ({ notebook, engine, viewupdate }) => {
-  let editor_in_chief = viewupdate.view;
-
-  /**
-   * Keep track of what cells are just created by the users,
-   * so we can animate them in 🤩
-   */
-  let last_created_cells =
-    editor_in_chief.state.field(LastCreatedCells, false) ?? [];
-
-  let selected_cells = editor_in_chief.state.field(SelectedCellsField);
-  let cell_order = editor_in_chief.state.field(CellOrderField);
-
-  return (
-    <React.Fragment>
-      <DragAndDropList
-        cell_order={cell_order}
-        editor_in_chief={editor_in_chief}
-      >
-        {cell_order
-          .map((cell_id) => notebook.cells[cell_id])
-          .map((cell, index) => (
-            <React.Fragment key={cell.id}>
-              <Draggable draggableId={cell.id} index={index}>
-                {(provided, snapshot) => (
-                  <Flipped
-                    translate
-                    // Scale animation screws with codemirrors cursor calculations :/
-                    scale={false}
-                    flipId={cell.id}
-                  >
-                    <CellContainer
-                      data-can-start-selection={false}
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      className={
-                        (snapshot.isDragging && !snapshot.dropAnimation
-                          ? "dragging"
-                          : "") + " cell-container"
-                      }
-                    >
-                      <ContextMenuWrapper
-                        options={cell_actions({ editor_in_chief, cell })}
-                      >
-                        <div
-                          style={{
-                            minWidth: 30,
-                          }}
-                          {...provided.dragHandleProps}
-                          onClick={() => {
-                            editor_in_chief.dispatch({
-                              effects: EditorDispatchEffect.of({
-                                editor_id: cell.id,
-                                transaction: {
-                                  effects: MutateCellMetaEffect.of((cell) => {
-                                    cell.folded = !cell.folded;
-                                  }),
-                                },
-                              }),
-                            });
-                          }}
-                          className="drag-handle"
-                        />
-                      </ContextMenuWrapper>
-
-                      <ErrorBoundary>
-                        {editor_in_chief.state
-                          .editor(cell.id)
-                          .facet(CellTypeFacet) === "text" ? (
-                          <TextCell
-                            cell={cell}
-                            viewupdate={viewupdate}
-                            is_selected={selected_cells.includes(cell.id)}
-                            cell_id={cell.id}
-                            did_just_get_created={last_created_cells.includes(
-                              cell.id
-                            )}
-                          />
-                        ) : (
-                          <CellMemo
-                            viewupdate={viewupdate}
-                            cylinder={engine.cylinders[cell.id]}
-                            is_selected={selected_cells.includes(cell.id)}
-                            cell_id={cell.id}
-                            did_just_get_created={last_created_cells.includes(
-                              cell.id
-                            )}
-                          />
-                        )}
-                      </ErrorBoundary>
-                    </CellContainer>
-                  </Flipped>
-                )}
-              </Draggable>
-            </React.Fragment>
-          ))}
-      </DragAndDropList>
-    </React.Fragment>
-  );
-};

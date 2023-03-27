@@ -212,3 +212,33 @@ export let ContextMenuWrapper = ({
     </React.Fragment>
   );
 };
+
+/**
+ * @param {{
+ *  icon: import("react").ReactElement,
+ *  label: string,
+ *  shortcut?: string,
+ * }} props
+ */
+export let ContextMenuItem = ({ icon, label, shortcut }) => {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        whiteSpace: "pre",
+      }}
+    >
+      <span style={{ flex: "0 1 content", transform: "translateY(2px)" }}>
+        {icon}
+      </span>
+      <div style={{ minWidth: 8 }} />
+      <span>{label}</span>
+      <div style={{ flex: "1 0 40px" }} />
+      {shortcut && (
+        <div style={{ opacity: 0.5, fontSize: "0.8em" }}>{shortcut}</div>
+      )}
+    </div>
+  );
+};

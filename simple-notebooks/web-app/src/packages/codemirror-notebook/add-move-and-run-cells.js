@@ -268,18 +268,20 @@ export let cell_keymap = Prec.high(
                   }),
                 ]
               : []),
-            EditorInChiefEffect.of((editor_in_chief) =>
+            EditorInChiefEffect.of((editor_in_chief) => [
               EditorAddEffect.of({
-                editor_id: cell_id,
+                editor_id: new_cell.id,
                 state: create_cell_state(editor_in_chief, new_cell),
-              })
-            ),
-            EditorInChiefEffect.of(
+              }),
               CellOrderEffect.of({
                 cell_id: new_cell.id,
                 index: { after: cell_id },
-              })
-            ),
+              }),
+              EditorDispatchEffect.of({
+                editor_id: new_cell.id,
+                transaction: { selection: EditorSelection.cursor(0) },
+              }),
+            ]),
           ],
         });
         return true;

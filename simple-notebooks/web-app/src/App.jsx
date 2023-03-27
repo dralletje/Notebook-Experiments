@@ -22,8 +22,11 @@ import {
   CellIdOrder,
   cell_movement_extension,
 } from "./packages/codemirror-notebook/cell-movement";
-import { File } from "./File";
-import { NotebookFilename, NotebookId } from "./notebook-types";
+import { File } from "./Notebook";
+import {
+  NotebookFilename,
+  NotebookId,
+} from "./packages/codemirror-notebook/notebook-types";
 // import { typescript_extension } from "./packages/typescript-server-webworker/codemirror-typescript.js";
 import {
   EditorInChief,
@@ -37,6 +40,8 @@ import {
 } from "./packages/codemirror-notebook/add-move-and-run-cells.js";
 import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
 import { add_single_cell_when_all_cells_are_removed } from "./packages/codemirror-notebook/add-cell-when-last-is-removed";
+import { useSocket } from "./use/use-socket.js";
+import { EditorState } from "@codemirror/state";
 
 /**
  * @typedef WorkspaceSerialized
@@ -44,7 +49,7 @@ import { add_single_cell_when_all_cells_are_removed } from "./packages/codemirro
  * @property {{
  *  [filename: string]: {
  *    filename: string,
- *    notebook: import("./notebook-types").NotebookSerialized,
+ *    notebook: import("./packages/codemirror-notebook/notebook-types").NotebookSerialized,
  *  }
  * }} files
  */
@@ -65,6 +70,10 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
   (state) => state.field(CellOrderField.field)
 );
 
+/**
+ * @param {EditorState} editorstate
+ * @param {import("./packages/codemirror-notebook/notebook-types").Cell} cell
+ */
 export let create_cell_state = (editorstate, cell) => {
   return create_nested_editor_state({
     parent: editorstate,
@@ -76,19 +85,28 @@ export let create_cell_state = (editorstate, cell) => {
         is_waiting: cell.is_waiting,
         last_run: cell.last_run,
         folded: cell.folded,
+        type: cell.type,
       })),
-      CellTypeFacet.of(cell.type ?? "code"),
     ],
   });
 };
 
-/** @param {{ filename: string, notebook: import("./notebook-types").NotebookSerialized}} notebook */
+/** @param {{ filename: string, notebook: import("./packages/codemirror-notebook/notebook-types").NotebookSerialized}} notebook */
 let notebook_to_state = ({ filename, notebook }) => {
   return EditorInChief.create({
-    editors: (editorstate) =>
-      mapValues(notebook.cells, (cell) => create_cell_state(editorstate, cell)),
+    editors: (editorstate) => {
+      return mapValues(notebook.cells, (cell) =>
+        create_cell_state(editorstate, cell)
+      );
+    },
     extensions: [
       CellOrderField.init(() => notebook.cell_order),
+      EditorExtension.of(
+        CellTypeFacet.compute(
+          [CellMetaField],
+          (state) => state.field(CellMetaField).type
+        )
+      ),
 
       cell_id_order_from_notebook_facet,
       cell_movement_extension,
@@ -144,23 +162,6 @@ let notebook_to_state = ({ filename, notebook }) => {
       // }),
     ],
   });
-};
-
-let useSocket = () => {
-  let socket = React.useMemo(() => {
-    return io("http://localhost:3099", {
-      autoConnect: false,
-    });
-  }, []);
-  React.useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
-    }
-    return () => {
-      socket.close();
-    };
-  }, [socket]);
-  return socket;
 };
 
 let serialized_workspace_to_workspace = (serialized) => {

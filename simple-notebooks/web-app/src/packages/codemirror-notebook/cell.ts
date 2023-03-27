@@ -1,5 +1,5 @@
 import { Facet, StateEffect, StateField } from "@codemirror/state";
-import { Cell, CellId } from "../../notebook-types";
+import { Cell, CellId } from "./notebook-types";
 import immer from "immer";
 import { v4 as uuidv4 } from "uuid";
 
@@ -28,7 +28,9 @@ type CellMeta = {
   last_run: number;
   is_waiting?: boolean;
   folded?: boolean;
+  type?: "code" | "text";
 };
+
 export let MutateCellMetaEffect =
   StateEffect.define<(value: CellMeta) => void>();
 export let CellMetaField = StateField.define<CellMeta>({
@@ -38,6 +40,7 @@ export let CellMetaField = StateField.define<CellMeta>({
       is_waiting: false,
       last_run: -Infinity,
       folded: false,
+      type: "code",
     };
   },
   update(value, transaction) {
@@ -56,5 +59,5 @@ export let CellTypeFacet = Facet.define<
   Exclude<Cell["type"], void>
 >({
   combine: (x) => x[0],
-  static: true,
+  // static: true,
 });

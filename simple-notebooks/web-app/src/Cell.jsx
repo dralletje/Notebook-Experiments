@@ -180,7 +180,7 @@ let local_style = EditorView.theme({
   },
 });
 
-/** @returns {import("./notebook-types").CylinderShadow} */
+/** @returns {import("./packages/codemirror-notebook/notebook-types").CylinderShadow} */
 let default_cylinder = () => {
   return {
     last_run: -Infinity,
@@ -218,8 +218,8 @@ let remove_selection_on_blur_extension = EditorView.domEventHandlers({
 
 /**
  * @param {{
- *  cell_id: import("./notebook-types").CellId,
- *  cylinder: import("./notebook-types").CylinderShadow,
+ *  cell_id: import("./packages/codemirror-notebook/notebook-types").CellId,
+ *  cylinder: import("./packages/codemirror-notebook/notebook-types").CylinderShadow,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
  *  viewupdate: GenericViewUpdate,
@@ -254,20 +254,10 @@ export let Cell = ({
     if (did_just_get_created) {
       cell_wrapper_ref.current.animate(
         [
-          {
-            clipPath: `inset(100% 0 0 0)`,
-            transform: "translateY(-100%)",
-            // opacity: 0,
-          },
-          {
-            clipPath: `inset(0 0 0 0)`,
-            transform: "translateY(0%)",
-            // opacity: 1,
-          },
+          { clipPath: `inset(100% 0 0 0)`, transform: "translateY(-100%)" },
+          { clipPath: `inset(0 0 0 0)`, transform: "translateY(0%)" },
         ],
-        {
-          duration: 200,
-        }
+        { duration: 200 }
       );
     }
   }, []);

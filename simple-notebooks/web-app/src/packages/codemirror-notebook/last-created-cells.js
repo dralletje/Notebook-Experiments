@@ -6,7 +6,7 @@ export let NoAnimation = Annotation.define();
 
 export let LastCreatedCells = EditorInChiefStateField.define({
   create() {
-    return /** @type {import("../../notebook-types").CellId[]} */ ([]);
+    return /** @type {import("./notebook-types").CellId[]} */ ([]);
   },
   update(value, tr) {
     if (tr.annotation(NoAnimation)) return value;
