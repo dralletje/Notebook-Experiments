@@ -21,6 +21,7 @@ import {
 } from "./cell";
 import { CellOrderField, CellOrderEffect } from "./cell-order.js";
 import { create_cell_state } from "../../App.jsx";
+import { NoAnimation } from "./last-created-cells.js";
 
 export let notebook_keymap = EditorInChiefKeymap.of([
   {
@@ -222,6 +223,7 @@ export let cell_keymap = Prec.high(
             to: state.doc.length,
             insert: "",
           },
+          annotations: NoAnimation.of(true),
           effects: [
             EditorInChiefEffect.of((state) => {
               return [

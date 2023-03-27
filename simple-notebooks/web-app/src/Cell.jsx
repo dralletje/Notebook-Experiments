@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { Extension } from "codemirror-x-react";
 import {
   CodemirrorFromViewUpdate,
@@ -27,14 +27,27 @@ let InspectorContainer = styled.div`
   overflow-y: auto;
 
   font-size: 16px;
-  /* min-height: 24px; */
-
   .folded & {
-    min-height: 24px;
+    min-height: 55px;
   }
 `;
 
-export let EditorStyled = styled.div``;
+export let EditorStyled = styled.div`
+  background-color: #141414;
+  border: solid 1px #ffffff14;
+`;
+
+let pulse_animation = keyframes`
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 1;
+  }
+`;
 
 let CellStyle = styled.div`
   flex: 1 1 0px;
@@ -53,17 +66,12 @@ let CellStyle = styled.div`
   }
   &.modified {
     & ${EditorStyled} {
-      background-color: rgb(24 21 15);
+      background-color: rgb(14 27 39);
+      border: solid 1px #778cb514;
     }
     & ${InspectorContainer} {
       transition: all 1s ease-in-out;
       /* opacity: 0.3; */
-    }
-  }
-
-  &:not(.folded) {
-    .cm-editor {
-      border: solid 1px #ffffff14;
     }
   }
 
@@ -77,19 +85,21 @@ let CellStyle = styled.div`
     pointer-events: none;
     position: absolute;
     left: -10px;
-    right: 100%;
-    top: 0;
-    bottom: 0;
+    width: 5px;
+    /* right: 100%; */
+    top: 0px;
+    bottom: 0px;
   }
 
-  &.pending::before {
-    background-color: #4a4a4a;
-  }
   &.error::before {
     background-color: #820209;
   }
+  &.pending::before {
+    background-color: #4a4a4a;
+  }
   &.running::before {
     background-color: white;
+    animation: ${pulse_animation} 1s ease-in-out infinite alternate;
   }
 
   &.selected::after {
@@ -168,10 +178,6 @@ let local_style = EditorView.theme({
     "background-color": "unset",
     color: "unset",
   },
-
-  "&": {
-    "background-color": "#141414",
-  },
 });
 
 /** @returns {import("./notebook-types").CylinderShadow} */
@@ -226,7 +232,6 @@ export let Cell = ({
   did_just_get_created,
   viewupdate,
 }) => {
-  console.log(`cylinder:`, cylinder);
   let nested_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
   let state = nested_viewupdate.state;
   let type = state.facet(CellTypeFacet);

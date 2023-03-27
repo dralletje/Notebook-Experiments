@@ -1,38 +1,45 @@
 // ╔═╡ DRAL_NOTEBOOK_VERSION = "0.0.1"
 export {};
 
-// ╔═╡ [cells.149b391a-9ceb-4272-9269-7fe8879441eb]
+// ╔═╡ [cells.c372df60-f0f0-4480-882e-5d0918452837]
 // ╠═╡ folded = false
-// This cell was in the cell order but not in the notebook
+20 + 90
 
-// ╔═╡ [cells.c14d7ee4-2af9-4f28-9e10-2150b7eceb8c]
+// ╔═╡ [cells.e68cf2dd-2183-41da-be6b-e6583d960fdf]
 // ╠═╡ folded = false
+10
 
-
-// ╔═╡ [cells.8c443ba5-aed9-4f91-9e4e-7eb7d7066903]
+// ╔═╡ [cells.f1b58290-31c2-44b1-8c9f-b21b1dc8d5a1]
 // ╠═╡ folded = false
+x = await new Promise((resolve) =>
+  setTimeout(resolve, 10000)
+);
 
-
-// ╔═╡ [cells.f4d4e6e4-e328-4733-b40d-4ad36a240f83]
-// ╠═╡ folded = false
-
-
-// ╔═╡ [cells.721d3927-5870-486f-820f-2662cd9fdcc9]
+// ╔═╡ [cells.00c8a7dc-d8c7-43dd-9bc2-a949ef722b7a]
 // ╠═╡ folded = false
 
 
-// ╔═╡ [cells.6ff8c3b2-d377-49fb-a79c-38c05f6880fb]
+// ╔═╡ [cells.9bd68a2a-8826-490f-9d2c-4fbf4acb479d]
+// ╠═╡ folded = false
+y = (10, x, await new Promise((resolve) => setTimeout(resolve, 10000)))
+
+// ╔═╡ [cells.2569d7ff-ffca-4442-9894-d7f315c598dd]
 // ╠═╡ folded = false
 
+
+// ╔═╡ [cells.73ecff0d-384c-485a-af79-01500b74180a]
+// ╠═╡ folded = false
+Object.keys(Promise)
 
 // ╔═╡ ["Cell Order"]
 // ╠═╡ "Cell Order" = [
-// ╠═╡   "149b391a-9ceb-4272-9269-7fe8879441eb",
-// ╠═╡   "c14d7ee4-2af9-4f28-9e10-2150b7eceb8c",
-// ╠═╡   "8c443ba5-aed9-4f91-9e4e-7eb7d7066903",
-// ╠═╡   "f4d4e6e4-e328-4733-b40d-4ad36a240f83",
-// ╠═╡   "721d3927-5870-486f-820f-2662cd9fdcc9",
-// ╠═╡   "6ff8c3b2-d377-49fb-a79c-38c05f6880fb"
+// ╠═╡   "c372df60-f0f0-4480-882e-5d0918452837",
+// ╠═╡   "e68cf2dd-2183-41da-be6b-e6583d960fdf",
+// ╠═╡   "f1b58290-31c2-44b1-8c9f-b21b1dc8d5a1",
+// ╠═╡   "00c8a7dc-d8c7-43dd-9bc2-a949ef722b7a",
+// ╠═╡   "9bd68a2a-8826-490f-9d2c-4fbf4acb479d",
+// ╠═╡   "2569d7ff-ffca-4442-9894-d7f315c598dd",
+// ╠═╡   "73ecff0d-384c-485a-af79-01500b74180a"
 // ╠═╡ ]
 
 

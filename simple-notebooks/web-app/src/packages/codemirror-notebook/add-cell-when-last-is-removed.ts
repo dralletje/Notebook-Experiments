@@ -3,6 +3,7 @@ import { EditorAddEffect } from "../codemirror-editor-in-chief/editor-in-chief";
 import { CellOrderField, CellOrderEffect } from "./cell-order";
 import { empty_cell } from "./cell";
 import { create_cell_state } from "../../App";
+import { NoAnimation } from "./last-created-cells";
 
 export let add_single_cell_when_all_cells_are_removed =
   EditorState.transactionExtender.of((transaction) => {
@@ -23,6 +24,7 @@ export let add_single_cell_when_all_cells_are_removed =
     if (cells_left_after_effects.size === 0) {
       let new_cell = empty_cell();
       return {
+        annotations: NoAnimation.of(true),
         effects: [
           EditorAddEffect.of({
             editor_id: new_cell.id,

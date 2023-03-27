@@ -1,23 +1,12 @@
 import React, { useLayoutEffect, useRef, useMemo } from "react";
-import styled from "styled-components";
 
-import {
-  Compartment,
-  StateEffect,
-  Transaction,
-  StateField,
-} from "@codemirror/state";
+import { Compartment, StateEffect, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 
 /** @type {React.Context<(...spec: any[]) => void>} */
 let codemirror_editorview_context = React.createContext(
   /** @type {any} */ (null)
 );
-
-let Container = styled.div`
-  height: 100%;
-  display: contents;
-`;
 
 // /**
 //  * @param {(tr: import("@codemirror/state").Transaction) => void} dispatch
@@ -81,7 +70,7 @@ export let CodeMirror = React.forwardRef(
    * @param {React.Ref<EditorView>} _ref
    */
   (
-    { state, children, as = "codemirror-editor", dispatch, root, ...props },
+    { state, children, as = "codemirror-container", dispatch, root, ...props },
     _ref
   ) => {
     /** @type {React.MutableRefObject<HTMLDivElement>} */
@@ -179,9 +168,10 @@ export let CodeMirror = React.forwardRef(
     // );
     // The above but with the JSX transpiled to React.createElement calls
     return React.createElement(
-      Container,
+      as,
       {
         ...props,
+        style: { display: "contents", ...props.style },
         ref: set_dom_node_ref_and_create_editorview,
       },
       React.createElement(

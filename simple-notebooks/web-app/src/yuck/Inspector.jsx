@@ -209,7 +209,7 @@ let PlaceInsideExpression = ({ expression, children }) => {
                     placeholder_index
                   ),
               Decoration.replace({
-                widget: new ReactWidget(children),
+                widget: new ReactWidget(children ?? "undefined"),
               }).range(
                 placeholder_index,
                 placeholder_index + "__RESULT_PLACEHOLDER__".length
@@ -235,7 +235,7 @@ let PlaceInsideExpression = ({ expression, children }) => {
 
   return (
     <AAAAA>
-      <CodeMirror state={state} style={{ border: "none" }}>
+      <CodeMirror state={state}>
         <Extension extension={replace_placeholder} />
       </CodeMirror>
     </AAAAA>
