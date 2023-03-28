@@ -96,6 +96,10 @@ let AAAAA = styled.div`
          is... the easiest? LOL  */
       /* background-color: hsl(0deg 0% 7%); */
       backdrop-filter: blur(100px);
+      /* background-color: var(
+        --background-color,
+        rgb(var(--background-color-rgb))
+      ); */
     }
   }
   & .sticky-left {

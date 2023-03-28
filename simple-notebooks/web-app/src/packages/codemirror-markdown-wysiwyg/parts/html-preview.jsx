@@ -127,7 +127,7 @@ let html_demo_statefield = StateField.define({
   },
 });
 
-export let html_preview_extensions = [
+export let markdown_html_preview = [
   EditorView.baseTheme({
     /* I apply this to the line because else the line will stay high, making
      the code look really fragile */

@@ -115,9 +115,7 @@ export let DragAndDropItem = ({
           >
             <ContextMenuWrapper options={context_options}>
               <div
-                style={{
-                  minWidth: 30,
-                }}
+                style={{ minWidth: 50 }}
                 {...provided.dragHandleProps}
                 onClick={() => {
                   editor_in_chief.dispatch({

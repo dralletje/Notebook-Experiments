@@ -108,12 +108,45 @@ let CellStyle = styled.div`
   transition: filter 0.2s ease-in-out, transform 0.2s ease-in-out,
     background-color 0.2s ease-in-out;
 
+  background-color: var(
+    --background-color,
+    rgb(var(--background-color-rgb) / 10%)
+  );
+
+  .inspector-container {
+    background-color: var(--background-color, rgb(var(--background-color-rgb)));
+  }
+
   .dragging &,
   .cell-container:has(.drag-handle:hover) &,
   .cell-container:has(.menu:focus) & {
     transform: translateX(-2px) translateY(-2px);
     z-index: 1;
-    background-color: #121212;
+
+    /* This looks pretty nice */
+    outline: solid 1px #878787;
+    backdrop-filter: blur(16px);
+
+    background-color: var(
+      --background-color,
+      rgb(var(--background-color-rgb) / 10%)
+    );
+    .inspector-container {
+      background-color: var(
+        --background-color,
+        rgb(var(--background-color-rgb) / 10%)
+      );
+
+      & .sticky-left,
+      & .sticky-right {
+        &::before {
+          backdrop-filter: unset;
+        }
+      }
+    }
+    .cell-editor {
+      background-color: rgb(20 20 20 / 10%);
+    }
   }
   .dragging & {
     --prexisting-transform: translateX(-2px) translateY(-2px);
@@ -305,7 +338,7 @@ export let Cell = ({
       data-cell-id={cell.id}
       className={`font-mono ${classes}`}
     >
-      <InspectorContainer>
+      <InspectorContainer className="inspector-container">
         <Inspector value={cylinder?.result} />
       </InspectorContainer>
 

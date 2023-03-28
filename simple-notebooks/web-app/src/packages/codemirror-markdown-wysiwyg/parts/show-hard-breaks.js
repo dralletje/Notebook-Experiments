@@ -2,7 +2,7 @@ import { Decoration, EditorView } from "@codemirror/view";
 import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
 // Show ⏎ at the end of `  ` (two spaces) lines
-export let show_hard_breaks = [
+export let markdown_show_hard_breaks = [
   EditorView.baseTheme({
     ".hard-break::after": {
       content: '"⏎"',

@@ -7,7 +7,7 @@ import {
 } from "codemirror-x-react/viewupdate.js";
 import { EditorView } from "@codemirror/view";
 import { compact } from "lodash";
-import { basic_markdown_setup } from "./codemirror-markdown/codemirror-markdown";
+import { basic_markdown_setup } from "./packages/codemirror-markdown-wysiwyg/codemirror-markdown-wysiwyg";
 import { extract_nested_viewupdate } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import { NudgeCell } from "./packages/codemirror-notebook/cell";
 
@@ -29,6 +29,13 @@ let local_style = EditorView.theme({
   },
   "&.cm-focused": {
     outline: "unset",
+  },
+
+  "&.has-selection .cm-cursor": {
+    display: "block",
+  },
+  "&.has-selection .cm-cursorLayer": {
+    animation: "steps(1) cm-blink 1.2s infinite",
   },
 
   // Cursor style
@@ -103,7 +110,7 @@ export let TextCell = ({
     <TextCellStyle
       ref={cell_wrapper_ref}
       data-cell-id={cell_id}
-      className={compact([is_selected && "selected", "cell-editor"]).join(" ")}
+      className={compact([is_selected && "selected"]).join(" ")}
     >
       <CodemirrorFromViewUpdate
         ref={editorview_ref}
@@ -144,14 +151,26 @@ let TextCellStyle = styled.div`
   .dragging &,
   .cell-container:has(.drag-handle:hover) &,
   .cell-container:has(.menu:focus) & {
-    /* box-shadow: rgba(255, 255, 255, 0.1) 0px 0px 20px; */
-    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.1));
-    /* transform: scaleX(1.05); */
     transform: translateX(-2px) translateY(-2px);
     z-index: 1;
+
+    &::before {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+      inset: -16px 0 -16px -16px;
+      outline: solid 1px #878787;
+      border-radius: 3px;
+
+      backdrop-filter: blur(16px);
+      background-color: var(
+        --background-color,
+        rgb(var(--background-color-rgb) / 10%)
+      );
+    }
   }
-  .dragging & {
+  /* .dragging & {
     --prexisting-transform: translateX(-2px) translateY(-2px);
     animation: shake 0.2s ease-in-out infinite alternate;
-  }
+  } */
 `;

@@ -205,7 +205,7 @@ export const SelectionArea = ({ on_selection, children }) => {
   // let scaleY = `scaleY(${Math.abs(selection_start.y - selection_end.y)})`
 
   return (
-    <div
+    <selection-area-wrapper
       style={{ display: "contents" }}
       ref={element_ref}
       onMouseDown={onmousedown}
@@ -246,11 +246,11 @@ export const SelectionArea = ({ on_selection, children }) => {
       </SimpleDialog>
 
       {children}
-    </div>
+    </selection-area-wrapper>
   );
 };
 
-let FullscreenDialog = styled.dialog`
+let FullscreenDialog = styled("dialog")`
   max-height: unset;
   max-width: unset;
   height: 100%;
