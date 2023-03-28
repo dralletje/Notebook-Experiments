@@ -5,23 +5,39 @@ import { EditorView, WidgetType, Decoration } from "@codemirror/view";
 import { iterate_with_cursor } from "dral-lezer-helpers";
 import { range } from "lodash";
 import { syntaxTree } from "@codemirror/language";
+import { CollectFromTree } from "@dral/codemirror-helpers";
 
 class KatexWidget extends WidgetType {
-  constructor(readonly value: string) {
+  text: string;
+  from: number;
+  to: number;
+  constructor({ text, from, to }: { text: string; from: number; to: number }) {
     super();
-    this.value = value;
+    this.text = text;
+    this.from = from;
+    this.to = to;
   }
 
-  toDOM() {
+  toDOM(view: EditorView) {
     const element = document.createElement("katex-widget");
-    katex.render(this.value, element, {
+    katex.render(this.text, element, {
       throwOnError: false,
       displayMode: true,
     });
+
+    element.addEventListener("mousedown", (event) => {
+      let to =
+        this.to +
+        (view.state.doc.sliceString(this.to - 1, this.to) === "\n" ? -1 : 0);
+      view.dispatch({
+        selection: { anchor: to, head: to },
+      });
+      setTimeout(() => {
+        view.focus();
+      }, 100);
+    });
+
     return element;
-  }
-  ignoreEvent(event: Event): boolean {
-    return false;
   }
 }
 
@@ -128,95 +144,91 @@ export let markdown_katex = [
       "border-top-left-radius": "0",
     },
   }),
-  EditorView.decorations.compute(["doc", "selection"], (state) => {
-    let tree = syntaxTree(state);
-    let doc = state.doc;
-    let decorations = [];
+  CollectFromTree({
+    what: EditorView.decorations,
+    with: ["selection"],
+    combine: (decorations) => Decoration.set(decorations, true),
+    compute: ({ cursor, accumulator: decorations, state }) => {
+      let { from, to } = state.selection.main;
+      let doc = state.doc;
 
-    let { from, to } = state.selection.main;
-
-    iterate_with_cursor({
-      tree,
-      enter: (cursor) => {
-        if (cursor.name === "KatexBlock") {
-          console.log("Hi", cursor.from);
-          if (cursor.node.parent.name !== "Document") {
-            // TODO Support nested katex blocks, but for now... No way
-            decorations.push(
-              Decoration.mark({
-                class: "katex-inline-code",
-              }).range(cursor.from, cursor.to)
-            );
-            return;
-          }
-
-          if (
-            (cursor.from < from && from < cursor.to) ||
-            (cursor.from < to && to < cursor.to)
-          ) {
-            let line_from = state.doc.lineAt(cursor.from);
-            let line_to = state.doc.lineAt(cursor.to);
-
-            decorations.push(
-              Decoration.widget({
-                block: true,
-                widget: new KatexInEditWidget(
-                  doc.sliceString(cursor.from + 2, cursor.to - 2)
-                ),
-              }).range(line_from.from, line_from.from)
-            );
-
-            for (let i of range(line_from.number, line_to.number + 1)) {
-              let line = state.doc.line(i);
-              decorations.push(
-                Decoration.line({
-                  inclusive: true,
-                  class: "has-katex-block-code",
-                }).range(line.from, line.from)
-              );
-            }
-
-            decorations.push(
-              Decoration.mark({
-                inclusive: true,
-                class: "katex-block-code",
-              }).range(cursor.from, cursor.to)
-            );
-          } else {
-            decorations.push(
-              Decoration.replace({
-                inclusive: true,
-                // block: true,
-                widget: new KatexWidget(
-                  doc.sliceString(cursor.from + 2, cursor.to - 2)
-                ),
-              }).range(cursor.from, cursor.to)
-            );
-          }
+      if (cursor.name === "KatexBlock") {
+        if (cursor.node.parent.name !== "Document") {
+          // TODO Support nested katex blocks, but for now... No way
+          decorations.push(
+            Decoration.mark({
+              class: "katex-inline-code",
+            }).range(cursor.from, cursor.to)
+          );
+          return;
         }
 
-        if (cursor.name === "KatexInline") {
-          if (cursor.from <= from && to <= cursor.to) {
+        if (
+          (cursor.from < from && from < cursor.to) ||
+          (cursor.from < to && to < cursor.to)
+        ) {
+          let line_from = state.doc.lineAt(cursor.from);
+          let line_to = state.doc.lineAt(cursor.to);
+
+          decorations.push(
+            Decoration.widget({
+              block: true,
+              widget: new KatexInEditWidget(
+                doc.sliceString(cursor.from + 2, cursor.to - 2)
+              ),
+            }).range(line_from.from, line_from.from)
+          );
+
+          for (let i of range(line_from.number, line_to.number + 1)) {
+            let line = state.doc.line(i);
             decorations.push(
-              Decoration.mark({
-                class: "katex-inline-code",
-              }).range(cursor.from, cursor.to)
-            );
-          } else {
-            decorations.push(
-              Decoration.replace({
+              Decoration.line({
                 inclusive: true,
-                // block: true,
-                widget: new InlineKatexWidget(
-                  doc.sliceString(cursor.from + 1, cursor.to - 1)
-                ),
-              }).range(cursor.from, cursor.to)
+                class: "has-katex-block-code",
+              }).range(line.from, line.from)
             );
           }
-        }
-      },
-    });
 
-    return Decoration.set(decorations, true);
+          decorations.push(
+            Decoration.mark({
+              inclusive: true,
+              class: "katex-block-code",
+            }).range(cursor.from, cursor.to)
+          );
+        } else {
+          decorations.push(
+            Decoration.replace({
+              inclusive: true,
+              // block: true,
+              widget: new KatexWidget({
+                text: doc.sliceString(cursor.from + 2, cursor.to - 2),
+                from: cursor.from + 2,
+                to: cursor.to - 2,
+              }),
+            }).range(cursor.from, cursor.to)
+          );
+        }
+      }
+
+      if (cursor.name === "KatexInline") {
+        if (cursor.from <= from && to <= cursor.to) {
+          decorations.push(
+            Decoration.mark({
+              class: "katex-inline-code",
+            }).range(cursor.from, cursor.to)
+          );
+        } else {
+          decorations.push(
+            Decoration.replace({
+              inclusive: true,
+              // block: true,
+              widget: new InlineKatexWidget(
+                doc.sliceString(cursor.from + 1, cursor.to - 1)
+              ),
+            }).range(cursor.from, cursor.to)
+          );
+        }
+      }
+    },
   }),
 ];

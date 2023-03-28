@@ -3,6 +3,10 @@ import { RangeSetBuilder, RangeValue } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 
+import {
+  DecorationsFromTree,
+  DecorationsFromTreeSortForMe,
+} from "@dral/codemirror-helpers";
 import { ReactWidget } from "react-codemirror-widget";
 import { iterate_with_cursor } from "dral-lezer-helpers";
 
@@ -20,7 +24,7 @@ let markdown_styling_base_theme = EditorView.baseTheme({
   },
   h2: {
     "font-size": "1.5em",
-    "font-weight:": "bold",
+    "font-weight": "bold",
     ".cm-line:has(&)": {
       "margin-top": `0.2em`,
       "margin-bottom": `0.2em`,
@@ -97,59 +101,51 @@ let headers = {
 export let markdown_headers = [
   markdown_styling_base_theme,
 
-  EditorView.decorations.compute(["doc"], (state) => {
-    let tree = syntaxTree(state);
-    let doc = state.doc;
-    let decorations = [];
-    iterate_with_cursor({
-      tree,
-      enter: (cursor) => {
-        if (cursor.name === "HeaderMark") {
-          let node = cursor.node;
-          let header_tag = node.parent ? headers[node.parent.name] : "h1";
-          if (header_tag == null) return;
+  DecorationsFromTreeSortForMe(
+    ({ cursor, doc, mutable_decorations: decorations }) => {
+      if (cursor.name === "HeaderMark") {
+        let node = cursor.node;
+        let header_tag = node.parent ? headers[node.parent.name] : "h1";
+        if (header_tag == null) return;
 
-          if (doc.sliceString(cursor.to, cursor.to + 1) !== " ") {
-            // No space after header, so not _yet_ an header for me
-            return;
-          }
+        if (doc.sliceString(cursor.to, cursor.to + 1) !== " ") {
+          // No space after header, so not _yet_ an header for me
+          return;
+        }
 
-          decorations.push(
-            Decoration.replace({
-              inclusive: false,
-              widget: new ReactWidget(
-                (
-                  <span style={{ fontSize: "1em" }}>
-                    <span className={`header-mark header-mark-${header_tag}`}>
-                      {header_tag}
-                    </span>
+        decorations.push(
+          Decoration.replace({
+            inclusive: false,
+            widget: new ReactWidget(
+              (
+                <span style={{ fontSize: "1em" }}>
+                  <span className={`header-mark header-mark-${header_tag}`}>
+                    {header_tag}
                   </span>
-                )
-              ),
-            }).range(cursor.from, cursor.to)
-          );
-          decorations.push(
-            Decoration.replace({
-              widget: new ReactWidget(<span className={`header-mark-space`} />),
-            }).range(cursor.to, cursor.to + 1)
-          );
+                </span>
+              )
+            ),
+          }).range(cursor.from, cursor.to)
+        );
+        decorations.push(
+          Decoration.replace({
+            widget: new ReactWidget(<span className={`header-mark-space`} />),
+          }).range(cursor.to, cursor.to + 1)
+        );
+      }
+      if (cursor.name in headers) {
+        if (!doc.sliceString(cursor.from, cursor.to).includes(" ")) {
+          // No space after header, so not _yet_ an header for me
+          return;
         }
-        if (cursor.name in headers) {
-          if (!doc.sliceString(cursor.from, cursor.to).includes(" ")) {
-            // No space after header, so not _yet_ an header for me
-            return;
-          }
-          decorations.push(
-            Decoration.mark({
-              tagName: headers[cursor.name],
-            }).range(cursor.from, cursor.to)
-          );
-        }
-      },
-    });
-
-    return Decoration.set(decorations, true);
-  }),
+        decorations.push(
+          Decoration.mark({
+            tagName: headers[cursor.name],
+          }).range(cursor.from, cursor.to)
+        );
+      }
+    }
+  ),
 
   EditorView.atomicRanges.of(({ state }) => {
     let tree = syntaxTree(state);

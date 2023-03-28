@@ -5,6 +5,7 @@ import emoji from "node-emoji";
 import { iterate_with_cursor } from "dral-lezer-helpers";
 import { ReactWidget } from "react-codemirror-widget";
 import { RangeSetBuilder, RangeValue } from "@codemirror/state";
+import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
 class EZRange extends RangeValue {
   eq() {
@@ -26,43 +27,34 @@ export let markdown_emoji_and_hr = [
     },
   }),
 
-  EditorView.decorations.compute(["doc"], (state) => {
-    let tree = syntaxTree(state);
-    let doc = state.doc;
-    let decorations = [];
-    iterate_with_cursor({
-      tree,
-      enter: (cursor) => {
-        if (cursor.name === "HorizontalRule") {
-          let line = doc.lineAt(cursor.from);
-          decorations.push(
-            Decoration.replace({
-              widget: new ReactWidget(<hr className="hr" />),
-              inclusive: true,
-            }).range(line.from, line.to)
-          );
-        }
+  DecorationsFromTree(({ cursor, mutable_decorations: decorations, doc }) => {
+    if (cursor.name === "HorizontalRule") {
+      let line = doc.lineAt(cursor.from);
+      decorations.push(
+        Decoration.replace({
+          widget: new ReactWidget(<hr className="hr" />),
+          inclusive: true,
+        }).range(line.from, line.to)
+      );
+    }
 
-        if (cursor.name === "Emoji") {
-          let text = doc.sliceString(cursor.from, cursor.to);
-          if (emoji.hasEmoji(text)) {
-            let emoji_text = emoji.get(text);
-            decorations.push(
-              Decoration.replace({
-                widget: new ReactWidget(<span>{emoji_text}</span>),
-              }).range(cursor.from, cursor.to)
-            );
-          } else {
-            decorations.push(
-              Decoration.mark({
-                class: "emoji",
-              }).range(cursor.from, cursor.to)
-            );
-          }
-        }
-      },
-    });
-    return Decoration.set(decorations);
+    if (cursor.name === "Emoji") {
+      let text = doc.sliceString(cursor.from, cursor.to);
+      if (emoji.hasEmoji(text)) {
+        let emoji_text = emoji.get(text);
+        decorations.push(
+          Decoration.replace({
+            widget: new ReactWidget(<span>{emoji_text}</span>),
+          }).range(cursor.from, cursor.to)
+        );
+      } else {
+        decorations.push(
+          Decoration.mark({
+            class: "emoji",
+          }).range(cursor.from, cursor.to)
+        );
+      }
+    }
   }),
   EditorView.atomicRanges.of(({ state }) => {
     let tree = syntaxTree(state);

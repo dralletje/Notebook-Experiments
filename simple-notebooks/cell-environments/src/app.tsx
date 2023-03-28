@@ -7,199 +7,52 @@ x = await new Promise((resolve) =>
   setTimeout(resolve, 1000)
 );
 
+// ╔═╡ [cells.21227430-c866-4c20-a0a3-c48047edbadf]
+// ╠═╡ folded = false
+y = await new Promise(
+  (resolve) => (x, setTimeout(resolve, 5000))
+);
+
 // ╔═╡ [cells.3040d168-18f8-478e-af27-a93db12c1493]
 // ╠═╡ type = "text"
-// <div style="width:100%; height: 200px; background-color: #844"></div>
+// ## Markdown todo
+// - [ ] **Editing should be awesome**
+//   - [ ] Cursor still jumps oddly sometimes because all the moving around of elements I do
+//   (Specifically when moving the cursor up or down)
+//   - [ ] Related is that I now always put `assoc` to `1` because it _generally_ works better, but I keep finding exceptions D:
+//   - [ ] Pressing **<kbd>Enter</kbd> when at the beginning of a block** (just past the marker), should move the marker to the new line. This solves the problem where there is no way to intuitively add a line above a header or list at the top of a cell.
+//   - [ ] Figure out what the deal is with **List & Task Markers**.
+//   Couple of flows that need to be :sparkles:PERFECT:sparkles:
+//     - [ ] <kbd>Enter</pbd>
+//     - [ ] <kbd>Shift+Enter</pbd>
+//     - [ ] <kbd>Backspace</kbd>
+//   - [ ] **Indentation "shouldn't exist"**
+//   Only way to interact with it should be with Tab/Shift-Tab, or at least deleting it in chunks of `indentSize`.
+// 
+// - [ ] Make **links** (and images) work
+// I think initially I can make them like text markers now, where they are "just their text" until you are focussed in it.
+// _Eventually_ we could _possibly_ add a popup where you can enter the url.
+// - [ ] **HTML rendering** makes the document jumpy when it leaves the viewport
+// (Because codemirror removes it, but doesn't fill it's space with something)
 
 // ╔═╡ [cells.9b149216-2ed6-4ff0-ac83-bff721613f5a]
 // ╠═╡ type = "text"
-// - [x] **Typechecking/autocomplete**
-// Currently I _do_ have a webworker-typescript thingy, and I _could_ use that. But I don't want to! I want to "just" connect to an LSP that has access to all the dependencies and maybe even a a`.tsconfig`
-// - [x] **Sidebar with subnotebooks**
-//     - [x] **Meta notebook**
+// ## Editor TODO
+// - [ ] **Typechecking/autocomplete**
+// Currently I _do_ have a webworker-typescript thingy, and I _could_ use that. But I don't want to! I want to "just" connect to an LSP that has access to all the dependencies and maybe even a `.tsconfig`
+//   - Use something like JSPM 
+// - [ ] **Sidebar with subnotebooks**
+//     - [ ] **Meta notebook**
 //     A notebook that can interact with the codemirror instances (and ofcourse, editor-in-chief) to add extensions, theme or CSS.
-//     - [x] **Shell**
+//     - [ ] **Shell**
 //     This one would be so cool. Having a place where you can try small things, interact with your main notebook cells but not the other way around.
 // 	- [ ] **Files**
 // 	I don't want to! It is too boring!  Eventually there should be some way to manage multiple files, create an environment, blablablabla.
+// 
 
-// ╔═╡ [cells.9f2b59cc-2ad4-48f2-836f-047006696c15]
+// ╔═╡ [cells.28918307-ec74-4909-8b06-4d0eb6b82718]
 // ╠═╡ type = "text"
-//   _Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there._
 // 
-// **Explore models and share results** in a notebook that is
-// 
-//   - **_reactive_** - when changing a function or variable, Pluto automatically updates all affected cells.
-//       - **_lightweight_** - Pluto is written in pure Julia and is easy to install.
-//           - **_simple_** - no hidden workspace state; friendly UI.as jsad lkjasdkljsad lkjdas kljasdl kjasdlkjladksjldsakjlkj adsjkl
-// 
-// <img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
-// <p align="center"><a href="https://binder.plutojl.org/">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
-// 
-// ### Input
-// 
-// A Pluto notebook is made up of small blocks of Julia code (_cells_) and together they form a [**_reactive_** notebook](https://medium.com/@mbostock/a-better-way-to-code-2b1d2876a3a0).
-// When you change a variable, Pluto automatically re-runs the cells that refer to it. Cells can even be placed in arbitrary order - intelligent syntax analysis figures out the dependencies between them and takes care of execution.
-// 
-// Cells can contain _arbitrary_ Julia code, and you can use external libraries. There are no code rewrites or wrappers, Pluto just looks at your code once before evaluation. [^1]
-// 
-// ### Output
-// 
-// Your notebooks are **saved as pure Julia files** ([sample](https://github.com/fonsp/Pluto.jl/blob/main/sample/Basic.jl)), which you can then import as if you had been programming in a regular editor all along. You can also export your notebook with cell outputs as attractive HTML and PDF documents. By reordering cells and hiding code, you have full control over how you tell your story.
-// 
-// ## Dynamic environment
-// 
-// Pluto offers an environment where changed code takes effect instantly and where deleted code leaves no trace.
-// Unlike Jupyter or Matlab, there is **no mutable workspace**, but rather, an important guarantee:
-// 
-// <blockquote align="center"><em><b>At any instant</b>, the program state is <b>completely described</b> by the code you see.</em></blockquote>
-// No hidden state, no hidden bugs.
-// 
-// ### Interactivity
-// 
-// Your programming environment becomes interactive by splitting your code into multiple cells! Changing one cell **instantly shows effects** on all other cells, giving you a fast and fun way to experiment with your model.
-// 
-// In the example below, changing the parameter `A` and running the first cell will directly re-evaluate the second cell and display the new plot.
-// 
-// ${x(x)}
-// 
-// <img alt="plotting screencap" src="https://user-images.githubusercontent.com/6933510/80637344-24ac0180-8a5f-11ea-82dd-813dbceca9c9.gif" width="50%">
-// 
-// ### Built-in package manager
-// 
-// Pluto uses syntax analysis to understand which packages are being used in a notebook, and it **automatically manages a package environment** for your notebook. You no longer need to install packages, you can directly import any registered package like `Plots` or `DataFrames` and use it.
-// 
-// To ensure reproducibility, the information to exactly reproduce the package environment is **stored in your notebook file**. When someone else opens your notebook with Pluto, the exact same package environment will be used, and packages will work on their computer, automatically! _[more info](https://github.com/fonsp/Pluto.jl/wiki/%F0%9F%8E%81-Package-management)_
-// 
-// <img alt="package manager screencap" src="https://user-images.githubusercontent.com/6933510/134823403-fbb79d7f-dd3e-4712-b5d5-b48ad0770f13.gif" width="50%">
-// 
-// 
-// ### HTML interaction
-// 
-// Lastly, here's _**one more feature**_: Pluto notebooks have a `@bind` macro to create a **live bond between an HTML object and a Julia variable**. Combined with reactivity, this is a very powerful tool!
-// 
-// <img alt="@bind macro screencap" src="https://user-images.githubusercontent.com/6933510/134825003-bd72ef08-677b-42fa-a655-e842868b10f6.gif" width="50%">
-// 
-// You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons. Pluto's interactivity is very easy to use, you will learn more from the featured notebooks inside Pluto!
-// 
-// But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a  `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the JavaScript featured notebook inside Pluto!
-// 
-// 
-// ## Pluto for teaching
-// 
-// Pluto was developed alongside the free online course [Introduction to Computational Thinking](https://computationalthinking.mit.edu/) at MIT, with the goal of creating a programming environment that is powerful, helpful and interactive, without being too intimidating for students and teachers. 
-// 
-// Are you interested in using Pluto for your class? Here are some presentations by people who are using it already: [the MIT team](https://www.youtube.com/watch?v=LFRI3s0DE-o), [Gerhard Dorn](https://www.youtube.com/watch?v=6Qs5EXDpZBI), [Daniel Molina](https://www.youtube.com/watch?v=NrIxgnFXslg), [Henki W. Ashadi](https://youtu.be/GnEKgW23PvY?t=586) and [Max Köhler](https://www.youtube.com/watch?v=8H5KgSIWsWQ).
-// 
-// 
-// https://user-images.githubusercontent.com/6933510/134824521-7cefa38a-7102-4767-bee4-777caf30ba47.mp4
-// 
-// _([video](https://www.youtube.com/watch?v=rpB6zQNsbQU)) Grant Sanderson ([3Blue1Brown](https://www.youtube.com/channel/UCYO_jab_esuFRV4b17AJtAw)) using Pluto's interactivity to teach [Computational Thinking at MIT](https://computationalthinking.mit.edu/)!_
-// 
-// <br >
-// <hr >
-// <br >
-// 
-// # Let's do it!
-// 
-// ### Ingredients
-// 
-// For one tasty notebook 🥞 you will need:
-// 
-// - [**Julia** v1.6 or above](https://julialang.org/downloads/#current_stable_release)
-// - **Linux**, **MacOS** or **Windows**, _Linux and MacOS will work best_
-// - Mozilla **Firefox** or Google **Chrome**
-// 
-// ### Installation
-// 
-// <p align="center"><a href="https://www.youtube.com/watch?v=OOjKEgbt8AI">🎈 How to install <b>Julia & Pluto</b> (6 min) 🎈</a></p>
-// 
-// Run Julia, enter `]` to bring up Julia's [package manager](https://docs.julialang.org/en/v1/stdlib/Pkg/),
-// and add the Pluto package:
-// 
-// ```julia
-// julia> ]
-// (v1.7) pkg> add Pluto
-// ```
-// 
-// _Press `Ctrl+C` to return to the `julia>` prompt._
-// 
-// ### Usage
-// 
-// To run Pluto, run the following commands in your Julia REPL:
-// 
-// ```julia
-// julia> import Pluto
-// julia> Pluto.run()
-// ```
-// 
-// Pluto will open in your browser, and you can get started!
-// 
-// ## Questions and Help
-// 
-// Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
-// 
-// <blockquote>
-// <img align="right" src=https://upload.wikimedia.org/wikipedia/commons/0/0c/MIT_logo.svg height="60px">
-// <p><em>Interested in learning Julia, Pluto and applied mathematics?</em> Join the <strong>open MIT course</strong> taught by <strong>Alan Edelman</strong>, <strong>David P. Sanders</strong> &amp; Grant Sanderson (<strong>3blue1brown</strong>) (<em>and a bit of me</em>): <a href="https://computationalthinking.mit.edu" rel="nofollow">Introduction to Computational Thinking</a>, Spring 2021.
-// <br></p>
-// </blockquote>
-// <br>
-// 
-// ## Contribute to Pluto
-// 
-// Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/main/CONTRIBUTING.md) to start working on the package.
-// 
-// <img src="https://raw.githubusercontent.com/gist/fonsp/9a36c183e2cad7c8fc30290ec95eb104/raw/ca3a38a61f95cd58d79d00b663a3c114d21e284e/cute.svg">
-// 
-// ## License
-// 
-// Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/fonsp/Pluto.jl/blob/main/LICENSE). Pluto.jl is built by gluing together open source software:
-// 
-// -   `Julia` - [license](https://github.com/JuliaLang/julia/blob/master/LICENSE.md)
-// -   `CodeMirror` - [license](https://github.com/codemirror/codemirror.next/blob/master/LICENSE-MIT)
-// -   `HTTP.jl` - [license](https://github.com/JuliaWeb/HTTP.jl/blob/master/LICENSE.md)
-// -   `MsgPack.jl` - [license](https://github.com/JuliaIO/MsgPack.jl)
-// -   `msgpack-lite` - [license](https://github.com/kawanet/msgpack-lite/blob/master/LICENSE)
-// -   `observablehq/stdlib` - [license](https://github.com/observablehq/stdlib/blob/master/LICENSE)
-// -   `preact` - [license](https://github.com/preactjs/preact/blob/master/LICENSE)
-// -   `developit/htm` - [license](https://github.com/developit/htm/blob/master/LICENSE)
-// -   `MathJax` - [license](https://github.com/mathjax/MathJax-src/blob/master/LICENSE)
-// 
-// If you want to reference Pluto.jl in scientific writing, you can use our DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4792401.svg)](https://doi.org/10.5281/zenodo.4792401)
-// 
-// ### Featured notebooks
-// 
-// Unless otherwise specified, the included featured notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use them however you like - you do not need to credit us! 
-// 
-// Your notebook files are _yours_, you also do not need to credit us. Have fun!
-// 
-// ## From the authors
-// 
-// The Pluto project is an ambition to [_rethink what a programming environment should be_](http://worrydream.com/#!/LearnableProgramming). We believe that scientific computing can be a lot simpler and more accessible. If you feel the same, give Pluto a try! We would love to hear what you think. 😊
-// 
-// ### You can chat with us
-// 
-// - talk with fellow Pluto users in the **[Zulip chat room](https://gist.github.com/fonsp/db7d00fd3fe5bc0b379b4af9ec6674b6)** (_search for the `pluto.jl` stream_)
-// - use Pluto's **[built-in feedback system:](https://github.com/fonsp/Pluto.jl/issues/182#issue-637726414)**
-// - contact fons **[via email](mailto:fons@plutojl.org)**
-// 
-// <img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/84502876-6f08db00-acb9-11ea-84c3-f5daaba29273.png" width="100%">
-// 
-// Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
-// 
-// ## Sponsors
-// 
-// Development of Pluto.jl is partially sponsored by
-// 
-// | | |
-// |----|----|
-// | <a href="https://computationalthinking.mit.edu"><img title="Massachusetts Institute of Technology" src="https://user-images.githubusercontent.com/6933510/103308960-09412e00-4a14-11eb-8a3a-39201a9c186d.png" width=400 alt="MIT logo"></a> | The free online course _[Introduction to Computational Thinking](https://computationalthinking.mit.edu)_ at **MIT** uses Pluto notebooks to teach scientific computing in a new way. Homeworks react to the student in realtime, with _live answer checks and visualizations_ while you solve problems. |
-// | <a href="http://quera-computing.com"><img title="QuEra Computing" src="https://user-images.githubusercontent.com/6933510/103309531-9e90f200-4a15-11eb-850f-99609e3b9bd8.png" width=400 alt="QuEra logo"></a> | **QuEra Computing** uses a Pluto notebook as an online dashboard to control their _quantum computer_! |
-// | <a href="https://juliacomputing.com/"><img title="Julia Computing" src="https://user-images.githubusercontent.com/6933510/110478267-780dc800-80e4-11eb-91e5-2ef0256ad0db.png" width=400 alt="Julia Computing logo"></a> | [JuliaHub](https://juliahub.com) by **Julia Computing** enables the creation and editing of Pluto notebooks *on the cloud*! |
-// | <a href="https://numfocus.org/"><img title="Julia Computing" src="https://user-images.githubusercontent.com/6933510/110683397-42e4a100-81dc-11eb-9bdb-db58f9c283b4.png" width=400 alt="NumFOCUS logo"></a> | The mission of **NumFOCUS** is to promote open practices in research, data, and scientific computing by serving as a fiscal sponsor for open source projects and organizing community-driven educational programs. |
-// 
-// _Created by [**Fons van der Plas**](https://github.com/fonsp) and [**Mikołaj Bochenski**](https://github.com/malyvsen). Inspired by [Observable](https://observablehq.com/)._
 
 // ╔═╡ [cells.ef0a0a1a-24ed-4f56-8ba0-7591c1e5d56f]
 // ╠═╡ type = "text"
@@ -216,12 +69,9 @@ x = await new Promise((resolve) =>
 // | col 2 is   |    centered      |   $12    |
 // | col 3 is   | right-aligned  |    $1     bjn  |
 
-// ╔═╡ [cells.68ece24f-1712-4ae2-b651-93d0d1ec7989]
-// ╠═╡ type = "text"
-// ${x}
-
 // ╔═╡ [cells.eed61bda-4174-42e9-a90e-4b0243d7d6f0]
 // ╠═╡ type = "text"
+// ## Want to show off **Katex support**
 // $$
 // \begin{align*}
 // S(\omega) 
@@ -229,32 +79,19 @@ x = await new Promise((resolve) =>
 // &= \frac{\alpha g^2}{\omega^5} \exp\Bigl[ -0.74\Bigl\{\frac{\omega U_\omega 19.5}{g}\Bigr\}^{\!-4}\,\Bigr] 
 // \end{align*}
 // $$
-
-// ╔═╡ [cells.ff002984-53cb-41f4-b3c7-f6b9a5041fef]
-// ╠═╡ type = "text"
-// a
-// 
-// $$
-// \begin{align*}
-// S(\omega) 
-// &= \frac{\alpha g^2}{\omega^5} e^{[ -0.74\bigl\{\frac{\omega U_\omega 19.5}{g}\bigr\}^{\!-4}\,]} \\
-// &= \frac{\alpha g^2}{\omega^5} \exp\Bigl[ -0.74\Bigl\{\frac{\omega U_\omega 19.5}{g}\Bigr\}^{\!-4}\,\Bigr] 
-// \end{align*}
-// $$
-// **Hi**
 
 // ╔═╡ [cells.6f02384d-2362-4167-92ca-ef2f5707d375]
 // ╠═╡ type = "text"
 // # My Title is Awesome
 
-// ╔═╡ [cells.21227430-c866-4c20-a0a3-c48047edbadf]
-// ╠═╡ folded = false
-y = await new Promise(
-  (resolve) => (x, setTimeout(resolve, 5000))
+// ╔═╡ [cells.4578b1f8-fc43-4812-9b5a-cb9580937a54]
+// ╠═╡ folded = true
+z = await new Promise(
+  (resolve) => (y, setTimeout(resolve, 10000))
 );
 
 // ╔═╡ [cells.fc39ad0d-c091-45bf-9eec-39648777b973]
-// ╠═╡ folded = false
+// ╠═╡ folded = true
 import {
   add,
   compact,
@@ -264,36 +101,23 @@ import {
   mergeWith,
 } from "lodash-es";
 
-// ╔═╡ [cells.4578b1f8-fc43-4812-9b5a-cb9580937a54]
-// ╠═╡ folded = false
-z = await new Promise(
-  (resolve) => (y, setTimeout(resolve, 10000))
-);
-
 // ╔═╡ [cells.7402e9a0-0e82-4741-8a24-1e55d94056aa]
 // ╠═╡ folded = false
 1 + 1
 
-// ╔═╡ [cells.bfd916a3-3996-4ea7-b87c-555e19387e3c]
-// ╠═╡ folded = false
-// This cell was in the cell order but not in the notebook
-
 // ╔═╡ ["Cell Order"]
 // ╠═╡ "Cell Order" = [
 // ╠═╡   "6f02384d-2362-4167-92ca-ef2f5707d375",
-// ╠═╡   "ff002984-53cb-41f4-b3c7-f6b9a5041fef",
 // ╠═╡   "eed61bda-4174-42e9-a90e-4b0243d7d6f0",
-// ╠═╡   "68ece24f-1712-4ae2-b651-93d0d1ec7989",
 // ╠═╡   "ef0a0a1a-24ed-4f56-8ba0-7591c1e5d56f",
-// ╠═╡   "9f2b59cc-2ad4-48f2-836f-047006696c15",
+// ╠═╡   "28918307-ec74-4909-8b06-4d0eb6b82718",
 // ╠═╡   "9b149216-2ed6-4ff0-ac83-bff721613f5a",
 // ╠═╡   "3040d168-18f8-478e-af27-a93db12c1493",
-// ╠═╡   "21227430-c866-4c20-a0a3-c48047edbadf",
-// ╠═╡   "fc39ad0d-c091-45bf-9eec-39648777b973",
 // ╠═╡   "4578b1f8-fc43-4812-9b5a-cb9580937a54",
+// ╠═╡   "fc39ad0d-c091-45bf-9eec-39648777b973",
+// ╠═╡   "21227430-c866-4c20-a0a3-c48047edbadf",
 // ╠═╡   "c372df60-f0f0-4480-882e-5d0918452837",
-// ╠═╡   "7402e9a0-0e82-4741-8a24-1e55d94056aa",
-// ╠═╡   "bfd916a3-3996-4ea7-b87c-555e19387e3c"
+// ╠═╡   "7402e9a0-0e82-4741-8a24-1e55d94056aa"
 // ╠═╡ ]
 
 

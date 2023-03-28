@@ -2,12 +2,20 @@ import {
   EditorState,
   EditorSelection,
   SelectionRange,
+  RangeValue,
+  RangeSetBuilder,
 } from "@codemirror/state";
 import { Decoration, EditorView, keymap } from "@codemirror/view";
 import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import { DecorationsFromTree } from "@dral/codemirror-helpers";
+import { iterate_with_cursor } from "dral-lezer-helpers";
 import { Tree, TreeCursor } from "@lezer/common";
-import { iterate_over_cursor, iterate_with_cursor } from "dral-lezer-helpers";
+
+class EZRange extends RangeValue {
+  eq() {
+    return true;
+  }
+}
 
 let insert_around_command = (str) => (view) => {
   let { from, to } = view.state.selection.main;
@@ -156,7 +164,7 @@ let styles = EditorView.baseTheme({
   },
   ".inline-code": {
     "font-size": "85%",
-    // outline: "1px solid #ffffff36",
+    color: "#ef8e8e",
     border: "1px solid #ffffff36",
     padding: "0 5px",
     margin: "0 2px",
@@ -370,7 +378,9 @@ let hide_marks_except_when_selected = EditorView.theme({
   },
 });
 
-// TODO Compute based on syntaxtree 😅
+// NOTE Currently doesn't compute based on SyntaxTree, but that is fine,
+// .... because it also uses the selection, and I doubt there will be a selection
+// .... that spans stuff not yet parsed.
 let re_mark_marks_that_are_in_selection = EditorView.decorations.compute(
   ["doc", "selection"],
   (state) => {
@@ -439,4 +449,21 @@ export let markdown_text_decorations = [
   styles,
   hide_marks_except_when_selected,
   simple_text_keymap,
+
+  // Make "**" emphasis markers atomic
+  EditorView.atomicRanges.of(({ state }) => {
+    let ranges = new RangeSetBuilder();
+    iterate_with_cursor({
+      tree: syntaxTree(state),
+      enter: (cursor) => {
+        if (cursor.name === "EmphasisMark") {
+          // Need to differentiate between "*" and "**"
+          if (cursor.to - cursor.from === 2) {
+            ranges.add(cursor.from, cursor.to, new EZRange());
+          }
+        }
+      },
+    });
+    return ranges.finish();
+  }),
 ];

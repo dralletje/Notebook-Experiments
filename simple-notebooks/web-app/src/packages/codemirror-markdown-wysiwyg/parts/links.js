@@ -2,6 +2,8 @@ import { Decoration, EditorView } from "@codemirror/view";
 
 import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
+// TODO Hide everything but the text unless selected
+
 export let markdown_links = [
   EditorView.baseTheme({
     ".link-mark": {

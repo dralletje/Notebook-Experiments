@@ -7,63 +7,7 @@ import { syntaxTree } from "@codemirror/language";
 import { ReactWidget, useEditorView } from "react-codemirror-widget";
 import { iterate_over_cursor, iterate_with_cursor } from "dral-lezer-helpers";
 import { TreeCursor } from "@lezer/common";
-
-// let markdown_styling_base_theme = EditorView.baseTheme({
-//   ".cm-line.list-item:has(.list-mark)": {
-//     // Don't ask me why this is padding, but it works better with selection stuff
-//     "padding-top": "0.3em",
-//     "margin-left": "-1em",
-//   },
-//   ".cm-line.order-list-item:has(.list-mark)": {
-//     "margin-left": "-1em",
-//   },
-//   ".list-mark": {
-//     color: "transparent",
-//     width: "1em",
-//     display: "inline-block",
-//   },
-//   ".list-item:not(:has(.task-marker)) .list-mark::before": {
-//     content: '"-"',
-//     position: "absolute",
-//     /* top: 0; */
-//     transform: "translateY(-4px)",
-//     "font-size": "1.2em",
-//     color: "var(--accent-color)",
-//   },
-//   ".order-list-item:not(:has(.task-marker)) .list-mark::before": {
-//     content: "unset",
-//   },
-//   ".order-list-item:not(:has(.task-marker)) .list-mark": {
-//     color: "var(--accent-color)",
-//   },
-
-//   ".task-marker": {
-//     "margin-left": "-1em",
-//     transform: "translateX(-0.5em)",
-//   },
-
-//   ".quote-mark": {
-//     color: "transparent",
-//     "font-size": "0",
-//     display: "inline-block",
-//     position: "relative",
-//   },
-//   ".blockquote": {
-//     position: "relative",
-//   },
-//   ".blockquote::before": {
-//     content: '""',
-//     position: "absolute",
-//     "margin-left": "0.2em",
-//     "pointer-events": "none",
-//     "font-size": "1.2em",
-//     "background-color": "rgba(200, 0, 0)",
-//     width: "0.16em",
-//     top: "0",
-//     bottom: "0",
-//     left: "-0.6em",
-//   },
-// });
+import { DecorationsFromTreeSortForMe } from "@dral/codemirror-helpers";
 
 let markdown_styling_base_theme = EditorView.baseTheme({
   ".cm-line.list-item:has(.list-mark),.cm-line.list-item:has(.task-marker)": {
@@ -113,53 +57,6 @@ let markdown_styling_base_theme = EditorView.baseTheme({
     left: "-0.6em",
   },
 });
-
-// let avoid_markers = EditorState.transactionFilter.of(
-//   (transaction) => {
-//     let selection = transaction.newSelection.main;
-//     if (!selection.empty) return transaction;
-
-//     // Weirdly enough, when `assoc` is 0, lezer returns the wrong node.
-//     // So in that case I assume
-//     let assoc = selection.assoc || 1;
-
-//     // When the document has changed I need to get the new syntax tree using the new state,
-//     // which is expensive to calculate...
-//     // Lets hope the document doesn't change too often...
-//     let tree = transaction.docChanged
-//       ? syntaxTree(transaction.state)
-//       : syntaxTree(transaction.startState);
-
-//       let cursor = tree.cursorAt(selection.head);
-
-//     for (let mark of marks_to_avoid) {
-//       if (tree.cursorAt(selection.head, assoc).name !== mark) continue;
-
-//       // Just do `assoc * -1`? Typescript doesn't like that..
-//       /** @type {1 | -1} */
-//       let better_assoc = assoc === 1 ? -1 : 1;
-
-//       if (tree.cursorAt(selection.head, better_assoc).name === mark)
-//         return transaction;
-
-//       if (transaction.docChanged) {
-//         // prettier-ignore
-//         console.log("⚠ RECALCULATING THE WHOLE STATE in markdown transactionFilter");
-//       }
-
-//       let new_selection = EditorSelection.create([
-//         EditorSelection.cursor(
-//           selection.head,
-//           better_assoc,
-//           selection.bidiLevel,
-//           selection.goalColumn
-//         ),
-//       ]);
-//       return [transaction, { selection: new_selection, sequential: true }];
-//     }
-//     return transaction;
-//   }
-// );
 
 class EZRange extends RangeValue {
   eq() {
@@ -428,43 +325,21 @@ export let markdown_blocks_extension = [
   // AAAAA,
 
   // TODO Compute based on syntaxtree 😅
-  EditorView.decorations.compute(["doc"], (state) => {
-    let tree = syntaxTree(state);
-    let decorations = [];
-    iterate_with_cursor({
-      tree,
-      enter: (cursor) => {
-        return search_block_or_inline_decorations({
-          cursor: cursor,
-          doc: state.doc,
-          mutable_decorations: decorations,
-        });
-      },
-    });
-    return Decoration.set(decorations, true);
-  }),
+  DecorationsFromTreeSortForMe(search_block_or_inline_decorations),
 
-  EditorView.decorations.compute(["doc"], (state) => {
-    let tree = syntaxTree(state);
-    let doc = state.doc;
-    let decorations = [];
-    iterate_with_cursor({
-      tree,
-      enter: (cursor) => {
-        if (cursor.name === "QuoteMark") {
-          let extra_space = doc.sliceString(cursor.to, cursor.to + 1) === " ";
-          decorations.push(
-            Decoration.replace({}).range(
-              cursor.from,
-              cursor.to + (extra_space ? 1 : 0)
-            )
-          );
-        }
-      },
-    });
-
-    return Decoration.set(decorations, true);
-  }),
+  DecorationsFromTreeSortForMe(
+    ({ cursor, mutable_decorations: decorations, doc }) => {
+      if (cursor.name === "QuoteMark") {
+        let extra_space = doc.sliceString(cursor.to, cursor.to + 1) === " ";
+        decorations.push(
+          Decoration.replace({}).range(
+            cursor.from,
+            cursor.to + (extra_space ? 1 : 0)
+          )
+        );
+      }
+    }
+  ),
 
   EditorView.atomicRanges.of(({ state }) => {
     let tree = syntaxTree(state);

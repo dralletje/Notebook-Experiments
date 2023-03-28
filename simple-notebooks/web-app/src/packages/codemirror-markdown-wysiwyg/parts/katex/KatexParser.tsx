@@ -21,7 +21,6 @@ class KatexParser implements LeafBlockParser {
     let dollar_pos = line.text.indexOf("$$");
     if (dollar_pos !== -1) {
       let to = leaf.start + leaf.content.length + 1 + dollar_pos + 2;
-      console.log(`leaf.start, to:`, leaf.start, to);
       cx.addLeafElement(
         leaf,
         cx.elt(
@@ -73,22 +72,11 @@ function parseSubSuper(ch: number, node: string, mark: string) {
   };
 }
 
-/// This extension provides
-/// [GFM-style](https://github.github.com/gfm/#tables-extension-)
-/// tables, using syntax like this:
-///
-/// ```
-/// | head 1 | head 2 |
-/// | ---    | ---    |
-/// | cell 1 | cell 2 |
-/// ```
+/// This extension provides Katex
 export const MarkdownKatexBlock: MarkdownConfig = {
   defineNodes: [
-    { name: "KatexBlock", block: true, style: t.processingInstruction },
-    // { name: "TableHeader", style: { "TableHeader/...": t.heading } },
-    // "TableRow",
-    // { name: "TableCell", style: t.content },
-    // { name: "TableDelimiter", style: t.processingInstruction },
+    { name: "KatexBlock", block: true, style: t.special(t.content) },
+    // { name: "KatexMarker", style: t.processingInstruction },
   ],
   parseBlock: [
     {
@@ -96,7 +84,6 @@ export const MarkdownKatexBlock: MarkdownConfig = {
 
       leaf(_, leaf) {
         if (leaf.content.startsWith("$$")) {
-          console.log("Making parser", leaf.start);
           return new KatexParser();
         }
         return null;

@@ -1,6 +1,8 @@
 import { Decoration, EditorView } from "@codemirror/view";
 import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
+// TODO Just do this using HighlightStyle?
+
 // Show ⏎ at the end of `  ` (two spaces) lines
 export let markdown_show_hard_breaks = [
   EditorView.baseTheme({

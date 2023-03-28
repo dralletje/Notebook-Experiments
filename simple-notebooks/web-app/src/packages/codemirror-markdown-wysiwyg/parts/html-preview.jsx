@@ -1,5 +1,4 @@
 import React from "react";
-import { syntaxTree } from "@codemirror/language";
 import {
   RangeSetBuilder,
   RangeValue,
@@ -11,11 +10,11 @@ import {
   MapMode,
 } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
-import { iterate_with_cursor } from "dral-lezer-helpers";
 import { ReactWidget, useEditorView } from "react-codemirror-widget";
 
 import { IonIcon } from "@ionic/react";
 import { eyeOutline, eye } from "ionicons/icons";
+import { CollectFromTree } from "@dral/codemirror-helpers";
 
 class EZRange extends RangeValue {
   eq() {
@@ -158,18 +157,13 @@ export let markdown_html_preview = [
       "white-space": "normal",
     },
   }),
-  html_blocks_facet.compute(["doc"], (state) => {
-    let tree = syntaxTree(state);
-    let ranges = [];
-    iterate_with_cursor({
-      tree,
-      enter: (cursor) => {
-        if (cursor.name === "HTMLBlock") {
-          ranges.push(html_block_range.range(cursor.from, cursor.to));
-        }
-      },
-    });
-    return ranges;
+  CollectFromTree({
+    what: html_blocks_facet,
+    compute: ({ cursor, accumulator: ranges }) => {
+      if (cursor.name === "HTMLBlock") {
+        ranges.push(html_block_range.range(cursor.from, cursor.to));
+      }
+    },
   }),
   EditorView.decorations.compute(
     [html_blocks_facet, html_demo_statefield],
@@ -189,7 +183,7 @@ export let markdown_html_preview = [
               block: true,
               inclusive: true,
               // inclusiveEnd: false,
-              widget: new ReactWidgetX(
+              widget: new ReactWidget(
                 (
                   <HTMLPreviewWidget
                     show_html={show_html}

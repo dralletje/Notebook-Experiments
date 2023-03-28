@@ -2,6 +2,7 @@ import { Decoration, EditorView } from "@codemirror/view";
 import { iterate_with_cursor } from "dral-lezer-helpers";
 import { range } from "lodash";
 import { syntaxTree } from "@codemirror/language";
+import { DecorationsFromTreeSortForMe } from "@dral/codemirror-helpers";
 
 import {
   javascript_syntax_highlighting,
@@ -43,43 +44,32 @@ export let markdown_code_blocks = [
   // javascript_syntax_highlighting,
 
   markdown_styling_base_theme,
-  EditorView.decorations.compute(["doc"], (state) => {
-    let tree = syntaxTree(state);
-    let doc = state.doc;
-    let decorations = [];
-    iterate_with_cursor({
-      tree,
-      enter: (cursor) => {
-        if (cursor.name === "FencedCode") {
-          let line_from = doc.lineAt(cursor.from);
-          let line_to = doc.lineAt(cursor.to);
-          for (let line_number of range(line_from.number, line_to.number + 1)) {
-            let line = doc.line(line_number);
-            decorations.push(
-              Decoration.line({
-                class: "has-fenced-code",
-              }).range(line.from, line.from)
-            );
-          }
-
+  DecorationsFromTreeSortForMe(
+    ({ cursor, mutable_decorations: decorations, doc }) => {
+      if (cursor.name === "FencedCode") {
+        let line_from = doc.lineAt(cursor.from);
+        let line_to = doc.lineAt(cursor.to);
+        for (let line_number of range(line_from.number, line_to.number + 1)) {
+          let line = doc.line(line_number);
           decorations.push(
-            Decoration.mark({ tagName: "code", class: "fenced-code" }).range(
-              cursor.from,
-              cursor.to
-            )
+            Decoration.line({
+              class: "has-fenced-code",
+            }).range(line.from, line.from)
           );
         }
-        if (cursor.name === "CodeText") {
-          decorations.push(
-            Decoration.mark({ class: "code-text" }).range(
-              cursor.from,
-              cursor.to
-            )
-          );
-        }
-      },
-    });
 
-    return Decoration.set(decorations, true);
-  }),
+        decorations.push(
+          Decoration.mark({ tagName: "code", class: "fenced-code" }).range(
+            cursor.from,
+            cursor.to
+          )
+        );
+      }
+      if (cursor.name === "CodeText") {
+        decorations.push(
+          Decoration.mark({ class: "code-text" }).range(cursor.from, cursor.to)
+        );
+      }
+    }
+  ),
 ];

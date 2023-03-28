@@ -86,7 +86,7 @@ export let basic_markdown_setup = [
   drawSelection(),
   EditorView.lineWrapping,
 
-  debug_syntax_plugin,
+  // debug_syntax_plugin,
 
   // TODO Would love to have this, but needs more looking at to work with list items and task markers
   awesome_line_wrapping,
