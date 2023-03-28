@@ -4,16 +4,17 @@ import { syntaxTree } from "@codemirror/language";
 import { iterate_with_cursor } from "dral-lezer-helpers";
 
 let markdown_styling_base_theme = EditorView.baseTheme({
-  ".table": {
+  ".markdown-table": {
     color: "white",
   },
-  ".cm-line:has(.table)": {
-    "background-color": "#ffffff0a",
-  },
-  ".table-header": {
+  ".cm-line:has(.markdown-table-delimiter), .cm-line:has(.markdown-table-cell)":
+    {
+      "background-color": "#ffffff0a",
+    },
+  ".markdown-table-header": {
     "font-weight": "bold",
   },
-  ".table-delimiter": {
+  ".markdown-table-delimiter": {
     opacity: "0.5",
   },
 });
@@ -29,11 +30,11 @@ export let markdown_tables = [
       enter: (cursor) => {
         // Table stuff
         let table_node_to_class = {
-          Table: "table",
-          TableHeader: "table-header",
-          TableDelimiter: "table-delimiter",
-          TableCell: "table-cell",
-          TableRow: "table-row",
+          // Table: "markdown-table",
+          TableHeader: "markdown-table-header",
+          TableDelimiter: "markdown-table-delimiter",
+          TableCell: "markdown-table-cell",
+          // TableRow: "markdown-table-row",
         };
         let cursor_name = cursor.name;
         if (cursor_name in table_node_to_class) {

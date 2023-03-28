@@ -27,8 +27,8 @@ let markdown_styling_base_theme = EditorView.baseTheme({
     },
   },
   h3: {
-    "font-size": "1.1em",
-    "font-weight:": "bold",
+    "font-size": "1.25em",
+    "font-weight": "bold",
     ".cm-line:has(&)": {
       "margin-top": `0.2em`,
       "margin-bottom": `0.1em`,

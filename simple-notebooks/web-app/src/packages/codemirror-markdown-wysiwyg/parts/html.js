@@ -4,8 +4,10 @@ import { syntaxTree } from "@codemirror/language";
 import { iterate_with_cursor } from "dral-lezer-helpers";
 
 let markdown_styling_base_theme = EditorView.baseTheme({
-  ".html-tag *": {
+  ".html-tag": {
     color: "#2fbf00",
+    "font-family": "menlo",
+    "font-size": "85%",
   },
   ".comment-block": {
     opacity: "0.5",

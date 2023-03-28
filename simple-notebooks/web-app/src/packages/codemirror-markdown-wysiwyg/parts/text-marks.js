@@ -155,7 +155,7 @@ let styles = EditorView.baseTheme({
     "font-weight": "bold",
   },
   ".inline-code": {
-    "font-size": "0.9em",
+    "font-size": "85%",
     // outline: "1px solid #ffffff36",
     border: "1px solid #ffffff36",
     padding: "0 5px",

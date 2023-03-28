@@ -23,6 +23,17 @@ class EZRange extends RangeValue {
   }
 }
 
+class ReactWidgetX extends ReactWidget {
+  constructor(x) {
+    super(x);
+  }
+
+  get estimatedHeight() {
+    console.log("X");
+    return 600;
+  }
+}
+
 let ToggleHTMLMarkerWidget = ({ show_html, line_number }) => {
   let view = useEditorView();
 
@@ -178,7 +189,7 @@ export let markdown_html_preview = [
               block: true,
               inclusive: true,
               // inclusiveEnd: false,
-              widget: new ReactWidget(
+              widget: new ReactWidgetX(
                 (
                   <HTMLPreviewWidget
                     show_html={show_html}
