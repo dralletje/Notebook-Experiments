@@ -70,63 +70,6 @@ export let markdown_katex = [
       "text-align": "center",
       width: "100%",
     },
-    "katex-inline-widget": {
-      display: "inline-block",
-    },
-
-    "katex-in-edit-widget": {
-      position: "relative",
-      // display: "block",
-      display: "inline-block",
-      width: "100%",
-      "text-align": "center",
-      "min-height": "1.5em",
-    },
-    "katex-render-error": {
-      position: "relative",
-      display: "block",
-      "font-family":
-        "source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace",
-      "white-space": "pre-wrap",
-      color: "#ff5f5f",
-      "text-align": "center",
-      padding: "5px 20%",
-      "font-size": "0.8em",
-    },
-    "katex-in-edit-widget::before, katex-render-error::before": {
-      content: "''",
-      position: "absolute",
-      inset: "-2px 0",
-      "z-index": "-1",
-      "background-color": "#002f2c",
-      // padding: "16px 0",
-    },
-    ".katex-block-code, .katex-inline-code": {
-      color: "#00d7cb",
-      "font-size": "85%",
-      "white-space": "pre-wrap",
-      "font-family":
-        "source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace",
-    },
-    ".has-katex-block-code": {
-      // "background-color": "#00d7cb",
-      border: "1px solid #002f2c",
-
-      // TODO Disable text-wrapping inside codeblocks for now...
-      "margin-left": "0",
-      "text-indent": "0",
-    },
-
-    ".has-katex-block-code:has(+ .has-katex-block-code)": {
-      "border-bottom": "none",
-      "border-bottom-right-radius": "0",
-      "border-bottom-left-radius": "0",
-    },
-    ".cm-line:has(.katex-block-code) + .has-katex-block-code": {
-      "border-top": "none",
-      "border-top-right-radius": "0",
-      "border-top-left-radius": "0",
-    },
   }),
   EditorView.decorations.compute(["doc", "selection"], (state) => {
     let tree = syntaxTree(state);
@@ -138,7 +81,7 @@ export let markdown_katex = [
     iterate_with_cursor({
       tree,
       enter: (cursor) => {
-        if (cursor.name === "KatexBlock") {
+        if (cursor.name === "Interpolation") {
           console.log("Hi", cursor.from);
           if (cursor.node.parent.name !== "Document") {
             // TODO Support nested katex blocks, but for now... No way

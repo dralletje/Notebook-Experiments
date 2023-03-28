@@ -25,6 +25,8 @@ import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
 import { MarkdownKatex } from "./parts/katex/KatexParser";
 import { markdown_katex } from "./parts/katex/katex";
 
+// import { MarkdownInterpolation } from "./parts/interpolation/InterpolationParser";
+
 import {
   HighlightStyle,
   syntaxHighlighting,
@@ -67,7 +69,10 @@ export let basic_markdown_setup = [
   markdown({
     addKeymap: true,
     base: markdownLanguage,
-    extensions: [MarkdownKatex],
+    extensions: [
+      MarkdownKatex,
+      // MarkdownInterpolation,
+    ],
     // TODO Kind of part of markdown_code_blocks
     // defaultCodeLanguage: my_javascript_parser,
   }),

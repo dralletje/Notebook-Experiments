@@ -61,6 +61,8 @@ x = await new Promise((resolve) =>
 // 
 // In the example below, changing the parameter `A` and running the first cell will directly re-evaluate the second cell and display the new plot.
 // 
+// ${x(x)}
+// 
 // <img alt="plotting screencap" src="https://user-images.githubusercontent.com/6933510/80637344-24ac0180-8a5f-11ea-82dd-813dbceca9c9.gif" width="50%">
 // 
 // ### Built-in package manager
@@ -214,6 +216,10 @@ x = await new Promise((resolve) =>
 // | col 2 is   |    centered      |   $12    |
 // | col 3 is   | right-aligned  |    $1     bjn  |
 
+// ╔═╡ [cells.68ece24f-1712-4ae2-b651-93d0d1ec7989]
+// ╠═╡ type = "text"
+// ${x}
+
 // ╔═╡ [cells.eed61bda-4174-42e9-a90e-4b0243d7d6f0]
 // ╠═╡ type = "text"
 // $$
@@ -223,7 +229,6 @@ x = await new Promise((resolve) =>
 // &= \frac{\alpha g^2}{\omega^5} \exp\Bigl[ -0.74\Bigl\{\frac{\omega U_\omega 19.5}{g}\Bigr\}^{\!-4}\,\Bigr] 
 // \end{align*}
 // $$
-// **Hi**
 
 // ╔═╡ [cells.ff002984-53cb-41f4-b3c7-f6b9a5041fef]
 // ╠═╡ type = "text"
@@ -278,6 +283,7 @@ z = await new Promise(
 // ╠═╡   "6f02384d-2362-4167-92ca-ef2f5707d375",
 // ╠═╡   "ff002984-53cb-41f4-b3c7-f6b9a5041fef",
 // ╠═╡   "eed61bda-4174-42e9-a90e-4b0243d7d6f0",
+// ╠═╡   "68ece24f-1712-4ae2-b651-93d0d1ec7989",
 // ╠═╡   "ef0a0a1a-24ed-4f56-8ba0-7591c1e5d56f",
 // ╠═╡   "9f2b59cc-2ad4-48f2-836f-047006696c15",
 // ╠═╡   "9b149216-2ed6-4ff0-ac83-bff721613f5a",
