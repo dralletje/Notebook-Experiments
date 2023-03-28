@@ -7,6 +7,7 @@ export let markdown_show_hard_breaks = [
     ".hard-break::after": {
       content: '"⏎"',
       color: "rgba(255, 255, 255, 0.2)",
+      "pointer-events": "none",
     },
   }),
   DecorationsFromTree(({ cursor, mutable_decorations }) => {

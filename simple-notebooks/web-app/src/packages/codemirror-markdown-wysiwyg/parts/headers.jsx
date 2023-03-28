@@ -8,7 +8,7 @@ import { iterate_with_cursor } from "dral-lezer-helpers";
 
 let markdown_styling_base_theme = EditorView.baseTheme({
   "h1, h2, h3, h4, h5, h6": {
-    display: "inline-block",
+    display: "inline",
   },
   h1: {
     "font-size": "2em",

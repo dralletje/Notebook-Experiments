@@ -93,7 +93,7 @@ button {
   margin-top: 20px;
 }
 
-.cell-text + .cell-text .cell-editor::before {
+.cell-text + .cell-text .cm-editor::before {
   animation: appear 1s;
 
   content: "";

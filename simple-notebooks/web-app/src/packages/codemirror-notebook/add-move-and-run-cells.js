@@ -296,7 +296,13 @@ export let cell_keymap = Prec.high(
               EditorInChiefEffect.of((state) => {
                 let cell_order = state.field(CellOrderField);
                 let cell_index = cell_order.indexOf(cell_id);
-                if (cell_index === 0) return [];
+                if (cell_index === 0)
+                  return EditorDispatchEffect.of({
+                    editor_id: cell_id,
+                    transaction: {
+                      annotations: NudgeCell.of(true),
+                    },
+                  });
 
                 let previous_cell_id = cell_order[cell_index - 1];
                 let previous_cell_state = state.editor(previous_cell_id);
@@ -323,14 +329,12 @@ export let cell_keymap = Prec.high(
                       }),
                     ];
                   } else {
-                    return [
-                      EditorDispatchEffect.of({
-                        editor_id: cell_id,
-                        transaction: {
-                          annotations: NudgeCell.of(true),
-                        },
-                      }),
-                    ];
+                    return EditorDispatchEffect.of({
+                      editor_id: cell_id,
+                      transaction: {
+                        annotations: NudgeCell.of(true),
+                      },
+                    });
                   }
                 }
 

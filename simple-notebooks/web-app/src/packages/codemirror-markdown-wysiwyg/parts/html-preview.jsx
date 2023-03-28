@@ -27,7 +27,7 @@ let ToggleHTMLMarkerWidget = ({ show_html, line_number }) => {
   let view = useEditorView();
 
   return (
-    <span
+    <markdown-html-toggle
       onClick={() => {
         view.dispatch({
           effects: toggle_html_demo_effect.of({
@@ -36,16 +36,15 @@ let ToggleHTMLMarkerWidget = ({ show_html, line_number }) => {
           }),
         });
       }}
-      className="html-previous-toggle"
     >
       <IonIcon icon={show_html ? eye : eyeOutline} />
-    </span>
+    </markdown-html-toggle>
   );
 };
 
 let HTMLPreviewWidget = ({ html, show_html, line_number }) => {
   return (
-    <div>
+    <markdown-html-preview>
       <div style={{ fontSize: "0.8em", transform: "translateX(4px)" }}>
         <ToggleHTMLMarkerWidget
           line_number={line_number}
@@ -53,14 +52,8 @@ let HTMLPreviewWidget = ({ html, show_html, line_number }) => {
         />
       </div>
 
-      <div
-        style={{
-          // backgroundColor: "rgba(255,255,255,0.05)",
-          whiteSpace: "normal",
-        }}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    </div>
+      <markdown-html-render dangerouslySetInnerHTML={{ __html: html }} />
+    </markdown-html-preview>
   );
 };
 
@@ -135,16 +128,23 @@ export let markdown_html_preview = [
       "font-size": "0.8em",
       color: "#2fbf00",
     },
-    ".html-previous-toggle": {
+    "markdown-html-toggle": {
       position: "absolute",
       transform: "translateX(-100%) translateX(-10px) translateY(5px)",
       "font-size": "0.8em",
       color: "#2fbf00",
       opacity: "0.5",
     },
-    ".html-previous-toggle:hover": {
+    "markdown-html-toggle:hover": {
       opacity: "1",
       cursor: "pointer",
+    },
+    "markdown-html-preview": {
+      display: "inline-block",
+      width: "100%",
+    },
+    "markdown-html-render": {
+      "white-space": "normal",
     },
   }),
   html_blocks_facet.compute(["doc"], (state) => {

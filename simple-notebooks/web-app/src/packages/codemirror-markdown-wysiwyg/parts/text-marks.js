@@ -6,7 +6,7 @@ import {
 import { Decoration, EditorView, keymap } from "@codemirror/view";
 import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import { DecorationsFromTree } from "@dral/codemirror-helpers";
-import { Tree } from "@lezer/common";
+import { Tree, TreeCursor } from "@lezer/common";
 import { iterate_over_cursor, iterate_with_cursor } from "dral-lezer-helpers";
 
 let insert_around_command = (str) => (view) => {
@@ -309,13 +309,49 @@ let select_markers_when_selecting_the_whole_thing =
     throw new Error("Whaaaaat");
   });
 
+let is_first_child = (/** @type {TreeCursor} */ cursor) => {
+  let first_child = cursor.node?.parent?.firstChild;
+  return first_child?.from === cursor.from && first_child?.to === cursor.to;
+};
+
 let TODO_clicking_end_of_line_should_take_you_to_end_of_line =
   EditorState.transactionFilter.of((transaction) => {
-    // TODO
-    // 1. Find out if the new selection is at the start of a mark
-    // 2. If it is, then figure out if that mark is just before the end of a line
-    // 3. Make sure the mark was invisible in the previous selection
-    // 4. If all of the above is true, then set the selection to the end of the line
+    // TODO Make this look at HasSelection as well?
+
+    if (transaction.docChanged) return transaction;
+    if (!transaction.newSelection.main.empty) return transaction;
+    if (!transaction.startState.selection.main.empty) return transaction;
+    if (transaction.selection == null) return transaction;
+
+    let previous_selection = transaction.startState.selection.main;
+
+    let tree = syntaxTree(transaction.startState);
+    let cursor_start = tree.cursorAt(transaction.newSelection.main.from, -1);
+    let cursor_end = tree.cursorAt(transaction.newSelection.main.from, 1);
+
+    let cursor =
+      cursor_start.name in markdown_mark_to_decoration
+        ? cursor_start
+        : cursor_end;
+    if (cursor.name in markdown_mark_to_decoration) {
+      let parent = cursor.node.parent;
+      let was_visible_before =
+        parent.from < previous_selection.from &&
+        previous_selection.to < parent.to;
+      if (was_visible_before) return transaction;
+
+      let new_position = is_first_child(cursor)
+        ? EditorSelection.cursor(parent.from)
+        : EditorSelection.cursor(parent.to);
+      if (new_position.eq(previous_selection)) return transaction;
+      return [
+        transaction,
+        { selection: EditorSelection.create([new_position]) },
+      ];
+    }
+
+    // console.log(`cursor:`, cursor.toString());
+    // console.log(`is_first_child(cursor):`, is_first_child(cursor));
 
     return transaction;
   });

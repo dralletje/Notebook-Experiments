@@ -1,4 +1,4 @@
-import { EditorState } from "@codemirror/state";
+import { EditorSelection, EditorState } from "@codemirror/state";
 import {
   drawSelection,
   EditorView,
@@ -21,10 +21,13 @@ import { markdown_html } from "./parts/html.js";
 import { markdown_code_blocks } from "./parts/code-blocks.js";
 import { markdown_tables } from "./parts/tables.js";
 
+import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
+
 let markdown_styling_base_theme = EditorView.baseTheme({
   "& .cm-content": {
-    "--accent-color": "var(--accent-color, rgba(200, 0, 0))",
+    "--accent-color": "rgb(200, 0, 0)",
     "accent-color": "var(--accent-color)",
+    // fontFamily: "menlo",
     color: "white",
   },
   "& .cm-scroller": {
@@ -50,10 +53,10 @@ let my_markdown_keymap = keymap.of([
 
 export let basic_markdown_setup = [
   EditorState.tabSize.of(4),
-  indentUnit.of("\t"),
+  // indentUnit.of("    "),
   placeholder("The rest is still unwritten..."),
   markdown({
-    addKeymap: false,
+    addKeymap: true,
     base: markdownLanguage,
     // TODO Kind of part of markdown_code_blocks
     // defaultCodeLanguage: my_javascript_parser,
@@ -65,11 +68,18 @@ export let basic_markdown_setup = [
       shift: indentLess,
     },
   ]),
-  keymap.of(defaultKeymap),
   drawSelection(),
-  // TODO Would love to have this, but needs more looking at to work with list items and task markers
-  // awesome_line_wrapping,
   EditorView.lineWrapping,
+
+  // debug_syntax_plugin,
+
+  // TODO Would love to have this, but needs more looking at to work with list items and task markers
+  awesome_line_wrapping,
+  EditorView.theme({
+    ".awesome-wrapping-plugin-the-tabs": {
+      "letter-spacing": "4px",
+    },
+  }),
 
   markdown_styling_base_theme,
   my_markdown_keymap,
@@ -84,4 +94,24 @@ export let basic_markdown_setup = [
   markdown_html,
   markdown_code_blocks,
   markdown_tables,
+
+  // Just seems to work nicer if assoc = 1?
+  EditorState.transactionFilter.of((tr) => {
+    if (!tr.isUserEvent("select")) return tr;
+    if (!tr.newSelection.main.empty) return tr;
+    if (tr.newSelection.main.assoc === 1) return tr;
+
+    let selection = tr.newSelection.main;
+    let new_selection = EditorSelection.create([
+      EditorSelection.cursor(
+        selection.head,
+        1,
+        selection.bidiLevel,
+        selection.goalColumn
+      ),
+    ]);
+    return [tr, { sequential: true, selection: new_selection }];
+  }),
+
+  keymap.of(defaultKeymap),
 ];

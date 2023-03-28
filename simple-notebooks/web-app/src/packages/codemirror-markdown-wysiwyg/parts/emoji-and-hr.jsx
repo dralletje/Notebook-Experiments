@@ -15,7 +15,7 @@ class EZRange extends RangeValue {
 export let markdown_emoji_and_hr = [
   EditorView.baseTheme({
     ".hr": {
-      "border-top": "1px solid rgba(255, 255, 255, 0.2)",
+      "border-top": "1px solid rgba(255, 255, 255, 0.8)",
       display: "inline-block",
       width: "100%",
       "vertical-align": "middle",
@@ -37,7 +37,7 @@ export let markdown_emoji_and_hr = [
           let line = doc.lineAt(cursor.from);
           decorations.push(
             Decoration.replace({
-              widget: new ReactWidget(<hr />),
+              widget: new ReactWidget(<hr className="hr" />),
               inclusive: true,
             }).range(line.from, line.to)
           );

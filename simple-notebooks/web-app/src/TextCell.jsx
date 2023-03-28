@@ -110,7 +110,9 @@ export let TextCell = ({
     <TextCellStyle
       ref={cell_wrapper_ref}
       data-cell-id={cell_id}
-      className={compact([is_selected && "selected"]).join(" ")}
+      className={compact([is_selected && "selected", "text-cell-editor"]).join(
+        " "
+      )}
     >
       <CodemirrorFromViewUpdate
         ref={editorview_ref}
