@@ -22,6 +22,15 @@ import { markdown_code_blocks } from "./parts/code-blocks.js";
 import { markdown_tables } from "./parts/tables.js";
 
 import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
+import { MarkdownKatex } from "./parts/katex/KatexParser";
+import { markdown_katex } from "./parts/katex/katex";
+
+import {
+  HighlightStyle,
+  syntaxHighlighting,
+  LanguageSupport,
+} from "@codemirror/language";
+import { tags } from "@lezer/highlight";
 
 let markdown_styling_base_theme = EditorView.baseTheme({
   "& .cm-content": {
@@ -58,6 +67,7 @@ export let basic_markdown_setup = [
   markdown({
     addKeymap: true,
     base: markdownLanguage,
+    extensions: [MarkdownKatex],
     // TODO Kind of part of markdown_code_blocks
     // defaultCodeLanguage: my_javascript_parser,
   }),
@@ -71,7 +81,7 @@ export let basic_markdown_setup = [
   drawSelection(),
   EditorView.lineWrapping,
 
-  // debug_syntax_plugin,
+  debug_syntax_plugin,
 
   // TODO Would love to have this, but needs more looking at to work with list items and task markers
   awesome_line_wrapping,
@@ -80,6 +90,12 @@ export let basic_markdown_setup = [
       "letter-spacing": "4px",
     },
   }),
+
+  syntaxHighlighting(
+    HighlightStyle.define([
+      // { tag: tags.processingInstruction, color: "red" }
+    ])
+  ),
 
   markdown_styling_base_theme,
   my_markdown_keymap,
@@ -94,6 +110,8 @@ export let basic_markdown_setup = [
   markdown_html,
   markdown_code_blocks,
   markdown_tables,
+
+  markdown_katex,
 
   // Just seems to work nicer if assoc = 1?
   EditorState.transactionFilter.of((tr) => {

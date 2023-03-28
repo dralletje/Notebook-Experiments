@@ -21,6 +21,10 @@ let markdown_styling_base_theme = EditorView.baseTheme({
   ".cm-line.has-fenced-code": {
     "background-color": "#141414",
     border: "solid 1px #ffffff14",
+
+    // TODO Disable text-wrapping inside codeblocks for now...
+    "margin-left": "0",
+    "text-indent": "0",
   },
   ".cm-line.has-fenced-code + .cm-line.has-fenced-code": {
     "border-top": "none",

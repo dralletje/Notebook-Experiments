@@ -25,13 +25,13 @@ x = await new Promise((resolve) =>
 
 // ╔═╡ [cells.9f2b59cc-2ad4-48f2-836f-047006696c15]
 // ╠═╡ type = "text"
-// _Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there._
+//   _Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there._
 // 
 // **Explore models and share results** in a notebook that is
 // 
-// - **_reactive_** - when changing a function or variable, Pluto automatically updates all affected cells.
-// - **_lightweight_** - Pluto is written in pure Julia and is easy to install.
-// - **_simple_** - no hidden workspace state; friendly UI.
+//   - **_reactive_** - when changing a function or variable, Pluto automatically updates all affected cells.
+//       - **_lightweight_** - Pluto is written in pure Julia and is easy to install.
+//           - **_simple_** - no hidden workspace state; friendly UI.as jsad lkjasdkljsad lkjdas kljasdl kjasdlkjladksjldsakjlkj adsjkl
 // 
 // <img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
 // <p align="center"><a href="https://binder.plutojl.org/">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
@@ -62,7 +62,6 @@ x = await new Promise((resolve) =>
 // In the example below, changing the parameter `A` and running the first cell will directly re-evaluate the second cell and display the new plot.
 // 
 // <img alt="plotting screencap" src="https://user-images.githubusercontent.com/6933510/80637344-24ac0180-8a5f-11ea-82dd-813dbceca9c9.gif" width="50%">
-// 
 // 
 // ### Built-in package manager
 // 
@@ -202,17 +201,42 @@ x = await new Promise((resolve) =>
 
 // ╔═╡ [cells.ef0a0a1a-24ed-4f56-8ba0-7591c1e5d56f]
 // ╠═╡ type = "text"
+// ## Inline Table editor 
+// I eventually want to embed ne asdasdsted editors in cells. A prime example of this could be a table editor, that will actually render a table with individual editable cells (but with all the layout stuff that a table provides)
+// 
+// - [ ] **Allow editting the editors in the table cells** and it should sync with the codemirror editor. I already kind of have that in checkboxes. The way it is done in checkbox doesn't feel very robust though..
+// - [ ] **Focus from parent editor** directly into the child editors, and back! Also something I can first try with checkboxes: ideally, when you "move" into a checkbox, it should be focussed. So when you then press space, it will toggle it.
+// - [ ] Ideally, but this is I think a pretty hard one, it should be possible to 
+// 
 // | Tables   |      Are               |  Cool   |
 // | -------- | :-------------:|------:  |
-// | col 1 is   |  left-aligned    | $1600 |
+// | col 1 is   |  left-aligned    | $1600 | asdkjas das dasdasd asd \asd asd aasd asd asd asd |
 // | col 2 is   |    centered      |   $12    |
-// | col 3 is   | right-aligned  |    $1     |
+// | col 3 is   | right-aligned  |    $1     bjn  |
 
-// ╔═╡ [cells.b570218c-30de-4cec-93bf-c22f69a8c1b9]
+// ╔═╡ [cells.eed61bda-4174-42e9-a90e-4b0243d7d6f0]
 // ╠═╡ type = "text"
 // $$
-// \Gamma(z) = \int_0^\infty t^{z-1}e^{-t}dt\,.
+// \begin{align*}
+// S(\omega) 
+// &= \frac{\alpha g^2}{\omega^5} e^{[ -0.74\bigl\{\frac{\omega U_\omega 19.5}{g}\bigr\}^{\!-4}\,]} \\
+// &= \frac{\alpha g^2}{\omega^5} \exp\Bigl[ -0.74\Bigl\{\frac{\omega U_\omega 19.5}{g}\Bigr\}^{\!-4}\,\Bigr] 
+// \end{align*}
 // $$
+// **Hi**
+
+// ╔═╡ [cells.ff002984-53cb-41f4-b3c7-f6b9a5041fef]
+// ╠═╡ type = "text"
+// a
+// 
+// $$
+// \begin{align*}
+// S(\omega) 
+// &= \frac{\alpha g^2}{\omega^5} e^{[ -0.74\bigl\{\frac{\omega U_\omega 19.5}{g}\bigr\}^{\!-4}\,]} \\
+// &= \frac{\alpha g^2}{\omega^5} \exp\Bigl[ -0.74\Bigl\{\frac{\omega U_\omega 19.5}{g}\Bigr\}^{\!-4}\,\Bigr] 
+// \end{align*}
+// $$
+// **Hi**
 
 // ╔═╡ [cells.6f02384d-2362-4167-92ca-ef2f5707d375]
 // ╠═╡ type = "text"
@@ -252,7 +276,8 @@ z = await new Promise(
 // ╔═╡ ["Cell Order"]
 // ╠═╡ "Cell Order" = [
 // ╠═╡   "6f02384d-2362-4167-92ca-ef2f5707d375",
-// ╠═╡   "b570218c-30de-4cec-93bf-c22f69a8c1b9",
+// ╠═╡   "ff002984-53cb-41f4-b3c7-f6b9a5041fef",
+// ╠═╡   "eed61bda-4174-42e9-a90e-4b0243d7d6f0",
 // ╠═╡   "ef0a0a1a-24ed-4f56-8ba0-7591c1e5d56f",
 // ╠═╡   "9f2b59cc-2ad4-48f2-836f-047006696c15",
 // ╠═╡   "9b149216-2ed6-4ff0-ac83-bff721613f5a",

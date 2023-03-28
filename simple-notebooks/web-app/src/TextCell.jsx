@@ -31,13 +31,6 @@ let local_style = EditorView.theme({
     outline: "unset",
   },
 
-  "&.has-selection .cm-cursor": {
-    display: "block",
-  },
-  "&.has-selection .cm-cursorLayer": {
-    animation: "steps(1) cm-blink 1.2s infinite",
-  },
-
   // Cursor style
   "& .cm-cursor": {
     "border-left-color": "#dcdcdc",
@@ -171,8 +164,8 @@ let TextCellStyle = styled.div`
       );
     }
   }
-  /* .dragging & {
+  .dragging & {
     --prexisting-transform: translateX(-2px) translateY(-2px);
     animation: shake 0.2s ease-in-out infinite alternate;
-  } */
+  }
 `;

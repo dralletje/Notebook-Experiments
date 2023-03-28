@@ -27,11 +27,6 @@ class ReactWidgetX extends ReactWidget {
   constructor(x) {
     super(x);
   }
-
-  get estimatedHeight() {
-    console.log("X");
-    return 600;
-  }
 }
 
 let ToggleHTMLMarkerWidget = ({ show_html, line_number }) => {
@@ -85,10 +80,15 @@ let html_blocks_facet = Facet.define({
 
 let html_demo_statefield = StateField.define({
   create(state) {
-    let intitial_html_blocks = state.facet(html_blocks_facet);
-    return new Map(
-      intitial_html_blocks.map((x) => [state.doc.lineAt(x.from).number, true])
-    );
+    // TODO Because the notebooks get very jumpy when html is out of view,
+    // .... and I can't be arsed to work on that now, html will be default be code :D
+
+    // let intitial_html_blocks = state.facet(html_blocks_facet);
+    // return new Map(
+    //   intitial_html_blocks.map((x) => [state.doc.lineAt(x.from).number, true])
+    // );
+
+    return new Map();
   },
   update(value, tr) {
     let new_map = null;

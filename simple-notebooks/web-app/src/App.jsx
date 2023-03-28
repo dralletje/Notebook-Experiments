@@ -10,7 +10,7 @@ import {
   SelectedCellsField,
   selected_cells_keymap,
 } from "./packages/codemirror-notebook/cell-selection";
-import { keymap } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import {
   shared_history,
   historyKeymap,
@@ -119,6 +119,8 @@ let notebook_to_state = ({ filename, notebook }) => {
 
       NotebookId.of(notebook.id),
       NotebookFilename.of(filename),
+
+      EditorExtension.of(EditorView.scrollMargins.of(() => ({ top: 200 }))),
 
       // This works so smooth omg
       [shared_history(), keymap.of(historyKeymap)],

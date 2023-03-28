@@ -793,6 +793,7 @@ __metadata:
     htl: ^0.3.1
     immer: ^9.0.21
     ionicons: ^7.1.0
+    katex: ^0.16.4
     lodash: ^4.17.21
     node-emoji: ^1.11.0
     postcss: ^8.4.17
@@ -2027,6 +2028,13 @@ __metadata:
   bin:
     color-support: bin.js
   checksum: 9b7356817670b9a13a26ca5af1c21615463b500783b739b7634a0c2047c16cef4b2865d7576875c31c3cddf9dd621fa19285e628f20198b233a5cfdda6d0793b
+  languageName: node
+  linkType: hard
+
+"commander@npm:^8.0.0":
+  version: 8.3.0
+  resolution: "commander@npm:8.3.0"
+  checksum: 0f82321821fc27b83bd409510bb9deeebcfa799ff0bf5d102128b500b7af22872c0c92cb6a0ebc5a4cf19c6b550fba9cedfa7329d18c6442a625f851377bacf0
   languageName: node
   linkType: hard
 
@@ -3500,6 +3508,17 @@ __metadata:
   bin:
     json5: lib/cli.js
   checksum: 2a7436a93393830bce797d4626275152e37e877b265e94ca69c99e3d20c2b9dab021279146a39cdb700e71b2dd32a4cebd1514cd57cee102b1af906ce5040349
+  languageName: node
+  linkType: hard
+
+"katex@npm:^0.16.4":
+  version: 0.16.4
+  resolution: "katex@npm:0.16.4"
+  dependencies:
+    commander: ^8.0.0
+  bin:
+    katex: cli.js
+  checksum: 94eaf1fbd8365792308527695c09baa6d2d84e2d0170e4af44fb12be3ed403fb3430caff2410117f2f1a9dfdb329f61ab9611d97e645d9c89ee60940698a45cc
   languageName: node
   linkType: hard
 
