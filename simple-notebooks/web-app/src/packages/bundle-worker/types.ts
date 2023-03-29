@@ -28,6 +28,9 @@ export type Cylinder = {
   id: CellId;
   name: string;
   last_run: number;
+  /**
+   * TODO Need to figure out why exactly I need this
+   */
   last_internal_run: number;
   running: boolean;
   waiting: boolean;

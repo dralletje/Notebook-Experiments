@@ -267,7 +267,7 @@ let Render = ({ node }) => {
     };
   }, [node]);
 
-  return <div ref={ref} />;
+  return <div style={{ display: "inline-block" }} ref={ref} />;
 };
 
 export let InspectorNoMemo = ({ value }) => {
@@ -291,20 +291,30 @@ export let InspectorNoMemo = ({ value }) => {
   }, [value]);
 
   // if (
-  //   result_deserialized.type === "return" &&
-  //   result_deserialized.value instanceof Node
+
   // ) {
   //   return <Render node={result_deserialized.value} />;
   // }
 
   return (
     <PlaceInsideExpression expression={value?.name}>
-      {result_deserialized.type === "return" &&
-      result_deserialized.value === undefined ? null : (
-        <InspectorStyle>
-          <BasicInspector value={result_deserialized} />
-        </InspectorStyle>
-      )}
+      {
+        // prettier-ignore
+        result_deserialized.type === "return" &&
+        result_deserialized.value === undefined
+        ? null 
+        : result_deserialized.type === "return" &&
+        result_deserialized.value instanceof Node
+        ? (
+          // Need to render html elements separately because HTML in Observable Inspector
+          // Doesn't work nicely with my `display: inline` __RESULT_PLACEHOLDER__ replacement.
+          <Render node={result_deserialized.value} />
+        ) : (
+          <InspectorStyle>
+            <BasicInspector value={result_deserialized} />
+          </InspectorStyle>
+        )
+      }
     </PlaceInsideExpression>
   );
 };

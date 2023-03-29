@@ -2,43 +2,21 @@ import chalk from "chalk";
 import { omit, compact, without } from "lodash-es";
 import { invariant } from "../leaf/invariant";
 
-import {
-  cells_to_dag,
-  collect_downstream,
-  cyclical_groups,
-  double_definitions,
-  expand_dag,
-  ExpandedDAG,
-  GraphCell,
-  topological_sort,
-} from "../leaf/dag-things.js";
+import * as Graph from "../leaf/graph.js";
 
 import { parse_cell, ParsedCell } from "../leaf/parse-cell.js";
 import { CellId, Engine, Notebook } from "../types.js";
 import { StacklessError } from "../leaf/StacklessError.js";
-import { mapValues, groupBy } from "lodash-es";
-import { analyse_notebook } from "./static-analysis.js";
+import { mapValues, groupBy, uniq } from "lodash-es";
 
 type ParsedCells = { [key: CellId]: ParsedCell | null };
-
-export let topological_sort_notebook = (
-  notebook: Notebook,
-  dag: ExpandedDAG
-) => {
-  let sorted = topological_sort(dag);
-  return sorted.map((id) => notebook.cells[id]);
-};
-
-type ProposedRun =
-  | { type: "run"; cell_id: CellId }
-  | { type: "error"; error: Error };
 
 let cells_that_need_running = (
   notebook: Notebook,
   engine: Engine,
-  dag: ExpandedDAG
+  graph: Graph.Graph
 ): CellId[] => {
-  let sorted = topological_sort(dag);
+  let sorted = Graph.topological_sort(graph);
 
   let cell_should_run_at_map = {};
   let cells_that_should_run = [];
@@ -49,7 +27,6 @@ let cells_that_need_running = (
     invariant(cell.last_run != null, `cell.last_run shouldn't be null`);
     invariant(cylinder?.last_run != null, `cell.last_run shouldn't be null`);
 
-    console.log(`cell.last_run:`, cell.last_run);
     // Cell has been sent to be re-run, also run it!
     if (cell.last_run > cylinder.last_run) {
       cell_should_run_at_map[cell_id] = Infinity;
@@ -60,7 +37,9 @@ let cells_that_need_running = (
     // Here comes the tricky part: I need to "carry over" the `should_run` times from the parent cells.
     let should_run_at = Math.max(
       cylinder.last_internal_run,
-      ...dag[cell_id].in.map((parent_id) => cell_should_run_at_map[parent_id]),
+      ...graph[cell_id].in.map(
+        ([parent_id]) => cell_should_run_at_map[parent_id]
+      ),
 
       // This is so that when you have
       // CELL_1: a = 10
@@ -83,10 +62,10 @@ let cells_that_need_running = (
   return cells_that_should_run;
 };
 
-let notebook_to_graph_cell = (
+let notebook_to_disconnected_graph = (
   cell_order: CellId[],
   parsed_cells: ParsedCells
-): GraphCell[] => {
+): Graph.DisconnectedGraph => {
   return cell_order.map((cell_id, parsed_cell) => {
     let parsed = parsed_cells[cell_id];
     if (parsed != null && "output" in parsed) {
@@ -105,12 +84,11 @@ let notebook_to_graph_cell = (
   });
 };
 
-export type NotebookCache = Map<symbol, any>;
-
 export type ExecutionResult<T = any, E = any> =
   | { type: "return"; value: T }
   | { type: "throw"; value: E };
 
+/** Gets the cells' ParsedCell, but with smart caching */
 let parse_all_cells = (
   engine: Engine,
   notebook: Notebook
@@ -137,27 +115,31 @@ type StaticResult =
   | { type: "static"; cell_id: CellId }
   | { type: "error"; cell_id: CellId; error: Error };
 
+/**
+ * Get some early results from static analysis:
+ * - Show errors for syntax errors
+ * - Do nothing for cells that are just markdown
+ * - Find cycles and multiple definitions
+ *
+ * TODO Maybe split up the syntax stuff from the cycles/multiple definitions stuff?
+ */
 let get_analysis_results = (
   cells_to_run: CellId[],
   parsed_cells: ParsedCells,
-  dag: ExpandedDAG,
-  graph_cells: GraphCell[]
+  graph: Graph.Graph
 ): StaticResult[] => {
-  // To show on what variable the cycles are, I actually need `graph_cells`,
-  // or for both a combination of `dag` and `graph_cells`.
-  let cyclicals = cyclical_groups(dag);
-  let doubles = double_definitions(Object.values(graph_cells));
-  let doubles_object = {};
-  for (let [variable_name, cells] of doubles) {
-    for (let cell of cells) {
-      doubles_object[cell.id] ??= [];
-      doubles_object[cell.id].push(variable_name);
-    }
-  }
+  let cyclicals = Graph.cycles(graph);
+  // Hack to put cycles in, as they work weird so don't work nicely with
+  // the "what cells to run" logic.
+  let cycles_to_run = cyclicals.flatMap((cycle) =>
+    cycle.some(([cell_id]) => cells_to_run.includes(cell_id))
+      ? cycle.map(([cell_id]) => cell_id)
+      : []
+  );
 
-  console.log(`cyclicals:`, cyclicals);
+  let multiple_definitions = Graph.double_definitions(graph);
 
-  return cells_to_run.flatMap((cell_id) => {
+  return uniq([...cells_to_run, ...cycles_to_run]).flatMap((cell_id) => {
     let parsed = parsed_cells[cell_id];
     // Error while parsing the code, so we display babel error
     if ("error" in parsed) {
@@ -167,10 +149,8 @@ let get_analysis_results = (
         error: new StacklessError(parsed.error),
       };
     } else if (!("output" in parsed)) {
-      invariant(
-        parsed.static != null,
-        `parsed.static shouldn't be null when parsed.output is null`
-      );
+      // prettier-ignore
+      invariant(parsed.static != null, `parsed.static shouldn't be null when parsed.output is null`);
       return {
         type: "static",
         cell_id,
@@ -182,19 +162,38 @@ let get_analysis_results = (
         // prettier-ignore
         error: new StacklessError("Top level return statements are not allowed"),
       };
-    } else if (doubles_object[cell_id] != null) {
+    } else if (multiple_definitions.has(cell_id)) {
       return {
         type: "error",
         cell_id: cell_id,
         // prettier-ignore
-        error: new StacklessError(`Multiple definitions of ${doubles_object[cell_id].join(", ")}`),
+        error: new StacklessError(`Multiple definitions of ${multiple_definitions.get(cell_id).join(", ")}`),
       };
-    } else if (cyclicals.some((group) => group.includes(cell_id))) {
+    } else if (cyclicals.some((group) => group.some(([x]) => x === cell_id))) {
+      let my_cycles = cyclicals
+        .filter((group) => group.some(([x]) => x === cell_id))
+        .map((cycle) => {
+          // Find this cell in the cycle, and then start it from there
+          let start_index = cycle.findIndex(([x]) => x === cell_id);
+          return [
+            ...cycle.slice(start_index),
+            ...cycle.slice(0, start_index),
+            cycle[start_index],
+          ];
+        });
+
+      let my_cycles_text = my_cycles
+        .map(
+          (x) =>
+            "(" + x.map(([x, { name }]) => `\`${name}\``).join(" -> ") + ")"
+        )
+        .join(", ");
+
       // prettier-ignore
       return {
         type: "error",
         cell_id: cell_id,
-        error: new StacklessError("Cyclical dependency (TODO: Show on which variable)"),
+        error: new StacklessError(`Cyclical dependency ${my_cycles_text}`),
       };
     } else {
       return {
@@ -246,16 +245,19 @@ export let notebook_step = async ({
   /////////////////////////////////////
 
   let parsed_cells = parse_all_cells(engine, notebook);
-  let graph_cells = notebook_to_graph_cell(notebook.cell_order, parsed_cells);
-  let dag = expand_dag(cells_to_dag(graph_cells));
 
-  let cells_to_run = cells_that_need_running(notebook, engine, dag);
+  let graph = Graph.inflate_compact_graph(
+    Graph.disconnected_to_compact_graph(
+      notebook_to_disconnected_graph(notebook.cell_order, parsed_cells)
+    )
+  );
+
+  let cells_to_run = cells_that_need_running(notebook, engine, graph);
 
   let analysis_results = get_analysis_results(
     cells_to_run,
     parsed_cells,
-    dag,
-    graph_cells
+    graph
   );
 
   let by_status: {
@@ -270,7 +272,7 @@ export let notebook_step = async ({
 
     let { cell_id, error } = error_cell;
     let cell = notebook.cells[cell_id];
-    let dag_entry = dag[cell_id];
+    let graph_entry = graph[cell_id];
 
     onChange((engine) => {
       engine.cylinders[cell_id] = {
@@ -280,7 +282,7 @@ export let notebook_step = async ({
         result: { type: "throw", value: error },
         running: false,
         waiting: false,
-        upstream_cells: dag_entry.in ?? [],
+        upstream_cells: graph_entry.in.map(([id]) => id) ?? [],
         variables: {},
       };
     });
@@ -319,7 +321,7 @@ export let notebook_step = async ({
       ...engine.cylinders[key],
       last_run: cell.last_run,
       last_internal_run: engine.internal_run_counter++,
-      upstream_cells: dag[key].in,
+      upstream_cells: graph[key].in.map(([id]) => id) ?? [],
       running: true,
       waiting: false,
     };

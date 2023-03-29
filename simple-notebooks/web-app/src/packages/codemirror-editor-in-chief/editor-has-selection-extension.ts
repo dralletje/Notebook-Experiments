@@ -56,7 +56,9 @@ export let editor_has_selection_extension = [
   }),
   EditorView.baseTheme({
     "&:not(.has-selection) .cm-selectionBackground": {
-      // Need to figure out what precedence I should give this thing so I don't need !important
+      opacity: 0,
+    },
+    "&:not(.has-selection) .cm-selectionMatch": {
       opacity: 0,
     },
   }),

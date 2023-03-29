@@ -112,11 +112,10 @@ export let notebook_keymap = EditorInChiefKeymap.of([
             code: cell_state.doc.toString(),
             cursor: cell_state.selection.main.head,
           });
-          let trimmed = formatted.trim();
           return {
             docLength: cell_state.doc.length,
-            cursorOffset: Math.min(cursorOffset, trimmed.length),
-            formatted: trimmed,
+            cursorOffset: cursorOffset,
+            formatted: formatted,
             cell_id,
           };
         } catch (error) {
@@ -162,14 +161,25 @@ export let cell_keymap = Prec.high(
   keymap.of([
     {
       key: "Shift-Enter",
-      run: (view) => {
+      run: ({ state, dispatch }) => {
         // TODO Should just not apply this to text cells to begin with 🤷‍♀️ but cba
-        if (view.state.facet(CellTypeFacet) === "text") return false;
+        if (state.facet(CellTypeFacet) === "text") return false;
 
-        view.dispatch({
+        let { cursorOffset, formatted } = format_with_prettier({
+          code: state.doc.toString(),
+          cursor: state.selection.main.head,
+        });
+
+        dispatch({
+          changes: {
+            from: 0,
+            to: state.doc.length,
+            insert: formatted,
+          },
+          selection: EditorSelection.cursor(cursorOffset),
           effects: [
             MutateCellMetaEffect.of((cell) => {
-              cell.code = view.state.doc.toString();
+              cell.code = formatted;
               cell.is_waiting = true;
               cell.last_run = Date.now();
             }),
