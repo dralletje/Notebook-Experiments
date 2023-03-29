@@ -1,7 +1,5 @@
 import process from "node:process";
 
-import chalk from "chalk";
-
 import { mapValues, throttle } from "lodash-es";
 
 import serialize from "../serialize.js";

@@ -43,6 +43,7 @@ import { DragAndDropItem, DragAndDropList } from "./yuck/DragAndDropStuff.jsx";
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
 import { actions } from "./commands.js";
 import { Sidebar } from "./Sidebar.jsx";
+import { useLocalEnvironment } from "./use/use-local-environment.js";
 
 let AppStyle = styled.div`
   padding-top: 50px;
@@ -51,7 +52,7 @@ let AppStyle = styled.div`
   margin-right: 20px;
 
   flex: 1;
-  flex-basis: min(900px, 100vw - 200px, 100%);
+  flex-basis: clamp(900px, 100vw - 200px, 1200px);
   flex-grow: 0;
 
   min-width: 0;
@@ -108,7 +109,9 @@ export function File({ state, onChange, socket, files }) {
     };
   }, [notebook, state.facet(NotebookFilename)]);
 
-  let engine = useEngine(notebook_with_filename, socket);
+  // let engine = useEngine(notebook_with_filename, socket);
+
+  let engine = useLocalEnvironment(notebook_with_filename);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>

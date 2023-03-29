@@ -22,7 +22,7 @@ type CellMeta = {
   last_run: number;
   is_waiting?: boolean;
   folded?: boolean;
-  type?: "code" | "text";
+  type: "code" | "text";
 };
 
 export let MutateCellMetaEffect =

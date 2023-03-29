@@ -1,9 +1,5 @@
 import chalk from "chalk";
-import { mapValues, omit, compact, without } from "lodash-es";
-import fetch from "node-fetch";
-import domain from "domain";
-import { html, md } from "./html.js";
-import { resolve } from "import-meta-resolve";
+import { omit, compact, without } from "lodash-es";
 
 import {
   cells_to_dag,
@@ -13,34 +9,11 @@ import {
   expand_dag,
   GraphCell,
   topological_sort,
-} from "./dag-things.js";
+} from "../leaf/dag-things.js";
 
-import { parse_cell } from "./parse-cell.js";
+import { parse_cell } from "../leaf/parse-cell.js";
 import serialize from "./serialize.js";
-import { Engine, Notebook } from "./node-engine.js";
-
-let create_callback_collector = () => {
-  let callbacks = [];
-  let add = Object.assign(
-    (callback) => {
-      callbacks.push(callback);
-    },
-    {
-      then: (fn) => {
-        add(() => fn());
-        return add.then;
-      },
-    }
-  );
-  return {
-    add: add,
-    call: async (...args) => {
-      for (let callback of callbacks) {
-        await callback(...args);
-      }
-    },
-  };
-};
+import { Engine, Notebook } from "../types.js";
 
 export let topological_sort_notebook = (notebook: Notebook) => {
   let graph_cells = notebook_to_graph_cell(notebook);
@@ -70,7 +43,7 @@ let cells_that_need_running = (notebook: Notebook, engine: Engine) => {
       // TODO onChange?
       engine.cylinders[cell.id].result = {
         type: "throw",
-        value: serialize(error, global),
+        value: serialize(error, globalThis),
       };
     }
   }
@@ -176,11 +149,39 @@ let notebook_to_graph_cell = (notebook: Notebook): GraphCell[] => {
   );
 };
 
-export let notebook_step = async (
-  engine: Engine,
-  { filename, notebook }: { filename: string; notebook: Notebook },
-  onChange: (mutate: (engine: Engine) => void) => void
-) => {
+let try_with_default = (fn, def) => {
+  try {
+    return fn();
+  } catch (error) {
+    console.log(
+      chalk.red.bold`Couldn't serialize error:`,
+      chalk.red(error.stack)
+    );
+    return def;
+  }
+};
+
+export type ExecutionResult<T = any, E = any> =
+  | { type: "return"; value: T }
+  | { type: "throw"; value: E };
+
+export let notebook_step = async ({
+  engine,
+  notebook,
+  filename,
+  onChange,
+  run_cell,
+}: {
+  engine: Engine;
+  filename: string;
+  notebook: Notebook;
+  onChange: (mutate: (engine: Engine) => void) => void;
+  run_cell: (options: {
+    signal: AbortSignal;
+    code: string;
+    inputs: { [key: string]: any };
+  }) => Promise<{ result: ExecutionResult }>;
+}) => {
   let graph_cells = notebook_to_graph_cell(notebook);
   let dag = expand_dag(cells_to_dag(graph_cells));
 
@@ -206,7 +207,7 @@ export let notebook_step = async (
     // Cell has been deleted!
     // Gently ask it to stop existing and move on.
     if (cell == null) {
-      await engine.cylinders[cell_to_run].invalidation_token?.call?.();
+      await engine.cylinders[cell_to_run].abort_controller?.abort();
       onChange(() => {
         delete engine.cylinders[cell_to_run];
       });
@@ -236,7 +237,7 @@ export let notebook_step = async (
           last_run: cell.last_run,
           result: {
             type: "throw",
-            value: serialize(_parsed.error, global),
+            value: serialize(_parsed.error, globalThis),
           },
           running: false,
           waiting: false,
@@ -253,7 +254,7 @@ export let notebook_step = async (
           last_run: cell.last_run,
           result: {
             type: "throw",
-            value: serialize(new Error("Something is wronnnggggg"), global),
+            value: serialize(new Error("Something is wronnnggggg"), globalThis),
           },
           running: false,
           upstream_cells: [],
@@ -291,7 +292,8 @@ export let notebook_step = async (
     console.log(chalk.blue.bold`RUNNING CODE:`);
     console.log(chalk.blue(code));
 
-    let inputs = {} as any;
+    // Look for request variable names in other cylinders
+    let inputs = {} as { [key: string]: any };
     for (let name of consumed_names) {
       for (let cylinder of Object.values(engine.cylinders)) {
         if (name in (cylinder.variables ?? {})) {
@@ -302,68 +304,16 @@ export let notebook_step = async (
 
     // If there was a previous run, allow performing cleanup.
     // TODO Ideally this has a nicer abstraction.
-    await cylinder.invalidation_token?.call();
-
-    let invalidation_token = create_callback_collector();
-    // This is outside the onChange because it doesn't go to the client at all...
-    // maybe it is better for strictness? TODO
-    cylinder.invalidation_token = invalidation_token;
-    inputs.invalidation = invalidation_token.add;
-
-    // Adding AbortController too, but it is sync so might not cover all cases.
-    // (I specifically added `invalidation(async () => {}))` because express didn't shut down directly.
+    cylinder.abort_controller?.abort();
+    // Wait a tick
+    await new Promise((resolve) => setTimeout(resolve, 0));
     let abort_controller = new AbortController();
-    invalidation_token.add(() => {
-      abort_controller.abort();
-    });
-    inputs.signal = abort_controller.signal;
+    cylinder.abort_controller = abort_controller;
 
-    let url = new URL(`../cell-environment/src/${filename}`, import.meta.url);
-    inputs.__meta__ = {
-      is_in_notebook: true,
-      url: url,
-      import: async (specifier: any) => {
-        let what_to_import = await resolve(specifier, url.toString());
-        return await import(what_to_import);
-      },
-    };
-
-    inputs.fetch = fetch;
-    inputs.html = html;
-    inputs.md = md;
-
-    // DOMAINS ARE JUST A HACK
-    // We need to move the actual code running to a separate process
-    // anyway, so don't rely on this!
-    let cell_domain = domain.create();
-    cell_domain.on("error", (error) => {
-      console.error("ERROR CAUGHT IN CELL!", error);
-      // TODO Don't override the existing result?
-      // Where do we show errors like this???
-      onChange((engine) => {
-        engine.cylinders[key].result = {
-          type: "throw",
-          value: serialize(error, global),
-        };
-      });
-    });
-    let result = await cell_domain.run(async () => {
-      try {
-        let inputs_array = Object.entries(inputs);
-        let fn = new Function(...inputs_array.map((x) => x[0]), code);
-
-        let result = await fn(...inputs_array.map((x) => x[1]));
-
-        return {
-          type: "return",
-          value: result,
-        };
-      } catch (error) {
-        return {
-          type: "throw",
-          value: error,
-        };
-      }
+    let { result } = await run_cell({
+      signal: abort_controller.signal,
+      code: code,
+      inputs: inputs,
     });
 
     onChange((engine) => {
@@ -375,16 +325,19 @@ export let notebook_step = async (
                 type: "return",
                 name: last_created_name,
                 value: try_with_default(
-                  () => serialize(result.value?.default, global),
+                  () => serialize(result.value?.default, globalThis),
                   { 0: { type: `couldn't serialize` } }
                 ),
               }
             : result.type === "throw"
             ? {
                 type: "throw",
-                value: try_with_default(() => serialize(result.value, global), {
-                  0: { type: `couldn't serialize` },
-                }),
+                value: try_with_default(
+                  () => serialize(result.value, globalThis),
+                  {
+                    0: { type: `couldn't serialize` },
+                  }
+                ),
               }
             : { type: "pending" },
         running: false,
@@ -392,17 +345,5 @@ export let notebook_step = async (
           result.type === "return" ? omit(result.value, "default") : {},
       };
     });
-  }
-};
-
-let try_with_default = (fn, def) => {
-  try {
-    return fn();
-  } catch (error) {
-    console.log(
-      chalk.red.bold`Couldn't serialize error:`,
-      chalk.red(error.stack)
-    );
-    return def;
   }
 };

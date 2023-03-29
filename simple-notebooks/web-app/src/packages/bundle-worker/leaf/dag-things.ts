@@ -1,5 +1,6 @@
 import { mapValues } from "lodash-es";
-import { CellId } from "./node-engine";
+
+type CellId = string;
 
 type VariableName = string;
 export type GraphCell = {

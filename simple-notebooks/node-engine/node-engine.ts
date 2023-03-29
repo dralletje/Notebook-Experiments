@@ -8,7 +8,6 @@ import { join } from "node:path";
 
 import { mapValues } from "lodash-es";
 
-import serialize from "./serialize.js";
 import {
   load_notebook,
   NotNotebookError,
@@ -117,7 +116,6 @@ let engine_to_json = (engine) => {
       running: cylinder.running,
       waiting: cylinder.waiting,
     })),
-    dag: serialize(engine.dag, global),
   };
 };
 

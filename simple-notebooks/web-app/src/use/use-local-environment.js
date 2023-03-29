@@ -1,10 +1,39 @@
 import React from "react";
-import { BundleWorker } from "../packages/bundle-worker/bundle-worker.js";
+import { get_bundle_worker } from "../packages/bundle-worker/bundle-worker.js";
 
-export let useSocket = () => {
+/**
+ * @param {{
+ *  filename: string;
+ *  notebook: import("../packages/codemirror-notebook/cell.js").NotebookSerialized;
+ * }} notebook
+ * @returns {import("../packages/codemirror-notebook/cell.js").EngineShadow}
+ */
+export let useLocalEnvironment = (notebook) => {
+  let [engine, set_engine] = React.useState({ cylinders: {} });
+
   let bundle_worker = React.useMemo(() => {
-    return new BundleWorker();
+    return get_bundle_worker();
   }, []);
+
+  React.useEffect(() => {
+    let handler = (event) => {
+      if (event.data.type === "update-engine") {
+        set_engine(event.data.engine);
+      }
+    };
+
+    bundle_worker.addEventListener("message", handler);
+    return () => {
+      bundle_worker.removeEventListener("message", handler);
+    };
+  }, [bundle_worker, set_engine]);
+
+  React.useEffect(() => {
+    bundle_worker.postMessage({
+      type: "update-notebook",
+      notebook: notebook.notebook,
+    });
+  }, [notebook]);
   // React.useEffect(() => {
   //   if (!socket.connected) {
   //     socket.connect();
@@ -13,5 +42,5 @@ export let useSocket = () => {
   //     socket.close();
   //   };
   // }, [socket]);
-  return bundle_worker;
+  return engine;
 };

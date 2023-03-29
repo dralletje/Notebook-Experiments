@@ -700,6 +700,9 @@ __metadata:
 "@dral/lezer-generator-worker@workspace:packages/lezer-generator-worker":
   version: 0.0.0-use.local
   resolution: "@dral/lezer-generator-worker@workspace:packages/lezer-generator-worker"
+  dependencies:
+    "@dral/worker-typescript-magic": "workspace:^"
+    "@lezer/generator": ^1.2.2
   languageName: unknown
   linkType: soft
 
@@ -844,7 +847,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@dral/worker-typescript-magic@workspace:packages/worker-typescript-magic":
+"@dral/worker-typescript-magic@workspace:^, @dral/worker-typescript-magic@workspace:packages/worker-typescript-magic":
   version: 0.0.0-use.local
   resolution: "@dral/worker-typescript-magic@workspace:packages/worker-typescript-magic"
   languageName: unknown
