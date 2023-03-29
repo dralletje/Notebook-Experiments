@@ -5,8 +5,8 @@
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "noEmit": true,
-    "checkJs": true,
-    "allowJs": true,
+    // "checkJs": true,
+    // "allowJs": true,
     "jsx": "react"
   }
 }

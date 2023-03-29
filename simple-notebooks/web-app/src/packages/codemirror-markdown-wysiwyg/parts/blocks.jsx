@@ -98,10 +98,6 @@ let AAAAA = keymap.of([
       if (cursor.name !== "ListItem" && cursor.name !== "Task") return false;
       cursor.firstChild(); // Marker
 
-      console.log(`cursor.toString():`, cursor.toString());
-      console.log(`cursor.to:`, cursor.to);
-      console.log(`position:`, position);
-
       // cursor.to is end of marker, + 1 is the space after the marker
       if (cursor.to + 1 === position) {
         dispatch({
@@ -144,7 +140,6 @@ let AAAAA = keymap.of([
       let prefix = state.doc
         .sliceString(item_line.from, cursor.to)
         .replace("[x]", "[ ]");
-      console.log(`prefix:`, prefix);
       dispatch({
         changes: { from: to, to: to, insert: `\n${prefix} ` },
         selection: { anchor: to + 1 + prefix.length + 1 },
@@ -321,8 +316,7 @@ let search_block_or_inline_decorations = ({
 export let markdown_blocks_extension = [
   markdown_styling_base_theme,
 
-  // I think I was just trying to recreate the codemirror markdown keymaps here...
-  // AAAAA,
+  AAAAA,
 
   // TODO Compute based on syntaxtree 😅
   DecorationsFromTreeSortForMe(search_block_or_inline_decorations),

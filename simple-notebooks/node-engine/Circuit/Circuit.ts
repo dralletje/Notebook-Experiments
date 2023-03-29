@@ -138,7 +138,6 @@ type CircuitMessage = {
 };
 
 process.on("message", async (message: CircuitMessage) => {
-  console.log(`message:`, message);
   if (message.type === "update-notebook") {
     let { notebook } = message;
     // notebook_ref = { current: notebook.notebook };

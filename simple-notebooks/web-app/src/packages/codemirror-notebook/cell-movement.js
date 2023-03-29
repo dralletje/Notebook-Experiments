@@ -297,7 +297,6 @@ export let arrows_move_between_cells_keymap = [
       //   read: () => {
       let rect = view.coordsAtPos(selection.from);
       let screen_goal_column = rect == null ? 0 : rect.left;
-      console.log(`UP:`, selection.goalColumn);
       view.dispatch({
         effects: [
           move_to_cell_above({
@@ -321,7 +320,6 @@ export let arrows_move_between_cells_keymap = [
       //   read: () => {
       let rect = view.coordsAtPos(selection.from);
       let screen_goal_column = rect == null ? 0 : rect.left;
-      console.log(`DOWN:`, selection.goalColumn);
       view.dispatch({
         effects: [move_to_cell_below({ at: selection })],
       });

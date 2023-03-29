@@ -10,7 +10,9 @@ import {
 } from "../../../codemirror-javascript/syntax-highlighting.js";
 
 let markdown_styling_base_theme = EditorView.baseTheme({
-  ".fenced-code": {},
+  ".fenced-code": {
+    color: "#ef8e8e",
+  },
   ".code-text": {
     "font-size": "0.9em",
     "font-family":
@@ -20,7 +22,7 @@ let markdown_styling_base_theme = EditorView.baseTheme({
     opacity: "0.5",
   },
   ".cm-line.has-fenced-code": {
-    "background-color": "#141414",
+    // "background-color": "#141414",
     border: "solid 1px #ffffff14",
 
     // TODO Disable text-wrapping inside codeblocks for now...

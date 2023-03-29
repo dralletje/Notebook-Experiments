@@ -153,15 +153,9 @@ let create_fork = async (signal, onChange) => {
     new URL(`./Circuit/Circuit.ts`, import.meta.url).pathname,
     [],
     {
-      env: {
-        FORCE_COLOR: "true",
-        NODE_OPTIONS: "--experimental-import-meta-resolve",
-      },
+      env: { FORCE_COLOR: "true" },
       signal: signal,
       stdio: ["pipe", "pipe", "pipe", "ipc"],
-
-      // Was hoping this wouldn't be necessary, but it is.
-      cwd: new URL(`../cell-environments/src`, import.meta.url),
     }
   );
 

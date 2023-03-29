@@ -19,10 +19,6 @@ import { parse_cell } from "./parse-cell.js";
 import serialize from "./serialize.js";
 import { Engine, Notebook } from "./node-engine.js";
 
-// I HATE THIS
-// But I need to do it
-import { cell_import } from "../cell-environments/cell_import.js";
-
 let create_callback_collector = () => {
   let callbacks = [];
   let add = Object.assign(
@@ -327,7 +323,8 @@ export let notebook_step = async (
       is_in_notebook: true,
       url: url,
       import: async (specifier: any) => {
-        return await cell_import(specifier);
+        let what_to_import = await resolve(specifier, url.toString());
+        return await import(what_to_import);
       },
     };
 

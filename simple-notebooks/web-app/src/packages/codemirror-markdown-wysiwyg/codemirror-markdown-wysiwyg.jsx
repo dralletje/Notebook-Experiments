@@ -67,7 +67,7 @@ export let basic_markdown_setup = [
   // indentUnit.of("    "),
   placeholder("The rest is still unwritten..."),
   markdown({
-    addKeymap: true,
+    addKeymap: false,
     base: markdownLanguage,
     extensions: [
       MarkdownKatex,

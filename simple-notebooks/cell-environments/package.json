@@ -5,6 +5,8 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
+    "@jspm/generator": "^1.1.3",
+    "@jspm/import-map": "^1.0.7",
     "markdown-it": "^13.0.1",
     "mustache": "^4.2.0",
     "node-fetch": "^3.2.10",

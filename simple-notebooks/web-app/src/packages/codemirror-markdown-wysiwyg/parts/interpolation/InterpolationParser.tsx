@@ -29,7 +29,6 @@ export const MarkdownInterpolation: MarkdownConfig = {
         if (cx.char(pos) !== DOLLAR_CODE || cx.char(pos + 1) !== L_BRACE_CODE)
           return -1;
 
-        console.log("hi");
         let was_space = false;
 
         let elts = [cx.elt("InterpolationMark", pos, pos + 2)];

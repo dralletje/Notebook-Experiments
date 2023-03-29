@@ -72,26 +72,10 @@ let ContextMenuDialog = styled.dialog`
 `;
 
 export let ContextMenu = ({ options, onBlur = () => {} }) => {
-  let context_ref = React.useRef(null);
-  // React.useLayoutEffect(() => {
-  //   console.log('context_ref:', context_ref);
-  //   context_ref.current.focus();
-  // }, [layerX, layerY]);
+  let context_ref = React.useRef(/** @type {HTMLDivElement?} */ (null));
 
   return (
-    <ContextMenuContainer
-    // style={{
-    //   position: "fixed",
-    //   top: pageY,
-    //   left: pageX,
-    //   transform: [
-    //     flipVertical && "translateY(-100%)",
-    //     flipHorizontal && "translateX(-100%)",
-    //   ]
-    //     .filter(Boolean)
-    //     .join(" "),
-    // }}
-    >
+    <ContextMenuContainer>
       <div
         className="menu"
         onContextMenu={(e) => {

@@ -82,7 +82,6 @@ export let markdown_katex = [
       tree,
       enter: (cursor) => {
         if (cursor.name === "Interpolation") {
-          console.log("Hi", cursor.from);
           if (cursor.node.parent.name !== "Document") {
             // TODO Support nested katex blocks, but for now... No way
             decorations.push(

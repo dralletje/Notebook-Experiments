@@ -1,123 +1,116 @@
 // ╔═╡ DRAL_NOTEBOOK_VERSION = "0.0.1"
 export {};
 
-// ╔═╡ [cells.c372df60-f0f0-4480-882e-5d0918452837]
-// ╠═╡ folded = false
-x = await new Promise((resolve) =>
-  setTimeout(resolve, 1000)
-);
-
-// ╔═╡ [cells.21227430-c866-4c20-a0a3-c48047edbadf]
-// ╠═╡ folded = false
-y = await new Promise(
-  (resolve) => (x, setTimeout(resolve, 5000))
-);
-
-// ╔═╡ [cells.3040d168-18f8-478e-af27-a93db12c1493]
-// ╠═╡ type = "text"
-// ## Markdown todo
-// - [ ] **Editing should be awesome**
-//   - [ ] Cursor still jumps oddly sometimes because all the moving around of elements I do
-//   (Specifically when moving the cursor up or down)
-//   - [ ] Related is that I now always put `assoc` to `1` because it _generally_ works better, but I keep finding exceptions D:
-//   - [ ] Pressing **<kbd>Enter</kbd> when at the beginning of a block** (just past the marker), should move the marker to the new line. This solves the problem where there is no way to intuitively add a line above a header or list at the top of a cell.
-//   - [ ] Figure out what the deal is with **List & Task Markers**.
-//   Couple of flows that need to be :sparkles:PERFECT:sparkles:
-//     - [ ] <kbd>Enter</pbd>
-//     - [ ] <kbd>Shift+Enter</pbd>
-//     - [ ] <kbd>Backspace</kbd>
-//   - [ ] **Indentation "shouldn't exist"**
-//   Only way to interact with it should be with Tab/Shift-Tab, or at least deleting it in chunks of `indentSize`.
-// 
-// - [ ] Make **links** (and images) work
-// I think initially I can make them like text markers now, where they are "just their text" until you are focussed in it.
-// _Eventually_ we could _possibly_ add a popup where you can enter the url.
-// - [ ] **HTML rendering** makes the document jumpy when it leaves the viewport
-// (Because codemirror removes it, but doesn't fill it's space with something)
-
-// ╔═╡ [cells.9b149216-2ed6-4ff0-ac83-bff721613f5a]
-// ╠═╡ type = "text"
-// ## Editor TODO
-// - [ ] **Typechecking/autocomplete**
-// Currently I _do_ have a webworker-typescript thingy, and I _could_ use that. But I don't want to! I want to "just" connect to an LSP that has access to all the dependencies and maybe even a `.tsconfig`
-//   - Use something like JSPM 
-// - [ ] **Sidebar with subnotebooks**
-//     - [ ] **Meta notebook**
-//     A notebook that can interact with the codemirror instances (and ofcourse, editor-in-chief) to add extensions, theme or CSS.
-//     - [ ] **Shell**
-//     This one would be so cool. Having a place where you can try small things, interact with your main notebook cells but not the other way around.
-// 	- [ ] **Files**
-// 	I don't want to! It is too boring!  Eventually there should be some way to manage multiple files, create an environment, blablablabla.
-// 
-
-// ╔═╡ [cells.28918307-ec74-4909-8b06-4d0eb6b82718]
-// ╠═╡ type = "text"
-// 
-
-// ╔═╡ [cells.ef0a0a1a-24ed-4f56-8ba0-7591c1e5d56f]
-// ╠═╡ type = "text"
-// ## Inline Table editor 
-// I eventually want to embed ne asdasdsted editors in cells. A prime example of this could be a table editor, that will actually render a table with individual editable cells (but with all the layout stuff that a table provides)
-// 
-// - [ ] **Allow editting the editors in the table cells** and it should sync with the codemirror editor. I already kind of have that in checkboxes. The way it is done in checkbox doesn't feel very robust though..
-// - [ ] **Focus from parent editor** directly into the child editors, and back! Also something I can first try with checkboxes: ideally, when you "move" into a checkbox, it should be focussed. So when you then press space, it will toggle it.
-// - [ ] Ideally, but this is I think a pretty hard one, it should be possible to 
-// 
-// | Tables   |      Are               |  Cool   |
-// | -------- | :-------------:|------:  |
-// | col 1 is   |  left-aligned    | $1600 | asdkjas das dasdasd asd \asd asd aasd asd asd asd |
-// | col 2 is   |    centered      |   $12    |
-// | col 3 is   | right-aligned  |    $1     bjn  |
-
-// ╔═╡ [cells.eed61bda-4174-42e9-a90e-4b0243d7d6f0]
-// ╠═╡ type = "text"
-// ## Want to show off **Katex support**
-// $$
-// \begin{align*}
-// S(\omega) 
-// &= \frac{\alpha g^2}{\omega^5} e^{[ -0.74\bigl\{\frac{\omega U_\omega 19.5}{g}\bigr\}^{\!-4}\,]} \\
-// &= \frac{\alpha g^2}{\omega^5} \exp\Bigl[ -0.74\Bigl\{\frac{\omega U_\omega 19.5}{g}\Bigr\}^{\!-4}\,\Bigr] 
-// \end{align*}
-// $$
-
 // ╔═╡ [cells.6f02384d-2362-4167-92ca-ef2f5707d375]
 // ╠═╡ type = "text"
 // # My Title is Awesome
 
-// ╔═╡ [cells.4578b1f8-fc43-4812-9b5a-cb9580937a54]
+// ╔═╡ [cells.87b3328c-a47d-4431-934c-67289b534115]
 // ╠═╡ folded = true
-z = await new Promise(
-  (resolve) => (y, setTimeout(resolve, 10000))
+import { Generator } from "@jspm/generator"
+
+// ╔═╡ [cells.980db4ac-bac3-47c7-a559-845b3d455821]
+// ╠═╡ folded = false
+import { mapValues, escapeRegExp, zip } from "lodash-es"
+
+// ╔═╡ [cells.9a8fc483-556b-40d0-8026-a6eb83127449]
+// ╠═╡ folded = true
+let error = (message, cause) => {
+	throw new Error(message, { cause })
+}
+
+// ╔═╡ [cells.0d236e53-7f21-413b-b8e7-d2a4f2c88ab8]
+// ╠═╡ folded = true
+let regexp = ({ raw: [first_string, ...strings] }, ...values) => {
+  let str = first_string;
+  for (let [value, string] of zip(values, strings)) {
+    str +=
+      typeof value === "string"
+        ? escapeRegExp(value)
+        : value instanceof RegExp
+        ? value.source
+        : error("Invalid value in regexp tag", { value });
+    str += string;
+  }
+  return new RegExp(str);
+};
+
+// ╔═╡ [cells.0a843916-2744-4255-9068-bcfc3c2a6627]
+// ╠═╡ folded = true
+let SEMVER_REGEX = regexp`\d+\.\d+\.\d+`;
+
+// ╔═╡ [cells.67405edc-886c-4733-b930-db47d6a018ff]
+// ╠═╡ folded = false
+const generator = new Generator({
+  defaultProvider: "esm.sh",
+  env: ["development", "browser", "module"],
+});
+await generator.install([
+  { target: "react" },
+  { target: "react-dom" },
+  { target: "lodash" },
+]);
+let map = generator.getMap();
+
+// ╔═╡ [cells.1245e0b1-c293-428e-9c6f-5e3881a5de40]
+// ╠═╡ folded = true
+let PREFIX = "https://esm.sh/*";
+let CDN_REGEX = regexp`^${PREFIX}(?<n>[^@]+)@(?<v>${SEMVER_REGEX})(?<p>.*)`;
+let parse_esm_url = (url) => {
+  try {
+    let { n, v, p } = url.match(CDN_REGEX).groups;
+    return {
+      name: n,
+      version: v,
+      path: p,
+    };
+  } catch (error) {
+    throw new Error(`Couldn't parse "${url}"`, {
+      cause: error,
+    });
+  }
+};
+let versions = mapValues(map.imports, (x) =>
+  parse_esm_url(x)
 );
 
-// ╔═╡ [cells.fc39ad0d-c091-45bf-9eec-39648777b973]
+// ╔═╡ [cells.d853fb74-cbf6-411f-990a-77b8df034897]
 // ╠═╡ folded = true
-import {
-  add,
-  compact,
-  zip,
-  without,
-  merge,
-  mergeWith,
-} from "lodash-es";
+let make_skypack_url = ({ name, version, path }) => {
+  return `https://cdn.skypack.dev/${name}@${version}${path}?dts`;
+};
+let skypack_urls = mapValues(versions, make_skypack_url)
 
-// ╔═╡ [cells.7402e9a0-0e82-4741-8a24-1e55d94056aa]
+// ╔═╡ [cells.cec570ec-b4de-4be9-aea0-9f313d15800a]
 // ╠═╡ folded = false
-1 + 1
+let response = await fetch(skypack_urls.lodash);
+let where_them_type = response.headers.get("x-typescript-types");
+let type_url = new URL(where_them_type, skypack_urls.lodash).toString()
+
+// ╔═╡ [cells.d1a94d87-efd3-4f78-a5e7-6d1ec30c4de3]
+// ╠═╡ folded = false
+let types_response = await fetch(type_url)
+let text = await types_response.text()
 
 // ╔═╡ ["Cell Order"]
 // ╠═╡ "Cell Order" = [
 // ╠═╡   "6f02384d-2362-4167-92ca-ef2f5707d375",
+// ╠═╡   "87b3328c-a47d-4431-934c-67289b534115",
+// ╠═╡   "980db4ac-bac3-47c7-a559-845b3d455821",
+// ╠═╡   "9a8fc483-556b-40d0-8026-a6eb83127449",
+// ╠═╡   "0d236e53-7f21-413b-b8e7-d2a4f2c88ab8",
+// ╠═╡   "0a843916-2744-4255-9068-bcfc3c2a6627",
+// ╠═╡   "67405edc-886c-4733-b930-db47d6a018ff",
+// ╠═╡   "1245e0b1-c293-428e-9c6f-5e3881a5de40",
+// ╠═╡   "d853fb74-cbf6-411f-990a-77b8df034897",
+// ╠═╡   "cec570ec-b4de-4be9-aea0-9f313d15800a",
+// ╠═╡   "d1a94d87-efd3-4f78-a5e7-6d1ec30c4de3",
 // ╠═╡   "eed61bda-4174-42e9-a90e-4b0243d7d6f0",
 // ╠═╡   "ef0a0a1a-24ed-4f56-8ba0-7591c1e5d56f",
 // ╠═╡   "28918307-ec74-4909-8b06-4d0eb6b82718",
 // ╠═╡   "9b149216-2ed6-4ff0-ac83-bff721613f5a",
 // ╠═╡   "3040d168-18f8-478e-af27-a93db12c1493",
-// ╠═╡   "4578b1f8-fc43-4812-9b5a-cb9580937a54",
-// ╠═╡   "fc39ad0d-c091-45bf-9eec-39648777b973",
-// ╠═╡   "21227430-c866-4c20-a0a3-c48047edbadf",
-// ╠═╡   "c372df60-f0f0-4480-882e-5d0918452837",
-// ╠═╡   "7402e9a0-0e82-4741-8a24-1e55d94056aa"
+// ╠═╡   "83d6c607-46fa-446a-9bb5-b019fc626f2e"
 // ╠═╡ ]
 
 

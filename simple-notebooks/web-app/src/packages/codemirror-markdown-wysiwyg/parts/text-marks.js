@@ -343,6 +343,7 @@ let TODO_clicking_end_of_line_should_take_you_to_end_of_line =
         : cursor_end;
     if (cursor.name in markdown_mark_to_decoration) {
       let parent = cursor.node.parent;
+      if (parent == null) return transaction;
       let was_visible_before =
         parent.from < previous_selection.from &&
         previous_selection.to < parent.to;
@@ -357,10 +358,6 @@ let TODO_clicking_end_of_line_should_take_you_to_end_of_line =
         { selection: EditorSelection.create([new_position]) },
       ];
     }
-
-    // console.log(`cursor:`, cursor.toString());
-    // console.log(`is_first_child(cursor):`, is_first_child(cursor));
-
     return transaction;
   });
 
