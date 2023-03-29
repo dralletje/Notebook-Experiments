@@ -27,13 +27,28 @@ let TYPE_GENERATOR = { prefix: "ƒ*" };
  */
 
 /**
+ * @typedef Context
+ * @type {typeof globalThis}
+ */
+
+/** @type {WeakMap<Object, { result: Serialized, context: Context }>} */
+let serialized_cache = new WeakMap();
+
+/**
  * @param {any} entry
- * @param {any} context
+ * @param {Context} context
  * @returns {Serialized}
  */
 export const serialize = (entry, context) => {
   const m = new Map();
   const heap = [];
+
+  if (typeof entry === "object" && serialized_cache.has(entry)) {
+    const cached = serialized_cache.get(entry);
+    if (cached?.context === context) {
+      return cached.result;
+    }
+  }
 
   function encounterClass(_class) {
     const found = m.get(_class);
@@ -523,5 +538,10 @@ export const serialize = (entry, context) => {
   for (let i = 0; i < heap.length; i++) {
     result[i] = heap[i];
   }
+
+  if (typeof entry === "object") {
+    serialized_cache.set(entry, { result, context });
+  }
+
   return result;
 };

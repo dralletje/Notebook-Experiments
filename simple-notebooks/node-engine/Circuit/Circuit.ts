@@ -3,7 +3,7 @@ import process from "node:process";
 import { mapValues, throttle } from "lodash-es";
 
 import serialize from "../serialize.js";
-import { notebook_step, topological_sort_notebook } from "../notebook-step.js";
+import { notebook_step } from "../notebook-step.js";
 
 export type DAGElement = {
   id: CellId;

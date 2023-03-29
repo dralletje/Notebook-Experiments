@@ -146,11 +146,12 @@ let engine_to_json = (engine: Engine) => {
   }
 };
 
-let engine = {
+let engine: Engine = {
   cylinders: {},
   internal_run_counter: 1,
   dag: {},
   is_busy: false,
+  parse_cache: new Map(),
 };
 
 let notebook_ref = { current: null as Notebook | null };
@@ -160,9 +161,7 @@ type CircuitMessage = {
   notebook: Notebook;
 };
 
-console.log("SURE");
 addEventListener("message", async (event) => {
-  console.log("HUH");
   let message: CircuitMessage = event.data;
   if (message.type === "update-notebook") {
     let { notebook } = message;

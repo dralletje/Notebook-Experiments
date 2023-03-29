@@ -1,24 +1,24 @@
 import chalk from "chalk";
 import { transform_code } from "@dral/dralbook-transform-javascript";
 
-type ParsedCell =
-  | {
+export type ParsedCell =
+  | Readonly<{
       input: string;
       output: {
         code: string;
         map: any;
-        meta: {
-          consumed_names: string[];
-          created_names: string[];
+        meta: Readonly<{
+          input: string[];
+          output: string[];
           last_created_name?: string;
           has_top_level_return: boolean;
-        };
+        }>;
       };
-    }
-  | {
+    }>
+  | Readonly<{
       input: string;
       error: Error;
-    };
+    }>;
 
 type InputCell = {
   id: unknown;
@@ -36,8 +36,8 @@ let parse_cell_not_memo = (cell: InputCell): ParsedCell => {
         code,
         map,
         meta: {
-          consumed_names: meta.consumed_names,
-          created_names: meta.created_names,
+          input: meta.consumed_names,
+          output: meta.created_names,
           last_created_name: meta.last_created_name,
           has_top_level_return: meta.has_top_level_return,
         },

@@ -7,12 +7,10 @@ import _remove_typescript_plugin from "@babel/plugin-transform-typescript";
 import _transform_react from "@babel/plugin-transform-react-jsx";
 
 /** @type {typeof _remove_typescript_plugin} */
-// @ts-expect-error
 // prettier-ignore
 let remove_typescript_plugin = _remove_typescript_plugin.default ?? _remove_typescript_plugin;
 
 /** @type {typeof _remove_typescript_plugin} */
-// @ts-expect-error
 // prettier-ignore
 let transform_react = _transform_react.default ?? _transform_react;
 

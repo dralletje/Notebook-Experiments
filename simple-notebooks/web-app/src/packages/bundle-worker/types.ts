@@ -1,3 +1,4 @@
+import { ParsedCell } from "./leaf/parse-cell";
 import { Serialized } from "./parts/serialize";
 
 export type DAGElement = {
@@ -18,6 +19,7 @@ export type Engine = {
   internal_run_counter: number;
   dag: { [key: CellId]: DAGElement };
   is_busy: boolean;
+  parse_cache: Map<CellId, ParsedCell>;
 };
 
 type LivingValue = any;

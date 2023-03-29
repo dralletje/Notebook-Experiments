@@ -10,8 +10,8 @@ export type GraphCell = {
 };
 
 type BasicDAG = { [key: string]: string[] };
-type ExpandedDAGElement = { id: string; in: string[]; out: string[] };
-type ExpandedDAG = { [key: string]: ExpandedDAGElement };
+export type ExpandedDAGElement = { id: string; in: string[]; out: string[] };
+export type ExpandedDAG = { [key: string]: ExpandedDAGElement };
 
 export let cells_to_dag = (cells: Array<GraphCell>): BasicDAG => {
   return Object.fromEntries(
