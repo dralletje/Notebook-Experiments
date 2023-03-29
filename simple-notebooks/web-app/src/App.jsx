@@ -19,7 +19,7 @@ import {
   CellIdOrder,
   cell_movement_extension,
 } from "./packages/codemirror-notebook/cell-movement";
-import { File } from "./Notebook";
+import { NotebookView } from "./Notebook";
 import {
   NotebookFilename,
   NotebookId,
@@ -265,7 +265,7 @@ function App() {
       {open_file == null ? (
         <div></div>
       ) : (
-        <File
+        <NotebookView
           files={workspace.files}
           key={open_file}
           socket={socket}

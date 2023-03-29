@@ -26,6 +26,7 @@ type LivingValue = any;
 
 export type Cylinder = {
   id: CellId;
+
   name: string;
   last_run: number;
   /**
@@ -35,6 +36,9 @@ export type Cylinder = {
   running: boolean;
   waiting: boolean;
   result: ResultState<Serialized, Serialized>;
+
+  // These are only used internally by the engine
+  // TODO Put them in a separate object?
   variables: { [name: string]: LivingValue };
   upstream_cells: Array<CellId>;
   abort_controller: AbortController;
