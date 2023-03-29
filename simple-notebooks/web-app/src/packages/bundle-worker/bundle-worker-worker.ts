@@ -93,7 +93,6 @@ let run_notebook = async (
       };
     }
 
-    console.log("STEP");
     await notebook_step({
       engine,
       filename: filename,

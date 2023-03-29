@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { omit, compact, without } from "lodash-es";
+import { invariant } from "../leaf/invariant";
 
 import {
   cells_to_dag,
@@ -15,7 +16,7 @@ import {
 import { parse_cell, ParsedCell } from "../leaf/parse-cell.js";
 import { CellId, Engine, Notebook } from "../types.js";
 import { StacklessError } from "../leaf/StacklessError.js";
-import { mapValues } from "lodash-es";
+import { mapValues, groupBy } from "lodash-es";
 import { analyse_notebook } from "./static-analysis.js";
 
 type ParsedCells = { [key: CellId]: ParsedCell | null };
@@ -28,83 +29,29 @@ export let topological_sort_notebook = (
   return sorted.map((id) => notebook.cells[id]);
 };
 
+type ProposedRun =
+  | { type: "run"; cell_id: CellId }
+  | { type: "error"; error: Error };
+
 let cells_that_need_running = (
   notebook: Notebook,
   engine: Engine,
-  dag: ExpandedDAG,
-  graph_cells: GraphCell[]
+  dag: ExpandedDAG
 ): CellId[] => {
   let sorted = topological_sort(dag);
 
-  // MULTIPLE DEFINITIONS
-  // TODO Move this to a separate step?
-  let doubles = double_definitions(Object.values(graph_cells));
-  sorted = without(
-    sorted,
-    ...doubles.flatMap(([variable_name, cells]) => cells.map((x) => x.id))
-  );
-  for (let [variable_name, cells] of doubles) {
-    for (let cell of cells) {
-      // TODO onChange?
-      engine.cylinders[cell.id].result = {
-        type: "throw",
-        // prettier-ignore
-        value: new StacklessError(`Variable ${variable_name} is defined multiple times`),
-      };
-    }
-  }
-
-  // CYCLICAL DEPENDENCIES
-  // TODO Move this to a separate step?
-  // let cyclicals = cyclical_groups(dag);
-  // console.log(`cyclicals:`, cyclicals);
-  // sorted = without(sorted, ...cyclicals.flat());
-  // for (let group of cyclicals) {
-  //   let error_message = `Cyclical dependency: ${group.join(" -> ")}`;
-  //   let error = new Error(error_message);
-  //   error.stack = "";
-
-  //   for (let cell_id of group) {
-  //     // TODO onChange?
-  //     engine.cylinders[cell_id].result = {
-  //       type: "throw",
-  //       value: error,
-  //     };
-  //   }
-  // }
-
-  let deleted_cells = [];
-  for (let cylinder of Object.values(engine.cylinders)) {
-    if (cylinder.id in notebook.cells === false) {
-      deleted_cells.push(cylinder.id);
-    }
-  }
-
   let cell_should_run_at_map = {};
   let cells_that_should_run = [];
-  for (let deleted_cell of deleted_cells) {
-    cell_should_run_at_map[deleted_cell] = Infinity;
-    cells_that_should_run.push(deleted_cell);
-  }
   for (let cell_id of sorted) {
     let cell = notebook.cells[cell_id];
     let cylinder = engine.cylinders[cell_id];
 
-    if (cell.last_run == null) {
-      // Eh?
-      continue;
-    }
+    invariant(cell.last_run != null, `cell.last_run shouldn't be null`);
+    invariant(cylinder?.last_run != null, `cell.last_run shouldn't be null`);
 
-    // No last_run? Definitely should run!!
-    if (cylinder?.last_run == null) {
-      throw new Error("Shouldn't happen!");
-      cell_should_run_at_map[cell_id] = Infinity;
-      cells_that_should_run.push(cell_id);
-      continue;
-    }
-
+    console.log(`cell.last_run:`, cell.last_run);
     // Cell has been sent to be re-run, also run it!
-    if ((cell.last_run ?? -Infinity) > (cylinder.last_run ?? -Infinity)) {
+    if (cell.last_run > cylinder.last_run) {
       cell_should_run_at_map[cell_id] = Infinity;
       cells_that_should_run.push(cell_id);
       continue;
@@ -114,6 +61,14 @@ let cells_that_need_running = (
     let should_run_at = Math.max(
       cylinder.last_internal_run,
       ...dag[cell_id].in.map((parent_id) => cell_should_run_at_map[parent_id]),
+
+      // This is so that when you have
+      // CELL_1: a = 10
+      // CELL_2: b = a
+      // You run them, all fine, but now! You remove CELL_1 (or change it so it doesn't define `a`).
+      // How would CELL_2 know to run again? It's not connected the DAG anymore!
+      // So I have to remember the cells CELL_2 depended on in the last run,
+      // and check if any of those have changed.
       ...cylinder.upstream_cells.map(
         (parent_id) => cell_should_run_at_map[parent_id] ?? Infinity
       )
@@ -132,20 +87,22 @@ let notebook_to_graph_cell = (
   cell_order: CellId[],
   parsed_cells: ParsedCells
 ): GraphCell[] => {
-  return compact(
-    cell_order.map((cell_id, parsed_cell) => {
-      let parsed = parsed_cells[cell_id];
-      if (parsed != null && "output" in parsed) {
-        return {
-          id: cell_id,
-          exports: parsed.output.meta.output,
-          imports: parsed.output.meta.input,
-        };
-      } else {
-        return null;
-      }
-    })
-  );
+  return cell_order.map((cell_id, parsed_cell) => {
+    let parsed = parsed_cells[cell_id];
+    if (parsed != null && "output" in parsed) {
+      return {
+        id: cell_id,
+        exports: parsed.output.meta.output,
+        imports: parsed.output.meta.input,
+      };
+    } else {
+      return {
+        id: cell_id,
+        exports: [],
+        imports: [],
+      };
+    }
+  });
 };
 
 export type NotebookCache = Map<symbol, any>;
@@ -161,13 +118,89 @@ let parse_all_cells = (
   let parse_cache = engine.parse_cache;
   return mapValues(notebook.cells, (cell) => {
     if (cell.type === "text") {
-      return null;
+      return {
+        input: cell.code,
+        static: cell.code,
+      };
     } else if (parse_cache.get(cell.id)?.input === cell.code) {
       return parse_cache.get(cell.id);
     } else {
       let parsed = parse_cell(cell);
       parse_cache.set(cell.id, parsed);
       return parsed;
+    }
+  });
+};
+
+type StaticResult =
+  | { type: "fine"; cell_id: CellId }
+  | { type: "static"; cell_id: CellId }
+  | { type: "error"; cell_id: CellId; error: Error };
+
+let get_analysis_results = (
+  cells_to_run: CellId[],
+  parsed_cells: ParsedCells,
+  dag: ExpandedDAG,
+  graph_cells: GraphCell[]
+): StaticResult[] => {
+  // To show on what variable the cycles are, I actually need `graph_cells`,
+  // or for both a combination of `dag` and `graph_cells`.
+  let cyclicals = cyclical_groups(dag);
+  let doubles = double_definitions(Object.values(graph_cells));
+  let doubles_object = {};
+  for (let [variable_name, cells] of doubles) {
+    for (let cell of cells) {
+      doubles_object[cell.id] ??= [];
+      doubles_object[cell.id].push(variable_name);
+    }
+  }
+
+  console.log(`cyclicals:`, cyclicals);
+
+  return cells_to_run.flatMap((cell_id) => {
+    let parsed = parsed_cells[cell_id];
+    // Error while parsing the code, so we display babel error
+    if ("error" in parsed) {
+      return {
+        type: "error",
+        cell_id: cell_id,
+        error: new StacklessError(parsed.error),
+      };
+    } else if (!("output" in parsed)) {
+      invariant(
+        parsed.static != null,
+        `parsed.static shouldn't be null when parsed.output is null`
+      );
+      return {
+        type: "static",
+        cell_id,
+      };
+    } else if (parsed.output.meta.has_top_level_return) {
+      return {
+        type: "error",
+        cell_id: cell_id,
+        // prettier-ignore
+        error: new StacklessError("Top level return statements are not allowed"),
+      };
+    } else if (doubles_object[cell_id] != null) {
+      return {
+        type: "error",
+        cell_id: cell_id,
+        // prettier-ignore
+        error: new StacklessError(`Multiple definitions of ${doubles_object[cell_id].join(", ")}`),
+      };
+    } else if (cyclicals.some((group) => group.includes(cell_id))) {
+      // prettier-ignore
+      return {
+        type: "error",
+        cell_id: cell_id,
+        error: new StacklessError("Cyclical dependency (TODO: Show on which variable)"),
+      };
+    } else {
+      return {
+        type: "fine",
+        cell_id,
+      };
     }
   });
 };
@@ -189,50 +222,97 @@ export let notebook_step = async ({
     inputs: { [key: string]: any };
   }) => Promise<{ result: ExecutionResult }>;
 }) => {
-  let parsed_cells = parse_all_cells(engine, notebook);
-  // let analysis_result = analyse_notebook(notebook, parsed_cells);
+  // prettier-ignore
+  invariant(
+    Object.values(engine.cylinders).filter((cylinder) => cylinder.running).length === 0,
+    "There are cells currently running!"
+  );
 
+  // "Just" run all handlers for deleted cells
+  // TODO? I just know this will bite me later
+  // TODO Wrap abort controller handles so I can show when they go wrong
+  let deleted_cells = Object.values(engine.cylinders).filter((cylinder) => {
+    return cylinder.id in notebook.cells === false;
+  });
+  for (let deleted_cell of deleted_cells) {
+    deleted_cell.abort_controller.abort();
+    onChange(() => {
+      delete engine.cylinders[deleted_cell.id];
+    });
+  }
+
+  /////////////////////////////////////
+  // Start parsing and analysing
+  /////////////////////////////////////
+
+  let parsed_cells = parse_all_cells(engine, notebook);
   let graph_cells = notebook_to_graph_cell(notebook.cell_order, parsed_cells);
   let dag = expand_dag(cells_to_dag(graph_cells));
 
-  let cells_to_run = cells_that_need_running(
-    notebook,
-    engine,
+  let cells_to_run = cells_that_need_running(notebook, engine, dag);
+
+  let analysis_results = get_analysis_results(
+    cells_to_run,
+    parsed_cells,
     dag,
     graph_cells
   );
 
-  // Set every cell that needs to run to `.waiting = true`
-  for (let cylinder of Object.values(engine.cylinders)) {
-    let should_be_waiting = cells_to_run.includes(cylinder.id);
-    if (cylinder.waiting !== should_be_waiting) {
+  let by_status: {
+    static: StaticResult[];
+    fine: StaticResult[];
+    error: StaticResult[];
+  } = groupBy(analysis_results, (result) => result.type) as any;
+
+  for (let error_cell of by_status.error ?? []) {
+    // Typescript....
+    if (error_cell.type !== "error") throw new Error("UGH");
+
+    let { cell_id, error } = error_cell;
+    let cell = notebook.cells[cell_id];
+    let dag_entry = dag[cell_id];
+
+    onChange((engine) => {
+      engine.cylinders[cell_id] = {
+        ...engine.cylinders[cell_id],
+        last_run: cell.last_run,
+        last_internal_run: engine.internal_run_counter++,
+        result: { type: "throw", value: error },
+        running: false,
+        waiting: false,
+        upstream_cells: dag_entry.in ?? [],
+        variables: {},
+      };
+    });
+  }
+
+  for (let fine_cell of by_status.fine ?? []) {
+    let cylinder = engine.cylinders[fine_cell.cell_id];
+    if (!cylinder.waiting) {
       onChange((engine) => {
-        engine.cylinders[cylinder.id].waiting = should_be_waiting;
+        engine.cylinders[cylinder.id].waiting = true;
       });
+      continue;
     }
   }
 
+  /////////////////////////////////////
+  // Start running next cell
+  /////////////////////////////////////
+
   // Just take the first cell to run,
   // could use a cool algorithm to pick the "best" one
-  let cell_to_run = cells_to_run[0];
+  let cell_to_run = by_status.fine?.[0]?.cell_id;
 
   // If there is no cell that needs running, we're done!
   if (cell_to_run == null) return;
 
   let key = cell_to_run;
   let cell = notebook.cells[key];
-
-  // Cell has been deleted!
-  // Gently ask it to stop existing and move on.
-  if (cell == null) {
-    await engine.cylinders[cell_to_run].abort_controller?.abort();
-    onChange(() => {
-      delete engine.cylinders[cell_to_run];
-    });
-    return;
-  }
-
   let parsed = parsed_cells[cell.id];
+  if (!("output" in parsed)) {
+    throw new Error(`Parsed error shouldn't end up here`);
+  }
 
   onChange((engine) => {
     engine.cylinders[key] = {
@@ -244,67 +324,12 @@ export let notebook_step = async ({
       waiting: false,
     };
   });
-
   let cylinder = engine.cylinders[key];
-  if ("error" in parsed) {
-    let _parsed = parsed;
-    // Error while parsing the code, so we run it to get the javascript error
-    onChange(() => {
-      engine.cylinders[key] = {
-        ...engine.cylinders[key],
-        last_run: cell.last_run,
-        result: {
-          type: "throw",
-          value: new StacklessError(_parsed.error),
-        },
-        running: false,
-        waiting: false,
-        upstream_cells: [],
-        variables: {},
-      };
-    });
-    return;
-  }
-  if (!("output" in parsed)) {
-    onChange((engine) => {
-      engine.cylinders[key] = {
-        ...engine.cylinders[key],
-        last_run: cell.last_run,
-        result: {
-          type: "throw",
-          value: new StacklessError("Something is wronnnggggg"),
-        },
-        running: false,
-        upstream_cells: [],
-        variables: {},
-      };
-    });
-    return;
-  }
 
   let {
     code,
-    meta: { input: consumed_names, last_created_name, has_top_level_return },
+    meta: { input: consumed_names, last_created_name },
   } = parsed.output;
-
-  if (has_top_level_return) {
-    onChange((engine) => {
-      engine.cylinders[key] = {
-        ...engine.cylinders[key],
-        last_run: cell.last_run,
-        result: {
-          type: "throw",
-          value: new StacklessError(
-            "Top level return statements are not allowed"
-          ),
-        },
-        running: false,
-        upstream_cells: [],
-        variables: {},
-      };
-    });
-    return;
-  }
 
   console.log(chalk.blue.bold`RUNNING CODE:`);
   console.log(chalk.blue(code));

@@ -14,6 +14,11 @@ export let useLocalEnvironment = (notebook) => {
   let bundle_worker = React.useMemo(() => {
     return get_bundle_worker();
   }, []);
+  React.useEffect(() => {
+    return () => {
+      bundle_worker.terminate();
+    };
+  }, []);
 
   React.useEffect(() => {
     let handler = (event) => {
@@ -29,7 +34,6 @@ export let useLocalEnvironment = (notebook) => {
   }, [bundle_worker, set_engine]);
 
   React.useEffect(() => {
-    console.log("NOTEBOOK");
     bundle_worker.postMessage({
       type: "update-notebook",
       notebook: notebook.notebook,

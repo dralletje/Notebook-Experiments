@@ -16,12 +16,20 @@ export type ExpandedDAG = { [key: string]: ExpandedDAGElement };
 export let cells_to_dag = (cells: Array<GraphCell>): BasicDAG => {
   return Object.fromEntries(
     cells.map((cell) => {
+      let cell_id = cell.id;
       return [
         cell.id,
         cell.exports.flatMap((exported) => {
-          return cells
-            .filter((cell) => cell.imports.includes(exported))
-            .map((cell) => cell.id);
+          return [
+            ...cells
+              .filter((cell) => cell.imports.includes(exported))
+              .map((cell) => cell.id),
+            ...cells
+              .filter(
+                (cell) => cell.exports.includes(exported) && cell.id !== cell_id
+              )
+              .map((cell) => cell.id),
+          ];
         }),
       ];
     })
@@ -112,21 +120,22 @@ export let cyclical_groups = (dag: ExpandedDAG): Array<Array<string>> => {
   let groups: Array<Array<string>> = [];
   let visited: string[] = [];
   let visit = (id: string, group: string[]) => {
+    if (group.includes(id)) {
+      groups.push(group);
+      return;
+    }
     if (visited.includes(id)) {
       return;
     }
     visited.push(id);
-    group.push(id);
     for (let out of dag[id].out) {
-      visit(out, group);
+      let x = visit(out, [...group, id]);
     }
   };
+
   for (let id in dag) {
     let group: string[] = [];
     visit(id, group);
-    if (group.length > 1) {
-      groups.push(group);
-    }
   }
   return groups;
 };

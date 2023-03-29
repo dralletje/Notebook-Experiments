@@ -44,9 +44,6 @@ let parse_cell_not_memo = (cell: InputCell): ParsedCell => {
       },
     };
   } catch (error) {
-    console.log(chalk.red.bold`ERROR PARSING:`, chalk.red(error.stack));
-    console.log(chalk.bold.red(cell.code));
-
     if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
       error.message = `${error.message} at ${error.loc.line}:${error.loc.column}`;
     }

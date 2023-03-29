@@ -103,6 +103,7 @@ export function File({ state, onChange, socket, files }) {
   }, [cell_editor_states, cell_order]);
 
   let notebook_with_filename = React.useMemo(() => {
+    console.log(`notebook:`, notebook);
     return {
       filename: state.facet(NotebookFilename),
       notebook: notebook,
@@ -111,7 +112,6 @@ export function File({ state, onChange, socket, files }) {
 
   // let engine = useEngine(notebook_with_filename, socket);
   let engine = useLocalEnvironment(notebook_with_filename);
-  console.log(`engine:`, engine);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
