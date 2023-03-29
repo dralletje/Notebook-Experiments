@@ -29,6 +29,7 @@ export let useLocalEnvironment = (notebook) => {
   }, [bundle_worker, set_engine]);
 
   React.useEffect(() => {
+    console.log("NOTEBOOK");
     bundle_worker.postMessage({
       type: "update-notebook",
       notebook: notebook.notebook,

@@ -8,8 +8,8 @@ export type DAGElement = {
 
 type ResultState<T, E> =
   | { type: "return"; name?: string; value: T }
-  | { type: "throw"; value: E }
-  | { type: "pending" };
+  | { type: "throw"; value: E };
+// | { type: "pending" };
 
 export type CellId = string;
 

@@ -12,7 +12,6 @@ import {
 } from "../leaf/dag-things.js";
 
 import { parse_cell } from "../leaf/parse-cell.js";
-import serialize from "./serialize.js";
 import { Engine, Notebook } from "../types.js";
 
 export let topological_sort_notebook = (notebook: Notebook) => {
@@ -35,15 +34,12 @@ let cells_that_need_running = (notebook: Notebook, engine: Engine) => {
     ...doubles.flatMap(([variable_name, cells]) => cells.map((x) => x.id))
   );
   for (let [variable_name, cells] of doubles) {
-    let error_message = `Variable ${variable_name} is defined multiple times`;
-    let error = new Error(error_message);
-    error.stack = "";
-
     for (let cell of cells) {
       // TODO onChange?
       engine.cylinders[cell.id].result = {
         type: "throw",
-        value: serialize(error, globalThis),
+        // prettier-ignore
+        value: new StacklessError(`Variable ${variable_name} is defined multiple times`),
       };
     }
   }
@@ -62,7 +58,7 @@ let cells_that_need_running = (notebook: Notebook, engine: Engine) => {
   //     // TODO onChange?
   //     engine.cylinders[cell_id].result = {
   //       type: "throw",
-  //       value: serialize(error, global),
+  //       value: error,
   //     };
   //   }
   // }
@@ -149,21 +145,16 @@ let notebook_to_graph_cell = (notebook: Notebook): GraphCell[] => {
   );
 };
 
-let try_with_default = (fn, def) => {
-  try {
-    return fn();
-  } catch (error) {
-    console.log(
-      chalk.red.bold`Couldn't serialize error:`,
-      chalk.red(error.stack)
-    );
-    return def;
-  }
-};
-
 export type ExecutionResult<T = any, E = any> =
   | { type: "return"; value: T }
   | { type: "throw"; value: E };
+
+class StacklessError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.stack = "";
+  }
+}
 
 export let notebook_step = async ({
   engine,
@@ -231,13 +222,14 @@ export let notebook_step = async ({
     if ("error" in parsed) {
       let _parsed = parsed;
       // Error while parsing the code, so we run it to get the javascript error
+      console.log(`_parsed.error:`, _parsed.error);
       onChange(() => {
         engine.cylinders[key] = {
           ...engine.cylinders[key],
           last_run: cell.last_run,
           result: {
             type: "throw",
-            value: serialize(_parsed.error, globalThis),
+            value: new StacklessError(_parsed.error.message),
           },
           running: false,
           waiting: false,
@@ -254,7 +246,7 @@ export let notebook_step = async ({
           last_run: cell.last_run,
           result: {
             type: "throw",
-            value: serialize(new Error("Something is wronnnggggg"), globalThis),
+            value: new StacklessError("Something is wronnnggggg"),
           },
           running: false,
           upstream_cells: [],
@@ -276,9 +268,8 @@ export let notebook_step = async ({
           last_run: cell.last_run,
           result: {
             type: "throw",
-            value: serialize(
-              new Error("Top level return statements are not allowed"),
-              global
+            value: new StacklessError(
+              "Top level return statements are not allowed"
             ),
           },
           running: false,
@@ -321,25 +312,8 @@ export let notebook_step = async ({
         ...engine.cylinders[key],
         result:
           result.type === "return"
-            ? {
-                type: "return",
-                name: last_created_name,
-                value: try_with_default(
-                  () => serialize(result.value?.default, globalThis),
-                  { 0: { type: `couldn't serialize` } }
-                ),
-              }
-            : result.type === "throw"
-            ? {
-                type: "throw",
-                value: try_with_default(
-                  () => serialize(result.value, globalThis),
-                  {
-                    0: { type: `couldn't serialize` },
-                  }
-                ),
-              }
-            : { type: "pending" },
+            ? { ...result, name: last_created_name }
+            : result,
         running: false,
         variables:
           result.type === "return" ? omit(result.value, "default") : {},

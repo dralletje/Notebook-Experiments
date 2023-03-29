@@ -110,8 +110,8 @@ export function File({ state, onChange, socket, files }) {
   }, [notebook, state.facet(NotebookFilename)]);
 
   // let engine = useEngine(notebook_with_filename, socket);
-
   let engine = useLocalEnvironment(notebook_with_filename);
+  console.log(`engine:`, engine);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>

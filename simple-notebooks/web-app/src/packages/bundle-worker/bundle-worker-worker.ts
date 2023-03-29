@@ -1,9 +1,23 @@
 import "polyfills";
 import { mapValues, throttle } from "lodash-es";
+import chalk from "chalk";
 
 import { html, md } from "./leaf/html.js";
 import { ExecutionResult, notebook_step } from "./parts/notebook-step.js";
 import { Engine, Notebook } from "./types.js";
+import { serialize } from "./parts/serialize";
+
+let try_with_default = (fn, def) => {
+  try {
+    return fn();
+  } catch (error) {
+    console.log(
+      chalk.red.bold`Couldn't serialize error:`,
+      chalk.red(error.stack)
+    );
+    return def;
+  }
+};
 
 let run_cell = async ({
   inputs,
@@ -71,7 +85,7 @@ let run_notebook = async (
         waiting: false,
         result: {
           type: "return",
-          value: { 0: { type: "undefined", value: "" } },
+          value: undefined,
         },
         variables: {},
         upstream_cells: [],
@@ -79,6 +93,7 @@ let run_notebook = async (
       };
     }
 
+    console.log("STEP");
     await notebook_step({
       engine,
       filename: filename,
@@ -94,16 +109,41 @@ let run_notebook = async (
   }
 };
 
-let engine_to_json = (engine) => {
-  return {
-    cylinders: mapValues(engine.cylinders, (cylinder) => ({
-      name: cylinder.name,
-      result: cylinder.result,
-      last_run: cylinder.last_run,
-      running: cylinder.running,
-      waiting: cylinder.waiting,
-    })),
-  };
+let engine_to_json = (engine: Engine) => {
+  try {
+    return {
+      cylinders: mapValues(engine.cylinders, (cylinder) => ({
+        name: cylinder.name,
+        result:
+          cylinder.result.type === "return"
+            ? {
+                type: "return",
+                name: cylinder.result.name,
+                value: try_with_default(
+                  () => serialize(cylinder.result.value?.default, globalThis),
+                  { 0: { type: `couldn't serialize` } }
+                ),
+              }
+            : cylinder.result.type === "throw"
+            ? {
+                type: "throw",
+                value: try_with_default(
+                  () => serialize(cylinder.result.value, globalThis),
+                  {
+                    0: { type: `couldn't serialize` },
+                  }
+                ),
+              }
+            : { type: "pending" },
+
+        last_run: cylinder.last_run,
+        running: cylinder.running,
+        waiting: cylinder.waiting,
+      })),
+    };
+  } catch (error) {
+    console.log(`error:`, error);
+  }
 };
 
 let engine = {
@@ -120,7 +160,9 @@ type CircuitMessage = {
   notebook: Notebook;
 };
 
+console.log("SURE");
 addEventListener("message", async (event) => {
+  console.log("HUH");
   let message: CircuitMessage = event.data;
   if (message.type === "update-notebook") {
     let { notebook } = message;

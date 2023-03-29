@@ -31,7 +31,7 @@ let TYPE_GENERATOR = { prefix: "ƒ*" };
  * @param {any} context
  * @returns {Serialized}
  */
-export default (entry, context) => {
+export const serialize = (entry, context) => {
   const m = new Map();
   const heap = [];
 
