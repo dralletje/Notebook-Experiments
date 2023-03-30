@@ -3,7 +3,11 @@ import { mapValues, throttle } from "lodash-es";
 import chalk from "chalk";
 
 import { html, md } from "./leaf/html.js";
-import { ExecutionResult, notebook_step } from "./parts/notebook-step.js";
+import {
+  ExecutionResult,
+  RunCellFunction,
+  notebook_step,
+} from "./parts/notebook-step.js";
 import { Engine, Notebook } from "./types.js";
 import { serialize } from "./parts/serialize";
 import { StacklessError } from "./leaf/StacklessError.js";
@@ -19,7 +23,7 @@ let serialize_with_default = ({ value, fallback, context }) => {
   }
 };
 
-let run_cell = async ({
+let run_cell: RunCellFunction = async ({
   inputs,
   code,
   signal,

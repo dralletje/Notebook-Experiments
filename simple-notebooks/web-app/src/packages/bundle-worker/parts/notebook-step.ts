@@ -220,6 +220,17 @@ let get_analysis_results = (
   );
 };
 
+export type RunCellFunction = (options: {
+  signal: AbortSignal;
+  code: string;
+  inputs: { [key: string]: any };
+}) => Promise<{
+  result: ExecutionResult<{
+    [name: VariableName]: LivingValue;
+    default: LivingValue;
+  }>;
+}>;
+
 export let notebook_step = async ({
   engine,
   notebook,
@@ -231,16 +242,7 @@ export let notebook_step = async ({
   filename: string;
   notebook: Notebook;
   onChange: (mutate: (engine: Engine) => void) => void;
-  run_cell: (options: {
-    signal: AbortSignal;
-    code: string;
-    inputs: { [key: string]: any };
-  }) => Promise<{
-    result: ExecutionResult<{
-      [name: VariableName]: LivingValue;
-      default: LivingValue;
-    }>;
-  }>;
+  run_cell: RunCellFunction;
 }) => {
   // prettier-ignore
   invariant(
