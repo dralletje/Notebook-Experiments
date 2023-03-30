@@ -233,10 +233,7 @@ function App() {
     return serialized_workspace_to_workspace(workspace);
   }, []);
 
-  let [workspace, set_workspace] = React.useState(
-    // /** @type {Workspace | null} */ (null)
-    initial_workspace
-  );
+  let [workspace, set_workspace] = React.useState(initial_workspace);
 
   let [open_file, set_open_file] = React.useState(
     /** @type {string | null} */ (null)
