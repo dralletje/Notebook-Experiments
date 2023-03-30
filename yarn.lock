@@ -756,6 +756,7 @@ __metadata:
     "@vitejs/plugin-react": ^2.1.0
     autoprefixer: ^10.4.12
     bezier-easing: ^2.1.0
+    codemirror-x-react: "workspace:^"
     lodash-es: ^4.17.21
     postcss: ^8.4.17
     process: ^0.11.10
