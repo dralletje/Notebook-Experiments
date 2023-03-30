@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import { transform_code } from "@dral/dralbook-transform-javascript";
 
 export type ParsedCell =

@@ -799,6 +799,7 @@ __metadata:
     katex: ^0.16.4
     lodash: ^4.17.21
     node-emoji: ^1.11.0
+    picocolors: ^1.0.0
     postcss: ^8.4.17
     prettier: ^2.7.1
     react: ^18.2.0

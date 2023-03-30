@@ -1,6 +1,6 @@
 import "polyfills";
 import { mapValues, throttle } from "lodash-es";
-import chalk from "chalk";
+import pc from "picocolors";
 
 import { html, md } from "./leaf/html.js";
 import {
@@ -16,9 +16,9 @@ let serialize_with_default = ({ value, fallback, context }) => {
   try {
     return serialize(value, context);
   } catch (error) {
-    console.log(chalk.red.bold`COULDN'T SERIALIZE:`);
-    console.log(chalk.red(error.stack));
-    console.log(chalk.blue`value:`, value);
+    console.log(pc.red(pc.bold(`COULDN'T SERIALIZE:`)));
+    console.log(pc.red(error.stack));
+    console.log(pc.blue(`value:`), value);
     return serialize(fallback, globalThis);
   }
 };

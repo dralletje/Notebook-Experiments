@@ -1,4 +1,4 @@
-import chalk from "chalk";
+import pc from "picocolors";
 import { omit, compact, without } from "lodash-es";
 import { invariant } from "../leaf/invariant";
 
@@ -434,8 +434,8 @@ export let notebook_step = async ({
     meta: { input: consumed_names, last_created_name },
   } = parsed.output;
 
-  console.log(chalk.blue.bold`RUNNING CODE:`);
-  console.log(chalk.blue(code));
+  console.log(pc.blue(pc.bold(`RUNNING CODE:`)));
+  console.log(pc.blue(code));
 
   // Look for requested variable names in other cylinders
   let inputs = {} as { [key: string]: any };
