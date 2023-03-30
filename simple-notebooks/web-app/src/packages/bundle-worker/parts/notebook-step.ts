@@ -1,20 +1,15 @@
 import pc from "picocolors";
-import { omit, compact, without } from "lodash-es";
+import { omit } from "lodash-es";
 import { invariant } from "../leaf/invariant";
 
 import * as Graph from "../leaf/graph.js";
 
 import { parse_cell, ParsedCell } from "./parse-cell.js";
-import {
-  CellId,
-  Engine,
-  EngineRunCountTracker,
-  LivingValue,
-  Notebook,
-  VariableName,
-} from "../types.js";
+import { CellId, Notebook, VariableName } from "../types.js";
 import { StacklessError } from "../leaf/StacklessError.js";
 import { mapValues, groupBy, uniq } from "lodash-es";
+
+import { Engine, EngineRunCountTracker, LivingValue } from "./engine";
 
 type ParsedCells = { [key: CellId]: ParsedCell | null };
 
@@ -35,7 +30,7 @@ let cells_that_need_running = (
   let cells_that_should_run: CellId[] = [];
   for (let cell_id of sorted) {
     let cell = notebook.cells[cell_id];
-    let cylinder = engine.cylinders[cell_id];
+    let cylinder = engine.cylinders.get(cell_id);
 
     // prettier-ignore
     invariant(cell.requested_run_time != null, `cell.requested_run_time shouldn't be null`);
@@ -72,7 +67,7 @@ let cells_that_need_running = (
       // So I have to remember the cells CELL_2 depended on in the last run,
       // and check if any of those have changed.
       ...cylinder.upstream_cells.map((upstream_id) => {
-        if (!engine.cylinders[upstream_id]) {
+        if (!engine.cylinders.get(upstream_id)) {
           // Cell was deleted
           return RUN_NOW;
         } else if (
@@ -275,38 +270,42 @@ export let notebook_step = async ({
 }) => {
   // prettier-ignore
   invariant(
-    Object.values(engine.cylinders).filter((cylinder) => cylinder.running).length === 0,
+    Array.from(engine.cylinders.values()).filter((cylinder) => cylinder.running).length === 0,
     "There are cells currently running!"
   );
 
   // Make sure every cell has a cylinder
   for (let [cell_id, cell] of Object.entries(notebook.cells)) {
-    engine.cylinders[cell_id] ??= {
-      id: cell_id,
-      last_run: -Infinity,
-      last_internal_run: -Infinity,
-      running: false,
-      waiting: false,
-      result: {
-        type: "return",
-        value: undefined,
-      },
-      variables: {},
-      upstream_cells: [],
-      abort_controller: new AbortController(),
-    };
+    if (!engine.cylinders.has(cell_id as CellId)) {
+      engine.cylinders.set(cell_id as CellId, {
+        id: cell_id as CellId,
+        last_run: -Infinity,
+        last_internal_run: -Infinity as EngineRunCountTracker,
+        running: false,
+        waiting: false,
+        result: {
+          type: "return",
+          value: undefined,
+        },
+        variables: {},
+        upstream_cells: [],
+        abort_controller: new AbortController(),
+      });
+    }
   }
 
   // "Just" run all handlers for deleted cells
   // TODO? I just know this will bite me later
   // TODO Wrap abort controller handles so I can show when they go wrong
-  let deleted_cells = Object.values(engine.cylinders).filter((cylinder) => {
-    return cylinder.id in notebook.cells === false;
-  });
+  let deleted_cells = Array.from(engine.cylinders.values()).filter(
+    (cylinder) => {
+      return cylinder.id in notebook.cells === false;
+    }
+  );
   for (let deleted_cell of deleted_cells) {
     deleted_cell.abort_controller.abort();
     onChange(() => {
-      delete engine.cylinders[deleted_cell.id];
+      engine.cylinders.delete(deleted_cell.id);
     });
   }
 
@@ -353,8 +352,8 @@ export let notebook_step = async ({
     let graph_entry = graph.get(cell_id);
 
     onChange((engine) => {
-      engine.cylinders[cell_id] = {
-        ...engine.cylinders[cell_id],
+      engine.cylinders.set(cell_id, {
+        ...engine.cylinders.get(cell_id),
         last_run: cell.requested_run_time,
         last_internal_run: engine.internal_run_counter,
         result: { type: "throw", value: error },
@@ -362,15 +361,15 @@ export let notebook_step = async ({
         waiting: false,
         upstream_cells: Array.from(graph_entry.in.keys()) as CellId[],
         variables: {},
-      };
+      });
     });
   }
 
   for (let fine_cell of by_status.fine) {
-    let cylinder = engine.cylinders[fine_cell.cell_id];
+    let cylinder = engine.cylinders.get(fine_cell.cell_id);
     if (!cylinder.waiting) {
       onChange((engine) => {
-        engine.cylinders[cylinder.id].waiting = true;
+        engine.cylinders.get(cylinder.id).waiting = true;
       });
       continue;
     }
@@ -396,8 +395,10 @@ export let notebook_step = async ({
   });
   for (let { cell_id } of cells_that_can_run) {
     if (
+      // Has the cell been requested to run, or is it running because of upstream
       notebook.cells[cell_id].requested_run_time !==
-        engine.cylinders[cell_id].last_run &&
+        engine.cylinders.get(cell_id).last_run &&
+      // Is the cell requested to run earlier than the current cell to run
       notebook.cells[cell_id].requested_run_time >
         notebook.cells[cell_to_run].requested_run_time
     ) {
@@ -421,13 +422,13 @@ export let notebook_step = async ({
   invariant("output" in parsed, `Parsed error shouldn't end up here`);
 
   onChange((engine) => {
-    engine.cylinders[key] = {
-      ...engine.cylinders[key],
+    engine.cylinders.set(key, {
+      ...engine.cylinders.get(key),
       running: true,
       waiting: false,
-    };
+    });
   });
-  let cylinder = engine.cylinders[key];
+  let cylinder = engine.cylinders.get(key);
 
   let {
     code,
@@ -440,7 +441,7 @@ export let notebook_step = async ({
   // Look for requested variable names in other cylinders
   let inputs = {} as { [key: string]: any };
   for (let name of consumed_names) {
-    for (let cylinder of Object.values(engine.cylinders)) {
+    for (let cylinder of engine.cylinders.values()) {
       if (name in (cylinder.variables ?? {})) {
         inputs[name] = cylinder.variables[name];
       }
@@ -462,8 +463,8 @@ export let notebook_step = async ({
   });
 
   onChange((engine) => {
-    engine.cylinders[key] = {
-      ...engine.cylinders[key],
+    engine.cylinders.set(key, {
+      ...engine.cylinders.get(key),
 
       last_run: cell.requested_run_time,
       // @ts-ignore
@@ -480,6 +481,6 @@ export let notebook_step = async ({
           : result,
       running: false,
       variables: result.type === "return" ? omit(result.value, "default") : {},
-    };
+    });
   });
 };

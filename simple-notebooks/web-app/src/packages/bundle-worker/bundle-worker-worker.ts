@@ -8,9 +8,11 @@ import {
   RunCellFunction,
   notebook_step,
 } from "./parts/notebook-step.js";
-import { Engine, EngineRunCountTracker, Notebook } from "./types.js";
+import { Notebook } from "./types.js";
 import { serialize } from "./parts/serialize";
 import { StacklessError } from "./leaf/StacklessError.js";
+
+import { Engine, EngineRunCountTracker } from "./parts/engine.js";
 
 let serialize_with_default = ({ value, fallback, context }) => {
   try {
@@ -100,36 +102,31 @@ let run_notebook = async (
 };
 
 let engine_to_json = (engine: Engine) => {
-  try {
-    return {
-      cylinders: mapValues(engine.cylinders, (cylinder) => ({
-        name: cylinder.id,
-        last_run: cylinder.last_run,
-        running: cylinder.running,
-        waiting: cylinder.waiting,
-        last_internal_run: cylinder.last_internal_run,
-        result: {
-          ...cylinder.result,
-          value: serialize_with_default({
-            value: cylinder.result.value,
-            fallback: new StacklessError(`Couldn't serialize value`),
-            context: globalThis,
-          }),
+  return {
+    cylinders: Object.fromEntries(
+      Array.from(engine.cylinders).map(([id, cylinder]) => [
+        id,
+        {
+          name: cylinder.id,
+          last_run: cylinder.last_run,
+          running: cylinder.running,
+          waiting: cylinder.waiting,
+          last_internal_run: cylinder.last_internal_run,
+          result: {
+            ...cylinder.result,
+            value: serialize_with_default({
+              value: cylinder.result.value,
+              fallback: new StacklessError(`Couldn't serialize value`),
+              context: globalThis,
+            }),
+          },
         },
-      })),
-    };
-  } catch (error) {
-    console.log(`error:`, error);
-  }
+      ])
+    ),
+  };
 };
 
-let engine: Engine = {
-  cylinders: {},
-  internal_run_counter: 1 as EngineRunCountTracker,
-  // graph: new Map(),
-  is_busy: false,
-  parse_cache: new Map(),
-};
+let engine = new Engine();
 
 let notebook_ref = { current: null as Notebook | null };
 
