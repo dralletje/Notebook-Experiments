@@ -813,6 +813,7 @@ __metadata:
     socket.io-client: ^4.5.1
     styled-components: ^5.3.5
     tailwindcss: ^3.1.8
+    ts-opaque: ^3.0.1
     typescript: ^4.8.3
     uuid: ^8.3.2
     vite: ^3.1.0
@@ -5405,6 +5406,13 @@ __metadata:
     ts-node-transpile-only: dist/bin-transpile.js
     ts-script: dist/bin-script-deprecated.js
   checksum: 090adff1302ab20bd3486e6b4799e90f97726ed39e02b39e566f8ab674fd5bd5f727f43615debbfc580d33c6d9d1c6b1b3ce7d8e3cca3e20530a145ffa232c35
+  languageName: node
+  linkType: hard
+
+"ts-opaque@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "ts-opaque@npm:3.0.1"
+  checksum: 146f71d08d5915ead4551dce310719c53ead762a3ca6219373beacf273c84a7988b7716e5f8b9d0e9013d87ed84bc9f1e794ecdc4ff14083723ceacd9899040c
   languageName: node
   linkType: hard
 

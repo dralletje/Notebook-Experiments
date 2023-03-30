@@ -39,7 +39,7 @@ let cells_that_need_running = (
     // Here comes the tricky part: I need to "carry over" the `should_run` times from the parent cells.
     let should_run_at = Math.max(
       cylinder.last_internal_run,
-      ...graph[cell_id].in.map(
+      ...graph.get(cell_id).in.map(
         // Something this is undefined, because this cell is part of a cycle
         // and the upstream cell is later in `sorted`. There is a fix for this
         // in the analysis step.
@@ -295,7 +295,7 @@ export let notebook_step = async ({
 
     let { cell_id, error } = error_cell;
     let cell = notebook.cells[cell_id];
-    let graph_entry = graph[cell_id];
+    let graph_entry = graph.get(cell_id);
 
     onChange((engine) => {
       engine.cylinders[cell_id] = {
@@ -386,7 +386,7 @@ export let notebook_step = async ({
 
       last_run: cell.requested_run_time,
       last_internal_run: engine.internal_run_counter++,
-      upstream_cells: graph[key].in.map(([id]) => id) ?? [],
+      upstream_cells: graph.get(key).in.map(([id]) => id) ?? [],
 
       result:
         result.type === "return"

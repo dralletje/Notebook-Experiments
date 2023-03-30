@@ -5,7 +5,7 @@ type ResultState<ReturnValue, ThrowValue> =
   | { type: "return"; name?: string; value: ReturnValue }
   | { type: "throw"; value: ThrowValue };
 
-export type CellId = string;
+export type CellId = string & Graph.NodeId;
 
 export type Engine = {
   cylinders: { [cell_id: CellId]: Cylinder };

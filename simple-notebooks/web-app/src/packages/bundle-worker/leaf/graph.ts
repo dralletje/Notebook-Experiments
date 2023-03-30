@@ -1,25 +1,30 @@
 import { mapValues, uniq } from "lodash-es";
+import { Opaque } from "ts-opaque";
 
-type CellId = string;
-
-type VariableName = string;
+export type NodeId = Opaque<string, "NodeId">;
+// type NodeId = string;
+type EdgeName = string;
 
 export type DisconnectedNode = {
-  id: CellId;
-  imports: Array<VariableName>;
-  exports: Array<VariableName>;
+  id: NodeId;
+  imports: Array<EdgeName>;
+  exports: Array<EdgeName>;
 };
 export type DisconnectedGraph = Array<DisconnectedNode>;
 
-type Edge = [string, { name: string }];
-type CompactGraph = { [key: string]: Array<Edge> };
-export type GraphElement = { id: string; in: Edge[]; out: Edge[] };
-export type Graph = { [key: string]: GraphElement };
+type MapOf<T extends [any, any]> = T extends [infer K, infer V]
+  ? Map<K, V>
+  : never;
+
+type Edge = [NodeId, { name: EdgeName }];
+type CompactGraph = Map<NodeId, Array<Edge>>;
+export type Node = { id: NodeId; in: Edge[]; out: Edge[] };
+export type Graph = Map<NodeId, Node>;
 
 export let disconnected_to_compact_graph = (
   cells: DisconnectedGraph
 ): CompactGraph => {
-  let x = Object.fromEntries(
+  let x = new Map(
     cells.map((cell) => {
       let cell_id = cell.id;
       return [
@@ -28,7 +33,7 @@ export let disconnected_to_compact_graph = (
           return [
             ...cells
               .filter((cell) => cell.imports.includes(exported))
-              .map((cell) => [cell.id, { name: exported }] as const),
+              .map((cell) => [cell.id, { name: exported }] as Edge),
 
             // Also add cells that have an export of the same name as this cell.
             // Think of this graph more as "Cell X influences Cell Y" rather than only
@@ -39,9 +44,9 @@ export let disconnected_to_compact_graph = (
               .filter(
                 (cell) => cell.exports.includes(exported) && cell.id !== cell_id
               )
-              .map((cell) => [cell.id, { name: exported }] as const),
+              .map((cell) => [cell.id, { name: exported }] as Edge),
           ];
-        }) as any,
+        }),
       ];
     })
   );
@@ -49,33 +54,40 @@ export let disconnected_to_compact_graph = (
 };
 
 export let inflate_compact_graph = (graph: CompactGraph): Graph => {
-  let expanded_graph: Graph = mapValues(graph, (out, id) => ({
-    id,
-    out,
-    in: [],
-  })) as any;
-  for (let in_id of Object.keys(expanded_graph)) {
-    for (let [out_id, { name }] of expanded_graph[in_id].out) {
-      expanded_graph[out_id].in.push([in_id, { name }]);
+  let expanded_graph: Graph = new Map(
+    Array.from(graph).map(([id, out]) => [
+      id,
+      {
+        id,
+        out,
+        // In is filled in later...
+        in: [],
+      },
+    ])
+  );
+  // ...specifically: here
+  for (let [id, node] of expanded_graph) {
+    for (let [out_id, { name }] of node.out) {
+      expanded_graph.get(out_id).in.push([id, { name }]);
     }
   }
   return expanded_graph;
 };
 
-export let topological_sort = (graph: Graph): string[] => {
-  let sorted: string[] = [];
-  let visited: string[] = [];
-  let visit = (edge: string) => {
-    if (visited.includes(edge)) {
+export let topological_sort = (graph: Graph): NodeId[] => {
+  let sorted: NodeId[] = [];
+  let visited: NodeId[] = [];
+  let visit = (id: NodeId) => {
+    if (visited.includes(id)) {
       return;
     }
-    visited.push(edge);
-    for (let [out] of graph[edge].in) {
+    visited.push(id);
+    for (let [out] of graph.get(id).in) {
       visit(out);
     }
-    sorted.push(edge);
+    sorted.push(id);
   };
-  for (let id in graph) {
+  for (let id of graph.keys()) {
     visit(id);
   }
   return sorted;
@@ -89,8 +101,8 @@ export let topological_sort = (graph: Graph): string[] => {
  * return the cell_ids of those definitions.
  */
 export let multiple_definitions = (graph: Graph) => {
-  let doubles = new Map<CellId, VariableName[]>();
-  for (let [cell_id, node] of Object.entries(graph)) {
+  let doubles = new Map<NodeId, EdgeName[]>();
+  for (let [cell_id, node] of graph.entries()) {
     let conflicting_definitions = node.out.filter(
       ([out_id, { name: out_name }]) => {
         return node.in.some(([in_id, { name: in_name }]) => {
@@ -108,14 +120,14 @@ export let multiple_definitions = (graph: Graph) => {
   return doubles;
 };
 
-export let upstream = (graph: Graph, id: string): string[] => {
-  let visited: string[] = [];
-  let visit = (id: string) => {
+export let upstream = (graph: Graph, id: NodeId): NodeId[] => {
+  let visited: NodeId[] = [];
+  let visit = (id: NodeId) => {
     if (visited.includes(id)) {
       return;
     }
     visited.push(id);
-    for (let in_id of graph[id].in) {
+    for (let in_id of graph.get(id).in) {
       visit(in_id[0]);
     }
   };
@@ -123,14 +135,14 @@ export let upstream = (graph: Graph, id: string): string[] => {
   return visited.filter((x) => x !== id);
 };
 
-export let downstream = (graph: Graph, id: string): string[] => {
-  let visited: string[] = [];
-  let visit = (id: string) => {
+export let downstream = (graph: Graph, id: NodeId): NodeId[] => {
+  let visited: NodeId[] = [];
+  let visit = (id: NodeId) => {
     if (visited.includes(id)) {
       return;
     }
     visited.push(id);
-    for (let in_id of graph[id].out) {
+    for (let in_id of graph.get(id).out) {
       visit(in_id[0]);
     }
   };
@@ -140,8 +152,8 @@ export let downstream = (graph: Graph, id: string): string[] => {
 
 export let cycles = (graph: Graph): Array<Array<Edge>> => {
   let groups: Array<Array<Edge>> = [];
-  let visited: string[] = [];
-  let visit = (id: string, group: Array<Edge>) => {
+  let visited: NodeId[] = [];
+  let visit = (id: NodeId, group: Array<Edge>) => {
     if (group.some(([x]) => id === x)) {
       groups.push(group);
       return;
@@ -150,12 +162,12 @@ export let cycles = (graph: Graph): Array<Array<Edge>> => {
       return;
     }
     visited.push(id);
-    for (let [out, { name }] of graph[id].out) {
+    for (let [out, { name }] of graph.get(id).out) {
       let x = visit(out, [...group, [id, { name }]]);
     }
   };
 
-  for (let id in graph) {
+  for (let id of graph.keys()) {
     let group: Array<Edge> = [];
     visit(id, group);
   }
