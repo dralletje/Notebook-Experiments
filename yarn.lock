@@ -795,6 +795,7 @@ __metadata:
     "@codemirror/search": ^6.2.3
     "@codemirror/state": ^6.2.0
     "@codemirror/view": ^6.9.1
+    "@dral/codemirror-helpers": "workspace:^"
     "@ionic/react": ^6.2.7
     "@lezer/common": ^1.0.2
     "@types/node": ^18.7.18
