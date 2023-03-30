@@ -9,7 +9,12 @@ export default defineConfig({
     fs: {
       // Allow serving files from project root...
       // Curious to see how this works with building....
-      allow: [".."],
+      allow: [
+        "..",
+
+        // Katex fonts!
+        "../../node_modules/katex/dist/",
+      ],
     },
   },
   build: {

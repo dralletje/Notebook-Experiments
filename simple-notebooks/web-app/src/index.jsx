@@ -1,8 +1,5 @@
-// import "./node-polyfills.js";
-
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "./index.css";
 import App from "./App";
 import { enablePatches } from "immer";
 
@@ -12,11 +9,7 @@ import { enablePatches } from "immer";
 enablePatches();
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
-  // <React.StrictMode>
-  <App />
-  // </React.StrictMode>
-);
+root.render(<App />);
 
 navigator.serviceWorker
   .register("/service-worker.js", {

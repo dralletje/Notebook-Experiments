@@ -8,5 +8,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@dral/worker-typescript-magic": "workspace:^",
+    "@lezer/generator": "^1.2.2"
+  }
 }

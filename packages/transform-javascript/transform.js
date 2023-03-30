@@ -189,7 +189,7 @@ let fix_return_and_get_result_ast = (ast, properties_to_return) => {
         return [
           statement,
           return_with_default(
-            t.newExpression(t.identifier("Error"), [
+            t.newExpression(t.identifier("SyntaxError"), [
               t.stringLiteral(
                 `Couldn't 'return-ify' "${statement.type}" statement`
               ),

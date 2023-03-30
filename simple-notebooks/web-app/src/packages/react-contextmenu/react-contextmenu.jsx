@@ -53,8 +53,8 @@ export let ContextMenuContainer = styled.div`
 
   button:not([disabled]):hover::after {
     background-color: white;
-    background-color: #d8e5ff;
-    background-color: #5c77ff;
+    background-color: #d8e5ff66;
+    background-color: #5c77ff66;
   }
 `;
 
@@ -72,26 +72,10 @@ let ContextMenuDialog = styled.dialog`
 `;
 
 export let ContextMenu = ({ options, onBlur = () => {} }) => {
-  let context_ref = React.useRef(null);
-  // React.useLayoutEffect(() => {
-  //   console.log('context_ref:', context_ref);
-  //   context_ref.current.focus();
-  // }, [layerX, layerY]);
+  let context_ref = React.useRef(/** @type {HTMLDivElement?} */ (null));
 
   return (
-    <ContextMenuContainer
-    // style={{
-    //   position: "fixed",
-    //   top: pageY,
-    //   left: pageX,
-    //   transform: [
-    //     flipVertical && "translateY(-100%)",
-    //     flipHorizontal && "translateX(-100%)",
-    //   ]
-    //     .filter(Boolean)
-    //     .join(" "),
-    // }}
-    >
+    <ContextMenuContainer>
       <div
         className="menu"
         onContextMenu={(e) => {
@@ -136,13 +120,58 @@ export let ContextMenuWrapper = ({
   children,
   disabled = false,
 }) => {
-  let [context_open, set_context_open] = React.useState(null);
-
   /** @type {import("react").MutableRefObject<HTMLDialogElement>} */
   let dialog_ref = React.useRef(/** @type {any} */ (null));
 
   return (
-    <React.Fragment>
+    <context-menu-wrapper
+      style={{
+        display: "contents",
+      }}
+      onContextMenu={(event) => {
+        if (dialog_ref.current.open) {
+          return;
+        }
+
+        if (event.metaKey) return;
+        if (disabled) return;
+        if (!options || options.length === 0) return;
+
+        event.preventDefault();
+        let top = event.clientY - 4;
+        let left = event.clientX + 2;
+
+        // let span_position = current_span_ref.current.getBoundingClientRect();
+        dialog_ref.current.style.top = `${top}px`;
+        dialog_ref.current.style.left = `${left}px`;
+        dialog_ref.current.showModal();
+
+        let rect = dialog_ref.current.getBoundingClientRect();
+
+        // Outside of the viewport on the right side
+        let sticking_out = rect.right - (window.innerWidth - 16);
+        if (sticking_out > 0) {
+          // prettier-ignore
+          dialog_ref.current.style.left = `${left - sticking_out}px`;
+        }
+
+        // Outside of the viewport on the bottom
+        let sticking_out_bottom = rect.bottom - (window.innerHeight - 16);
+        if (sticking_out_bottom > 0) {
+          // See if moving to above would be benificial
+          let space_below = window.innerHeight - top;
+          let space_above = top;
+
+          if (space_below < space_above) {
+            // prettier-ignore
+            dialog_ref.current.style.top = `${top - rect.height + space_below}px`;
+          } else {
+            // Keep below
+            dialog_ref.current.style.maxHeight = `${space_below - 16}px`;
+          }
+        }
+      }}
+    >
       <ContextMenuDialog
         ref={dialog_ref}
         onClick={(event) => {
@@ -159,56 +188,37 @@ export let ContextMenuWrapper = ({
         />
       </ContextMenuDialog>
 
-      <div
-        style={{
-          display: "contents",
-        }}
-        onContextMenu={(event) => {
-          if (dialog_ref.current.open) {
-            return;
-          }
+      {children}
+    </context-menu-wrapper>
+  );
+};
 
-          if (event.metaKey) return;
-          if (disabled) return;
-          if (!options || options.length === 0) return;
-
-          event.preventDefault();
-          let top = event.clientY - 4;
-          let left = event.clientX + 2;
-
-          // let span_position = current_span_ref.current.getBoundingClientRect();
-          dialog_ref.current.style.top = `${top}px`;
-          dialog_ref.current.style.left = `${left}px`;
-          dialog_ref.current.showModal();
-
-          let rect = dialog_ref.current.getBoundingClientRect();
-
-          // Outside of the viewport on the right side
-          let sticking_out = rect.right - (window.innerWidth - 16);
-          if (sticking_out > 0) {
-            // prettier-ignore
-            dialog_ref.current.style.left = `${left - sticking_out}px`;
-          }
-
-          // Outside of the viewport on the bottom
-          let sticking_out_bottom = rect.bottom - (window.innerHeight - 16);
-          if (sticking_out_bottom > 0) {
-            // See if moving to above would be benificial
-            let space_below = window.innerHeight - top;
-            let space_above = top;
-
-            if (space_below < space_above) {
-              // prettier-ignore
-              dialog_ref.current.style.top = `${top - rect.height + space_below}px`;
-            } else {
-              // Keep below
-              dialog_ref.current.style.maxHeight = `${space_below - 16}px`;
-            }
-          }
-        }}
-      >
-        {children}
-      </div>
-    </React.Fragment>
+/**
+ * @param {{
+ *  icon: import("react").ReactElement,
+ *  label: string,
+ *  shortcut?: string,
+ * }} props
+ */
+export let ContextMenuItem = ({ icon, label, shortcut }) => {
+  return (
+    <context-menu-item
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        whiteSpace: "pre",
+      }}
+    >
+      <span style={{ flex: "0 1 content", transform: "translateY(2px)" }}>
+        {icon}
+      </span>
+      <div style={{ minWidth: 8 }} />
+      <span>{label}</span>
+      <div style={{ flex: "1 0 40px" }} />
+      {shortcut && (
+        <div style={{ opacity: 0.5, fontSize: "0.8em" }}>{shortcut}</div>
+      )}
+    </context-menu-item>
   );
 };

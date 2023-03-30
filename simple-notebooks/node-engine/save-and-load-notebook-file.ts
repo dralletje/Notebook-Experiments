@@ -103,7 +103,7 @@ export let notebook_to_string = (notebook: Notebook) => {
 };
 
 let uncomment = (string: string) => {
-  return string.replace(/^\/\/ /gm, "");
+  return string.replace(/^\/\/( |$)/gm, "");
 };
 
 let un_body = (string: string) => {
@@ -133,7 +133,7 @@ ${TOML.stringify({ code })}
     DRAL_NOTEBOOK_VERSION: string;
     cells: { [cell_id: CellId]: Cell };
     "Cell Order": { "Cell Order": CellId[] };
-  } = merge({}, ...configs);
+  } = merge({ cells: {} }, ...configs);
 
   if (config.DRAL_NOTEBOOK_VERSION == null) {
     throw new NotNotebookError();
@@ -155,7 +155,7 @@ ${TOML.stringify({ code })}
 
   // Make sure every cell in the notebook is actually in the cell order
   // TODO Place it in a little bit nice position close to where it wants to be?
-  for (let cell_id of Object.keys(config.cells)) {
+  for (let cell_id of Object.keys(config.cells || {})) {
     if (!cell_order.includes(cell_id)) {
       cell_order.push(cell_id);
     }
@@ -171,6 +171,10 @@ ${TOML.stringify({ code })}
         type: type,
         last_run: 0,
         code: content,
+
+        // OOPS
+        // prettier-ignore
+        requested_run_time: 0,
       };
     }),
   };

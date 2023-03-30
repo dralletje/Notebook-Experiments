@@ -5,6 +5,7 @@
   "workspaces": [
     "simple-notebooks/web-app",
     "simple-notebooks/node-engine",
+    "simple-notebooks/packages/*",
     "lezer-playground",
     "lezer-playground/packages/*",
     "packages/*"

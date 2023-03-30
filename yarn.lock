@@ -623,6 +623,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@codemirror/view@npm:^6.9.3":
+  version: 6.9.3
+  resolution: "@codemirror/view@npm:6.9.3"
+  dependencies:
+    "@codemirror/state": ^6.1.4
+    style-mod: ^4.0.0
+    w3c-keyname: ^2.2.4
+  checksum: 718ecbb021ca75eb89003f73c846a07d36a708dcfec8345f0f0dbcfc0d0df5ea6f114918694b2730a6d49e5e50502bcce79ce7ff94ce55748e068e5a35073755
+  languageName: node
+  linkType: hard
+
 "@cspotcode/source-map-support@npm:^0.8.0":
   version: 0.8.1
   resolution: "@cspotcode/source-map-support@npm:0.8.1"
@@ -640,24 +651,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@dral/codemirror-helpers@workspace:packages/dral-codemirror-helpers":
+"@dral/codemirror-helpers@workspace:^, @dral/codemirror-helpers@workspace:packages/dral-codemirror-helpers":
   version: 0.0.0-use.local
   resolution: "@dral/codemirror-helpers@workspace:packages/dral-codemirror-helpers"
   languageName: unknown
   linkType: soft
 
-"@dral/codemirror-subtle-color-picker@workspace:packages/codemirror-subtle-color-picker":
+"@dral/codemirror-subtle-color-picker@workspace:^, @dral/codemirror-subtle-color-picker@workspace:packages/codemirror-subtle-color-picker":
   version: 0.0.0-use.local
   resolution: "@dral/codemirror-subtle-color-picker@workspace:packages/codemirror-subtle-color-picker"
   dependencies:
     "@codemirror/state": ^6.2.0
-    "@codemirror/view": ^6.9.1
+    "@codemirror/view": ^6.9.3
     react: ^18.2.0
     react-color: ^2.19.3
   languageName: unknown
   linkType: soft
 
-"@dral/dralbook-transform-javascript@workspace:packages/transform-javascript":
+"@dral/dralbook-transform-javascript@workspace:^, @dral/dralbook-transform-javascript@workspace:packages/transform-javascript":
   version: 0.0.0-use.local
   resolution: "@dral/dralbook-transform-javascript@workspace:packages/transform-javascript"
   dependencies:
@@ -670,7 +681,9 @@ __metadata:
     "@babel/traverse": ^7.18.11
     "@babel/types": ^7.19.4
     assert: ^2.0.0
+    buffer: ^6.0.3
     lodash-es: ^4.17.21
+    process: ^0.11.10
     recast: ^0.21.2
     strip-color: ^0.1.0
   languageName: unknown
@@ -684,9 +697,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@dral/lezer-generator-worker@workspace:packages/lezer-generator-worker":
+"@dral/lezer-generator-worker@workspace:^, @dral/lezer-generator-worker@workspace:packages/lezer-generator-worker":
   version: 0.0.0-use.local
   resolution: "@dral/lezer-generator-worker@workspace:packages/lezer-generator-worker"
+  dependencies:
+    "@dral/worker-typescript-magic": "workspace:^"
+    "@lezer/generator": ^1.2.2
   languageName: unknown
   linkType: soft
 
@@ -730,41 +746,44 @@ __metadata:
     "@codemirror/state": ^6.2.0
     "@codemirror/view": ^6.9.1
     "@dral/all-folds-zig": "workspace:*"
+    "@dral/codemirror-helpers": "workspace:^"
+    "@dral/codemirror-subtle-color-picker": "workspace:^"
+    "@dral/dralbook-transform-javascript": "workspace:^"
     "@dral/find-positions-zig": "workspace:*"
+    "@dral/lezer-generator-worker": "workspace:^"
     "@dral/lezer-inspector": "*"
     "@dral/lezer-lezer-error": "workspace:*"
     "@lezer/common": ^1.0.2
     "@lezer/generator": ^1.2.2
-    "@observablehq/graphviz": ^0.2.1
-    "@observablehq/stdlib": ^3.20.0
     "@types/react": ^18.0.20
     "@types/serviceworker": ^0.0.52
     "@vitejs/plugin-react": ^2.1.0
     autoprefixer: ^10.4.12
     bezier-easing: ^2.1.0
-    buffer: ^6.0.3
-    events: ^3.3.0
+    codemirror-awesome-line-wrapping: "workspace:^"
+    codemirror-x-react: "workspace:^"
+    dral-lezer-helpers: "workspace:^"
+    immer: ^9.0.21
     lodash-es: ^4.17.21
     postcss: ^8.4.17
-    prettier: ^2.7.1
     process: ^0.11.10
     react: ^18.2.0
+    react-codemirror-widget: "workspace:^"
     react-dom: ^18.2.0
     react-icons: ^4.6.0
+    react-use-path: ^0.3.1
     rollup-plugin-analyzer: ^4.0.0
     rollup-plugin-visualizer: ^5.8.3
-    shallow-equal: ^1.2.1
     style-mod: ^4.0.0
     styled-components: ^5.3.5
     tailwindcss: ^3.1.8
-    uuid: ^8.3.2
     vite: ^3.1.0
   languageName: unknown
   linkType: soft
 
-"@dral/notebook-app@*, @dral/notebook-app@workspace:web-app":
+"@dral/notebook-app@*, @dral/notebook-app@workspace:simple-notebooks/web-app":
   version: 0.0.0-use.local
-  resolution: "@dral/notebook-app@workspace:web-app"
+  resolution: "@dral/notebook-app@workspace:simple-notebooks/web-app"
   dependencies:
     "@codemirror/autocomplete": ^6.4.2
     "@codemirror/collab": ^6.0.0
@@ -776,48 +795,56 @@ __metadata:
     "@codemirror/search": ^6.2.3
     "@codemirror/state": ^6.2.0
     "@codemirror/view": ^6.9.1
-    "@dral/lezer-inspector": "*"
+    "@dral/codemirror-helpers": "workspace:^"
+    "@dral/dralbook-transform-javascript": "workspace:^"
     "@ionic/react": ^6.2.7
     "@lezer/common": ^1.0.2
-    "@observablehq/graphviz": ^0.2.1
-    "@observablehq/stdlib": ^3.20.0
     "@types/node": ^18.7.18
     "@types/react": ^18.0.20
     "@types/serviceworker": ^0.0.52
     "@typescript/vfs": ^1.4.0
     "@vitejs/plugin-react": ^2.1.0
-    assert: ^2.0.0
     autoprefixer: ^10.4.12
-    buffer: ^6.0.3
-    events: ^3.3.0
+    codemirror-awesome-line-wrapping: "workspace:^"
+    codemirror-debug-syntax-plugin: "workspace:^"
+    codemirror-x-react: "workspace:^"
+    dral-lezer-helpers: "workspace:^"
     htl: ^0.3.1
-    ionicons: ^6.0.3
+    immer: ^9.0.21
+    inspector-x-react: "workspace:^"
+    ionicons: ^7.1.0
+    katex: ^0.16.4
     lodash: ^4.17.21
+    lodash-es: ^4.17.21
+    md-literal: "workspace:^"
     node-emoji: ^1.11.0
+    picocolors: ^1.0.0
+    polyfills: "workspace:^"
     postcss: ^8.4.17
     prettier: ^2.7.1
-    process: ^0.11.10
     react: ^18.2.0
     react-beautiful-dnd: ^13.1.1
+    react-codemirror-widget: "workspace:^"
     react-dom: ^18.2.0
     react-flip-toolkit: ^7.0.16
+    react-is: ^18.2.0
     react-use-path: ^0.3.1
     rollup-plugin-analyzer: ^4.0.0
     rollup-plugin-visualizer: ^5.8.3
     shallow-equal: ^1.2.1
     socket.io-client: ^4.5.1
-    style-mod: ^4.0.0
     styled-components: ^5.3.5
     tailwindcss: ^3.1.8
+    ts-opaque: ^3.0.1
     typescript: ^4.8.3
     uuid: ^8.3.2
     vite: ^3.1.0
   languageName: unknown
   linkType: soft
 
-"@dral/notebook-engine@workspace:node-engine":
+"@dral/notebook-engine@workspace:simple-notebooks/node-engine":
   version: 0.0.0-use.local
-  resolution: "@dral/notebook-engine@workspace:node-engine"
+  resolution: "@dral/notebook-engine@workspace:simple-notebooks/node-engine"
   dependencies:
     "@babel/traverse": ^7.18.11
     "@dral/notebook-app": "*"
@@ -843,7 +870,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@dral/worker-typescript-magic@workspace:packages/worker-typescript-magic":
+"@dral/worker-typescript-magic@workspace:^, @dral/worker-typescript-magic@workspace:packages/worker-typescript-magic":
   version: 0.0.0-use.local
   resolution: "@dral/worker-typescript-magic@workspace:packages/worker-typescript-magic"
   languageName: unknown
@@ -1138,29 +1165,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@observablehq/graphviz@npm:^0.2.1":
-  version: 0.2.1
-  resolution: "@observablehq/graphviz@npm:0.2.1"
-  checksum: 31ebd9f558c00e771e1716f5e546b4442f138533c7a5eb8fb2e7690e21c9597c41826170b887c1e01f969decdeca5956bb23025accea1522728cd88f228bee34
-  languageName: node
-  linkType: hard
-
 "@observablehq/inspector@npm:^3.2.4":
   version: 3.2.4
   resolution: "@observablehq/inspector@npm:3.2.4"
   dependencies:
     isoformat: ^0.2.0
   checksum: 95b9f3e357aaad3f240a0b8e83e28ca5f803eb4480f743c3a30973668ee931bd908565026c6c1b0efa29a9c064b08053aad499ad3b86335cf927717b08c3d679
-  languageName: node
-  linkType: hard
-
-"@observablehq/stdlib@npm:^3.20.0":
-  version: 3.24.0
-  resolution: "@observablehq/stdlib@npm:3.24.0"
-  dependencies:
-    d3-dsv: ^2.0.0
-    d3-require: ^1.3.0
-  checksum: cd16865bc1936b91398a1d4c6f7f889122a7915beb36af286c1b59bc1d44fd37663f6396bb97e19877d15d9a6eead8ac9ea6f3ca38e33fbaff44cb8924c2c62e
   languageName: node
   linkType: hard
 
@@ -1975,7 +1985,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"codemirror-awesome-line-wrapping@workspace:packages/codemirror-awesome-line-wrapping":
+"codemirror-awesome-line-wrapping@workspace:^, codemirror-awesome-line-wrapping@workspace:packages/codemirror-awesome-line-wrapping":
   version: 0.0.0-use.local
   resolution: "codemirror-awesome-line-wrapping@workspace:packages/codemirror-awesome-line-wrapping"
   dependencies:
@@ -1987,7 +1997,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"codemirror-debug-syntax-plugin@workspace:packages/codemirror-debug-syntax-plugin":
+"codemirror-debug-syntax-plugin@workspace:^, codemirror-debug-syntax-plugin@workspace:packages/codemirror-debug-syntax-plugin":
   version: 0.0.0-use.local
   resolution: "codemirror-debug-syntax-plugin@workspace:packages/codemirror-debug-syntax-plugin"
   peerDependencies:
@@ -1996,14 +2006,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"codemirror-x-react@workspace:packages/codemirror-x-react":
+"codemirror-x-react@workspace:^, codemirror-x-react@workspace:packages/codemirror-x-react":
   version: 0.0.0-use.local
   resolution: "codemirror-x-react@workspace:packages/codemirror-x-react"
   dependencies:
     "@codemirror/state": ^6.2.0
     "@codemirror/view": ^6.9.1
     lodash-es: ^4.17.21
-    styled-components: ^5.3.6
   languageName: unknown
   linkType: soft
 
@@ -2048,10 +2057,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"commander@npm:2":
-  version: 2.20.3
-  resolution: "commander@npm:2.20.3"
-  checksum: ab8c07884e42c3a8dbc5dd9592c606176c7eb5c1ca5ff274bcf907039b2c41de3626f684ea75ccf4d361ba004bbaff1f577d5384c155f3871e456bdf27becf9e
+"commander@npm:^8.0.0":
+  version: 8.3.0
+  resolution: "commander@npm:8.3.0"
+  checksum: 0f82321821fc27b83bd409510bb9deeebcfa799ff0bf5d102128b500b7af22872c0c92cb6a0ebc5a4cf19c6b550fba9cedfa7329d18c6442a625f851377bacf0
   languageName: node
   linkType: hard
 
@@ -2177,34 +2186,6 @@ __metadata:
   version: 3.1.1
   resolution: "csstype@npm:3.1.1"
   checksum: 1f7b4f5fdd955b7444b18ebdddf3f5c699159f13e9cf8ac9027ae4a60ae226aef9bbb14a6e12ca7dba3358b007cee6354b116e720262867c398de6c955ea451d
-  languageName: node
-  linkType: hard
-
-"d3-dsv@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "d3-dsv@npm:2.0.0"
-  dependencies:
-    commander: 2
-    iconv-lite: 0.4
-    rw: 1
-  bin:
-    csv2json: bin/dsv2json
-    csv2tsv: bin/dsv2dsv
-    dsv2dsv: bin/dsv2dsv
-    dsv2json: bin/dsv2json
-    json2csv: bin/json2dsv
-    json2dsv: bin/json2dsv
-    json2tsv: bin/json2dsv
-    tsv2csv: bin/dsv2dsv
-    tsv2json: bin/dsv2json
-  checksum: 01b12d81e4ca3996f2e921388b1929c358a39711bf250f2c53dd0e452b80465ebe31ddb58a4064f160322dec7aaf2ceae1a249874af989404705fcfdf1e9b64d
-  languageName: node
-  linkType: hard
-
-"d3-require@npm:^1.3.0":
-  version: 1.3.0
-  resolution: "d3-require@npm:1.3.0"
-  checksum: 126369f4cdbfa70fe68c207875f7c2dca4e9f656a1b55a89b41be99e0d833d7cb61857ee3d126076981bb86a93d386f1b016c633185eb1fc9d2b602ccc5a77b9
   languageName: node
   linkType: hard
 
@@ -2371,7 +2352,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dral-lezer-helpers@workspace:packages/dral-lezer-helpers":
+"dral-lezer-helpers@workspace:^, dral-lezer-helpers@workspace:packages/dral-lezer-helpers":
   version: 0.0.0-use.local
   resolution: "dral-lezer-helpers@workspace:packages/dral-lezer-helpers"
   dependencies:
@@ -3231,7 +3212,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"iconv-lite@npm:0.4, iconv-lite@npm:0.4.24":
+"iconv-lite@npm:0.4.24":
   version: 0.4.24
   resolution: "iconv-lite@npm:0.4.24"
   dependencies:
@@ -3267,6 +3248,13 @@ __metadata:
   version: 9.0.19
   resolution: "immer@npm:9.0.19"
   checksum: f02ee53989989c287cd548a3d817fccf0bfe56db919755ee94a72ea3ae78a00363fba93ee6c010fe54a664380c29c53d44ed4091c6a86cae60957ad2cfabc010
+  languageName: node
+  linkType: hard
+
+"immer@npm:^9.0.21":
+  version: 9.0.21
+  resolution: "immer@npm:9.0.21"
+  checksum: 70e3c274165995352f6936695f0ef4723c52c92c92dd0e9afdfe008175af39fa28e76aafb3a2ca9d57d1fb8f796efc4dd1e1cc36f18d33fa5b74f3dfb0375432
   languageName: node
   linkType: hard
 
@@ -3315,7 +3303,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"inspector-x-react@workspace:packages/inspector-x-react":
+"inspector-x-react@workspace:^, inspector-x-react@workspace:packages/inspector-x-react":
   version: 0.0.0-use.local
   resolution: "inspector-x-react@workspace:packages/inspector-x-react"
   dependencies:
@@ -3324,12 +3312,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"ionicons@npm:^6.0.3, ionicons@npm:^6.1.3":
+"ionicons@npm:^6.1.3":
   version: 6.1.3
   resolution: "ionicons@npm:6.1.3"
   dependencies:
     "@stencil/core": ^2.18.0
   checksum: c63aa3e0f83129129a836f97f07547b6c53a244e84a41f838a70b4eb17ddc9d926526e1fdee63f897a32300523192fe0c0889aa38617b9df01d15c62e9cb3a37
+  languageName: node
+  linkType: hard
+
+"ionicons@npm:^7.1.0":
+  version: 7.1.0
+  resolution: "ionicons@npm:7.1.0"
+  dependencies:
+    "@stencil/core": ^2.18.0
+  checksum: 66e05b7d7c9625085cad9640ff2e1bb2e7737fa25855911bd2e516b50f1cf441761cec6e894dfbc2a9770e577f1d83d851d1453cb210d6bb0064ad15fa484e9c
   languageName: node
   linkType: hard
 
@@ -3540,6 +3537,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"katex@npm:^0.16.4":
+  version: 0.16.4
+  resolution: "katex@npm:0.16.4"
+  dependencies:
+    commander: ^8.0.0
+  bin:
+    katex: cli.js
+  checksum: 94eaf1fbd8365792308527695c09baa6d2d84e2d0170e4af44fb12be3ed403fb3430caff2410117f2f1a9dfdb329f61ab9611d97e645d9c89ee60940698a45cc
+  languageName: node
+  linkType: hard
+
 "lezer-template@workspace:packages/lezer-template":
   version: 0.0.0-use.local
   resolution: "lezer-template@workspace:packages/lezer-template"
@@ -3700,7 +3708,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"md-literal@workspace:packages/md-literal":
+"md-literal@workspace:^, md-literal@workspace:packages/md-literal":
   version: 0.0.0-use.local
   resolution: "md-literal@workspace:packages/md-literal"
   dependencies:
@@ -4276,7 +4284,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"polyfills@workspace:packages/node-polyfills":
+"polyfills@workspace:^, polyfills@workspace:packages/node-polyfills":
   version: 0.0.0-use.local
   resolution: "polyfills@workspace:packages/node-polyfills"
   languageName: unknown
@@ -4512,7 +4520,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-codemirror-widget@workspace:packages/react-codemirror-widget":
+"react-codemirror-widget@workspace:^, react-codemirror-widget@workspace:packages/react-codemirror-widget":
   version: 0.0.0-use.local
   resolution: "react-codemirror-widget@workspace:packages/react-codemirror-widget"
   dependencies:
@@ -4585,6 +4593,13 @@ __metadata:
   version: 17.0.2
   resolution: "react-is@npm:17.0.2"
   checksum: 9d6d111d8990dc98bc5402c1266a808b0459b5d54830bbea24c12d908b536df7883f268a7868cfaedde3dd9d4e0d574db456f84d2e6df9c4526f99bb4b5344d8
+  languageName: node
+  linkType: hard
+
+"react-is@npm:^18.2.0":
+  version: 18.2.0
+  resolution: "react-is@npm:18.2.0"
+  checksum: e72d0ba81b5922759e4aff17e0252bd29988f9642ed817f56b25a3e217e13eea8a7f2322af99a06edb779da12d5d636e9fda473d620df9a3da0df2a74141d53e
   languageName: node
   linkType: hard
 
@@ -4820,13 +4835,6 @@ __metadata:
   dependencies:
     queue-microtask: ^1.2.2
   checksum: cb4f97ad25a75ebc11a8ef4e33bb962f8af8516bb2001082ceabd8902e15b98f4b84b4f8a9b222e5d57fc3bd1379c483886ed4619367a7680dad65316993021d
-  languageName: node
-  linkType: hard
-
-"rw@npm:1":
-  version: 1.3.3
-  resolution: "rw@npm:1.3.3"
-  checksum: c20d82421f5a71c86a13f76121b751553a99cd4a70ea27db86f9b23f33db941f3f06019c30f60d50c356d0bd674c8e74764ac146ea55e217c091bde6fba82aa3
   languageName: node
   linkType: hard
 
@@ -5231,7 +5239,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"styled-components@npm:^5.3.5, styled-components@npm:^5.3.6":
+"styled-components@npm:^5.3.5":
   version: 5.3.6
   resolution: "styled-components@npm:5.3.6"
   dependencies:
@@ -5420,6 +5428,13 @@ __metadata:
     ts-node-transpile-only: dist/bin-transpile.js
     ts-script: dist/bin-script-deprecated.js
   checksum: 090adff1302ab20bd3486e6b4799e90f97726ed39e02b39e566f8ab674fd5bd5f727f43615debbfc580d33c6d9d1c6b1b3ce7d8e3cca3e20530a145ffa232c35
+  languageName: node
+  linkType: hard
+
+"ts-opaque@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "ts-opaque@npm:3.0.1"
+  checksum: 146f71d08d5915ead4551dce310719c53ead762a3ca6219373beacf273c84a7988b7716e5f8b9d0e9013d87ed84bc9f1e794ecdc4ff14083723ceacd9899040c
   languageName: node
   linkType: hard
 

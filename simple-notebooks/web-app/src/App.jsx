@@ -1,36 +1,48 @@
 import React from "react";
-import "./App.css";
-
 import { produce } from "immer";
-import { io } from "socket.io-client";
-import { LastCreatedCells } from "./Notebook";
+import { isEmpty, mapValues, throttle } from "lodash";
 import styled from "styled-components";
-import { EditorState, Facet } from "@codemirror/state";
 import {
-  CellEditorStatesField,
-  CellPlugin,
-  editor_state_for_cell,
-  nested_cell_states_basics,
-} from "./NotebookEditor";
-import { SelectedCellsField, selected_cells_keymap } from "./cell-selection";
-import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
+  CellMetaField,
+  CellTypeFacet,
+} from "./packages/codemirror-notebook/cell";
+import {
+  SelectedCellsField,
+  selected_cells_keymap,
+} from "./packages/codemirror-notebook/cell-selection";
+import { EditorView, keymap } from "@codemirror/view";
 import {
   shared_history,
   historyKeymap,
-} from "./packages/codemirror-nexus/codemirror-shared-history";
-import { mapValues } from "lodash";
+} from "./packages/codemirror-editor-in-chief/codemirror-shared-history";
 import {
   CellIdOrder,
-  cell_movement_extension_default,
-} from "./packages/codemirror-nexus/codemirror-cell-movement";
-import { notebook_keymap } from "./packages/codemirror-nexus/add-move-and-run-cells";
-import { File } from "./File";
-import { NotebookFilename, NotebookId } from "./notebook-types";
+  cell_movement_extension,
+} from "./packages/codemirror-notebook/cell-movement";
+import { NotebookView } from "./Notebook";
+import {
+  NotebookFilename,
+  NotebookId,
+} from "./packages/codemirror-notebook/cell";
+// import { typescript_extension } from "./packages/typescript-server-webworker/codemirror-typescript.js";
+import {
+  EditorInChief,
+  EditorExtension,
+  create_nested_editor_state,
+} from "./packages/codemirror-editor-in-chief/editor-in-chief";
+import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
+import {
+  cell_keymap,
+  notebook_keymap,
+} from "./packages/codemirror-notebook/add-move-and-run-cells.js";
+import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
+import { add_single_cell_when_all_cells_are_removed } from "./packages/codemirror-notebook/add-cell-when-last-is-removed";
+import { useSocket } from "./use/use-socket.js";
 
-let cell_id_order_from_notebook_facet = CellIdOrder.compute(
-  [CellEditorStatesField],
-  (state) => state.field(CellEditorStatesField).cell_order
-);
+import "./App.css";
+import { ScopedStorage, useScopedStorage } from "./use/scoped-storage.js";
+import { notebook_state_to_notebook_serialized } from "./notebook-utils";
+import { DEFAULT_WORKSPACE } from "./yuck/DEFAULT_WORKSPACE";
 
 /**
  * @typedef WorkspaceSerialized
@@ -38,7 +50,7 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
  * @property {{
  *  [filename: string]: {
  *    filename: string,
- *    notebook: import("./notebook-types").NotebookSerialized,
+ *    notebook: import("./packages/codemirror-notebook/cell").NotebookSerialized,
  *  }
  * }} files
  */
@@ -49,71 +61,116 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
  * @property {{
  *  [filename: string]: {
  *    filename: string,
- *    state: EditorState,
+ *    state: EditorInChief,
  *  }
  * }} files
  */
 
-/** @param {{ filename: string, notebook: import("./notebook-types").NotebookSerialized}} notebook */
-let notebook_to_state = ({ filename, notebook }) => {
-  let notebook_state = CellEditorStatesField.init((editorstate) => {
-    return {
-      cell_order: notebook.cell_order,
-      cells: mapValues(notebook.cells, (cell) => {
-        return editor_state_for_cell(cell, editorstate);
-      }),
-      transactions_to_send_to_cells: [],
-      cell_with_current_selection: null,
-    };
-  });
-  return EditorState.create({
+let cell_id_order_from_notebook_facet = CellIdOrder.compute(
+  [CellOrderField.field],
+  (state) => state.field(CellOrderField.field)
+);
+
+/**
+ * @param {EditorInChief} editorstate
+ * @param {import("./packages/codemirror-notebook/cell").Cell} cell
+ */
+export let create_cell_state = (editorstate, cell) => {
+  return create_nested_editor_state({
+    parent: editorstate.editorstate,
+    editor_id: cell.id,
+    doc: cell.unsaved_code ?? cell.code,
     extensions: [
-      notebook_state,
-      nested_cell_states_basics,
-
-      notebook_keymap,
-
-      SelectedCellsField,
-      cell_id_order_from_notebook_facet,
-
-      cell_movement_extension_default,
-      selected_cells_keymap,
-      LastCreatedCells,
-
-      // This works so smooth omg
-      [shared_history(), keymap.of(historyKeymap)],
-
-      NotebookId.of(notebook.id),
-      NotebookFilename.of(filename),
-
-      CellPlugin.of(
-        EditorView.scrollMargins.of(() => ({ top: 100, bottom: 100 }))
-      ),
-
-      // just_for_kicks_extension
-      // UpdateLocalStorage,
+      CellMetaField.init(() => ({
+        code: cell.code,
+        is_waiting: cell.is_waiting,
+        requested_run_time: cell.requested_run_time ?? 0,
+        folded: cell.folded,
+        type: cell.type,
+      })),
     ],
   });
 };
 
-let useSocket = () => {
-  let socket = React.useMemo(() => {
-    return io("http://localhost:3099", {
-      autoConnect: false,
-    });
-  }, []);
-  React.useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
-    }
-    return () => {
-      socket.close();
-    };
-  }, [socket]);
-  return socket;
+/** @param {{ filename: string, notebook: import("./packages/codemirror-notebook/cell").NotebookSerialized}} notebook */
+let notebook_to_state = ({ filename, notebook }) => {
+  return EditorInChief.create({
+    editors: (editorstate) => {
+      return mapValues(notebook.cells, (cell) =>
+        create_cell_state(editorstate, cell)
+      );
+    },
+    extensions: [
+      CellOrderField.init(() => notebook.cell_order),
+      EditorExtension.of(
+        CellTypeFacet.compute(
+          [CellMetaField],
+          (state) => state.field(CellMetaField).type
+        )
+      ),
+
+      cell_id_order_from_notebook_facet,
+      cell_movement_extension,
+
+      SelectedCellsField,
+      selected_cells_keymap,
+      LastCreatedCells,
+      add_single_cell_when_all_cells_are_removed,
+
+      EditorExtension.of(cell_keymap),
+      notebook_keymap,
+
+      NotebookId.of(notebook.id),
+      NotebookFilename.of(filename),
+
+      EditorExtension.of(
+        EditorView.scrollMargins.of(() => ({ top: 200, bottom: 100 }))
+      ),
+
+      // This works so smooth omg
+      [shared_history(), keymap.of(historyKeymap)],
+
+      // typescript_extension((state) => {
+      //   let notebook = state.field(CellEditorsField);
+
+      //   let code = "";
+      //   let cursor = 0;
+      //   /** @type {{ [cell_id: string]: { start: number, end: number } }} */
+      //   let cell_map = {};
+
+      //   let type_references = `
+      //   /// <reference lib="es5" />
+      //   /// <reference lib="es2015" />
+      //   /// <reference lib="es2015.collection" />
+      //   /// <reference lib="es2015.core" />
+      //   /// <reference types="node" />
+      //   `;
+      //   code += type_references;
+      //   cursor += type_references.length;
+
+      //   for (let cell_id of notebook.cell_order) {
+      //     let cell_state = notebook.cells[cell_id];
+      //     let cell = cell_state.field(CellMetaField);
+      //     let unsaved_code = cell_state.doc.toString();
+
+      //     // Using unsaved code because I want typescript to be very optimistic
+      //     let code_to_add = unsaved_code;
+      //     cell_map[cell_id] = {
+      //       start: cursor,
+      //       end: cursor + code_to_add.length,
+      //     };
+      //     code += code_to_add + "\n";
+      //     cursor += code_to_add.length + 1;
+      //   }
+
+      //   return { code, cell_map };
+      // }),
+    ],
+  });
 };
 
 let serialized_workspace_to_workspace = (serialized) => {
+  console.log(`serialized.id:`, serialized.id);
   return /** @type {Workspace} */ ({
     id: serialized.id,
     files: mapValues(serialized.files, (file) => {
@@ -146,61 +203,52 @@ let FileTab = styled.button`
   }
 `;
 
-function App() {
-  // {
-  //   id: "1",
-  //   files: {
-  //     "app.js": {
-  //       filename: "app.js",
-  //       notebook: {
-  //         id: "1",
-  //         // cell_order: ["1", "2", "3"],
-  //         cells: {
-  //           1: {
-  //             id: "1",
-  //             type: "text",
-  //             code: "# My notebook",
-  //             unsaved_code: "# My notebook",
-  //             last_run: Date.now(),
-  //             is_waiting: true,
-  //           },
-  //           2: {
-  //             id: "2",
-  //             code: "let xs = [1,2,3,4]",
-  //             unsaved_code: "let xs = [1,2,3,4]",
-  //             last_run: Date.now(),
-  //             is_waiting: true,
-  //           },
-  //           3: {
-  //             id: "3",
-  //             code: "xs.map((x) => x * 2)",
-  //             unsaved_code: "xs.map((x) => x * 2)",
-  //             last_run: Date.now(),
-  //             is_waiting: true,
-  //           },
-  //         },
-  //       },
-  //     }
-  //   }
-  // }
+let workspace_storage = new ScopedStorage("workspace");
 
-  let [workspace, set_workspace] = React.useState(
-    /** @type {Workspace | null} */ (null)
+function App() {
+  let [workspace_json, set_workspace_json] = useScopedStorage(
+    workspace_storage,
+    DEFAULT_WORKSPACE
   );
+  let update_localstorage = React.useMemo(() => {
+    return throttle((/** @type {Workspace} */ workspace) => {
+      set_workspace_json(
+        JSON.stringify(
+          /** @type {WorkspaceSerialized} */ ({
+            id: workspace.id,
+            files: mapValues(workspace.files, (file) => {
+              return {
+                filename: file.filename,
+                notebook: notebook_state_to_notebook_serialized(file.state),
+              };
+            }),
+          })
+        )
+      );
+    }, 500);
+  }, [set_workspace_json]);
+
+  let initial_workspace = React.useMemo(() => {
+    let workspace = JSON.parse(workspace_json);
+    return serialized_workspace_to_workspace(workspace);
+  }, []);
+
+  let [workspace, set_workspace] = React.useState(initial_workspace);
 
   let [open_file, set_open_file] = React.useState(
     /** @type {string | null} */ (null)
   );
 
-  let socket = useSocket();
+  // let socket = useSocket();
 
-  React.useEffect(() => {
-    socket.emit("load-workspace-from-directory");
-    socket.once("load-workspace-from-directory", (workspace) => {
-      console.log(`workspace:`, workspace);
-      set_workspace(serialized_workspace_to_workspace(workspace));
-    });
-  }, []);
+  // React.useEffect(() => {
+  //   socket.emit("load-workspace-from-directory");
+  //   // @ts-ignore
+  //   socket.once("load-workspace-from-directory", (workspace) => {
+  //     console.log(`workspace YEH:`, workspace);
+  //     set_workspace(serialized_workspace_to_workspace(workspace));
+  //   });
+  // }, []);
 
   if (workspace == null) {
     return <div></div>;
@@ -211,6 +259,7 @@ function App() {
     if (first_file != null) {
       set_open_file(first_file);
     }
+    return <div>Uhh</div>;
   }
 
   return (
@@ -250,18 +299,18 @@ function App() {
       {open_file == null ? (
         <div></div>
       ) : (
-        <File
-          files={workspace.files}
+        <NotebookView
           key={open_file}
-          socket={socket}
           state={workspace.files[open_file].state}
           onChange={(state) => {
-            set_workspace(
-              produce((workspace) => {
-                // @ts-ignore
-                workspace.files[open_file].state = state;
-              })
-            );
+            let new_workspace = produce(workspace, (workspace) => {
+              // @ts-ignore
+              workspace.files[open_file].state = state;
+            });
+
+            update_localstorage(new_workspace);
+
+            set_workspace(new_workspace);
           }}
         />
       )}

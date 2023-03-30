@@ -226,12 +226,12 @@ let virtual_fs = {
 let cool_console = console;
 
 let initialize_vfs = async () => {
-  // let console = cool_console;
-  let console = {
-    log: (...args) => {},
-    group: (...args) => {},
-    groupEnd: () => {},
-  };
+  let console = cool_console;
+  // let console = {
+  //   log: (...args) => {},
+  //   group: (...args) => {},
+  //   groupEnd: () => {},
+  // };
 
   let directory = "../../../node_modules/typescript/lib/";
   // @ts-ignore
@@ -408,14 +408,6 @@ let initialize_vfs = async () => {
 };
 
 let env_promise = initialize_vfs();
-
-/**
- * @typedef MyMessages
- * @type {
- *  | { type: "update-notebook-file", code: string }
- *  | { type: "get-me-completions", position: number }
- * }
- */
 
 let commands = {
   /** @param {{ code: string }} data */

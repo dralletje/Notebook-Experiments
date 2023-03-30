@@ -475,7 +475,6 @@ export default (entry, context) => {
 
         for (const type of typedArrTypes) {
           if (obj instanceof context[type]) {
-            console.log(obj, type);
             return encounterTypedArray(obj, type);
           }
         }
