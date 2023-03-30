@@ -171,6 +171,10 @@ ${TOML.stringify({ code })}
         type: type,
         last_run: 0,
         code: content,
+
+        // OOPS
+        // prettier-ignore
+        requested_run_time: 0,
       };
     }),
   };

@@ -144,7 +144,7 @@ export let notebook_keymap = EditorInChiefKeymap.of([
                   MutateCellMetaEffect.of((cell) => {
                     cell.code = formatted;
                     cell.is_waiting = true;
-                    cell.last_run = now;
+                    cell.requested_run_time = now;
                   }),
                 ],
               },
@@ -181,7 +181,7 @@ export let cell_keymap = Prec.high(
             MutateCellMetaEffect.of((cell) => {
               cell.code = formatted;
               cell.is_waiting = true;
-              cell.last_run = Date.now();
+              cell.requested_run_time = Date.now();
             }),
           ],
         });
@@ -270,7 +270,7 @@ export let cell_keymap = Prec.high(
                   MutateCellMetaEffect.of((cell) => {
                     cell.code = code;
                     cell.is_waiting = true;
-                    cell.last_run = Date.now();
+                    cell.requested_run_time = Date.now();
                   }),
                 ]
               : []),

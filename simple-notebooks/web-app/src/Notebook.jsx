@@ -95,7 +95,8 @@ export function NotebookView({ state, onChange, socket, files }) {
           ...cell_state.field(CellMetaField),
           type: type,
 
-          // Uhhhh TODO??
+          // This autosaves the text cells
+          // TODO? Do we want this?
           ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
         };
       }),
@@ -111,8 +112,6 @@ export function NotebookView({ state, onChange, socket, files }) {
 
   // let engine = useEngine(notebook_with_filename, socket);
   let engine = useLocalEnvironment(notebook_with_filename);
-
-  console.log(`engine:`, engine);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>

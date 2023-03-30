@@ -9,6 +9,9 @@ import { defaultKeymap, indentLess, indentMore } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { indentUnit } from "@codemirror/language";
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
+import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { tags } from "@lezer/highlight";
 
 import { markdown_html_preview } from "./parts/html-preview.jsx";
 import { markdown_text_decorations } from "./parts/text-marks.js";
@@ -20,25 +23,30 @@ import { markdown_links } from "./parts/links.js";
 import { markdown_html } from "./parts/html.js";
 import { markdown_code_blocks } from "./parts/code-blocks.js";
 import { markdown_tables } from "./parts/tables.js";
-
-import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
-import { MarkdownKatex } from "./parts/katex/KatexParser";
+import { MarkdownKatexParser } from "./parts/katex/KatexParser";
 import { markdown_katex } from "./parts/katex/katex";
 
 // import { MarkdownInterpolation } from "./parts/interpolation/InterpolationParser";
 
-import {
-  HighlightStyle,
-  syntaxHighlighting,
-  LanguageSupport,
-} from "@codemirror/language";
-import { tags } from "@lezer/highlight";
+export {
+  markdown_html_preview,
+  markdown_text_decorations,
+  markdown_headers,
+  markdown_show_hard_breaks,
+  markdown_emoji_and_hr,
+  markdown_blocks_extension,
+  markdown_links,
+  markdown_html,
+  markdown_code_blocks,
+  markdown_tables,
+  MarkdownKatexParser,
+  markdown_katex,
+};
 
 let markdown_styling_base_theme = EditorView.baseTheme({
   "& .cm-content": {
     "--accent-color": "rgb(200, 0, 0)",
     "accent-color": "var(--accent-color)",
-    // fontFamily: "menlo",
     color: "white",
   },
   "& .cm-scroller": {
@@ -52,6 +60,7 @@ let my_markdown_keymap = keymap.of([
     run: (view) => {
       let { from, to } = view.state.selection.main;
       let current_line = view.state.doc.lineAt(from);
+      // @ts-ignore I'm pretty sure `current_line` exists here
       let indentation = current_line.text.match(/^\s*/)[0];
       view.dispatch({
         changes: { from: from, to: to, insert: `\n${indentation}` },
@@ -70,7 +79,7 @@ export let basic_markdown_setup = [
     addKeymap: false,
     base: markdownLanguage,
     extensions: [
-      MarkdownKatex,
+      MarkdownKatexParser,
       // MarkdownInterpolation,
     ],
     // TODO Kind of part of markdown_code_blocks
@@ -129,6 +138,7 @@ export let basic_markdown_setup = [
       EditorSelection.cursor(
         selection.head,
         1,
+        // @ts-ignore null vs undefined... Think Marijn just mixed them up
         selection.bidiLevel,
         selection.goalColumn
       ),

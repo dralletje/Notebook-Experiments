@@ -6,16 +6,16 @@ import { html, md } from "./leaf/html.js";
 import { ExecutionResult, notebook_step } from "./parts/notebook-step.js";
 import { Engine, Notebook } from "./types.js";
 import { serialize } from "./parts/serialize";
+import { StacklessError } from "./leaf/StacklessError.js";
 
-let try_with_default = (fn, def) => {
+let serialize_with_default = ({ value, fallback, context }) => {
   try {
-    return fn();
+    return serialize(value, context);
   } catch (error) {
-    console.log(
-      chalk.red.bold`Couldn't serialize error:`,
-      chalk.red(error.stack)
-    );
-    return def;
+    console.log(chalk.red.bold`COULDN'T SERIALIZE:`);
+    console.log(chalk.red(error.stack));
+    console.log(chalk.blue`value:`, value);
+    return serialize(fallback, globalThis);
   }
 };
 
@@ -73,26 +73,6 @@ let run_notebook = async (
   while (did_change === true) {
     did_change = false;
 
-    // TODO This shouldn't be here, run_notebook shouldn't very much care
-    // .... about what is in an engine
-    for (let [cell_id, cell] of Object.entries(notebook_ref.current.cells)) {
-      engine.cylinders[cell_id] ??= {
-        id: cell_id,
-        name: cell_id,
-        last_run: -Infinity,
-        last_internal_run: -Infinity,
-        running: false,
-        waiting: false,
-        result: {
-          type: "return",
-          value: undefined,
-        },
-        variables: {},
-        upstream_cells: [],
-        abort_controller: null,
-      };
-    }
-
     await notebook_step({
       engine,
       filename: filename,
@@ -112,32 +92,18 @@ let engine_to_json = (engine: Engine) => {
   try {
     return {
       cylinders: mapValues(engine.cylinders, (cylinder) => ({
-        name: cylinder.name,
-        result:
-          cylinder.result.type === "return"
-            ? {
-                type: "return",
-                name: cylinder.result.name,
-                value: try_with_default(
-                  () => serialize(cylinder.result.value?.default, globalThis),
-                  { 0: { type: `couldn't serialize` } }
-                ),
-              }
-            : cylinder.result.type === "throw"
-            ? {
-                type: "throw",
-                value: try_with_default(
-                  () => serialize(cylinder.result.value, globalThis),
-                  {
-                    0: { type: `couldn't serialize` },
-                  }
-                ),
-              }
-            : { type: "pending" },
-
+        name: cylinder.id,
         last_run: cylinder.last_run,
         running: cylinder.running,
         waiting: cylinder.waiting,
+        result: {
+          ...cylinder.result,
+          value: serialize_with_default({
+            value: cylinder.result.value,
+            fallback: new StacklessError(`Couldn't serialize value`),
+            context: globalThis,
+          }),
+        },
       })),
     };
   } catch (error) {
@@ -148,7 +114,7 @@ let engine_to_json = (engine: Engine) => {
 let engine: Engine = {
   cylinders: {},
   internal_run_counter: 1,
-  dag: {},
+  graph: {},
   is_busy: false,
   parse_cache: new Map(),
 };

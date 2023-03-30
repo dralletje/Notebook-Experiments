@@ -318,7 +318,6 @@ export let markdown_blocks_extension = [
 
   AAAAA,
 
-  // TODO Compute based on syntaxtree 😅
   DecorationsFromTreeSortForMe(search_block_or_inline_decorations),
 
   DecorationsFromTreeSortForMe(

@@ -321,8 +321,7 @@ export let Cell = ({
 
   let classes = compact([
     cylinder.running && "running",
-    (cylinder.waiting ||
-      (cylinder.last_run ?? -Infinity) < (cell.last_run ?? -Infinity)) &&
+    (cylinder.waiting || cylinder.last_run < cell.requested_run_time) &&
       "pending",
     cylinder.result?.type === "throw" && "error",
     cylinder.result?.type === "return" && "success",

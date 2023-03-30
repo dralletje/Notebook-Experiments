@@ -81,7 +81,7 @@ export let create_cell_state = (editorstate, cell) => {
       CellMetaField.init(() => ({
         code: cell.code,
         is_waiting: cell.is_waiting,
-        last_run: cell.last_run,
+        requested_run_time: cell.requested_run_time,
         folded: cell.folded,
         type: cell.type,
       })),

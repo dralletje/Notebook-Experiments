@@ -111,4 +111,4 @@ export const MarkdownKatexInline: MarkdownConfig = {
   ],
 };
 
-export const MarkdownKatex = [MarkdownKatexBlock, MarkdownKatexInline];
+export const MarkdownKatexParser = [MarkdownKatexBlock, MarkdownKatexInline];

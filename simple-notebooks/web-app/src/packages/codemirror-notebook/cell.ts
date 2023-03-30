@@ -11,7 +11,7 @@ export let empty_cell = (type: "code" | "text" = "code"): Cell => {
     type: type,
     code: "",
     unsaved_code: "",
-    last_run: -Infinity,
+    requested_run_time: -Infinity,
   };
 };
 
@@ -19,7 +19,7 @@ export let NudgeCell = Annotation.define();
 
 type CellMeta = {
   code: string;
-  last_run: number;
+  requested_run_time: number;
   is_waiting?: boolean;
   folded?: boolean;
   type: "code" | "text";
@@ -47,7 +47,7 @@ export let CellMetaField = StateField.define<CellMeta>({
     return {
       code: "",
       is_waiting: false,
-      last_run: -Infinity,
+      requested_run_time: -Infinity,
       folded: false,
       type: "code",
     };
@@ -85,7 +85,7 @@ export type Cell = {
   type: "code" | "text";
   code: string;
   unsaved_code: string;
-  last_run: number;
+  requested_run_time: number;
   is_waiting?: boolean;
   folded?: boolean;
 };
@@ -101,7 +101,7 @@ export type EngineShadow = {
   cylinders: { [id: string]: CylinderShadow };
 };
 export type CylinderShadow = {
-  last_run: number | null;
+  last_run: number;
   result: Result<any, any> | null;
   running: boolean;
   waiting: boolean;

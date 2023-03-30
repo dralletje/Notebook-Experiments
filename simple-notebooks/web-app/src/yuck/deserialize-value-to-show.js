@@ -90,9 +90,10 @@ export let deserialize = (index, heap, result_heap = {}) => {
     );
     return md(strings, ...interpolations);
   } else if (result.type === "@ecmascript/class") {
-    // TODO This is cool and all, but actually doesn't show anything
-    // .... because observable inspector is lame
     let my_class = class {};
+    try {
+      my_class = eval(`let x = class ${result.name} {}; x`);
+    } catch {}
     for (let [key, serialized] of result.statics) {
       try {
         my_class[key] = deserialize(serialized, heap, result_heap);

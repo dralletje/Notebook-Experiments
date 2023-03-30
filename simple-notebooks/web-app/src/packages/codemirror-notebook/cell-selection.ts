@@ -1,5 +1,4 @@
-import { StateEffect, StateField } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
+import { StateEffect } from "@codemirror/state";
 import { CellId } from "./cell";
 import { CellOrderEffect, CellOrderField } from "./cell-order";
 import {

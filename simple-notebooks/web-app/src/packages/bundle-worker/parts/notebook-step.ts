@@ -24,11 +24,13 @@ let cells_that_need_running = (
     let cell = notebook.cells[cell_id];
     let cylinder = engine.cylinders[cell_id];
 
-    invariant(cell.last_run != null, `cell.last_run shouldn't be null`);
-    invariant(cylinder?.last_run != null, `cell.last_run shouldn't be null`);
+    // prettier-ignore
+    invariant(cell.requested_run_time != null, `cell.requested_run_time shouldn't be null`);
+    // prettier-ignore
+    invariant(cylinder?.last_run != null, `cylinder.last_run shouldn't be null`);
 
     // Cell has been sent to be re-run, also run it!
-    if (cell.last_run > cylinder.last_run) {
+    if (cell.requested_run_time > cylinder.last_run) {
       cell_should_run_at_map[cell_id] = Infinity;
       cells_that_should_run.push(cell_id);
       continue;
@@ -38,6 +40,9 @@ let cells_that_need_running = (
     let should_run_at = Math.max(
       cylinder.last_internal_run,
       ...graph[cell_id].in.map(
+        // Something this is undefined, because this cell is part of a cycle
+        // and the upstream cell is later in `sorted`. There is a fix for this
+        // in the analysis step.
         ([parent_id]) => cell_should_run_at_map[parent_id]
       ),
 
@@ -121,7 +126,7 @@ type StaticResult =
  * - Do nothing for cells that are just markdown
  * - Find cycles and multiple definitions
  *
- * TODO Maybe split up the syntax stuff from the cycles/multiple definitions stuff?
+ * TODO? Maybe split up the syntax stuff from the cycles/multiple definitions stuff?
  */
 let get_analysis_results = (
   cells_to_run: CellId[],
@@ -137,7 +142,7 @@ let get_analysis_results = (
       : []
   );
 
-  let multiple_definitions = Graph.double_definitions(graph);
+  let multiple_definitions = Graph.multiple_definitions(graph);
 
   return uniq([...cells_to_run, ...cycles_to_run]).flatMap((cell_id) => {
     let parsed = parsed_cells[cell_id];
@@ -227,6 +232,24 @@ export let notebook_step = async ({
     "There are cells currently running!"
   );
 
+  // Make sure every cell has a cylinder
+  for (let [cell_id, cell] of Object.entries(notebook.cells)) {
+    engine.cylinders[cell_id] ??= {
+      id: cell_id,
+      last_run: -Infinity,
+      last_internal_run: -Infinity,
+      running: false,
+      waiting: false,
+      result: {
+        type: "return",
+        value: undefined,
+      },
+      variables: {},
+      upstream_cells: [],
+      abort_controller: null,
+    };
+  }
+
   // "Just" run all handlers for deleted cells
   // TODO? I just know this will bite me later
   // TODO Wrap abort controller handles so I can show when they go wrong
@@ -277,7 +300,7 @@ export let notebook_step = async ({
     onChange((engine) => {
       engine.cylinders[cell_id] = {
         ...engine.cylinders[cell_id],
-        last_run: cell.last_run,
+        last_run: cell.requested_run_time,
         last_internal_run: engine.internal_run_counter++,
         result: { type: "throw", value: error },
         running: false,
@@ -319,9 +342,6 @@ export let notebook_step = async ({
   onChange((engine) => {
     engine.cylinders[key] = {
       ...engine.cylinders[key],
-      last_run: cell.last_run,
-      last_internal_run: engine.internal_run_counter++,
-      upstream_cells: graph[key].in.map(([id]) => id) ?? [],
       running: true,
       waiting: false,
     };
@@ -336,7 +356,7 @@ export let notebook_step = async ({
   console.log(chalk.blue.bold`RUNNING CODE:`);
   console.log(chalk.blue(code));
 
-  // Look for request variable names in other cylinders
+  // Look for requested variable names in other cylinders
   let inputs = {} as { [key: string]: any };
   for (let name of consumed_names) {
     for (let cylinder of Object.values(engine.cylinders)) {
@@ -347,10 +367,10 @@ export let notebook_step = async ({
   }
 
   // If there was a previous run, allow performing cleanup.
-  // TODO Ideally this has a nicer abstraction.
   cylinder.abort_controller?.abort();
-  // Wait a tick
+  // Wait a tick for the abort to actually happen (possibly)
   await new Promise((resolve) => setTimeout(resolve, 0));
+
   let abort_controller = new AbortController();
   cylinder.abort_controller = abort_controller;
 
@@ -363,9 +383,18 @@ export let notebook_step = async ({
   onChange((engine) => {
     engine.cylinders[key] = {
       ...engine.cylinders[key],
+
+      last_run: cell.requested_run_time,
+      last_internal_run: engine.internal_run_counter++,
+      upstream_cells: graph[key].in.map(([id]) => id) ?? [],
+
       result:
         result.type === "return"
-          ? { ...result, name: last_created_name }
+          ? {
+              type: "return",
+              name: last_created_name,
+              value: result.value.default,
+            }
           : result,
       running: false,
       variables: result.type === "return" ? omit(result.value, "default") : {},

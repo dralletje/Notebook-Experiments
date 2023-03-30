@@ -1,4 +1,4 @@
-import { mapValues } from "lodash-es";
+import { mapValues, uniq } from "lodash-es";
 
 type CellId = string;
 
@@ -81,7 +81,14 @@ export let topological_sort = (graph: Graph): string[] => {
   return sorted;
 };
 
-export let double_definitions = (graph: Graph) => {
+/**
+ * Returns a map of cell_id to a list of variable names that are defined multiple times.
+ * This is used to find conflicting definitions.
+ *
+ * TODO Now it only returns the names of the conflicting definitions, but it should also
+ * return the cell_ids of those definitions.
+ */
+export let multiple_definitions = (graph: Graph) => {
   let doubles = new Map<CellId, VariableName[]>();
   for (let [cell_id, node] of Object.entries(graph)) {
     let conflicting_definitions = node.out.filter(
@@ -94,7 +101,7 @@ export let double_definitions = (graph: Graph) => {
     if (conflicting_definitions.length > 0) {
       doubles.set(
         cell_id,
-        conflicting_definitions.map(([out_id, { name }]) => name)
+        uniq(conflicting_definitions.map(([out_id, { name }]) => name))
       );
     }
   }
@@ -131,7 +138,6 @@ export let downstream = (graph: Graph, id: string): string[] => {
   return visited.filter((x) => x !== id);
 };
 
-// ????????
 export let cycles = (graph: Graph): Array<Array<Edge>> => {
   let groups: Array<Array<Edge>> = [];
   let visited: string[] = [];
