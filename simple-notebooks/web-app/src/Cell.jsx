@@ -75,19 +75,24 @@ let CellStyle = styled.div`
     position: absolute;
     left: -10px;
     width: 5px;
-    /* right: 100%; */
     top: 0px;
     bottom: 0px;
+
+    background-color: white;
+    opacity: 0;
   }
 
   &.error::before {
     background-color: #820209;
+    opacity: 0.5;
   }
   &.pending::before {
     background-color: #4a4a4a;
+    opacity: 0.5;
   }
   &.running::before {
     background-color: white;
+    opacity: 0.5;
     animation: ${pulse_animation} 1s ease-in-out infinite alternate;
   }
 
@@ -202,6 +207,7 @@ let local_style = EditorView.theme({
 let default_cylinder = () => {
   return {
     last_run: -Infinity,
+    last_internal_run: 0,
     result: { type: "return", value: { 0: { type: "undefined", value: "" } } },
     running: false,
     waiting: false,
@@ -299,6 +305,19 @@ export let Cell = ({
       }
     }
   }, [nested_viewupdate.transactions]);
+
+  // FLASH when cell is done running
+  React.useLayoutEffect(() => {
+    cell_wrapper_ref.current.animate(
+      {
+        opacity: [0, 1, 1, 1, 0.5, 0],
+      },
+      {
+        duration: 300,
+        pseudoElement: "::before",
+      }
+    );
+  }, [cylinder.last_internal_run]);
 
   let [is_focused, set_is_focused] = React.useState(false);
   let set_is_focused_extension = React.useMemo(() => {

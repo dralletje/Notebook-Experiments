@@ -96,7 +96,6 @@ let cells_that_need_running = (
     }
   }
 
-  console.log(`cell_should_run_at_map:`, cell_should_run_at_map);
   return cells_that_should_run;
 };
 
@@ -167,6 +166,7 @@ let get_analysis_results = (
   graph: Graph.Graph
 ): StaticResult[] => {
   let cyclicals = Graph.cycles(graph);
+
   // Hack to put cycles in, as they work weird so don't work nicely with
   // the "what cells to run" logic.
   let cycles_to_run = cyclicals.flatMap((cycle) =>
@@ -264,12 +264,14 @@ export let notebook_step = async ({
   filename,
   onChange,
   run_cell,
+  onLog,
 }: {
   engine: Engine;
   filename: string;
   notebook: Notebook;
   onChange: (mutate: (engine: Engine) => void) => void;
   run_cell: RunCellFunction;
+  onLog: (log: any) => void;
 }) => {
   // prettier-ignore
   invariant(
@@ -329,15 +331,23 @@ export let notebook_step = async ({
   );
 
   let by_status: {
-    static: StaticResult[];
-    fine: StaticResult[];
-    error: StaticResult[];
-  } = groupBy(analysis_results, (result) => result.type) as any;
+    static: (StaticResult & { type: "static" })[];
+    fine: (StaticResult & { type: "fine" })[];
+    error: (StaticResult & { type: "error" })[];
+  } = {
+    static: [],
+    fine: [],
+    error: [],
+    ...(groupBy(analysis_results, (result) => result.type) as any),
+  };
 
-  for (let error_cell of by_status.error ?? []) {
-    // Typescript....
-    if (error_cell.type !== "error") throw new Error("UGH");
-
+  if (by_status.error.length > 0) {
+    onLog({
+      title: "Disabling cells because of errors",
+      cells: [...by_status.error.map((x) => x.cell_id)],
+    });
+  }
+  for (let error_cell of by_status.error) {
     let { cell_id, error } = error_cell;
     let cell = notebook.cells[cell_id];
     let graph_entry = graph.get(cell_id);
@@ -356,7 +366,7 @@ export let notebook_step = async ({
     });
   }
 
-  for (let fine_cell of by_status.fine ?? []) {
+  for (let fine_cell of by_status.fine) {
     let cylinder = engine.cylinders[fine_cell.cell_id];
     if (!cylinder.waiting) {
       onChange((engine) => {
@@ -367,22 +377,48 @@ export let notebook_step = async ({
   }
 
   /////////////////////////////////////
-  // Start running next cell
+  // Find next cell to run
   /////////////////////////////////////
 
-  // Just take the first cell to run,
-  // could use a cool algorithm to pick the "best" one
-  let cell_to_run = by_status.fine?.[0]?.cell_id;
-
   // If there is no cell that needs running, we're done!
-  if (cell_to_run == null) return;
+  if (by_status.fine.length === 0) return;
+
+  // By default just run the first (topologically sorted)
+  let cell_to_run = by_status.fine[0].cell_id;
+
+  // Additionally, find all cells that can run now (have no pending upstream cells)
+  // and find the one that was requested to run the shortest time ago
+  let cells_that_can_run = by_status.fine.filter(({ cell_id }) => {
+    let graph_node = graph.get(cell_id);
+    return by_status.fine.every((possibly_upstream) => {
+      return !graph_node.in.has(possibly_upstream.cell_id);
+    });
+  });
+  for (let { cell_id } of cells_that_can_run) {
+    if (
+      notebook.cells[cell_id].requested_run_time !==
+        engine.cylinders[cell_id].last_run &&
+      notebook.cells[cell_id].requested_run_time >
+        notebook.cells[cell_to_run].requested_run_time
+    ) {
+      cell_to_run = cell_id;
+    }
+  }
+
+  /////////////////////////////////////
+  // Run it!
+  /////////////////////////////////////
+
+  onLog({
+    title: "Running cell",
+    cellId: cell_to_run,
+    body: "Whoiiii",
+  });
 
   let key = cell_to_run;
   let cell = notebook.cells[key];
   let parsed = parsed_cells[cell.id];
-  if (!("output" in parsed)) {
-    throw new Error(`Parsed error shouldn't end up here`);
-  }
+  invariant("output" in parsed, `Parsed error shouldn't end up here`);
 
   onChange((engine) => {
     engine.cylinders[key] = {

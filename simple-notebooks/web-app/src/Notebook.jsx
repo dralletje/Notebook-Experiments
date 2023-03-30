@@ -111,7 +111,9 @@ export function NotebookView({ state, onChange, socket, files }) {
   }, [notebook, state.facet(NotebookFilename)]);
 
   // let engine = useEngine(notebook_with_filename, socket);
-  let engine = useLocalEnvironment(notebook_with_filename);
+  let [engine, logs] = useLocalEnvironment(notebook_with_filename);
+
+  console.log(`logs:`, logs);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>

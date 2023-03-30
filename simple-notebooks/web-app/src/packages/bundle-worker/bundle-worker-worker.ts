@@ -51,6 +51,11 @@ let run_cell: RunCellFunction = async ({
 
     let result = await fn(...inputs_array.map((x) => x[1]));
 
+    // TODO Dirty hack to make `Couldn't return-ify X` errors stackless
+    if (result.default instanceof SyntaxError) {
+      result.default = new StacklessError(result.default);
+    }
+
     return {
       result: {
         type: "return",
@@ -71,7 +76,8 @@ let run_notebook = async (
   filename: string,
   notebook_ref: { current: Notebook },
   engine: Engine,
-  onChange: (engine: Engine) => void
+  onChange: (engine: Engine) => void,
+  onLog: (engine: any) => void
 ) => {
   let did_change = true;
   while (did_change === true) {
@@ -87,6 +93,7 @@ let run_notebook = async (
         fn(engine);
         onChange(engine);
       },
+      onLog: onLog,
     });
     onChange(engine);
   }
@@ -100,6 +107,7 @@ let engine_to_json = (engine: Engine) => {
         last_run: cylinder.last_run,
         running: cylinder.running,
         waiting: cylinder.waiting,
+        last_internal_run: cylinder.last_internal_run,
         result: {
           ...cylinder.result,
           value: serialize_with_default({
@@ -152,7 +160,13 @@ addEventListener("message", async (event) => {
           type: "update-engine",
           engine: x,
         });
-      })
+      }),
+      (log) => {
+        postMessage({
+          type: "add-log",
+          log: log,
+        });
+      }
     );
     engine.is_busy = false;
   }

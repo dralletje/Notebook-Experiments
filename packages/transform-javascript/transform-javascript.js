@@ -4,10 +4,12 @@ import { parse as parseBabel } from "@babel/parser";
 import { remove_typescript_and_transform_jsx } from "./remove_typescript_and_transform_jsx.js";
 import { transform } from "./transform.js";
 
-let btoa = (string) => {
-  let buff = Buffer.from(string);
-  return buff.toString("base64");
-};
+let btoa =
+  globalThis.btoa ??
+  ((string) => {
+    let buff = Buffer.from(string);
+    return buff.toString("base64");
+  });
 
 /**
  * @param {string} code

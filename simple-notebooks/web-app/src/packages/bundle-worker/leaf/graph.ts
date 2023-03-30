@@ -159,8 +159,9 @@ export let cycles = (graph: Graph): Array<Array<Edge>> => {
   let groups: Array<Array<Edge>> = [];
   let visited: NodeId[] = [];
   let visit = (id: NodeId, group: Array<Edge>) => {
-    if (group.some(([x]) => id === x)) {
-      groups.push(group);
+    let index_in_group = group.findIndex(([x]) => id === x);
+    if (index_in_group !== -1) {
+      groups.push(group.slice(index_in_group));
       return;
     }
     if (visited.includes(id)) {
@@ -168,7 +169,7 @@ export let cycles = (graph: Graph): Array<Array<Edge>> => {
     }
     visited.push(id);
     for (let [out, { name }] of graph.get(id).out) {
-      let x = visit(out, [...group, [id, { name }]]);
+      visit(out, [...group, [id, { name }]]);
     }
   };
 

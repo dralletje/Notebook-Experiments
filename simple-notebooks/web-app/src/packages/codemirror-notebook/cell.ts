@@ -97,6 +97,13 @@ export let NotebookId = Facet.define<string, string>({
   combine: (a) => a[0],
 });
 
+export type Log = {
+  id: string;
+  cell_id?: CellId;
+  title: string;
+  body: string;
+};
+
 export type EngineShadow = {
   cylinders: { [id: string]: CylinderShadow };
 };
@@ -105,6 +112,9 @@ export type CylinderShadow = {
   result: Result<any, any> | null;
   running: boolean;
   waiting: boolean;
+
+  // TODO Rename this to something not called "internal"
+  last_internal_run: number;
 };
 export type Result<T, E> =
   | { type: "return"; name?: string; value: T }
