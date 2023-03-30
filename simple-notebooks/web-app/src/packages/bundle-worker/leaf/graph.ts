@@ -2,8 +2,7 @@ import { mapValues, uniq } from "lodash-es";
 import { Opaque } from "ts-opaque";
 
 export type NodeId = Opaque<string, "NodeId">;
-// type NodeId = string;
-type EdgeName = string;
+export type EdgeName = Opaque<string, "EdgeName">;
 
 export type DisconnectedNode = {
   id: NodeId;
@@ -18,7 +17,7 @@ type MapOf<T extends [any, any]> = T extends [infer K, infer V]
 
 type Edge = [NodeId, { name: EdgeName }];
 type CompactGraph = Map<NodeId, Array<Edge>>;
-export type Node = { id: NodeId; in: Edge[]; out: Edge[] };
+export type Node = { id: NodeId; in: MapOf<Edge>; out: MapOf<Edge> };
 export type Graph = Map<NodeId, Node>;
 
 export let disconnected_to_compact_graph = (
@@ -59,16 +58,16 @@ export let inflate_compact_graph = (graph: CompactGraph): Graph => {
       id,
       {
         id,
-        out,
+        out: new Map(out),
         // In is filled in later...
-        in: [],
+        in: new Map(),
       },
     ])
   );
   // ...specifically: here
   for (let [id, node] of expanded_graph) {
     for (let [out_id, { name }] of node.out) {
-      expanded_graph.get(out_id).in.push([id, { name }]);
+      expanded_graph.get(out_id).in.set(id, { name });
     }
   }
   return expanded_graph;
@@ -101,11 +100,11 @@ export let topological_sort = (graph: Graph): NodeId[] => {
  * return the cell_ids of those definitions.
  */
 export let multiple_definitions = (graph: Graph) => {
-  let doubles = new Map<NodeId, EdgeName[]>();
+  let doubles = new Map<NodeId, Set<EdgeName>>();
   for (let [cell_id, node] of graph.entries()) {
-    let conflicting_definitions = node.out.filter(
-      ([out_id, { name: out_name }]) => {
-        return node.in.some(([in_id, { name: in_name }]) => {
+    let conflicting_definitions = Array.from(node.out.values()).filter(
+      ({ name: out_name }) => {
+        return Array.from(node.in.values()).some(({ name: in_name }) => {
           return out_name === in_name;
         });
       }
@@ -113,7 +112,9 @@ export let multiple_definitions = (graph: Graph) => {
     if (conflicting_definitions.length > 0) {
       doubles.set(
         cell_id,
-        uniq(conflicting_definitions.map(([out_id, { name }]) => name))
+        new Set(
+          Array.from(conflicting_definitions.values()).map(({ name }) => name)
+        )
       );
     }
   }

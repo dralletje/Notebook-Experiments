@@ -39,11 +39,11 @@ let cells_that_need_running = (
     // Here comes the tricky part: I need to "carry over" the `should_run` times from the parent cells.
     let should_run_at = Math.max(
       cylinder.last_internal_run,
-      ...graph.get(cell_id).in.map(
+      ...Array.from(graph.get(cell_id).in.keys()).map(
         // Something this is undefined, because this cell is part of a cycle
         // and the upstream cell is later in `sorted`. There is a fix for this
         // in the analysis step.
-        ([parent_id]) => cell_should_run_at_map[parent_id]
+        (parent_id) => cell_should_run_at_map[parent_id]
       ),
 
       // This is so that when you have
@@ -76,8 +76,8 @@ let notebook_to_disconnected_graph = (
     if (parsed != null && "output" in parsed) {
       return {
         id: cell_id,
-        exports: parsed.output.meta.output,
-        imports: parsed.output.meta.input,
+        exports: parsed.output.meta.output as Graph.EdgeName[],
+        imports: parsed.output.meta.input as Graph.EdgeName[],
       };
     } else {
       return {
@@ -168,11 +168,12 @@ let get_analysis_results = (
         error: new StacklessError("Top level return statements are not allowed"),
       };
     } else if (multiple_definitions.has(cell_id)) {
+      let joined = Array.from(multiple_definitions.get(cell_id)).join(", ");
       return {
         type: "error",
         cell_id: cell_id,
         // prettier-ignore
-        error: new StacklessError(`Multiple definitions of ${multiple_definitions.get(cell_id).join(", ")}`),
+        error: new StacklessError(`Multiple definitions of ${joined}`),
       };
     } else if (cyclicals.some((group) => group.some(([x]) => x === cell_id))) {
       let my_cycles = cyclicals
@@ -305,7 +306,7 @@ export let notebook_step = async ({
         result: { type: "throw", value: error },
         running: false,
         waiting: false,
-        upstream_cells: graph_entry.in.map(([id]) => id) ?? [],
+        upstream_cells: Array.from(graph_entry.in.keys()),
         variables: {},
       };
     });
@@ -386,7 +387,7 @@ export let notebook_step = async ({
 
       last_run: cell.requested_run_time,
       last_internal_run: engine.internal_run_counter++,
-      upstream_cells: graph.get(key).in.map(([id]) => id) ?? [],
+      upstream_cells: Array.from(graph.get(key).in.keys()),
 
       result:
         result.type === "return"
