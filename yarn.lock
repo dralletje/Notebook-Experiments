@@ -796,6 +796,7 @@ __metadata:
     "@codemirror/state": ^6.2.0
     "@codemirror/view": ^6.9.1
     "@dral/codemirror-helpers": "workspace:^"
+    "@dral/dralbook-transform-javascript": "workspace:^"
     "@ionic/react": ^6.2.7
     "@lezer/common": ^1.0.2
     "@types/node": ^18.7.18
@@ -807,6 +808,7 @@ __metadata:
     codemirror-awesome-line-wrapping: "workspace:^"
     codemirror-debug-syntax-plugin: "workspace:^"
     codemirror-x-react: "workspace:^"
+    dral-lezer-helpers: "workspace:^"
     htl: ^0.3.1
     immer: ^9.0.21
     inspector-x-react: "workspace:^"
@@ -814,6 +816,7 @@ __metadata:
     katex: ^0.16.4
     lodash: ^4.17.21
     lodash-es: ^4.17.21
+    md-literal: "workspace:^"
     node-emoji: ^1.11.0
     picocolors: ^1.0.0
     polyfills: "workspace:^"
@@ -3705,7 +3708,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"md-literal@workspace:packages/md-literal":
+"md-literal@workspace:^, md-literal@workspace:packages/md-literal":
   version: 0.0.0-use.local
   resolution: "md-literal@workspace:packages/md-literal"
   dependencies:
