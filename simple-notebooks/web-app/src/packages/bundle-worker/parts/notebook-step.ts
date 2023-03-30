@@ -293,7 +293,7 @@ export let notebook_step = async ({
       },
       variables: {},
       upstream_cells: [],
-      abort_controller: null,
+      abort_controller: new AbortController(),
     };
   }
 

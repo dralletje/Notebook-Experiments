@@ -75,6 +75,7 @@ let move_to_cell_above = (destination) => {
     return EditorDispatchEffect.of({
       editor_id: cell_order[cell_index - 1],
       transaction: {
+        scrollIntoView: true,
         effects: [MoveFromCellBelowEffect.of(destination)],
       },
     });
@@ -90,12 +91,13 @@ let move_to_cell_below = (destination) => {
     let cell_index = cell_order.indexOf(cell_id);
     if (cell_order[cell_index + 1] == null) {
       console.log(`CELL MOVEMENT: Can't move down from "${cell_id}"`);
-      return null;
+      return [];
     }
 
     return EditorDispatchEffect.of({
       editor_id: cell_order[cell_index + 1],
       transaction: {
+        scrollIntoView: true,
         effects: [MoveFromCellAboveEffect.of(destination)],
       },
     });

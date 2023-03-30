@@ -161,9 +161,16 @@ let CellStyle = styled.div`
 
 let local_style = EditorView.theme({
   "& .cm-content": {
+    // margin: "16px 16px 16px 0",
     margin: "16px",
+    // padding: "8px 16px 8px 0",
     padding: "0px",
   },
+  // "& .cm-gutters": {
+  //   margin: "16px 0 16px 0",
+  //   padding: "0px",
+  // },
+
   "& .cm-content, & .cm-scroller, & .cm-tooltip-autocomplete .cm-completionLabel":
     {
       "font-family": "inherit",

@@ -42,6 +42,7 @@ import { useSocket } from "./use/use-socket.js";
 import "./App.css";
 import { ScopedStorage, useScopedStorage } from "./use/scoped-storage.js";
 import { notebook_state_to_notebook_serialized } from "./notebook-utils";
+import { DEFAULT_WORKSPACE } from "./yuck/DEFAULT_WORKSPACE";
 
 /**
  * @typedef WorkspaceSerialized
@@ -122,7 +123,9 @@ let notebook_to_state = ({ filename, notebook }) => {
       NotebookId.of(notebook.id),
       NotebookFilename.of(filename),
 
-      EditorExtension.of(EditorView.scrollMargins.of(() => ({ top: 200 }))),
+      EditorExtension.of(
+        EditorView.scrollMargins.of(() => ({ top: 200, bottom: 100 }))
+      ),
 
       // This works so smooth omg
       [shared_history(), keymap.of(historyKeymap)],
@@ -200,39 +203,12 @@ let FileTab = styled.button`
   }
 `;
 
-/** @type {WorkspaceSerialized["files"]} */
-let DEFAULT_FILES = {
-  "app.ts": {
-    filename: "app.ts",
-    notebook: {
-      id: "app.ts",
-      cell_order: ["cell-1"],
-      cells: {
-        "cell-1": {
-          id: "cell-1",
-          type: "code",
-          code: `console.log("hello world")`,
-          unsaved_code: `console.log("hello world")`,
-          is_waiting: false,
-          requested_run_time: 0,
-          folded: false,
-        },
-      },
-    },
-  },
-};
-
 let workspace_storage = new ScopedStorage("workspace");
 
 function App() {
   let [workspace_json, set_workspace_json] = useScopedStorage(
     workspace_storage,
-    JSON.stringify(
-      /** @type {WorkspaceSerialized} */ ({
-        id: "workspace-id?",
-        files: DEFAULT_FILES,
-      })
-    )
+    DEFAULT_WORKSPACE
   );
   let update_localstorage = React.useMemo(() => {
     return throttle((/** @type {Workspace} */ workspace) => {
@@ -254,9 +230,6 @@ function App() {
 
   let initial_workspace = React.useMemo(() => {
     let workspace = JSON.parse(workspace_json);
-    if (isEmpty(workspace.files)) {
-      workspace.files = DEFAULT_FILES;
-    }
     return serialized_workspace_to_workspace(workspace);
   }, []);
 
