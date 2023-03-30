@@ -30,6 +30,8 @@ export let markdown_emoji_and_hr = [
   DecorationsFromTree(({ cursor, mutable_decorations: decorations, doc }) => {
     if (cursor.name === "HorizontalRule") {
       let line = doc.lineAt(cursor.from);
+      // Exception for `****` which I presume to be a soon to filled bold text
+      if (doc.sliceString(cursor.from, cursor.to) === "****") return;
       decorations.push(
         Decoration.replace({
           widget: new ReactWidget(<hr className="hr" />),

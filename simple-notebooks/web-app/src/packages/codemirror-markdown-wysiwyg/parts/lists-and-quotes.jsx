@@ -1,5 +1,10 @@
 import React from "react";
-import { EditorState, RangeSetBuilder, RangeValue } from "@codemirror/state";
+import {
+  EditorSelection,
+  EditorState,
+  RangeSetBuilder,
+  RangeValue,
+} from "@codemirror/state";
 import { Decoration, EditorView, keymap } from "@codemirror/view";
 import { range } from "lodash";
 import { syntaxTree } from "@codemirror/language";
@@ -136,6 +141,16 @@ let AAAAA = keymap.of([
       // if (line.number !== state.doc.lineAt(cursor.from).number) return false;
 
       cursor.firstChild(); // Marker of the list
+
+      // TODO Not sure if I should use `line` or `item_line` here
+      let rest_of_line = state.doc.sliceString(cursor.to + 1, line.to);
+      if (rest_of_line.trim() === "") {
+        dispatch({
+          changes: { from: line.from, to: line.to, insert: `` },
+          selection: EditorSelection.cursor(line.from),
+        });
+        return true;
+      }
 
       let prefix = state.doc
         .sliceString(item_line.from, cursor.to)
@@ -313,7 +328,7 @@ let search_block_or_inline_decorations = ({
   }
 };
 
-export let markdown_blocks_extension = [
+export let markdown_lists_and_quotes = [
   markdown_styling_base_theme,
 
   AAAAA,

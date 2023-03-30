@@ -52,5 +52,7 @@ export let format_with_prettier = ({ code, cursor }) => {
     // useTabs: true,
   });
 
-  return dont_end_up_just_before_semicolon(trim({ formatted, cursorOffset }));
+  return dont_end_up_just_before_semicolon(
+    trim({ formatted, cursorOffset: Math.max(cursorOffset, 0) })
+  );
 };

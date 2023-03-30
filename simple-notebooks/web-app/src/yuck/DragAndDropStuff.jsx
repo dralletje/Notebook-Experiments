@@ -73,6 +73,12 @@ let CellContainer = styled.div`
   margin-bottom: 0.5rem;
 
   will-change: transform;
+
+  &.dragging,
+  &:has(.drag-handle:hover),
+  &:has(.menu:focus) {
+    z-index: 1;
+  }
 `;
 
 /**

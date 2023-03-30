@@ -7,7 +7,10 @@ import {
 } from "@codemirror/state";
 import { Decoration, EditorView, keymap } from "@codemirror/view";
 import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
-import { DecorationsFromTree } from "@dral/codemirror-helpers";
+import {
+  DecorationsFromTree,
+  DecorationsFromTreeSortForMe,
+} from "@dral/codemirror-helpers";
 import { iterate_with_cursor } from "dral-lezer-helpers";
 import { Tree, TreeCursor } from "@lezer/common";
 
@@ -16,6 +19,45 @@ class EZRange extends RangeValue {
     return true;
   }
 }
+
+let styles = EditorView.baseTheme({
+  ".emphasis-mark": {
+    opacity: "0.5",
+    "letter-spacing": "-0.1em",
+    transform: "translateX(-0.05em)",
+  },
+  ".strikethrough-mark": {
+    "text-decoration": "line-through",
+    "text-decoration-color": "transparent",
+    opacity: "0.5",
+  },
+  ".superscript-mark, .subscript-mark": {
+    opacity: "0.3",
+  },
+  ".inline-code .code-mark": {
+    opacity: "0.5",
+  },
+
+  ".strikethrough": {
+    "text-decoration": "line-through",
+  },
+  ".emphasis": {
+    "font-style": "italic",
+  },
+  ".strong-emphasis": {
+    "font-weight": "bold",
+  },
+  ".inline-code": {
+    "font-size": "85%",
+    color: "#ef8e8e",
+    border: "1px solid #ffffff36",
+    padding: "0 5px",
+    margin: "0 2px",
+    "border-radius": "2px",
+    "box-decoration-break": "clone",
+    "-webkit-box-decoration-break": "clone",
+  },
+});
 
 let insert_around_command = (str) => (view) => {
   let { from, to } = view.state.selection.main;
@@ -135,54 +177,18 @@ let markdown_inline_decorations = {
   }),
 };
 
-let styles = EditorView.baseTheme({
-  ".emphasis-mark": {
-    opacity: "0.5",
-    "letter-spacing": "-0.1em",
-    transform: "translateX(-0.05em)",
-  },
-  ".strikethrough-mark": {
-    "text-decoration": "line-through",
-    "text-decoration-color": "transparent",
-    opacity: "0.5",
-  },
-  ".superscript-mark, .subscript-mark": {
-    opacity: "0.3",
-  },
-  ".inline-code .code-mark": {
-    opacity: "0.5",
-  },
-
-  ".strikethrough": {
-    "text-decoration": "line-through",
-  },
-  ".emphasis": {
-    "font-style": "italic",
-  },
-  ".strong-emphasis": {
-    "font-weight": "bold",
-  },
-  ".inline-code": {
-    "font-size": "85%",
-    color: "#ef8e8e",
-    border: "1px solid #ffffff36",
-    padding: "0 5px",
-    margin: "0 2px",
-    "border-radius": "2px",
-    "box-decoration-break": "clone",
-    "-webkit-box-decoration-break": "clone",
-  },
-});
 // These are separate because they need "lower precedence" so they don't "slice" the bigger elements:
 // `*sad*` would become `<em><mark>*</mark>sad</em><mark><em>*</em></mark>` (confusing)
 // instead of `<em><mark>*</mark>sad<mark>*</mark></em>` (normal)
-let decorate_marks = DecorationsFromTree(({ cursor, mutable_decorations }) => {
-  if (cursor.name in markdown_mark_to_decoration) {
-    mutable_decorations.push(
-      markdown_mark_to_decoration[cursor.name].range(cursor.from, cursor.to)
-    );
+let decorate_marks = DecorationsFromTreeSortForMe(
+  ({ cursor, mutable_decorations }) => {
+    if (cursor.name in markdown_mark_to_decoration) {
+      mutable_decorations.push(
+        markdown_mark_to_decoration[cursor.name].range(cursor.from, cursor.to)
+      );
+    }
   }
-});
+);
 let decorate_text = DecorationsFromTree(({ cursor, mutable_decorations }) => {
   if (cursor.name in markdown_inline_decorations) {
     mutable_decorations.push(
@@ -208,6 +214,11 @@ let put_assoc_outside_of_the_markers = EditorState.transactionFilter.of(
       ? ensureSyntaxTree(transaction.state, selection.head, 50)
       : ensureSyntaxTree(transaction.startState, selection.head, 50);
 
+    if (tree == null) {
+      console.warn("wtf");
+      return transaction;
+    }
+
     for (let mark of marks_to_avoid) {
       if (tree.cursorAt(selection.head, assoc).name !== mark) continue;
 
@@ -227,7 +238,7 @@ let put_assoc_outside_of_the_markers = EditorState.transactionFilter.of(
         EditorSelection.cursor(
           selection.head,
           better_assoc,
-          selection.bidiLevel,
+          selection.bidiLevel ?? 0, // ?? 0 is for typescript
           selection.goalColumn
         ),
       ]);

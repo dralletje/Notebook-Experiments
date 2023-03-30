@@ -1,6 +1,6 @@
 import React from "react";
 import { produce } from "immer";
-import { mapValues } from "lodash";
+import { isEmpty, mapValues, throttle } from "lodash";
 import styled from "styled-components";
 import {
   CellMetaField,
@@ -40,6 +40,8 @@ import { add_single_cell_when_all_cells_are_removed } from "./packages/codemirro
 import { useSocket } from "./use/use-socket.js";
 
 import "./App.css";
+import { ScopedStorage, useScopedStorage } from "./use/scoped-storage.js";
+import { notebook_state_to_notebook_serialized } from "./notebook-utils";
 
 /**
  * @typedef WorkspaceSerialized
@@ -81,7 +83,7 @@ export let create_cell_state = (editorstate, cell) => {
       CellMetaField.init(() => ({
         code: cell.code,
         is_waiting: cell.is_waiting,
-        requested_run_time: cell.requested_run_time,
+        requested_run_time: cell.requested_run_time ?? 0,
         folded: cell.folded,
         type: cell.type,
       })),
@@ -165,6 +167,7 @@ let notebook_to_state = ({ filename, notebook }) => {
 };
 
 let serialized_workspace_to_workspace = (serialized) => {
+  console.log(`serialized.id:`, serialized.id);
   return /** @type {Workspace} */ ({
     id: serialized.id,
     files: mapValues(serialized.files, (file) => {
@@ -197,25 +200,85 @@ let FileTab = styled.button`
   }
 `;
 
+/** @type {WorkspaceSerialized["files"]} */
+let DEFAULT_FILES = {
+  "app.ts": {
+    filename: "app.ts",
+    notebook: {
+      id: "app.ts",
+      cell_order: ["cell-1"],
+      cells: {
+        "cell-1": {
+          id: "cell-1",
+          type: "code",
+          code: `console.log("hello world")`,
+          unsaved_code: `console.log("hello world")`,
+          is_waiting: false,
+          requested_run_time: 0,
+          folded: false,
+        },
+      },
+    },
+  },
+};
+
+let workspace_storage = new ScopedStorage("workspace");
+
 function App() {
+  let [workspace_json, set_workspace_json] = useScopedStorage(
+    workspace_storage,
+    JSON.stringify(
+      /** @type {WorkspaceSerialized} */ ({
+        id: "workspace-id?",
+        files: DEFAULT_FILES,
+      })
+    )
+  );
+  let update_localstorage = React.useMemo(() => {
+    return throttle((/** @type {Workspace} */ workspace) => {
+      set_workspace_json(
+        JSON.stringify(
+          /** @type {WorkspaceSerialized} */ ({
+            id: workspace.id,
+            files: mapValues(workspace.files, (file) => {
+              return {
+                filename: file.filename,
+                notebook: notebook_state_to_notebook_serialized(file.state),
+              };
+            }),
+          })
+        )
+      );
+    }, 500);
+  }, [set_workspace_json]);
+
+  let initial_workspace = React.useMemo(() => {
+    let workspace = JSON.parse(workspace_json);
+    if (isEmpty(workspace.files)) {
+      workspace.files = DEFAULT_FILES;
+    }
+    return serialized_workspace_to_workspace(workspace);
+  }, []);
+
   let [workspace, set_workspace] = React.useState(
-    /** @type {Workspace | null} */ (null)
+    // /** @type {Workspace | null} */ (null)
+    initial_workspace
   );
 
   let [open_file, set_open_file] = React.useState(
     /** @type {string | null} */ (null)
   );
 
-  let socket = useSocket();
+  // let socket = useSocket();
 
-  React.useEffect(() => {
-    socket.emit("load-workspace-from-directory");
-    // @ts-ignore
-    socket.once("load-workspace-from-directory", (workspace) => {
-      console.log(`workspace:`, workspace);
-      set_workspace(serialized_workspace_to_workspace(workspace));
-    });
-  }, []);
+  // React.useEffect(() => {
+  //   socket.emit("load-workspace-from-directory");
+  //   // @ts-ignore
+  //   socket.once("load-workspace-from-directory", (workspace) => {
+  //     console.log(`workspace YEH:`, workspace);
+  //     set_workspace(serialized_workspace_to_workspace(workspace));
+  //   });
+  // }, []);
 
   if (workspace == null) {
     return <div></div>;
@@ -226,6 +289,7 @@ function App() {
     if (first_file != null) {
       set_open_file(first_file);
     }
+    return <div>Uhh</div>;
   }
 
   return (
@@ -266,17 +330,17 @@ function App() {
         <div></div>
       ) : (
         <NotebookView
-          files={workspace.files}
           key={open_file}
-          socket={socket}
           state={workspace.files[open_file].state}
           onChange={(state) => {
-            set_workspace(
-              produce((workspace) => {
-                // @ts-ignore
-                workspace.files[open_file].state = state;
-              })
-            );
+            let new_workspace = produce(workspace, (workspace) => {
+              // @ts-ignore
+              workspace.files[open_file].state = state;
+            });
+
+            update_localstorage(new_workspace);
+
+            set_workspace(new_workspace);
           }}
         />
       )}

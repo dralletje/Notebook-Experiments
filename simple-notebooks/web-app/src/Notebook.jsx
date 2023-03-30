@@ -45,14 +45,14 @@ import { actions } from "./commands.js";
 import { Sidebar } from "./Sidebar.jsx";
 import { useLocalEnvironment } from "./use/use-local-environment.js";
 
-let AppStyle = styled.div`
+let NotebookStyle = styled.div`
   padding-top: 50px;
   min-height: 100vh;
   padding-bottom: 100px;
   margin-right: 20px;
 
   flex: 1;
-  flex-basis: clamp(900px, 100vw - 200px, 1200px);
+  flex-basis: clamp(700px, 100vw - 200px, 900px);
   flex-grow: 0;
 
   min-width: 0;
@@ -62,11 +62,9 @@ let AppStyle = styled.div`
  * @param {{
  *  state: EditorInChief,
  *  onChange: (state: EditorInChief) => void,
- *  socket: import("socket.io-client").Socket,
- *  files: { [filename: string]: { filename: string } },
  * }} props
  */
-export function NotebookView({ state, onChange, socket, files }) {
+export function NotebookView({ state, onChange }) {
   let viewupdate = useViewUpdate(state, onChange);
   useCodemirrorKeyhandler(viewupdate);
 
@@ -113,7 +111,9 @@ export function NotebookView({ state, onChange, socket, files }) {
   // let engine = useEngine(notebook_with_filename, socket);
   let [engine, logs] = useLocalEnvironment(notebook_with_filename);
 
-  console.log(`logs:`, logs);
+  React.useEffect(() => {
+    console.log(`ENGINE LOGS:`, logs);
+  }, [logs]);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
@@ -129,7 +129,7 @@ export function NotebookView({ state, onChange, socket, files }) {
           }
         }}
       >
-        <AppStyle>
+        <NotebookStyle>
           <DragAndDropList editor_in_chief={editor_in_chief}>
             {cell_order
               .map((cell_id) => notebook.cells[cell_id])
@@ -168,7 +168,7 @@ export function NotebookView({ state, onChange, socket, files }) {
                 </DragAndDropItem>
               ))}
           </DragAndDropList>
-        </AppStyle>
+        </NotebookStyle>
         <div style={{ flex: 1 }} />
         {/* <div style={{ width: 400, display: "flex", alignItems: "stretch" }}>
           <Sidebar editor_in_chief={editor_in_chief} />

@@ -11,20 +11,21 @@ import { indentUnit } from "@codemirror/language";
 import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
 import { debug_syntax_plugin } from "codemirror-debug-syntax-plugin";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { tags } from "@lezer/highlight";
 
 import { markdown_html_preview } from "./parts/html-preview.jsx";
 import { markdown_text_decorations } from "./parts/text-marks.js";
 import { markdown_headers } from "./parts/headers.jsx";
 import { markdown_show_hard_breaks } from "./parts/show-hard-breaks.js";
 import { markdown_emoji_and_hr } from "./parts/emoji-and-hr.jsx";
-import { markdown_blocks_extension } from "./parts/blocks.jsx";
+import { markdown_lists_and_quotes } from "./parts/lists-and-quotes.jsx";
 import { markdown_links } from "./parts/links.js";
 import { markdown_html } from "./parts/html.js";
 import { markdown_code_blocks } from "./parts/code-blocks.js";
 import { markdown_tables } from "./parts/tables.js";
 import { MarkdownKatexParser } from "./parts/katex/KatexParser";
 import { markdown_katex } from "./parts/katex/katex";
+import { MarkdownInlineHTML } from "./parts/inline-tag/InlineTagParser";
+import { markdown_inline_tag } from "./parts/inline-tag/inline-tag";
 
 // import { MarkdownInterpolation } from "./parts/interpolation/InterpolationParser";
 
@@ -34,7 +35,7 @@ export {
   markdown_headers,
   markdown_show_hard_breaks,
   markdown_emoji_and_hr,
-  markdown_blocks_extension,
+  markdown_lists_and_quotes,
   markdown_links,
   markdown_html,
   markdown_code_blocks,
@@ -80,6 +81,7 @@ export let basic_markdown_setup = [
     base: markdownLanguage,
     extensions: [
       MarkdownKatexParser,
+      MarkdownInlineHTML,
       // MarkdownInterpolation,
     ],
     // TODO Kind of part of markdown_code_blocks
@@ -115,7 +117,7 @@ export let basic_markdown_setup = [
   my_markdown_keymap,
 
   markdown_html_preview,
-  markdown_blocks_extension,
+  markdown_lists_and_quotes,
   markdown_show_hard_breaks,
   markdown_text_decorations,
   markdown_links,
@@ -126,8 +128,10 @@ export let basic_markdown_setup = [
   markdown_tables,
 
   markdown_katex,
+  markdown_inline_tag,
 
-  // Just seems to work nicer if assoc = 1?
+  // Editor overal seems to work nicer if assoc = 1?
+  // TODO This can't be a permanent solution, but it's a start
   EditorState.transactionFilter.of((tr) => {
     if (!tr.isUserEvent("select")) return tr;
     if (!tr.newSelection.main.empty) return tr;
