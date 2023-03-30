@@ -5,7 +5,13 @@ import { invariant } from "../leaf/invariant";
 import * as Graph from "../leaf/graph.js";
 
 import { parse_cell, ParsedCell } from "../leaf/parse-cell.js";
-import { CellId, Engine, Notebook } from "../types.js";
+import {
+  CellId,
+  Engine,
+  LivingValue,
+  Notebook,
+  VariableName,
+} from "../types.js";
 import { StacklessError } from "../leaf/StacklessError.js";
 import { mapValues, groupBy, uniq } from "lodash-es";
 
@@ -229,7 +235,12 @@ export let notebook_step = async ({
     signal: AbortSignal;
     code: string;
     inputs: { [key: string]: any };
-  }) => Promise<{ result: ExecutionResult }>;
+  }) => Promise<{
+    result: ExecutionResult<{
+      [name: VariableName]: LivingValue;
+      default: LivingValue;
+    }>;
+  }>;
 }) => {
   // prettier-ignore
   invariant(

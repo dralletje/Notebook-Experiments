@@ -17,7 +17,7 @@ export type Engine = {
   parse_cache: Map<CellId, ParsedCell>;
 };
 
-type LivingValue = any;
+export type LivingValue = Opaque<any, "LivingValue">;
 
 export type Cylinder = {
   id: CellId;
