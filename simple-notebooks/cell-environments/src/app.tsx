@@ -2,16 +2,15 @@
 export {};
 
 // ╔═╡ [cells.6f02384d-2362-4167-92ca-ef2f5707d375]
-x = "x1";
+x = 1;
 
 // ╔═╡ [cells.9a8fc483-556b-40d0-8026-a6eb83127449]
 // ╠═╡ folded = false
-x = "x2";
-z = "z1";
+y = x + 1;
 
 // ╔═╡ [cells.3832e250-b538-4856-a496-106b217a8473]
 // ╠═╡ folded = false
-z = "z2";
+z = y + 1;
 
 // ╔═╡ ["Cell Order"]
 // ╠═╡ "Cell Order" = [

@@ -1,5 +1,5 @@
 import * as Graph from "./leaf/graph";
-import { ParsedCell } from "./leaf/parse-cell";
+import { ParsedCell } from "./parts/parse-cell";
 import type { Opaque } from "ts-opaque";
 
 type ResultState<ReturnValue, ThrowValue> =
@@ -8,16 +8,16 @@ type ResultState<ReturnValue, ThrowValue> =
 
 export type CellId = Opaque<string, "CellId"> & Graph.NodeId;
 export type VariableName = Opaque<string, "VariableName"> & Graph.EdgeName;
+export type LivingValue = Opaque<any, "LivingValue">;
+export type EngineRunCountTracker = Opaque<number, "RunTracker">;
 
 export type Engine = {
   cylinders: { [cell_id: CellId]: Cylinder };
-  internal_run_counter: number;
+  internal_run_counter: EngineRunCountTracker;
   // graph: Graph.Graph;
   is_busy: boolean;
   parse_cache: Map<CellId, ParsedCell>;
 };
-
-export type LivingValue = Opaque<any, "LivingValue">;
 
 export type Cylinder = {
   id: CellId;
@@ -40,7 +40,7 @@ export type Cylinder = {
   /**
    * TODO Need to figure out why exactly I need this
    */
-  last_internal_run: number;
+  last_internal_run: EngineRunCountTracker;
 };
 
 export type Notebook = {

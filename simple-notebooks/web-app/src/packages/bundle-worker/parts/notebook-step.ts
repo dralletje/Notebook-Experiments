@@ -4,10 +4,11 @@ import { invariant } from "../leaf/invariant";
 
 import * as Graph from "../leaf/graph.js";
 
-import { parse_cell, ParsedCell } from "../leaf/parse-cell.js";
+import { parse_cell, ParsedCell } from "./parse-cell.js";
 import {
   CellId,
   Engine,
+  EngineRunCountTracker,
   LivingValue,
   Notebook,
   VariableName,
@@ -17,15 +18,21 @@ import { mapValues, groupBy, uniq } from "lodash-es";
 
 type ParsedCells = { [key: CellId]: ParsedCell | null };
 
+const RUN_NOW = Infinity as EngineRunCountTracker;
+const DONT_RUN = 0 as EngineRunCountTracker;
+const latest_run_count = Math.max as (
+  ...args: EngineRunCountTracker[]
+) => EngineRunCountTracker;
+
 let cells_that_need_running = (
   notebook: Notebook,
   engine: Engine,
   graph: Graph.Graph
 ): CellId[] => {
-  let sorted = Graph.topological_sort(graph);
+  let sorted = Graph.topological_sort(graph) as CellId[];
 
-  let cell_should_run_at_map = {};
-  let cells_that_should_run = [];
+  let cell_should_run_at_map = new Map<CellId, EngineRunCountTracker>();
+  let cells_that_should_run: CellId[] = [];
   for (let cell_id of sorted) {
     let cell = notebook.cells[cell_id];
     let cylinder = engine.cylinders[cell_id];
@@ -35,22 +42,27 @@ let cells_that_need_running = (
     // prettier-ignore
     invariant(cylinder?.last_run != null, `cylinder.last_run shouldn't be null`);
 
-    // Cell has been sent to be re-run, also run it!
+    // Cell has been requested to run explicitly, so just run it!
     if (cell.requested_run_time > cylinder.last_run) {
-      cell_should_run_at_map[cell_id] = Infinity;
+      cell_should_run_at_map.set(cell_id, RUN_NOW);
       cells_that_should_run.push(cell_id);
       continue;
     }
 
     // Here comes the tricky part: I need to "carry over" the `should_run` times from the parent cells.
-    let should_run_at = Math.max(
+    let should_run_at = latest_run_count(
       cylinder.last_internal_run,
-      ...Array.from(graph.get(cell_id).in.keys()).map(
-        // Something this is undefined, because this cell is part of a cycle
-        // and the upstream cell is later in `sorted`. There is a fix for this
-        // in the analysis step.
-        (parent_id) => cell_should_run_at_map[parent_id]
-      ),
+
+      ...Array.from(graph.get(cell_id).in.keys()).map((upstream_id: CellId) => {
+        if (!cell_should_run_at_map.has(upstream_id)) {
+          // Due to how sorting works, if the cell is part of a cyclic chain,
+          // we process some of them before we processed their cyclic siblings.
+          // There is a check for this later, so we don't have to worry here.
+          return RUN_NOW;
+        } else {
+          return cell_should_run_at_map.get(upstream_id);
+        }
+      }),
 
       // This is so that when you have
       // CELL_1: a = 10
@@ -59,11 +71,18 @@ let cells_that_need_running = (
       // How would CELL_2 know to run again? It's not connected the DAG anymore!
       // So I have to remember the cells CELL_2 depended on in the last run,
       // and check if any of those have changed.
-      ...cylinder.upstream_cells.map(
-        (parent_id) => cell_should_run_at_map[parent_id] ?? Infinity
-      )
+      ...cylinder.upstream_cells.map((parent_id) => {
+        if (!cell_should_run_at_map.has(parent_id)) {
+          // Cell was deleted
+          return RUN_NOW;
+        } else {
+          // Cell might have executed later, and removed our variable
+          return cell_should_run_at_map.get(parent_id);
+        }
+      })
     );
-    cell_should_run_at_map[cell_id] = should_run_at;
+
+    cell_should_run_at_map.set(cell_id, should_run_at);
 
     if (should_run_at > cylinder.last_internal_run) {
       cells_that_should_run.push(cell_id);
@@ -319,7 +338,7 @@ export let notebook_step = async ({
       engine.cylinders[cell_id] = {
         ...engine.cylinders[cell_id],
         last_run: cell.requested_run_time,
-        last_internal_run: engine.internal_run_counter++,
+        last_internal_run: engine.internal_run_counter,
         result: { type: "throw", value: error },
         running: false,
         waiting: false,
@@ -403,7 +422,8 @@ export let notebook_step = async ({
       ...engine.cylinders[key],
 
       last_run: cell.requested_run_time,
-      last_internal_run: engine.internal_run_counter++,
+      // @ts-ignore
+      last_internal_run: engine.internal_run_counter++ as EngineRunCountTracker,
       upstream_cells: Array.from(graph.get(key).in.keys()) as CellId[],
 
       result:
