@@ -58,7 +58,7 @@ let cells_that_need_running = (
           // Due to how sorting works, if the cell is part of a cyclic chain,
           // we process some of them before we processed their cyclic siblings.
           // There is a check for this later, so we don't have to worry here.
-          return RUN_NOW;
+          return DONT_RUN;
         } else {
           return cell_should_run_at_map.get(upstream_id);
         }
@@ -71,13 +71,20 @@ let cells_that_need_running = (
       // How would CELL_2 know to run again? It's not connected the DAG anymore!
       // So I have to remember the cells CELL_2 depended on in the last run,
       // and check if any of those have changed.
-      ...cylinder.upstream_cells.map((parent_id) => {
-        if (!cell_should_run_at_map.has(parent_id)) {
+      ...cylinder.upstream_cells.map((upstream_id) => {
+        if (!engine.cylinders[upstream_id]) {
           // Cell was deleted
+          return RUN_NOW;
+        } else if (
+          !cell_should_run_at_map.has(upstream_id) &&
+          !graph.get(cell_id).in.has(upstream_id)
+        ) {
+          // Cell _was_ part of a cyclic chain AND the sibling cell we're looking at isn't part of our cycle
+          // anymore, which means it was changed! So we need to run!!
           return RUN_NOW;
         } else {
           // Cell might have executed later, and removed our variable
-          return cell_should_run_at_map.get(parent_id);
+          return cell_should_run_at_map.get(upstream_id);
         }
       })
     );
@@ -89,6 +96,7 @@ let cells_that_need_running = (
     }
   }
 
+  console.log(`cell_should_run_at_map:`, cell_should_run_at_map);
   return cells_that_should_run;
 };
 

@@ -8,7 +8,7 @@ import {
   RunCellFunction,
   notebook_step,
 } from "./parts/notebook-step.js";
-import { Engine, Notebook } from "./types.js";
+import { Engine, EngineRunCountTracker, Notebook } from "./types.js";
 import { serialize } from "./parts/serialize";
 import { StacklessError } from "./leaf/StacklessError.js";
 
@@ -117,7 +117,7 @@ let engine_to_json = (engine: Engine) => {
 
 let engine: Engine = {
   cylinders: {},
-  internal_run_counter: 1,
+  internal_run_counter: 1 as EngineRunCountTracker,
   // graph: new Map(),
   is_busy: false,
   parse_cache: new Map(),
