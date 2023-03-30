@@ -114,7 +114,7 @@ let engine_to_json = (engine: Engine) => {
 let engine: Engine = {
   cylinders: {},
   internal_run_counter: 1,
-  graph: {},
+  // graph: new Map(),
   is_busy: false,
   parse_cache: new Map(),
 };

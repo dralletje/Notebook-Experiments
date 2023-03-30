@@ -1,16 +1,18 @@
 import * as Graph from "./leaf/graph";
 import { ParsedCell } from "./leaf/parse-cell";
+import type { Opaque } from "ts-opaque";
 
 type ResultState<ReturnValue, ThrowValue> =
   | { type: "return"; name?: string; value: ReturnValue }
   | { type: "throw"; value: ThrowValue };
 
-export type CellId = string & Graph.NodeId;
+export type CellId = Opaque<string, "CellId"> & Graph.NodeId;
+export type VariableName = Opaque<string, "VariableName"> & Graph.EdgeName;
 
 export type Engine = {
   cylinders: { [cell_id: CellId]: Cylinder };
   internal_run_counter: number;
-  graph: Graph.Graph;
+  // graph: Graph.Graph;
   is_busy: boolean;
   parse_cache: Map<CellId, ParsedCell>;
 };
@@ -27,7 +29,7 @@ export type Cylinder = {
   // These are only used internally by the engine
   // TODO Put them in a separate object?
   last_run: number;
-  variables: { [name: string]: LivingValue };
+  variables: { [name: VariableName]: LivingValue };
   /**
    * Why do I need this, if it is already in the graph?
    * I need to know what cells the last run of this cell depended on

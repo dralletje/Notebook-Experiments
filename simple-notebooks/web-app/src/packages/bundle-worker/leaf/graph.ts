@@ -1,5 +1,9 @@
-import { mapValues, uniq } from "lodash-es";
-import { Opaque } from "ts-opaque";
+// I use my own opaque here, so I can have an extra layer of opaqueness to extend these types
+// import { Opaque } from "ts-opaque";
+declare const opaque: unique symbol;
+type Opaque<BaseType, BrandType = unknown> = BaseType & {
+  readonly [opaque]: BrandType;
+};
 
 export type NodeId = Opaque<string, "NodeId">;
 export type EdgeName = Opaque<string, "EdgeName">;
@@ -12,13 +16,13 @@ export type DisconnectedNode = {
 export type DisconnectedGraph = Array<DisconnectedNode>;
 
 type MapOf<T extends [any, any]> = T extends [infer K, infer V]
-  ? Map<K, V>
+  ? ReadonlyMap<K, V>
   : never;
 
 type Edge = [NodeId, { name: EdgeName }];
-type CompactGraph = Map<NodeId, Array<Edge>>;
+type CompactGraph = ReadonlyMap<NodeId, Array<Edge>>;
 export type Node = { id: NodeId; in: MapOf<Edge>; out: MapOf<Edge> };
-export type Graph = Map<NodeId, Node>;
+export type Graph = ReadonlyMap<NodeId, Node>;
 
 export let disconnected_to_compact_graph = (
   cells: DisconnectedGraph
@@ -53,7 +57,7 @@ export let disconnected_to_compact_graph = (
 };
 
 export let inflate_compact_graph = (graph: CompactGraph): Graph => {
-  let expanded_graph: Graph = new Map(
+  let expanded_graph = new Map(
     Array.from(graph).map(([id, out]) => [
       id,
       {
