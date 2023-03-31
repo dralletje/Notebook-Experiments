@@ -63,12 +63,25 @@ export class ModernMap<K, V> extends Map<K, V> {
   // Polyfill for emplace proposal
   emplace(
     key: K,
-    { insert, update }: { insert: () => V; update: (value: V) => V }
-  ) {
+    {
+      insert,
+      update = (x) => x,
+    }: {
+      insert?: (key: K, map: ModernMap<K, V>) => V;
+      update?: (value: V, key: K, map: ModernMap<K, V>) => V;
+    }
+  ): V {
     if (this.has(key)) {
-      this.set(key, update(this.get(key)!));
+      let updated_value = update(this.get(key)!, key, this);
+      this.set(key, updated_value);
+      return updated_value;
     } else {
-      this.set(key, insert());
+      if (insert == null) {
+        throw new Error("Key not found and no insert function provided");
+      }
+      let fresh_value = insert(key, this);
+      this.set(key, fresh_value);
+      return fresh_value;
     }
   }
 }

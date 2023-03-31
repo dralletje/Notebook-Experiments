@@ -2,18 +2,19 @@ import pc from "picocolors";
 import { omit } from "lodash-es";
 import Opaque from "ts-opaque";
 import { CellId, Notebook, VariableName } from "../types";
-import { ParsedCell } from "./parse-cell";
-import {
-  ExecutionResult,
-  notebook_step,
-  parse_all_cells,
-} from "./notebook-step";
+import { ParseCache } from "./parse-cell";
+import { ExecutionResult, notebook_step } from "./notebook-step";
 import { TypedEventTarget } from "../leaf/typed-event-target";
 import { invariant } from "../leaf/invariant";
 import { ModernMap } from "../leaf/ModernMap";
 
 export type LivingValue = Opaque<unknown, "LivingValue">;
-export type EngineRunCountTracker = Opaque<number, "RunTracker">;
+export type EngineTime = Opaque<number, "RunTracker">;
+export let EngineTime = {
+  LATEST: Infinity as EngineTime,
+  EARLIEST: 0 as EngineTime,
+  latest: Math.max as (...args: EngineTime[]) => EngineTime,
+};
 
 type ResultState<ReturnValue, ThrowValue> =
   | { type: "return"; name?: string; value: ReturnValue }
@@ -39,11 +40,24 @@ export class Cylinder {
    * so I can find out about them even if they are deleted.
    */
   upstream_cells: Array<CellId> = [];
-  abort_controller: AbortController = new AbortController();
   /**
    * TODO Need to figure out why exactly I need this
    */
-  last_internal_run: EngineRunCountTracker = -Infinity as EngineRunCountTracker;
+  last_internal_run: EngineTime = EngineTime.EARLIEST;
+
+  private abort_controller: AbortController = new AbortController();
+  async reset() {
+    // If there was a previous run, allow performing cleanup.
+    this.abort_controller?.abort();
+    // Wait a tick for the abort to actually happen (possibly)
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    let abort_controller = new AbortController();
+    this.abort_controller = abort_controller;
+  }
+  get signal() {
+    return this.abort_controller.signal;
+  }
 }
 
 export class EngineChangeEvent extends Event {
@@ -79,153 +93,144 @@ export class Engine extends TypedEventTarget<{
   private pending_notebook: Notebook = { cell_order: [], cells: {} };
   private is_busy: boolean = false;
 
-  parse_cache: ModernMap<CellId, ParsedCell>;
-  cylinders: ModernMap<CellId, Cylinder>;
-  internal_run_counter: EngineRunCountTracker;
+  parse_cache: ParseCache = new ParseCache();
+  cylinders: ModernMap<CellId, Cylinder> = new ModernMap();
   // graph: Graph.Graph;
+
+  private internal_run_counter: EngineTime = EngineTime.EARLIEST;
+  tick() {
+    return this.internal_run_counter++;
+  }
 
   readonly run_cell: RunCellFunction;
 
   constructor(run_cell: RunCellFunction) {
     super();
-
     this.run_cell = run_cell;
-
-    this.is_busy = false;
-    this.parse_cache = new ModernMap();
-    this.cylinders = new ModernMap();
-    this.internal_run_counter = 0 as EngineRunCountTracker;
   }
 
   async update(notebook: Notebook) {
     this.pending_notebook = notebook;
 
     if (this.is_busy) return;
+
     this.is_busy = true;
+    while (await this.update_once(notebook)) {}
+    this.is_busy = false;
+  }
 
-    let did_change = true;
-    while (did_change === true) {
-      did_change = false;
+  private async update_once(notebook: Notebook): boolean {
+    let did_change = false;
 
-      // Make sure every cell has a cylinder
-      for (let [cell_id, cell] of Object.entries(this.pending_notebook.cells)) {
-        if (!this.cylinders.has(cell_id as CellId)) {
-          this.cylinders.set(
-            cell_id as CellId,
-            new Cylinder(cell_id as CellId)
-          );
+    // Make sure every cell has a cylinder
+    for (let [cell_id, cell] of Object.entries(this.pending_notebook.cells)) {
+      this.cylinders.emplace(cell_id as CellId, {
+        insert: (cell_id) => new Cylinder(cell_id),
+      });
+    }
+
+    /////////////////////////////////////
+    // Get next cell to run
+    /////////////////////////////////////
+
+    let cell_to_run = notebook_step({
+      engine: this,
+      filename: "app.tsx",
+      notebook: this.pending_notebook,
+      onChange: (fn) => {
+        did_change = true;
+        fn(this);
+        this.dispatchEvent(new EngineChangeEvent());
+      },
+      onLog: (log) => {
+        this.dispatchEvent(new EngineLogEvent(log));
+      },
+    });
+
+    /////////////////////////////////////
+    // Delete overdue cylinders
+    /////////////////////////////////////
+    // "Just" run all handlers for deleted cells
+    // TODO? I just know this will bite me later
+    // TODO Wrap abort controller handles so I can show when they go wrong
+    let deleted_cylinders = this.cylinders.values().filter((cylinder) => {
+      return cylinder.id in notebook.cells === false;
+    });
+    for (let deleted_cylinder of deleted_cylinders) {
+      await deleted_cylinder.reset();
+      this.cylinders.delete(deleted_cylinder.id);
+    }
+
+    /////////////////////////////////////
+    // Run it!
+    /////////////////////////////////////
+    if (cell_to_run) {
+      did_change = true;
+
+      this.dispatchEvent(
+        new EngineLogEvent({
+          title: "Running cell",
+          cellId: cell_to_run,
+          body: "Whoiiii",
+        })
+      );
+
+      let key = cell_to_run.cell_id;
+      let cell = notebook.cells[key];
+      let cylinder = this.cylinders.get(key);
+      let graph_node = cell_to_run.graph_node;
+
+      let parsed = this.parse_cache.parse(cell);
+      invariant("output" in parsed, `Parsed error shouldn't end up here`);
+      let {
+        code,
+        meta: { last_created_name },
+      } = parsed.output;
+
+      cylinder.running = true;
+      cylinder.waiting = false;
+      this.dispatchEvent(new EngineChangeEvent());
+
+      console.log(pc.blue(pc.bold(`RUNNING CODE:`)));
+      console.log(pc.blue(code));
+
+      // Look for requested variable names in other cylinders
+      let inputs = {};
+      for (let [in_cell, { name: in_name }] of graph_node.in) {
+        let in_cylinder = this.cylinders.get(in_cell as CellId);
+        if (in_name in in_cylinder.variables) {
+          inputs[in_name] = in_cylinder.variables[in_name];
         }
       }
 
-      // "Just" run all handlers for deleted cells
-      // TODO? I just know this will bite me later
-      // TODO Wrap abort controller handles so I can show when they go wrong
-      let deleted_cells = this.cylinders.values().filter((cylinder) => {
-        return cylinder.id in notebook.cells === false;
-      });
-      for (let deleted_cell of deleted_cells) {
-        deleted_cell.abort_controller.abort();
-        this.cylinders.delete(deleted_cell.id);
-      }
+      await cylinder.reset();
 
-      /////////////////////////////////////
-      // Get next cell to run
-      /////////////////////////////////////
-
-      let cell_to_run = await notebook_step({
-        engine: this,
-        filename: "app.tsx",
-        notebook: this.pending_notebook,
-        onChange: (fn) => {
-          did_change = true;
-          fn(this);
-          this.dispatchEvent(new EngineChangeEvent());
-        },
-        onLog: (log) => {
-          this.dispatchEvent(new EngineLogEvent(log));
-        },
+      let { result } = await this.run_cell({
+        signal: cylinder.signal,
+        code: code,
+        inputs: inputs,
       });
 
-      if (cell_to_run) {
-        did_change = true;
+      Object.assign(this.cylinders.get(key), {
+        last_run: cell.requested_run_time,
+        last_internal_run: this.tick(),
+        upstream_cells: graph_node.in.keys().toArray() as CellId[],
 
-        /////////////////////////////////////
-        // Run it!
-        /////////////////////////////////////
-
-        this.dispatchEvent(
-          new EngineLogEvent({
-            title: "Running cell",
-            cellId: cell_to_run,
-            body: "Whoiiii",
-          })
-        );
-
-        let parsed_cells = parse_all_cells(this, this.pending_notebook);
-
-        let key = cell_to_run.cell_id;
-        let cell = notebook.cells[key];
-        let parsed = parsed_cells[cell.id];
-        let cylinder = this.cylinders.get(key);
-        let graph_node = cell_to_run.graph_node;
-        invariant("output" in parsed, `Parsed error shouldn't end up here`);
-
-        cylinder.running = true;
-        cylinder.waiting = false;
-        this.dispatchEvent(new EngineChangeEvent());
-
-        let {
-          code,
-          meta: { last_created_name },
-        } = parsed.output;
-
-        console.log(pc.blue(pc.bold(`RUNNING CODE:`)));
-        console.log(pc.blue(code));
-
-        // Look for requested variable names in other cylinders
-        let inputs = Object.fromEntries(
-          graph_node.in.entries().map(([in_cell, { name: in_name }]) => {
-            let in_cylinder = this.cylinders.get(in_cell as CellId);
-            return [in_name, in_cylinder.variables[in_name]];
-          })
-        );
-
-        // If there was a previous run, allow performing cleanup.
-        cylinder.abort_controller?.abort();
-        // Wait a tick for the abort to actually happen (possibly)
-        await new Promise((resolve) => setTimeout(resolve, 0));
-
-        let abort_controller = new AbortController();
-        cylinder.abort_controller = abort_controller;
-
-        let { result } = await this.run_cell({
-          signal: abort_controller.signal,
-          code: code,
-          inputs: inputs,
-        });
-
-        Object.assign(this.cylinders.get(key), {
-          last_run: cell.requested_run_time,
-          // @ts-ignore
-          last_internal_run: this
-            .internal_run_counter++ as EngineRunCountTracker,
-          upstream_cells: graph_node.in.keys().toArray() as CellId[],
-
-          result:
-            result.type === "return"
-              ? {
-                  type: "return",
-                  name: last_created_name,
-                  value: result.value.default,
-                }
-              : result,
-          running: false,
-          variables:
-            result.type === "return" ? omit(result.value, "default") : {},
-        });
-      }
-      this.dispatchEvent(new EngineChangeEvent());
+        result:
+          result.type === "return"
+            ? {
+                type: "return",
+                name: last_created_name,
+                value: result.value.default,
+              }
+            : result,
+        running: false,
+        variables:
+          result.type === "return" ? omit(result.value, "default") : {},
+      });
     }
-    this.is_busy = false;
+    this.dispatchEvent(new EngineChangeEvent());
+
+    return did_change;
   }
 }

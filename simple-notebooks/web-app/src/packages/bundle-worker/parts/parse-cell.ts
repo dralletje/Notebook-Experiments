@@ -1,10 +1,13 @@
 import { transform_code } from "@dral/dralbook-transform-javascript";
+import { ModernMap } from "../leaf/ModernMap";
+
+type Code = string;
 
 export type ParsedCell =
   | Readonly<{
-      input: string;
+      input: Code;
       output: {
-        code: string;
+        code: Code;
         map: any;
         meta: Readonly<{
           input: string[];
@@ -24,7 +27,7 @@ export type ParsedCell =
     }>;
 
 type InputCell = {
-  id: unknown;
+  id: string;
   code: string;
 };
 
@@ -58,15 +61,28 @@ let parse_cell_not_memo = (cell: InputCell): ParsedCell => {
   }
 };
 
-let parsed_cell_weakmap = new WeakMap<InputCell, ParsedCell>();
-export let parse_cell = (cell: InputCell) => {
-  let cached = parsed_cell_weakmap.get(cell);
-  if (cached != null && cached.input === cell.code) {
-    return cached;
+export class ParseCache {
+  private cache: ModernMap<string, ParsedCell> = new ModernMap();
+
+  parse(cell: InputCell): ParsedCell {
+    return this.cache.emplace(cell.id, {
+      insert: (key) => parse_cell_not_memo(cell),
+      update: (value, key, map) =>
+        value.input === cell.code ? value : parse_cell_not_memo(cell),
+    });
   }
 
-  let parsed = parse_cell_not_memo(cell);
-  parsed_cell_weakmap.set(cell, parsed);
-
-  return parsed;
-};
+  parse_notebook(notebook: { [key: string]: InputCell }): {
+    [key: string]: ParsedCell;
+  } {
+    for (let [id, input_cell] of Object.entries(notebook)) {
+      this.parse(input_cell);
+    }
+    for (let key of this.cache.keys()) {
+      if (!(key in notebook)) {
+        this.cache.delete(key);
+      }
+    }
+    return Object.fromEntries(this.cache);
+  }
+}

@@ -2,20 +2,14 @@ import { invariant } from "../leaf/invariant";
 
 import * as Graph from "../leaf/graph.js";
 
-import { parse_cell, ParsedCell } from "./parse-cell.js";
+import { ParsedCell } from "./parse-cell.js";
 import { CellId, Notebook, VariableName } from "../types.js";
 import { StacklessError } from "../leaf/StacklessError.js";
 import { mapValues, groupBy, uniq } from "lodash-es";
 
-import { Engine, EngineRunCountTracker, LivingValue } from "./engine";
+import { Engine, EngineTime, LivingValue } from "./engine";
 
 type ParsedCells = { [key: CellId]: ParsedCell | null };
-
-const RUN_NOW = Infinity as EngineRunCountTracker;
-const DONT_RUN = 0 as EngineRunCountTracker;
-const latest_run_count = Math.max as (
-  ...args: EngineRunCountTracker[]
-) => EngineRunCountTracker;
 
 let cells_that_need_running = (
   notebook: Notebook,
@@ -24,7 +18,7 @@ let cells_that_need_running = (
 ): CellId[] => {
   let sorted = Graph.topological_sort(graph) as CellId[];
 
-  let cell_should_run_at_map = new Map<CellId, EngineRunCountTracker>();
+  let cell_should_run_at_map = new Map<CellId, EngineTime>();
   let cells_that_should_run: CellId[] = [];
   for (let cell_id of sorted) {
     let cell = notebook.cells[cell_id];
@@ -37,13 +31,13 @@ let cells_that_need_running = (
 
     // Cell has been requested to run explicitly, so just run it!
     if (cell.requested_run_time > cylinder.last_run) {
-      cell_should_run_at_map.set(cell_id, RUN_NOW);
+      cell_should_run_at_map.set(cell_id, EngineTime.LATEST);
       cells_that_should_run.push(cell_id);
       continue;
     }
 
     // Here comes the tricky part: I need to "carry over" the `should_run` times from the parent cells.
-    let should_run_at = latest_run_count(
+    let should_run_at = EngineTime.latest(
       cylinder.last_internal_run,
 
       ...graph
@@ -54,7 +48,7 @@ let cells_that_need_running = (
             // Due to how sorting works, if the cell is part of a cyclic chain,
             // we process some of them before we processed their cyclic siblings.
             // There is a check for this later, so we don't have to worry here.
-            return DONT_RUN;
+            return EngineTime.EARLIEST;
           } else {
             return cell_should_run_at_map.get(upstream_id);
           }
@@ -70,14 +64,14 @@ let cells_that_need_running = (
       ...cylinder.upstream_cells.map((upstream_id) => {
         if (!engine.cylinders.get(upstream_id)) {
           // Cell was deleted
-          return RUN_NOW;
+          return EngineTime.LATEST;
         } else if (
           !cell_should_run_at_map.has(upstream_id) &&
           !graph.get(cell_id).in.has(upstream_id)
         ) {
           // Cell _was_ part of a cyclic chain AND the sibling cell we're looking at isn't part of our cycle
           // anymore, which means it was changed! So we need to run!!
-          return RUN_NOW;
+          return EngineTime.LATEST;
         } else {
           // Cell might have executed later, and removed our variable
           return cell_should_run_at_map.get(upstream_id);
@@ -119,28 +113,6 @@ let notebook_to_disconnected_graph = (
 export type ExecutionResult<T = any, E = any> =
   | { type: "return"; value: T }
   | { type: "throw"; value: E };
-
-/** Gets the cells' ParsedCell, but with smart caching */
-export let parse_all_cells = (
-  engine: Engine,
-  notebook: Notebook
-): { [key: CellId]: ParsedCell } => {
-  let parse_cache = engine.parse_cache;
-  return mapValues(notebook.cells, (cell) => {
-    if (cell.type === "text") {
-      return {
-        input: cell.code,
-        static: cell.code,
-      };
-    } else if (parse_cache.get(cell.id)?.input === cell.code) {
-      return parse_cache.get(cell.id);
-    } else {
-      let parsed = parse_cell(cell);
-      parse_cache.set(cell.id, parsed);
-      return parsed;
-    }
-  });
-};
 
 type StaticResult =
   | { type: "fine"; cell_id: CellId }
@@ -242,7 +214,7 @@ let get_analysis_results = (
   );
 };
 
-export let notebook_step = async ({
+export let notebook_step = ({
   engine,
   notebook,
   filename,
@@ -265,7 +237,7 @@ export let notebook_step = async ({
   // Start parsing and analysing
   /////////////////////////////////////
 
-  let parsed_cells = parse_all_cells(engine, notebook);
+  let parsed_cells = engine.parse_cache.parse_notebook(notebook.cells);
 
   let graph = Graph.inflate_compact_graph(
     Graph.disconnected_to_compact_graph(
@@ -306,7 +278,7 @@ export let notebook_step = async ({
     onChange((engine) => {
       Object.assign(engine.cylinders.get(cell_id), {
         last_run: cell.requested_run_time,
-        last_internal_run: engine.internal_run_counter,
+        last_internal_run: engine.tick(),
         result: { type: "throw", value: error },
         running: false,
         waiting: false,
