@@ -83,8 +83,6 @@ let InlineCell = ({ cell_id, cylinder, code }) => {
 
   let viewupdate = useViewUpdate(editor_state, set_editor_state);
 
-  console.log(`cylinder.result:`, cylinder.result);
-
   return (
     <div>
       <shadow.div>
@@ -114,14 +112,12 @@ let InlineCell = ({ cell_id, cylinder, code }) => {
  *  logs: import("../use/use-local-environment.js").EngineLog[],
  *  notebook: import("../packages/codemirror-notebook/cell.js").Notebook,
  *  engine: import("../packages/codemirror-notebook/cell.js").EngineShadow,
- *  viewupdate: any,
  * }} props
  */
-export let Logs = ({ logs, notebook, engine, viewupdate }) => {
-  let xs = logs.map((x) => `${x.id}-${x.cylinder.running}`).join(",");
-  console.log(`xs:`, xs);
+export let Logs = ({ logs, notebook, engine }) => {
+  let key = logs.map((x) => `${x.id}-${x.cylinder.running}`).join(",");
   return (
-    <Flipper spring={"veryGentle"} flipKey={xs}>
+    <Flipper spring={"veryGentle"} flipKey={key}>
       <div className="log-list">
         {logs
           .slice()
@@ -143,23 +139,23 @@ export let Logs = ({ logs, notebook, engine, viewupdate }) => {
               <Flipped
                 flipId={log.id}
                 // stagger
-                // onAppear={(element, index, data) => {
-                //   element.style.opacity = "1";
-                //   let bounding_rect = element.getBoundingClientRect();
-                //   let distance = bounding_rect.top + bounding_rect.height;
-                //   element.style.transform = `translateY(-${distance}px)`;
-                //   spring({
-                //     config: "veryGentle",
-                //     values: {
-                //       translateY: [-distance, 0],
-                //     },
-                //     // @ts-ignore
-                //     onUpdate: ({ translateY }) => {
-                //       element.style.transform = `translateY(${translateY}px)`;
-                //     },
-                //     delay: index * 100,
-                //   });
-                // }}
+                onAppear={(element, index, data) => {
+                  element.style.opacity = "1";
+                  let bounding_rect = element.getBoundingClientRect();
+                  let distance = bounding_rect.top + bounding_rect.height;
+                  element.style.transform = `translateY(-${distance}px)`;
+                  spring({
+                    config: "veryGentle",
+                    values: {
+                      translateY: [-distance, 0],
+                    },
+                    // @ts-ignore
+                    onUpdate: ({ translateY }) => {
+                      element.style.transform = `translateY(${translateY}px)`;
+                    },
+                    delay: index * 100,
+                  });
+                }}
               >
                 <div
                   className="log px-3"

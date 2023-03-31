@@ -184,12 +184,7 @@ export function NotebookView({ state, onChange }) {
           overflowY: "auto",
         }}
       >
-        <Logs
-          logs={logs}
-          notebook={notebook}
-          engine={engine}
-          viewupdate={viewupdate}
-        />
+        <Logs logs={logs} notebook={notebook} engine={engine} />
       </div>
     </div>
   );

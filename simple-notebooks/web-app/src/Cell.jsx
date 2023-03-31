@@ -333,7 +333,7 @@ export let Cell = ({
     });
   }, [set_is_focused]);
 
-  let modified = cell.unsaved_code !== cell.code;
+  let modified = cell.unsaved_code.trim() !== cell.code.trim();
   let folded =
     viewupdate.state.field(EditorHasSelectionField) || modified
       ? false

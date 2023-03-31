@@ -23,6 +23,7 @@ import {
 import { CellOrderField, CellOrderEffect } from "./cell-order.js";
 import { create_cell_state } from "../../App.jsx";
 import { NoAnimation } from "./last-created-cells.js";
+import { syntaxTree } from "@codemirror/language";
 
 export let notebook_keymap = EditorInChiefKeymap.of([
   {

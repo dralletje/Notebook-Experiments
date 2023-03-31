@@ -1,6 +1,7 @@
 import React from "react";
 import { get_bundle_worker } from "../packages/bundle-worker/bundle-worker.js";
 import immer, { original } from "immer";
+import { isEqual } from "lodash";
 
 /**
  * @typedef EngineLog
@@ -9,7 +10,11 @@ import immer, { original } from "immer";
  *  cell_id:string;
  *  code: string;
  *  cylinder: import("../packages/codemirror-notebook/cell.js").CylinderShadow,
+ *  repeat: number;
+ *  time: Date;
  * }}
+ *
+ * TODO Use `time` property in log to show "last updated" time
  */
 
 /**
@@ -64,7 +69,24 @@ export let useLocalEnvironment = (notebook) => {
         let log = event.data.log;
         set_state(
           immer((x) => {
-            let actual_cylinder = x.engine.cylinders[log.cell_id];
+            // @ts-ignore
+            let previous_log = x.logs.at(-1);
+            let actual_cylinder =
+              /** @type {import("../packages/codemirror-notebook/cell.js").CylinderShadow} */ (
+                original(x.engine.cylinders[log.cell_id])
+              );
+
+            if (
+              previous_log &&
+              previous_log.code === log.code &&
+              previous_log.cell_id === log.cell_id &&
+              isEqual(previous_log.cylinder.result, actual_cylinder.result)
+            ) {
+              previous_log.repeat++;
+              previous_log.time = new Date();
+              return;
+            }
+
             let new_cylinder = {
               ...actual_cylinder,
               result:
@@ -73,10 +95,14 @@ export let useLocalEnvironment = (notebook) => {
                   : actual_cylinder.result,
             };
             x.logs = [
+              // @ts-ignore
               ...x.logs.filter((x) => x.id !== log.id),
               {
                 ...log,
+                // @ts-ignore
                 cylinder: new_cylinder,
+                time: new Date(),
+                repeat: 1,
               },
             ];
           })
