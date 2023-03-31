@@ -1,52 +1,14 @@
 import * as Graph from "./leaf/graph";
-import { ParsedCell } from "./parts/parse-cell";
 import type { Opaque } from "ts-opaque";
-
-type ResultState<ReturnValue, ThrowValue> =
-  | { type: "return"; name?: string; value: ReturnValue }
-  | { type: "throw"; value: ThrowValue };
+import { Engine } from "./parts/engine";
 
 export type CellId = Opaque<string, "CellId"> & Graph.NodeId;
 export type VariableName = Opaque<string, "VariableName"> & Graph.EdgeName;
-export type LivingValue = Opaque<any, "LivingValue">;
-export type EngineRunCountTracker = Opaque<number, "RunTracker">;
 
-export type Engine = {
-  cylinders: { [cell_id: CellId]: Cylinder };
-  internal_run_counter: EngineRunCountTracker;
-  // graph: Graph.Graph;
-  is_busy: boolean;
-  parse_cache: Map<CellId, ParsedCell>;
-};
-
-export type Cylinder = {
-  id: CellId;
-
-  running: boolean;
-  waiting: boolean;
-  result: ResultState<{ name?: string | null }, any>;
-
-  // These are only used internally by the engine
-  // TODO Put them in a separate object?
-  last_run: number;
-  variables: { [name: VariableName]: LivingValue };
-  /**
-   * Why do I need this, if it is already in the graph?
-   * I need to know what cells the last run of this cell depended on
-   * so I can find out about them even if they are deleted
-   */
-  upstream_cells: Array<CellId>;
-  abort_controller: AbortController;
-  /**
-   * TODO Need to figure out why exactly I need this
-   */
-  last_internal_run: EngineRunCountTracker;
-};
-
-export type Notebook = {
-  cells: { [key: CellId]: Cell };
+export type Notebook = Readonly<{
+  cells: Readonly<{ [key: CellId]: Cell }>;
   cell_order: CellId[];
-};
+}>;
 
 export type Workspace = {
   files: { [filename: string]: { filename: string; notebook: Notebook } };

@@ -1,5 +1,8 @@
 import { EditorState, Extension } from "@codemirror/state";
-import { EditorAddEffect } from "../codemirror-editor-in-chief/editor-in-chief";
+import {
+  EditorAddEffect,
+  EditorInChief,
+} from "../codemirror-editor-in-chief/editor-in-chief";
 import { CellOrderField, CellOrderEffect } from "./cell-order";
 import { empty_cell } from "./cell";
 import { create_cell_state } from "../../App";
@@ -23,12 +26,16 @@ export let add_single_cell_when_all_cells_are_removed =
     // Add a cell when the last cell is removed
     if (cells_left_after_effects.size === 0) {
       let new_cell = empty_cell();
+      console.log(`transaction.state:`, transaction.state);
       return {
         annotations: NoAnimation.of(true),
         effects: [
           EditorAddEffect.of({
             editor_id: new_cell.id,
-            state: create_cell_state(transaction.state, new_cell),
+            state: create_cell_state(
+              new EditorInChief(transaction.state),
+              new_cell
+            ),
           }),
           CellOrderEffect.of({
             cell_id: new_cell.id,
