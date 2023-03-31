@@ -8,12 +8,13 @@ import { StacklessError } from "../leaf/StacklessError.js";
 import { mapValues, groupBy, uniq } from "lodash-es";
 
 import { Engine, EngineTime, LivingValue } from "./engine";
+import { DeepReadonly } from "../leaf/DeepReaonly";
 
 type ParsedCells = { [key: CellId]: ParsedCell | null };
 
 let cells_that_need_running = (
   notebook: Notebook,
-  engine: Engine,
+  engine: DeepReadonly<Engine>,
   graph: Graph.Graph
 ): CellId[] => {
   let sorted = Graph.topological_sort(graph) as CellId[];
@@ -219,13 +220,11 @@ export let notebook_step = ({
   notebook,
   filename,
   onChange,
-  onLog,
 }: {
-  engine: Engine;
+  engine: DeepReadonly<Engine>;
   filename: string;
   notebook: Notebook;
   onChange: (mutate: (engine: Engine) => void) => void;
-  onLog: (log: any) => void;
 }) => {
   // prettier-ignore
   invariant(
@@ -264,12 +263,12 @@ export let notebook_step = ({
     ...(groupBy(analysis_results, (result) => result.type) as any),
   };
 
-  if (by_status.error.length > 0) {
-    onLog({
-      title: "Disabling cells because of errors",
-      cells: [...by_status.error.map((x) => x.cell_id)],
-    });
-  }
+  // if (by_status.error.length > 0) {
+  //   onLog({
+  //     title: "Disabling cells because of errors",
+  //     cells: [...by_status.error.map((x) => x.cell_id)],
+  //   });
+  // }
   for (let error_cell of by_status.error) {
     let { cell_id, error } = error_cell;
     let cell = notebook.cells[cell_id];

@@ -143,7 +143,6 @@ export let notebook_keymap = EditorInChiefKeymap.of([
                 effects: [
                   MutateCellMetaEffect.of((cell) => {
                     cell.code = formatted;
-                    cell.is_waiting = true;
                     cell.requested_run_time = now;
                   }),
                 ],
@@ -180,7 +179,6 @@ export let cell_keymap = Prec.high(
           effects: [
             MutateCellMetaEffect.of((cell) => {
               cell.code = formatted;
-              cell.is_waiting = true;
               cell.requested_run_time = Date.now();
             }),
           ],
@@ -269,7 +267,6 @@ export let cell_keymap = Prec.high(
               ? [
                   MutateCellMetaEffect.of((cell) => {
                     cell.code = code;
-                    cell.is_waiting = true;
                     cell.requested_run_time = Date.now();
                   }),
                 ]

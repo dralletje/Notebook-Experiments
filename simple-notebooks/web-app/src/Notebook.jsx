@@ -18,6 +18,7 @@ import {
   BlurEditorInChiefEffect,
   EditorIdFacet,
   EditorInChief,
+  extract_nested_viewupdate,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import {
   CellMetaField,
@@ -44,12 +45,12 @@ import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
 import { actions } from "./commands.js";
 import { Sidebar } from "./Sidebar.jsx";
 import { useLocalEnvironment } from "./use/use-local-environment.js";
+import { Logs } from "./Sidebar/Logs.jsx";
 
 let NotebookStyle = styled.div`
   padding-top: 50px;
   min-height: 100vh;
   padding-bottom: 100px;
-  margin-right: 20px;
 
   flex: 1;
   flex-basis: clamp(700px, 100vw - 200px, 900px);
@@ -111,10 +112,6 @@ export function NotebookView({ state, onChange }) {
   // let engine = useEngine(notebook_with_filename, socket);
   let [engine, logs] = useLocalEnvironment(notebook_with_filename);
 
-  React.useEffect(() => {
-    console.log(`ENGINE LOGS:`, logs);
-  }, [logs]);
-
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
       <SelectionArea
@@ -137,6 +134,7 @@ export function NotebookView({ state, onChange }) {
                 <DragAndDropItem
                   key={cell.id}
                   index={index}
+                  id={cell.id}
                   cell_id={cell.id}
                   editor_in_chief={editor_in_chief}
                   context_options={cell_actions({ editor_in_chief, cell })}
@@ -156,7 +154,10 @@ export function NotebookView({ state, onChange }) {
                     ) : (
                       <CellMemo
                         cell_id={cell.id}
-                        viewupdate={viewupdate}
+                        viewupdate={extract_nested_viewupdate(
+                          viewupdate,
+                          cell.id
+                        )}
                         cylinder={engine.cylinders[cell.id]}
                         is_selected={selected_cells.includes(cell.id)}
                         did_just_get_created={last_created_cells.includes(
@@ -169,11 +170,27 @@ export function NotebookView({ state, onChange }) {
               ))}
           </DragAndDropList>
         </NotebookStyle>
-        <div style={{ flex: 1 }} />
-        {/* <div style={{ width: 400, display: "flex", alignItems: "stretch" }}>
-          <Sidebar editor_in_chief={editor_in_chief} />
-        </div> */}
+        <div style={{ flex: 1, minWidth: 16 }} />
       </SelectionArea>
+      <div
+        style={{
+          width: 400,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
+          height: `calc(100vh - 50px)`,
+          position: "sticky",
+          top: 50,
+          overflowY: "auto",
+        }}
+      >
+        <Logs
+          logs={logs}
+          notebook={notebook}
+          engine={engine}
+          viewupdate={viewupdate}
+        />
+      </div>
     </div>
   );
 }

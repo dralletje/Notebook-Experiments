@@ -87,7 +87,8 @@ let CellContainer = styled.div`
  *  cell_id: import("../packages/codemirror-notebook/cell").CellId,
  *  index: number,
  *  editor_in_chief: import("codemirror-x-react/viewupdate.js").EditorView<EditorInChief>,
- *  context_options: any[]
+ *  context_options: any[],
+ *  id?: string,
  * }} props
  */
 export let DragAndDropItem = ({
@@ -96,6 +97,7 @@ export let DragAndDropItem = ({
   index,
   editor_in_chief,
   context_options,
+  id,
 }) => {
   let cell_type = editor_in_chief.state.editor(cell_id).facet(CellTypeFacet);
   return (
@@ -108,6 +110,7 @@ export let DragAndDropItem = ({
           flipId={cell_id}
         >
           <CellContainer
+            id={id}
             data-can-start-selection={false}
             ref={provided.innerRef}
             {...provided.draggableProps}

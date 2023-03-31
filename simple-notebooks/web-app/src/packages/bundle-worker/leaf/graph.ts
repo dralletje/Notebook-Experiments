@@ -115,8 +115,9 @@ export let multiple_definitions = (graph: Graph) => {
         return node.in.values().some(({ name: in_name }) => {
           return out_name === in_name;
         });
-      });
-    if (conflicting_definitions.toArray().length > 0) {
+      })
+      .toArray();
+    if (conflicting_definitions.length > 0) {
       doubles.set(
         cell_id,
         new Set(conflicting_definitions.map(({ name }) => name))

@@ -104,3 +104,11 @@ button {
   background-color: #ffffff0f;
   height: 1px;
 }
+
+.being-watched::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  backdrop-filter: brightness(1.5);
+  border-radius: 3px 3px 0 0;
+}

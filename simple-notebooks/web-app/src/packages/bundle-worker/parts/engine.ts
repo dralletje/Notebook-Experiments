@@ -69,7 +69,7 @@ export class EngineChangeEvent extends Event {
 
 export class EngineLogEvent extends Event {
   log: any;
-  constructor(log) {
+  constructor(log: { id: unknown; cell_id: CellId; code: string }) {
     super("log");
     this.log = log;
   }
@@ -119,7 +119,7 @@ export class Engine extends TypedEventTarget<{
     this.is_busy = false;
   }
 
-  private async update_once(notebook: Notebook): boolean {
+  private async update_once(notebook: Notebook): Promise<boolean> {
     let did_change = false;
 
     // Make sure every cell has a cylinder
@@ -142,10 +142,8 @@ export class Engine extends TypedEventTarget<{
         fn(this);
         this.dispatchEvent(new EngineChangeEvent());
       },
-      onLog: (log) => {
-        this.dispatchEvent(new EngineLogEvent(log));
-      },
     });
+    this.dispatchEvent(new EngineChangeEvent());
 
     /////////////////////////////////////
     // Delete overdue cylinders
@@ -161,19 +159,13 @@ export class Engine extends TypedEventTarget<{
       this.cylinders.delete(deleted_cylinder.id);
     }
 
+    let event_id = this.tick();
+
     /////////////////////////////////////
     // Run it!
     /////////////////////////////////////
     if (cell_to_run) {
       did_change = true;
-
-      this.dispatchEvent(
-        new EngineLogEvent({
-          title: "Running cell",
-          cellId: cell_to_run,
-          body: "Whoiiii",
-        })
-      );
 
       let key = cell_to_run.cell_id;
       let cell = notebook.cells[key];
@@ -190,6 +182,13 @@ export class Engine extends TypedEventTarget<{
       cylinder.running = true;
       cylinder.waiting = false;
       this.dispatchEvent(new EngineChangeEvent());
+      this.dispatchEvent(
+        new EngineLogEvent({
+          id: event_id,
+          cell_id: cell_to_run.cell_id,
+          code: cell.code,
+        })
+      );
 
       console.log(pc.blue(pc.bold(`RUNNING CODE:`)));
       console.log(pc.blue(code));
@@ -228,8 +227,16 @@ export class Engine extends TypedEventTarget<{
         variables:
           result.type === "return" ? omit(result.value, "default") : {},
       });
+
+      this.dispatchEvent(new EngineChangeEvent());
+      this.dispatchEvent(
+        new EngineLogEvent({
+          id: event_id,
+          cell_id: cell_to_run.cell_id,
+          code: cell.code,
+        })
+      );
     }
-    this.dispatchEvent(new EngineChangeEvent());
 
     return did_change;
   }

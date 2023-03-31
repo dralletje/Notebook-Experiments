@@ -12,10 +12,7 @@ import { shallowEqualObjects } from "shallow-equal";
 import { Inspector } from "./yuck/Inspector";
 
 import { basic_javascript_setup } from "./codemirror-javascript/codemirror-javascript";
-import {
-  EditorHasSelectionField,
-  extract_nested_viewupdate,
-} from "./packages/codemirror-editor-in-chief/editor-in-chief";
+import { EditorHasSelectionField } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,
@@ -263,9 +260,7 @@ export let Cell = ({
   did_just_get_created,
   viewupdate,
 }) => {
-  let nested_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
-
-  let state = nested_viewupdate.state;
+  let state = viewupdate.state;
   let type = state.facet(CellTypeFacet);
   let cell = {
     id: cell_id,
@@ -295,7 +290,7 @@ export let Cell = ({
   }, []);
 
   React.useEffect(() => {
-    for (let transaction of nested_viewupdate.transactions) {
+    for (let transaction of viewupdate.transactions) {
       if (transaction.annotation(NudgeCell)) {
         cell_wrapper_ref.current.animate(
           {
@@ -311,7 +306,7 @@ export let Cell = ({
         );
       }
     }
-  }, [nested_viewupdate.transactions]);
+  }, [viewupdate.transactions]);
 
   // FLASH when cell is done running
   React.useLayoutEffect(() => {
@@ -340,7 +335,7 @@ export let Cell = ({
 
   let modified = cell.unsaved_code !== cell.code;
   let folded =
-    nested_viewupdate.state.field(EditorHasSelectionField) || modified
+    viewupdate.state.field(EditorHasSelectionField) || modified
       ? false
       : cell.folded;
   let forced_unfolded = cell.folded === true && folded === false;
@@ -361,7 +356,7 @@ export let Cell = ({
     <CellStyle
       ref={cell_wrapper_ref}
       data-cell-id={cell.id}
-      className={`font-mono ${classes}`}
+      className={`font-mono ${classes} cell`}
     >
       <InspectorContainer className="inspector-container">
         <Inspector value={cylinder?.result} />
@@ -379,10 +374,7 @@ export let Cell = ({
           marginTop: folded ? 0 : undefined,
         }}
       >
-        <CodemirrorFromViewUpdate
-          ref={editorview_ref}
-          viewupdate={nested_viewupdate}
-        >
+        <CodemirrorFromViewUpdate ref={editorview_ref} viewupdate={viewupdate}>
           <Extension
             key="placeholder"
             deps={[]}
@@ -422,8 +414,7 @@ export let CellMemo = React.memo(
   ) => {
     return (
       shallowEqualObjects(old_props, next_props) &&
-      old_viewupdate.state.editor(cell_id) ===
-        next_viewupdate.state.editor(cell_id) &&
+      old_viewupdate.state === next_viewupdate.state &&
       isEqual(old_cylinder, cylinder)
     );
   }

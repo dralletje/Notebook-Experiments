@@ -20,7 +20,6 @@ export let NudgeCell = Annotation.define();
 type CellMeta = {
   code: string;
   requested_run_time: number;
-  is_waiting?: boolean;
   folded?: boolean;
   type: "code" | "text";
 };
@@ -46,7 +45,6 @@ export let CellMetaField = StateField.define<CellMeta>({
   create() {
     return {
       code: "",
-      is_waiting: false,
       requested_run_time: -Infinity,
       folded: false,
       type: "code",
@@ -86,7 +84,6 @@ export type Cell = {
   code: string;
   unsaved_code: string;
   requested_run_time: number;
-  is_waiting?: boolean;
   folded?: boolean;
 };
 

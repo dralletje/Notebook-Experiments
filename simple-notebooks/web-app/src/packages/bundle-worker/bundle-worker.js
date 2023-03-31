@@ -4,7 +4,7 @@ export let get_bundle_worker = () => {
   });
 
   worker.onerror = (event) => {
-    console.error(event.message);
+    console.error(event);
   };
 
   return worker;

@@ -1,0 +1,14 @@
+.log-list {
+  display: flex;
+  /* flex-direction: column-reverse; */
+  flex-direction: column;
+  flex: 1;
+
+  padding-top: 12px;
+  gap: 8px;
+  overflow: auto;
+
+  background-color: #17018145;
+  /* background-image: url("../yuck/noise-background.png"), #17018145; */
+  border-left: solid 1px #ffffff1f;
+}

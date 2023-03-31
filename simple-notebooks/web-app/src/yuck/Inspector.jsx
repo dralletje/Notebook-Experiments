@@ -1,74 +1,49 @@
 import React from "react";
 import styled from "styled-components";
 import { Inspector as BasicInspector } from "inspector-x-react";
-import "@observablehq/inspector/src/style.css";
 import { compact, isEqual } from "lodash";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import { EditorState, Prec } from "@codemirror/state";
 import { indentUnit } from "@codemirror/language";
 import { Decoration, EditorView } from "@codemirror/view";
 import { ReactWidget } from "react-codemirror-widget";
+import shadow from "react-shadow";
+
+// @ts-ignore
+import inspector_css from "./Inspector.css?inline";
+import observable_inspector from "@observablehq/inspector/src/style.css?inline";
+
+let observable_inspector_sheet = new CSSStyleSheet();
+observable_inspector_sheet.replaceSync(observable_inspector);
+
+let inspector_css_sheet = new CSSStyleSheet();
+inspector_css_sheet.replaceSync(inspector_css);
+
+let AdoptStylesheet = ({ stylesheet }) => {
+  let ref = React.useRef(null);
+  React.useEffect(() => {
+    let shadow_root = ref.current.getRootNode();
+    shadow_root.adoptedStyleSheets = [
+      ...(shadow_root.adoptedStyleSheets ?? []),
+      stylesheet,
+    ];
+
+    return () => {
+      let index = shadow_root.adoptedStyleSheets.indexOf(stylesheet);
+      shadow_root.adoptedStyleSheets = [
+        ...shadow_root.adoptedStyleSheets.slice(0, index),
+        ...shadow_root.adoptedStyleSheets.slice(index + 1),
+      ];
+    };
+  });
+  return <span ref={ref} />;
+};
 
 import { deserialize } from "./deserialize-value-to-show";
 import {
   javascript_syntax_highlighting,
   my_javascript_parser,
 } from "../codemirror-javascript/syntax-highlighting";
-
-let InspectorStyle = styled.div`
-  --syntax_normal: #848484;
-  --syntax_comment: #747474;
-  --syntax_number: #00ca5a;
-  --syntax_keyword: #008c85; /* Or white? */
-  --syntax_atom: #10a778;
-  --syntax_string: #00ca5a;
-  --syntax_error: #ffbedc;
-  --syntax_unknown_variable: #838383;
-  --syntax_known_variable: #ff7a6f;
-  --syntax_matchbracket: #20bbfc;
-  --syntax_key: #f91515;
-
-  display: contents;
-
-  & svg {
-    display: inline;
-  }
-
-  /* For some, weird reason, this rule isn't 
-            in the open source version */
-  & .observablehq--caret {
-    margin-right: 4px;
-    vertical-align: baseline;
-  }
-
-  & .observablehq--inspect {
-    /* Makes the whole inspector flow like text */
-    display: inline;
-    font-size: 16px;
-  }
-  /* Add a gimmicky javascript logo */
-  & .observablehq--inspect.observablehq--collapsed > a::before,
-  & .observablehq--inspect:not(.observablehq--collapsed)::before,
-  & .observablehq--running::before {
-    all: initial;
-    content: "JS";
-    color: #323330;
-    background-color: #f0db4f;
-    display: inline-block;
-    padding-left: 4px;
-    padding-right: 4px;
-    padding-top: 3px;
-    padding-bottom: 2px;
-    margin-right: 8px;
-    font-size: 14px;
-    font-family: "Roboto Mono";
-    font-weight: bold;
-    margin-bottom: 3px;
-
-    /* Hmmm, undo the logo sorry sorry */
-    content: unset;
-  }
-`;
 
 let AAAAA = styled.div`
   & .cm-editor {
@@ -290,14 +265,36 @@ export let InspectorNoMemo = ({ value }) => {
     }
   }, [value]);
 
-  // if (
+  // Explicit render HTML without a surrounding expression differently,
+  // because my in-codemirror-renderer thing does _something_ odd with paddings and shit
+  // AND THIS JUST WORKS PLEASE LET ME BE I'M HAPPY WITH THIS
+  if (
+    value?.name == null &&
+    result_deserialized.type === "return" &&
+    result_deserialized.value instanceof Node
+  ) {
+    return (
+      <div>
+        <AdoptStylesheet stylesheet={observable_inspector_sheet} />
+        <AdoptStylesheet stylesheet={inspector_css_sheet} />
+        <BasicInspector value={result_deserialized} />
+      </div>
+    );
+  }
 
-  // ) {
-  //   return <Render node={result_deserialized.value} />;
-  // }
+  if (
+    value?.name == null &&
+    result_deserialized.type === "return" &&
+    result_deserialized.value === undefined
+  ) {
+    return null;
+  }
 
   return (
     <PlaceInsideExpression expression={value?.name}>
+      {/* <shadow.div style={{ display: "inline" }}> */}
+      <AdoptStylesheet stylesheet={observable_inspector_sheet} />
+      <AdoptStylesheet stylesheet={inspector_css_sheet} />
       {
         // prettier-ignore
         result_deserialized.type === "return" &&
@@ -310,11 +307,10 @@ export let InspectorNoMemo = ({ value }) => {
           // Doesn't work nicely with my `display: inline` __RESULT_PLACEHOLDER__ replacement.
           <Render node={result_deserialized.value} />
         ) : (
-          <InspectorStyle>
-            <BasicInspector value={result_deserialized} />
-          </InspectorStyle>
+          <BasicInspector value={result_deserialized} />
         )
       }
+      {/* </shadow.div> */}
     </PlaceInsideExpression>
   );
 };
