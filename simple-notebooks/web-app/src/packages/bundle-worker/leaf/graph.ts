@@ -1,4 +1,7 @@
 // I use my own opaque here, so I can have an extra layer of opaqueness to extend these types
+
+import { ModernMap } from "./ModernMap";
+
 // import { Opaque } from "ts-opaque";
 declare const opaque: unique symbol;
 type Opaque<BaseType, BrandType = unknown> = BaseType & {
@@ -16,18 +19,18 @@ export type DisconnectedNode = {
 export type DisconnectedGraph = Array<DisconnectedNode>;
 
 type MapOf<T extends [any, any]> = T extends [infer K, infer V]
-  ? ReadonlyMap<K, V>
+  ? ModernMap<K, V>
   : never;
 
 type Edge = [NodeId, { name: EdgeName }];
-type CompactGraph = ReadonlyMap<NodeId, Array<Edge>>;
+type CompactGraph = ModernMap<NodeId, Array<Edge>>;
 export type Node = { id: NodeId; in: MapOf<Edge>; out: MapOf<Edge> };
-export type Graph = ReadonlyMap<NodeId, Node>;
+export type Graph = ModernMap<NodeId, Node>;
 
 export let disconnected_to_compact_graph = (
   cells: DisconnectedGraph
 ): CompactGraph => {
-  let x = new Map(
+  let x = new ModernMap(
     cells.map((cell) => {
       let cell_id = cell.id;
       return [
@@ -57,14 +60,14 @@ export let disconnected_to_compact_graph = (
 };
 
 export let inflate_compact_graph = (graph: CompactGraph): Graph => {
-  let expanded_graph = new Map(
-    Array.from(graph).map(([id, out]) => [
+  let expanded_graph = new ModernMap(
+    graph.entries().map(([id, out]) => [
       id,
       {
         id,
-        out: new Map(out),
+        out: new ModernMap(out),
         // In is filled in later...
-        in: new Map(),
+        in: new ModernMap() as MapOf<Edge>,
       },
     ])
   );
@@ -106,19 +109,17 @@ export let topological_sort = (graph: Graph): NodeId[] => {
 export let multiple_definitions = (graph: Graph) => {
   let doubles = new Map<NodeId, Set<EdgeName>>();
   for (let [cell_id, node] of graph.entries()) {
-    let conflicting_definitions = Array.from(node.out.values()).filter(
-      ({ name: out_name }) => {
-        return Array.from(node.in.values()).some(({ name: in_name }) => {
+    let conflicting_definitions = node.out
+      .values()
+      .filter(({ name: out_name }) => {
+        return node.in.values().some(({ name: in_name }) => {
           return out_name === in_name;
         });
-      }
-    );
-    if (conflicting_definitions.length > 0) {
+      });
+    if (conflicting_definitions.toArray().length > 0) {
       doubles.set(
         cell_id,
-        new Set(
-          Array.from(conflicting_definitions.values()).map(({ name }) => name)
-        )
+        new Set(conflicting_definitions.map(({ name }) => name))
       );
     }
   }

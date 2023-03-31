@@ -1,5 +1,3 @@
-import pc from "picocolors";
-import { omit } from "lodash-es";
 import { invariant } from "../leaf/invariant";
 
 import * as Graph from "../leaf/graph.js";
@@ -48,16 +46,19 @@ let cells_that_need_running = (
     let should_run_at = latest_run_count(
       cylinder.last_internal_run,
 
-      ...Array.from(graph.get(cell_id).in.keys()).map((upstream_id: CellId) => {
-        if (!cell_should_run_at_map.has(upstream_id)) {
-          // Due to how sorting works, if the cell is part of a cyclic chain,
-          // we process some of them before we processed their cyclic siblings.
-          // There is a check for this later, so we don't have to worry here.
-          return DONT_RUN;
-        } else {
-          return cell_should_run_at_map.get(upstream_id);
-        }
-      }),
+      ...graph
+        .get(cell_id)
+        .in.keys()
+        .map((upstream_id: CellId) => {
+          if (!cell_should_run_at_map.has(upstream_id)) {
+            // Due to how sorting works, if the cell is part of a cyclic chain,
+            // we process some of them before we processed their cyclic siblings.
+            // There is a check for this later, so we don't have to worry here.
+            return DONT_RUN;
+          } else {
+            return cell_should_run_at_map.get(upstream_id);
+          }
+        }),
 
       // This is so that when you have
       // CELL_1: a = 10
@@ -95,20 +96,19 @@ let cells_that_need_running = (
 };
 
 let notebook_to_disconnected_graph = (
-  cell_order: CellId[],
   parsed_cells: ParsedCells
 ): Graph.DisconnectedGraph => {
-  return cell_order.map((cell_id, parsed_cell) => {
+  return Object.entries(parsed_cells).map(([cell_id, parsed_cell]) => {
     let parsed = parsed_cells[cell_id];
     if (parsed != null && "output" in parsed) {
       return {
-        id: cell_id,
+        id: cell_id as CellId,
         exports: parsed.output.meta.output as Graph.EdgeName[],
         imports: parsed.output.meta.input as Graph.EdgeName[],
       };
     } else {
       return {
-        id: cell_id,
+        id: cell_id as CellId,
         exports: [],
         imports: [],
       };
@@ -121,7 +121,7 @@ export type ExecutionResult<T = any, E = any> =
   | { type: "throw"; value: E };
 
 /** Gets the cells' ParsedCell, but with smart caching */
-let parse_all_cells = (
+export let parse_all_cells = (
   engine: Engine,
   notebook: Notebook
 ): { [key: CellId]: ParsedCell } => {
@@ -242,72 +242,24 @@ let get_analysis_results = (
   );
 };
 
-export type RunCellFunction = (options: {
-  signal: AbortSignal;
-  code: string;
-  inputs: { [key: string]: any };
-}) => Promise<{
-  result: ExecutionResult<{
-    [name: VariableName]: LivingValue;
-    default: LivingValue;
-  }>;
-}>;
-
 export let notebook_step = async ({
   engine,
   notebook,
   filename,
   onChange,
-  run_cell,
   onLog,
 }: {
   engine: Engine;
   filename: string;
   notebook: Notebook;
   onChange: (mutate: (engine: Engine) => void) => void;
-  run_cell: RunCellFunction;
   onLog: (log: any) => void;
 }) => {
   // prettier-ignore
   invariant(
-    Array.from(engine.cylinders.values()).filter((cylinder) => cylinder.running).length === 0,
+    engine.cylinders.values().filter((cylinder) => cylinder.running).toArray().length === 0,
     "There are cells currently running!"
   );
-
-  // Make sure every cell has a cylinder
-  for (let [cell_id, cell] of Object.entries(notebook.cells)) {
-    if (!engine.cylinders.has(cell_id as CellId)) {
-      engine.cylinders.set(cell_id as CellId, {
-        id: cell_id as CellId,
-        last_run: -Infinity,
-        last_internal_run: -Infinity as EngineRunCountTracker,
-        running: false,
-        waiting: false,
-        result: {
-          type: "return",
-          value: undefined,
-        },
-        variables: {},
-        upstream_cells: [],
-        abort_controller: new AbortController(),
-      });
-    }
-  }
-
-  // "Just" run all handlers for deleted cells
-  // TODO? I just know this will bite me later
-  // TODO Wrap abort controller handles so I can show when they go wrong
-  let deleted_cells = Array.from(engine.cylinders.values()).filter(
-    (cylinder) => {
-      return cylinder.id in notebook.cells === false;
-    }
-  );
-  for (let deleted_cell of deleted_cells) {
-    deleted_cell.abort_controller.abort();
-    onChange(() => {
-      engine.cylinders.delete(deleted_cell.id);
-    });
-  }
 
   /////////////////////////////////////
   // Start parsing and analysing
@@ -317,7 +269,7 @@ export let notebook_step = async ({
 
   let graph = Graph.inflate_compact_graph(
     Graph.disconnected_to_compact_graph(
-      notebook_to_disconnected_graph(notebook.cell_order, parsed_cells)
+      notebook_to_disconnected_graph(parsed_cells)
     )
   );
 
@@ -352,8 +304,7 @@ export let notebook_step = async ({
     let graph_entry = graph.get(cell_id);
 
     onChange((engine) => {
-      engine.cylinders.set(cell_id, {
-        ...engine.cylinders.get(cell_id),
+      Object.assign(engine.cylinders.get(cell_id), {
         last_run: cell.requested_run_time,
         last_internal_run: engine.internal_run_counter,
         result: { type: "throw", value: error },
@@ -406,81 +357,5 @@ export let notebook_step = async ({
     }
   }
 
-  /////////////////////////////////////
-  // Run it!
-  /////////////////////////////////////
-
-  onLog({
-    title: "Running cell",
-    cellId: cell_to_run,
-    body: "Whoiiii",
-  });
-
-  let key = cell_to_run;
-  let cell = notebook.cells[key];
-  let parsed = parsed_cells[cell.id];
-  invariant("output" in parsed, `Parsed error shouldn't end up here`);
-
-  onChange((engine) => {
-    engine.cylinders.set(key, {
-      ...engine.cylinders.get(key),
-      running: true,
-      waiting: false,
-    });
-  });
-  let cylinder = engine.cylinders.get(key);
-
-  let {
-    code,
-    meta: { input: consumed_names, last_created_name },
-  } = parsed.output;
-
-  console.log(pc.blue(pc.bold(`RUNNING CODE:`)));
-  console.log(pc.blue(code));
-
-  // Look for requested variable names in other cylinders
-  let inputs = {} as { [key: string]: any };
-  for (let name of consumed_names) {
-    for (let cylinder of engine.cylinders.values()) {
-      if (name in (cylinder.variables ?? {})) {
-        inputs[name] = cylinder.variables[name];
-      }
-    }
-  }
-
-  // If there was a previous run, allow performing cleanup.
-  cylinder.abort_controller?.abort();
-  // Wait a tick for the abort to actually happen (possibly)
-  await new Promise((resolve) => setTimeout(resolve, 0));
-
-  let abort_controller = new AbortController();
-  cylinder.abort_controller = abort_controller;
-
-  let { result } = await run_cell({
-    signal: abort_controller.signal,
-    code: code,
-    inputs: inputs,
-  });
-
-  onChange((engine) => {
-    engine.cylinders.set(key, {
-      ...engine.cylinders.get(key),
-
-      last_run: cell.requested_run_time,
-      // @ts-ignore
-      last_internal_run: engine.internal_run_counter++ as EngineRunCountTracker,
-      upstream_cells: Array.from(graph.get(key).in.keys()) as CellId[],
-
-      result:
-        result.type === "return"
-          ? {
-              type: "return",
-              name: last_created_name,
-              value: result.value.default,
-            }
-          : result,
-      running: false,
-      variables: result.type === "return" ? omit(result.value, "default") : {},
-    });
-  });
+  return { cell_id: cell_to_run, graph_node: graph.get(cell_to_run) };
 };

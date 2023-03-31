@@ -8,7 +8,7 @@ import { Notebook } from "./types.js";
 import { serialize } from "./parts/serialize";
 import { StacklessError } from "./leaf/StacklessError.js";
 
-import { Engine, EngineChangeEvent, EngineLogEvent } from "./parts/engine.js";
+import { Engine } from "./parts/engine.js";
 
 let serialize_with_default = ({ value, fallback, context }) => {
   try {
@@ -24,7 +24,7 @@ let serialize_with_default = ({ value, fallback, context }) => {
 let engine_to_json = (engine: Engine) => {
   return {
     cylinders: Object.fromEntries(
-      Array.from(engine.cylinders).map(([id, cylinder]) => [
+      engine.cylinders.entries().map(([id, cylinder]) => [
         id,
         {
           name: cylinder.id,
