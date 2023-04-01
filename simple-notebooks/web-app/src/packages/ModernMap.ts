@@ -60,7 +60,15 @@ export class ModernMap<K, V> extends Map<K, V> {
     return new ModernIterableIterator(super.entries());
   }
 
+  // https://github.com/tc39/proposal-collection-methods
+  mapValues<T>(fn: (value: V, key: K, map: this) => T) {
+    return new ModernMap(
+      this.entries().map(([key, value]) => [key, fn(value, key, this)])
+    );
+  }
+
   // Polyfill for emplace proposal
+  // https://github.com/tc39/proposal-upsert
   emplace(
     key: K,
     {

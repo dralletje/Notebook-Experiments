@@ -2,20 +2,25 @@ import {
   ChangeDesc,
   ChangeSet,
   EditorSelection,
+  SelectionRange,
   StateEffect,
   StateEffectType,
   Text,
 } from "@codemirror/state";
 import { compact } from "lodash";
+import { ModernMap } from "../ModernMap";
+import { EditorId } from "./logic";
 
 class ForCell<T> {
-  constructor(public readonly cell_id: string, public readonly value: T) {}
+  constructor(public readonly cell_id: EditorId, public readonly value: T) {}
 
-  mapCell<R>(f: (x: T, cell_id: string | null) => NonNullable<R>): ForCell<R> {
+  mapCell<R>(
+    f: (x: T, cell_id: EditorId | null) => NonNullable<R>
+  ): ForCell<R> {
     return new ForCell(this.cell_id, f(this.value, this.cell_id));
   }
   mapCellNullable<R>(
-    f: (x: T, cell_id: string | null) => R | undefined | null
+    f: (x: T, cell_id: EditorId | null) => R | undefined | null
   ): ForCell<R> | null {
     let value = f(this.value, this.cell_id);
     return value == null ? null : new ForCell(this.cell_id, value);
@@ -37,7 +42,7 @@ class ForCell<T> {
 class ForNotebook<T> {
   constructor(public readonly items: ForCell<T>[]) {}
 
-  forCell(cell_id: string | null): T | undefined {
+  forCell(cell_id: EditorId | null): T | undefined {
     const x = this.items.find((x) => x.cell_id == cell_id);
     return x?.value;
   }
@@ -47,7 +52,7 @@ class ForNotebook<T> {
   }
 }
 
-export class NotebookText extends ForNotebook<Text> {}
+export class NotebookText extends ModernMap<EditorId, Text> {}
 
 // class CellChangeDesc implements ChangeDesc {
 export class CellChangeDesc extends ForNotebook<ChangeDesc> {
@@ -59,7 +64,7 @@ export class CellChangeDesc extends ForNotebook<ChangeDesc> {
 
   iterChangedRanges(
     f: (
-      cell_id: string | null,
+      cell_id: EditorId | null,
       fromA: number,
       toA: number,
       fromB: number,
@@ -126,7 +131,7 @@ export class CellChangeSet extends CellChangeDesc {
       compact(
         this.changes.map((for_cell) =>
           for_cell.mapCellNullable((x) => {
-            let doc = docs.forCell(for_cell.cell_id);
+            let doc = docs.get(for_cell.cell_id);
             return doc == null ? null : x.invert(doc);
           })
         )
@@ -189,27 +194,50 @@ export class CellStateEffect<T>
   }
 }
 
-export class EditorViewSelection extends ForCell<EditorSelection> {
-  eq(other: EditorViewSelection): boolean {
+export class EditorInChiefRange extends ForCell<SelectionRange> {
+  eq(other: EditorInChiefRange): boolean {
     return this.cell_id == other.cell_id && this.value.eq(other.value);
   }
 
-  map(mapping: CellChangeDesc) {
-    let value = this.mapCell((x, cell_id) => {
-      let cell_mapping = mapping.forCell(cell_id);
-      if (cell_mapping == null) {
-        return x;
-      } else {
-        return x.map(cell_mapping);
-      }
-    });
-    return new EditorViewSelection(value.cell_id, value.value);
+  empty() {
+    return this.value.empty;
+  }
+}
+
+export class EditorInChiefSelection {
+  ranges: EditorInChiefRange[];
+  mainIndex = 0;
+  constructor(ranges: EditorInChiefRange[], mainIndex: number = 0) {
+    this.ranges = ranges;
+    this.mainIndex = mainIndex;
   }
 
-  static fromJSON(json: ReturnType<EditorViewSelection["toJSON"]>): any {
-    return new EditorViewSelection(
-      json.cell_id,
-      EditorSelection.fromJSON(json.value)
+  get main() {
+    return this.ranges[this.mainIndex];
+  }
+
+  eq(other: EditorInChiefSelection): boolean {
+    if (
+      this.ranges.length != other.ranges.length ||
+      this.mainIndex != other.mainIndex
+    )
+      return false;
+    for (let i = 0; i < this.ranges.length; i++)
+      if (!this.ranges[i].eq(other.ranges[i])) return false;
+    return true;
+  }
+
+  map(mapping: CellChangeDesc) {
+    return new EditorInChiefSelection(
+      this.ranges.map((range) => {
+        let cell_mapping = mapping.forCell(range.cell_id);
+        if (cell_mapping == null) return range;
+        return new EditorInChiefRange(
+          range.cell_id,
+          range.value.map(cell_mapping)
+        );
+      }),
+      this.mainIndex
     );
   }
 }

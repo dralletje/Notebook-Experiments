@@ -93,6 +93,7 @@ export let create_cell_state = (editorstate, cell) => {
 
 /** @param {{ filename: string, notebook: import("./packages/codemirror-notebook/cell").NotebookSerialized}} notebook */
 let notebook_to_state = ({ filename, notebook }) => {
+  console.log(`notebook:`, notebook);
   return EditorInChief.create({
     editors: (editorstate) => {
       let object = mapValues(notebook.cells, (cell) =>
@@ -204,6 +205,7 @@ let serialized_workspace_to_workspace = (serialized) => {
   });
 };
 
+// @ts-ignore
 let FileTab = styled.button`
   background: none;
   border: none;

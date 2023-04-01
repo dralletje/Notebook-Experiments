@@ -1,5 +1,6 @@
 import {
   AnnotationType,
+  EditorSelection,
   EditorState,
   Extension,
   Facet,
@@ -11,7 +12,6 @@ import { EditorView, keymap, KeyBinding } from "@codemirror/view";
 
 import {
   EditorsField,
-  inverted_add_remove_editor,
   expand_cell_effects_that_are_actually_meant_for_the_nexus,
   create_nested_editor_state,
   BlurEditorInChiefEffect,
@@ -21,6 +21,7 @@ import {
   EditorExtension,
   EditorIdFacet,
   EditorInChiefEffect,
+  EditorId,
 } from "./logic";
 
 import {
@@ -29,6 +30,7 @@ import {
 } from "./editor-has-selection-extension";
 import { extract_nested_viewupdate } from "./extract-nested-viewupdate";
 import { ModernMap } from "../ModernMap";
+import { EditorInChiefRange, EditorInChiefSelection } from "./wrap-cell-types";
 
 export {
   extract_nested_viewupdate,
@@ -44,8 +46,6 @@ export {
   EditorInChiefEffect,
   BlurEditorInChiefEffect,
 };
-
-type EditorId = string;
 
 let editor_in_chief_extensions_to_codemirror = (
   extensions: Array<Extension | EditorInChiefExtension> | EditorInChiefExtension
@@ -283,8 +283,9 @@ export class EditorInChief {
   get editors() {
     return new ModernMap(
       Object.entries(this.editorstate.field(EditorsField).cells)
-    );
+    ) as ModernMap<EditorId, EditorState>;
   }
+
   editor(editor_id: EditorId): EditorState;
   editor(editor_id: EditorId, required?: false): EditorState | undefined {
     if (required !== false && !this.editors.has(editor_id)) {
@@ -293,10 +294,28 @@ export class EditorInChief {
     return this.editors.get(editor_id);
   }
 
+  get selection() {
+    let cell_with_current_selection =
+      this.editorstate.field(EditorsField).cell_with_current_selection;
+
+    if (cell_with_current_selection != null) {
+      return new EditorInChiefSelection([
+        new EditorInChiefRange(
+          cell_with_current_selection,
+          this.editor(cell_with_current_selection).selection.main
+        ),
+      ]);
+    } else {
+      // TODO
+      return new EditorInChiefSelection([
+        new EditorInChiefRange(null, EditorSelection.cursor(0)),
+      ]);
+    }
+  }
+
   static editors(editorstate: EditorState) {
     return new EditorInChief(editorstate).editors;
   }
-
   static create({
     editors,
     extensions = [],
@@ -312,7 +331,6 @@ export class EditorInChief {
         extensions: [
           EditorsField,
           expand_cell_effects_that_are_actually_meant_for_the_nexus,
-          inverted_add_remove_editor,
           EditorsField.init((editorstate) => ({
             cells: editors(new EditorInChief(editorstate)),
             transactions_to_send_to_cells: [],

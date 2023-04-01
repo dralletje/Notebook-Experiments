@@ -17,18 +17,20 @@ export let notebook_state_to_notebook_serialized = (state: EditorInChief) => {
     id: state.facet(NotebookId),
     filename: state.facet(NotebookFilename),
     cell_order: state.field(CellOrderField),
-    cells: mapValues(cell_editor_states, (cell_state) => {
-      let type = cell_state.facet(CellTypeFacet);
-      return {
-        id: cell_state.facet(EditorIdFacet),
-        unsaved_code: cell_state.doc.toString(),
-        ...cell_state.field(CellMetaField),
-        type: type,
+    cells: Object.fromEntries(
+      cell_editor_states.mapValues((cell_state) => {
+        let type = cell_state.facet(CellTypeFacet);
+        return {
+          id: cell_state.facet(EditorIdFacet),
+          unsaved_code: cell_state.doc.toString(),
+          ...cell_state.field(CellMetaField),
+          type: type,
 
-        // This autosaves the text cells
-        // TODO? Do we want this?
-        ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
-      };
-    }),
+          // This autosaves the text cells
+          // TODO? Do we want this?
+          ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
+        };
+      })
+    ),
   };
 };
