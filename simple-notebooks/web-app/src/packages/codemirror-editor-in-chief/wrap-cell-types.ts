@@ -41,7 +41,7 @@ class ForCell<T> {
 
 export class EditorInChiefText extends ModernMap<EditorId, Text> {}
 
-export class CellChangeDesc {
+export class EditorInChiefChangeDesc {
   private _changedescs: ModernMap<EditorId, ChangeDesc>;
   constructor(entries: Iterable<readonly [EditorId, ChangeDesc]>) {
     this._changedescs = new ModernMap(entries);
@@ -54,7 +54,7 @@ export class CellChangeDesc {
   }
 
   get invertedDesc() {
-    return new CellChangeDesc(
+    return new EditorInChiefChangeDesc(
       this._changedescs.mapValues((x) => x.invertedDesc)
     );
   }
@@ -75,8 +75,8 @@ export class CellChangeDesc {
     );
   }
 
-  mapDesc(mapping: CellChangeDesc, something?: boolean) {
-    return new CellChangeDesc(
+  mapDesc(mapping: EditorInChiefChangeDesc, something?: boolean) {
+    return new EditorInChiefChangeDesc(
       this._changedescs.mapValues((item, cell_id) => {
         let cell_mapping = mapping.get(cell_id);
         if (cell_mapping == null) return item;
@@ -85,8 +85,8 @@ export class CellChangeDesc {
     );
   }
 
-  composeDesc(other: CellChangeDesc) {
-    return new CellChangeDesc(
+  composeDesc(other: EditorInChiefChangeDesc) {
+    return new EditorInChiefChangeDesc(
       this._changedescs.mapValues((item, cell_id) => {
         let other_item = other.get(cell_id);
         if (other_item == null) return item;
@@ -98,14 +98,14 @@ export class CellChangeDesc {
   toJSON() {
     return [...this._changedescs.mapValues((x) => x.toJSON()).entries()];
   }
-  static fromJSON(json: ReturnType<CellChangeDesc["toJSON"]>) {
-    return new CellChangeDesc(
+  static fromJSON(json: ReturnType<EditorInChiefChangeDesc["toJSON"]>) {
+    return new EditorInChiefChangeDesc(
       json.map(([id, x]) => [id, ChangeDesc.fromJSON(x)])
     );
   }
 }
 
-export class EditorInChiefChangeSet extends CellChangeDesc {
+export class EditorInChiefChangeSet extends EditorInChiefChangeDesc {
   private _changespecs: ModernMap<EditorId, ChangeSet>;
   constructor(entries: Iterable<readonly [EditorId, ChangeSet]>) {
     super(entries);
@@ -119,7 +119,7 @@ export class EditorInChiefChangeSet extends CellChangeDesc {
     return this._changespecs;
   }
 
-  map(mapping: CellChangeDesc) {
+  map(mapping: EditorInChiefChangeDesc) {
     return new EditorInChiefChangeSet(
       this._changespecs.mapValues((x, cell_id) => {
         let cell_mapping = mapping.get(cell_id);
@@ -154,7 +154,9 @@ export class EditorInChiefChangeSet extends CellChangeDesc {
   }
 
   get desc() {
-    return new CellChangeDesc(this._changespecs.mapValues((x) => x.desc));
+    return new EditorInChiefChangeDesc(
+      this._changespecs.mapValues((x) => x.desc)
+    );
   }
 
   toJSON() {
@@ -178,7 +180,7 @@ export class CellStateEffect<T>
 
   static mapEffects(
     effects: readonly CellStateEffect<any>[],
-    mapping: CellChangeDesc
+    mapping: EditorInChiefChangeDesc
   ): readonly CellStateEffect<any>[] {
     let new_effects = effects.map((effect) =>
       effect.mapCellNullable((x, cell_id) => {
@@ -225,7 +227,7 @@ export class EditorInChiefSelection {
     return true;
   }
 
-  map(mapping: CellChangeDesc) {
+  map(mapping: EditorInChiefChangeDesc) {
     return new EditorInChiefSelection(
       this.ranges.map((range) => {
         let cell_mapping = mapping.get(range.cell_id);

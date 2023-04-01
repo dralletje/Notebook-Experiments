@@ -33,7 +33,6 @@ export const invertedEffects = Facet.define<
 
 import {
   EditorDispatchEffect,
-  EditorsField,
   EditorIdFacet,
   EditorInChiefStateField,
   EditorInChiefTransaction,
@@ -44,7 +43,7 @@ import {
 } from "./editor-in-chief";
 import { compact } from "lodash";
 import {
-  CellChangeDesc,
+  EditorInChiefChangeDesc as CellChangeDesc,
   EditorInChiefSelection,
   CellStateEffect,
   EditorInChiefChangeSet,
