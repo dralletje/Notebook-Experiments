@@ -1,4 +1,5 @@
 import {
+  AnnotationType,
   EditorState,
   Extension,
   Facet,
@@ -27,6 +28,7 @@ import {
   EditorHasSelectionEffect,
 } from "./editor-has-selection-extension";
 import { extract_nested_viewupdate } from "./extract-nested-viewupdate";
+import { ModernMap } from "../ModernMap";
 
 export {
   extract_nested_viewupdate,
@@ -48,20 +50,22 @@ type EditorId = string;
 let editor_in_chief_extensions_to_codemirror = (
   extensions: Array<Extension | EditorInChiefExtension> | EditorInChiefExtension
 ): Extension => {
-  return Array.isArray(extensions)
-    ? extensions.map((extension) =>
-        editor_state_extension in extension
-          ? extension[editor_state_extension]
-          : extension
-      )
-    : extensions == null
-    ? null
-    : editor_in_chief_extensions_to_codemirror([extensions]);
+  if (Array.isArray(extensions)) {
+    return extensions.map((extension) =>
+      editor_in_chief_extensions_to_codemirror(extension)
+    );
+  }
+  if (extensions == null) return null;
+
+  return editor_state_extension in extensions
+    ? extensions[editor_state_extension]
+    : extensions;
 };
 
 const editor_state_extension = Symbol("Editor I can pass to codemirror");
-type EditorInChiefExtension =
+export type EditorInChiefExtension =
   | Extension
+  | EditorInChiefExtension[]
   | { [editor_state_extension]: Extension };
 
 type EditorInChiefTransactionSpec = {
@@ -78,8 +82,8 @@ export class EditorInChiefTransaction {
     this.state = new EditorInChief(this.transaction.state);
   }
 
-  annotation(x) {
-    return this.transaction.annotation(x);
+  annotation<T>(type: AnnotationType<T>): T | undefined {
+    return this.transaction.annotation(type);
   }
 
   get effects() {
@@ -87,10 +91,12 @@ export class EditorInChiefTransaction {
   }
 }
 
-type EditorInChiefStateFieldSpec<T> = {
+type EditorInChiefStateFieldSpec<T, JSON = any> = {
   create: (state: EditorInChief) => T;
   update: (value: T, tr: EditorInChiefTransaction) => T;
   provide?: (field: StateField<T>) => Extension | EditorInChiefExtension;
+  toJSON?: (value: T) => JSON;
+  fromJSON?: (input: JSON) => T;
 };
 export class EditorInChiefStateFieldInit {
   constructor(public init: Extension) {
@@ -236,6 +242,11 @@ export class EditorInChief {
     }
   }
 
+  // TODO Make this cooler
+  toJSON(...args) {
+    return this.editorstate.toJSON(...args);
+  }
+
   facet<T>(facet: Facet<any, T>) {
     return this.editorstate.facet(facet);
   }
@@ -270,18 +281,20 @@ export class EditorInChief {
   }
 
   get editors() {
-    return this.editorstate.field(EditorsField).cells;
+    return new ModernMap(
+      Object.entries(this.editorstate.field(EditorsField).cells)
+    );
   }
   editor(editor_id: EditorId): EditorState;
   editor(editor_id: EditorId, required?: false): EditorState | undefined {
-    if (required !== false && !this.editors[editor_id]) {
+    if (required !== false && !this.editors.has(editor_id)) {
       throw new Error(`Editor with id ${editor_id} not found`);
     }
-    return this.editors[editor_id];
+    return this.editors.get(editor_id);
   }
 
   static editors(editorstate: EditorState) {
-    return editorstate.field(EditorsField).cells;
+    return new EditorInChief(editorstate).editors;
   }
 
   static create({

@@ -95,12 +95,36 @@ export let create_cell_state = (editorstate, cell) => {
 let notebook_to_state = ({ filename, notebook }) => {
   return EditorInChief.create({
     editors: (editorstate) => {
-      return mapValues(notebook.cells, (cell) =>
+      let object = mapValues(notebook.cells, (cell) =>
         create_cell_state(editorstate, cell)
       );
+      if (isEmpty(object)) {
+        object.cell_0 = create_cell_state(editorstate, {
+          id: "cell_0",
+          code: "",
+          type: "code",
+          unsaved_code: "",
+          requested_run_time: -Infinity,
+        });
+      }
+      return object;
     },
     extensions: [
-      CellOrderField.init(() => notebook.cell_order),
+      CellOrderField.init(() => {
+        let cell_order = notebook.cell_order.filter((x) => {
+          if (notebook.cells[x]) {
+            return true;
+          } else {
+            console.warn("cell order has cell that doesn't exist", x);
+            return false;
+          }
+        });
+        if (cell_order.length === 0) {
+          return ["cell_0"];
+        } else {
+          return cell_order;
+        }
+      }),
       EditorExtension.of(
         CellTypeFacet.compute(
           [CellMetaField],

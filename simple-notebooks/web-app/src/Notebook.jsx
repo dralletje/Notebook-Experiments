@@ -47,6 +47,7 @@ import { Sidebar } from "./Sidebar.jsx";
 import { useLocalEnvironment } from "./use/use-local-environment.js";
 import { Logs } from "./Sidebar/Logs/Logs.jsx";
 
+// @ts-ignore
 let NotebookStyle = styled.div`
   padding-top: 50px;
   min-height: 100vh;
@@ -86,19 +87,24 @@ export function NotebookView({ state, onChange }) {
       id: state.facet(NotebookId),
       filename: state.facet(NotebookFilename),
       cell_order: state.field(CellOrderField),
-      cells: mapValues(cell_editor_states, (cell_state) => {
-        let type = cell_state.facet(CellTypeFacet);
-        return {
-          id: cell_state.facet(EditorIdFacet),
-          unsaved_code: cell_state.doc.toString(),
-          ...cell_state.field(CellMetaField),
-          type: type,
+      cells: Object.fromEntries(
+        cell_editor_states.entries().map(([cell_id, cell_state]) => {
+          let type = cell_state.facet(CellTypeFacet);
+          return [
+            cell_id,
+            {
+              id: cell_state.facet(EditorIdFacet),
+              unsaved_code: cell_state.doc.toString(),
+              ...cell_state.field(CellMetaField),
+              type: type,
 
-          // This autosaves the text cells
-          // TODO? Do we want this?
-          ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
-        };
-      }),
+              // This autosaves the text cells
+              // TODO? Do we want this?
+              ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
+            },
+          ];
+        })
+      ),
     });
   }, [cell_editor_states, cell_order]);
 

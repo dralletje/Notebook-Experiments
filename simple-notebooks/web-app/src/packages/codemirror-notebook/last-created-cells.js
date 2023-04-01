@@ -11,11 +11,18 @@ export let LastCreatedCells = EditorInChiefStateField.define({
   update(value, tr) {
     if (tr.annotation(NoAnimation)) return value;
 
-    let previous_cell_ids = Object.keys(tr.startState.editors);
-    let cell_ids = Object.keys(tr.state.editors);
+    let previous_cell_ids = new Set(tr.startState.editors.keys());
+    let cell_ids = new Set(tr.state.editors.keys());
+
     if (previous_cell_ids === cell_ids) return value;
 
-    let new_cell_ids = cell_ids.filter((id) => !previous_cell_ids.includes(id));
+    let new_cell_ids = [];
+    for (let id of cell_ids) {
+      if (!previous_cell_ids.has(id)) {
+        new_cell_ids.push(id);
+      }
+    }
+
     return new_cell_ids;
   },
 });
