@@ -1,7 +1,6 @@
+import { ModernMap } from "@dral/modern-map";
+
 // I use my own opaque here, so I can have an extra layer of opaqueness to extend these types
-
-import { ModernMap } from "./ModernMap";
-
 // import { Opaque } from "ts-opaque";
 declare const opaque: unique symbol;
 type Opaque<BaseType, BrandType = unknown> = BaseType & {

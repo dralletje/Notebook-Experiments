@@ -19,7 +19,7 @@ class ModernIterableIterator<T> implements Iterable<T> {
     let _this = this;
     return ModernIterableIterator.from(function* () {
       for (let entry of _this) {
-        yield fn(entry, this);
+        yield fn(entry, _this);
       }
     });
   }
@@ -28,7 +28,7 @@ class ModernIterableIterator<T> implements Iterable<T> {
     let _this = this;
     return ModernIterableIterator.from(function* () {
       for (let entry of _this) {
-        if (fn(entry, this)) {
+        if (fn(entry, _this)) {
           yield entry;
         }
       }
@@ -42,6 +42,9 @@ class ModernIterableIterator<T> implements Iterable<T> {
       }
     }
     return false;
+  }
+  every(fn: (entry: T, map: this) => boolean): boolean {
+    return !this.some((x) => !fn(x, this));
   }
 
   toArray() {
@@ -60,7 +63,26 @@ export class ModernMap<K, V> extends Map<K, V> {
     return new ModernIterableIterator(super.entries());
   }
 
+  // https://github.com/tc39/proposal-collection-methods
+  mapValues<T>(fn: (value: V, key: K, map: this) => T) {
+    return new ModernMap(
+      this.entries().map(([key, value]) => [key, fn(value, key, this)])
+    );
+  }
+  filter<T>(fn: (value: V, key: K, map: this) => boolean) {
+    return new ModernMap(
+      this.entries().filter(([key, value]) => fn(value as any, key, this))
+    );
+  }
+  every<T>(fn: (value: V, key: K, map: this) => boolean) {
+    return this.entries().every(([key, value]) => fn(value, key, this));
+  }
+  some<T>(fn: (value: V, key: K, map: this) => boolean) {
+    return this.entries().some(([key, value]) => fn(value, key, this));
+  }
+
   // Polyfill for emplace proposal
+  // https://github.com/tc39/proposal-upsert
   emplace(
     key: K,
     {

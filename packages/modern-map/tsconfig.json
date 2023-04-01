@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "module": "ESNext",
+    "declaration": true,
+    "strict": true
+  }
+}

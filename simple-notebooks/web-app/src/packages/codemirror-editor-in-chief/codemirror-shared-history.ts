@@ -25,24 +25,20 @@ export { isolateHistory };
 import {
   EditorDispatchEffect,
   EditorIdFacet,
-  EditorInChiefStateField,
   EditorInChiefTransaction,
   EditorInChief,
-  EditorInChiefExtension,
   EditorAddEffect,
   EditorRemoveEffect,
 } from "./editor-in-chief";
 import { compact } from "lodash";
+import { EditorInChiefSelection, CellStateEffect } from "./wrap-cell-types";
+import { EditorInChiefCommand, EditorInChiefKeyBinding } from "./wrap/keymap";
 import {
-  EditorInChiefChangeDesc as CellChangeDesc,
-  EditorInChiefSelection,
-  CellStateEffect,
+  EditorInChiefChangeDesc,
   EditorInChiefChangeSet,
-} from "./wrap-cell-types";
-import {
-  EditorInChiefCommand,
-  EditorInChiefKeyBinding,
-} from "./editor-in-chief-state";
+} from "./wrap/changes";
+import { EditorInChiefStateField } from "./wrap/statefield";
+import { EditorInChiefExtension } from "./wrap/extension";
 
 export const invertedEffects = Facet.define<
   (tr: EditorInChiefTransaction) => readonly StateEffect<any>[],
@@ -190,8 +186,6 @@ export const historyField = historyField_ as EditorInChiefStateField<unknown>;
 
 function cmd(side: BranchName, selection: boolean): EditorInChiefCommand {
   return function ({ state, dispatch }) {
-    console.trace("##", side);
-
     // TODO FIgure out selection & check readOnly on sub editors?
     // if (!selection && state.readOnly) return false;
     let historyState = state.field(historyField_, false);
@@ -216,20 +210,6 @@ export const undoSelection = cmd(BranchName.Done, true);
 /// Redo a change or selection change.
 export const redoSelection = cmd(BranchName.Undone, true);
 
-function depth(side: BranchName) {
-  return function (state: EditorState): number {
-    let histState = state.field(historyField_.field, false);
-    if (!histState) return 0;
-    let branch = side == BranchName.Done ? histState.done : histState.undone;
-    return branch.length - (branch.length && !branch[0].changes ? 1 : 0);
-  };
-}
-
-/// The amount of undoable change events available in a given state.
-export const undoDepth = depth(BranchName.Done);
-/// The amount of redoable change events available in a given state.
-export const redoDepth = depth(BranchName.Undone);
-
 // History events store groups of changes or effects that need to be
 // undone/redone together.
 class CellHistEvent {
@@ -244,7 +224,7 @@ class CellHistEvent {
     readonly effects: readonly CellStateEffect<any>[],
     // Accumulated mapping (from addToHistory==false) that should be
     // applied to events below this one.
-    readonly mapped: CellChangeDesc | undefined,
+    readonly mapped: EditorInChiefChangeDesc | undefined,
     // The selection before this event
     readonly startSelection: EditorInChiefSelection | undefined,
     // Stores selection changes after this event, to be used for
@@ -349,7 +329,10 @@ function updateBranch(
   return newBranch;
 }
 
-function isAdjacent(a: CellChangeDesc, b: CellChangeDesc): boolean {
+function isAdjacent(
+  a: EditorInChiefChangeDesc,
+  b: EditorInChiefChangeDesc
+): boolean {
   let ranges: number[] = [],
     cells: (string | null)[] = [],
     isAdjacent = false;
@@ -419,7 +402,7 @@ function popSelection(branch: Branch): Branch {
 // Add a mapping to the top event in the given branch. If this maps
 // away all the changes and effects in that item, drop it and
 // propagate the mapping to the next item.
-function addMappingToBranch(branch: Branch, mapping: CellChangeDesc) {
+function addMappingToBranch(branch: Branch, mapping: EditorInChiefChangeDesc) {
   if (!branch.length) return branch;
   let length = branch.length,
     selections = none;
@@ -442,7 +425,7 @@ function addMappingToBranch(branch: Branch, mapping: CellChangeDesc) {
 
 function mapEvent(
   event: CellHistEvent,
-  mapping: CellChangeDesc,
+  mapping: EditorInChiefChangeDesc,
   extraSelections: readonly EditorInChiefSelection[]
 ) {
   let selections = conc(
@@ -545,7 +528,7 @@ class HistoryState {
     );
   }
 
-  addMapping(mapping: CellChangeDesc): HistoryState {
+  addMapping(mapping: EditorInChiefChangeDesc): HistoryState {
     return new HistoryState(
       addMappingToBranch(this.done, mapping),
       addMappingToBranch(this.undone, mapping),

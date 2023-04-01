@@ -15,6 +15,7 @@
     "@codemirror/view": "^6.9.1",
     "@dral/codemirror-helpers": "workspace:^",
     "@dral/dralbook-transform-javascript": "workspace:^",
+    "@dral/modern-map": "workspace:^",
     "@ionic/react": "^6.2.7",
     "@lezer/common": "^1.0.2",
     "@types/node": "^18.7.18",

@@ -5,6 +5,7 @@ import {
   StateField,
 } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+
 import { ModernMap } from "@dral/modern-map";
 
 import {

@@ -6,7 +6,7 @@ import { ParseCache } from "./parse-cell";
 import { ExecutionResult, notebook_step } from "./notebook-step";
 import { TypedEventTarget } from "../leaf/typed-event-target";
 import { invariant } from "../leaf/invariant";
-import { ModernMap } from "../leaf/ModernMap";
+import { ModernMap } from "@dral/modern-map";
 
 export type LivingValue = Opaque<unknown, "LivingValue">;
 export type EngineTime = Opaque<number, "RunTracker">;
@@ -144,7 +144,6 @@ export class Engine extends TypedEventTarget<{
         this.dispatchEvent(new EngineChangeEvent());
       },
     });
-    this.dispatchEvent(new EngineChangeEvent());
 
     /////////////////////////////////////
     // Delete overdue cylinders
@@ -191,8 +190,11 @@ export class Engine extends TypedEventTarget<{
         })
       );
 
-      console.log(pc.blue(pc.bold(`RUNNING CODE:`)));
+      console.groupCollapsed(pc.blue(pc.bold(`RUNNING CELL: ${cell.id}`)));
+      console.log("Notebook:", notebook);
+      console.log(`Engine:`, this);
       console.log(pc.blue(code));
+      console.groupEnd();
 
       // Look for requested variable names in other cylinders
       let inputs = {};

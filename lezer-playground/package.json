@@ -20,6 +20,7 @@
     "@dral/lezer-generator-worker": "workspace:^",
     "@dral/lezer-inspector": "*",
     "@dral/lezer-lezer-error": "workspace:*",
+    "@dral/modern-map": "workspace:^",
     "@lezer/common": "^1.0.2",
     "@lezer/generator": "^1.2.2",
     "bezier-easing": "^2.1.0",

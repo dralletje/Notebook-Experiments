@@ -1,5 +1,5 @@
 import { transform_code } from "@dral/dralbook-transform-javascript";
-import { ModernMap } from "../leaf/ModernMap";
+import { ModernMap } from "@dral/modern-map";
 
 type Code = string;
 

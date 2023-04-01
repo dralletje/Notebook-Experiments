@@ -393,7 +393,9 @@ export const serialize = (entry, context) => {
     if (proto && proto !== objectPrototype) {
       let prototype_simple = {};
       for (const key in Object.getOwnPropertyDescriptors(proto)) {
-        prototype_simple[key] = proto[key];
+        try {
+          prototype_simple[key] = proto[key];
+        } catch {}
       }
       Object.setPrototypeOf(prototype_simple, Object.getPrototypeOf(proto));
       // @ts-ignore
@@ -581,7 +583,10 @@ export const serialize = (entry, context) => {
     result[i] = heap[i];
   }
 
-  if (typeof entry === "object") {
+  if (
+    (typeof entry === "object" && entry != null) ||
+    typeof entry === "function"
+  ) {
     serialized_cache.set(entry, { result, context });
   }
 

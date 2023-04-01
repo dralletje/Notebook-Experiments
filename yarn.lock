@@ -769,6 +769,7 @@ __metadata:
     "@dral/lezer-generator-worker": "workspace:^"
     "@dral/lezer-inspector": "*"
     "@dral/lezer-lezer-error": "workspace:*"
+    "@dral/modern-map": "workspace:^"
     "@lezer/common": ^1.0.2
     "@lezer/generator": ^1.2.2
     "@types/react": ^18.0.20
@@ -797,6 +798,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@dral/modern-map@workspace:^, @dral/modern-map@workspace:packages/modern-map":
+  version: 0.0.0-use.local
+  resolution: "@dral/modern-map@workspace:packages/modern-map"
+  dependencies:
+    typescript: ^5.0.3
+  languageName: unknown
+  linkType: soft
+
 "@dral/notebook-app@*, @dral/notebook-app@workspace:simple-notebooks/web-app":
   version: 0.0.0-use.local
   resolution: "@dral/notebook-app@workspace:simple-notebooks/web-app"
@@ -813,6 +822,7 @@ __metadata:
     "@codemirror/view": ^6.9.1
     "@dral/codemirror-helpers": "workspace:^"
     "@dral/dralbook-transform-javascript": "workspace:^"
+    "@dral/modern-map": "workspace:^"
     "@ionic/react": ^6.2.7
     "@lezer/common": ^1.0.2
     "@types/node": ^18.7.18
@@ -6097,6 +6107,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"typescript@npm:^5.0.3":
+  version: 5.0.3
+  resolution: "typescript@npm:5.0.3"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 3cce0576d218cb4277ff8b6adfef1a706e9114a98b4261a38ad658a7642f1b274a8396394f6cbff8c0ba852996d7ed2e233e9b8431d5d55ac7c2f6fea645af02
+  languageName: node
+  linkType: hard
+
 "typescript@patch:typescript@^4.4.3#~builtin<compat/typescript>, typescript@patch:typescript@^4.8.3#~builtin<compat/typescript>":
   version: 4.9.5
   resolution: "typescript@patch:typescript@npm%3A4.9.5#~builtin<compat/typescript>::version=4.9.5&hash=d73830"
@@ -6104,6 +6124,16 @@ __metadata:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: 2eee5c37cad4390385db5db5a8e81470e42e8f1401b0358d7390095d6f681b410f2c4a0c496c6ff9ebd775423c7785cdace7bcdad76c7bee283df3d9718c0f20
+  languageName: node
+  linkType: hard
+
+"typescript@patch:typescript@^5.0.3#~builtin<compat/typescript>":
+  version: 5.0.3
+  resolution: "typescript@patch:typescript@npm%3A5.0.3#~builtin<compat/typescript>::version=5.0.3&hash=d73830"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 9ec0a8eed38d46cc2c8794555b7674e413604c56c159f71b8ff21ce7f17334a44127a68724cb2ef8221ff3b19369f8f05654e8a5266621d7d962aeed889bd630
   languageName: node
   linkType: hard
 
