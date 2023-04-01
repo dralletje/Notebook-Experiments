@@ -10,6 +10,7 @@ import { compact } from "lodash";
 import { basic_markdown_setup } from "./packages/codemirror-markdown-wysiwyg/codemirror-markdown-wysiwyg";
 import { extract_nested_viewupdate } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import { NudgeCell } from "./packages/codemirror-notebook/cell";
+import shadow from "react-shadow/styled-components";
 
 let local_style = EditorView.theme({
   "& .cm-scroller": {
@@ -100,7 +101,8 @@ export let TextCell = ({
   }, [nested_viewupdate.transactions]);
 
   return (
-    <TextCellStyle
+    // <shadow.div className="text-cell-editor">
+    <TextCellShadowDom
       ref={cell_wrapper_ref}
       data-cell-id={cell_id}
       className={compact([is_selected && "selected", "text-cell-editor"]).join(
@@ -114,11 +116,16 @@ export let TextCell = ({
         <Extension key="markdown-setup" extension={basic_markdown_setup} />
         <Extension key="local_style" extension={local_style} />
       </CodemirrorFromViewUpdate>
-    </TextCellStyle>
+    </TextCellShadowDom>
+    // </shadow.div>
   );
 };
 
-let TextCellStyle = styled.div`
+// @ts-ignore AAAAA WHY DOESN'T TYPESCRIPT LIKE STYLED COMPONENTS
+// Also:
+// Because the markdown editor is so fragile, I put it in a shadow dom.
+// Don't trust people yet to not break it while they add styles to the page.
+let TextCellShadowDom = styled(shadow.div)`
   flex: 1 1 0px;
   min-width: 0px;
 

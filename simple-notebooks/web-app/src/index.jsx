@@ -12,9 +12,7 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<App />);
 
 navigator.serviceWorker
-  .register("/service-worker.js", {
-    scope: "/",
-  })
+  .register("/unpkg-cache-service-worker.js")
   .catch((error) => {
     console.log(`Error registering service worker:`, error);
   });

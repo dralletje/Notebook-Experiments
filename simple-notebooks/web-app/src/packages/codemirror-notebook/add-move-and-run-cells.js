@@ -120,6 +120,7 @@ export let notebook_keymap = EditorInChiefKeymap.of([
             cell_id,
           };
         } catch (error) {
+          // TODO Nudge cell if it can't parse?
           return {
             docLength: cell_state.doc.length,
             cursorOffset: cell_state.selection.main.head,
@@ -165,21 +166,35 @@ export let cell_keymap = Prec.high(
         // TODO Should just not apply this to text cells to begin with 🤷‍♀️ but cba
         if (state.facet(CellTypeFacet) === "text") return false;
 
-        let { cursorOffset, formatted } = format_with_prettier({
-          code: state.doc.toString(),
-          cursor: state.selection.main.head,
-        });
+        let cursor = state.selection.main.head;
+        let code = state.doc.toString();
+        let changed_code = false;
+        try {
+          let { cursorOffset, formatted } = format_with_prettier({
+            code: state.doc.toString(),
+            cursor: state.selection.main.head,
+          });
+          cursor = cursorOffset;
+          code = formatted;
+          changed_code = true;
+        } catch (error) {
+          dispatch({
+            annotations: [NudgeCell.of(true)],
+          });
+        }
 
         dispatch({
-          changes: {
-            from: 0,
-            to: state.doc.length,
-            insert: formatted,
-          },
-          selection: EditorSelection.cursor(cursorOffset),
+          changes: changed_code
+            ? {
+                from: 0,
+                to: state.doc.length,
+                insert: code,
+              }
+            : undefined,
+          selection: EditorSelection.cursor(cursor),
           effects: [
             MutateCellMetaEffect.of((cell) => {
-              cell.code = formatted;
+              cell.code = code;
               cell.requested_run_time = Date.now();
             }),
           ],

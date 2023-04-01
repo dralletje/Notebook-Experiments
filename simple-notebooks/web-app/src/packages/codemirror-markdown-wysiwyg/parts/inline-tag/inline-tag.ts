@@ -5,6 +5,9 @@ import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import { DecorationsFromTree } from "@dral/codemirror-helpers";
 import { EditorSelection, EditorState } from "@codemirror/state";
 
+// TODO Merge this someway with `text-marks.js`, they both use this "hide untill in selection" thing
+// .... and the "put assoc outside of the markers" thing. Could be nice to have a "text mark" package.
+
 let put_assoc_outside_of_the_markers = EditorState.transactionFilter.of(
   (transaction) => {
     let selection = transaction.newSelection.main;
@@ -162,17 +165,22 @@ export let markdown_inline_tag = [
       "--color-neutral-muted": "rgba(110,118,129,0.4)",
 
       position: "relative",
-      "z-index": "-5",
-
-      "box-decoration-break": "clone",
-      "-webkit-box-decoration-break": "clone",
 
       display: "inline-block",
       padding: "4px 5px",
       font: "0.8em ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace",
       "line-height": "0.8",
       color: "var(--color-fg-default)",
-      "vertical-align": "middle",
+    },
+    "kbd::before": {
+      content: "''",
+      position: "absolute",
+      inset: "0",
+
+      // Needs to be lower than cm-selection's z-index: -2
+      // TODO Investigate why cm-selection has hardcoded z-index: -2
+      "z-index": "-3",
+
       "background-color": "var(--color-canvas-subtle)",
       border: "solid 1px var(--color-neutral-muted)",
       "border-bottom-color": "var(--color-neutral-muted)",

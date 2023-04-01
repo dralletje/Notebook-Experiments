@@ -46,52 +46,97 @@ let engine_to_json = (engine: Engine) => {
   };
 };
 
-let engine = new Engine(
-  async ({ inputs, code, signal }): Promise<{ result: ExecutionResult }> => {
-    let url = new URL("https://dral.eu/app.js");
-    inputs.__meta__ = {
-      is_in_notebook: true,
-      signal: signal,
-      url: url,
-      import: async (specifier: any) => {
-        return await import(`https://jspm.dev/${specifier}`);
-      },
-    };
+function deepFreeze(object) {
+  // Retrieve the property names defined on object
+  const propNames = Reflect.ownKeys(object);
 
-    let inputs_array = Object.entries({
-      html: html,
-      md: md,
-      ...inputs,
-    });
+  // Freeze properties before freezing self
+  for (const name of propNames) {
+    const value = object[name];
 
-    // TODO Split up this try/catch into one for code compilation,
-    // .... and one for code execution
-    try {
-      let fn = new Function(...inputs_array.map((x) => x[0]), code);
-
-      let result = await fn(...inputs_array.map((x) => x[1]));
-
-      // TODO Dirty hack to make `Couldn't return-ify X` errors stackless
-      if (result.default instanceof SyntaxError) {
-        result.default = new StacklessError(result.default);
-      }
-
-      return {
-        result: {
-          type: "return",
-          value: result,
-        },
-      };
-    } catch (error) {
-      return {
-        result: {
-          type: "throw",
-          value: error,
-        },
-      };
+    if ((value && typeof value === "object") || typeof value === "function") {
+      deepFreeze(value);
     }
   }
-);
+
+  try {
+    Object.freeze(object);
+  } catch {}
+}
+
+let engine = new Engine(async function RUN_CELL({
+  id,
+  inputs,
+  code,
+  signal,
+}): Promise<{ result: ExecutionResult }> {
+  let url = new URL("https://dral.eu/app.js");
+  inputs.__meta__ = {
+    is_in_notebook: true,
+    signal: signal,
+    url: url,
+    import: async (specifier: any) => {
+      return await import(`https://jspm.dev/${specifier}`);
+    },
+  };
+
+  let inputs_array = Object.entries({
+    html: html,
+    md: md,
+    ...inputs,
+  });
+
+  let func_name = `CELL_${id}`;
+
+  // TODO Split up this try/catch into one for code compilation,
+  // .... and one for code execution
+  try {
+    let fn = new Function(...inputs_array.map((x) => x[0]), code);
+
+    try {
+      Object.defineProperty(fn, "name", {
+        value: func_name,
+      });
+    } catch {}
+
+    let result = await fn(...inputs_array.map((x) => x[1]));
+
+    // I am going on a limb here, and freezing everything we get back.
+    // This is to prevent the user from modifying the result of a cell in another cell.
+    // Lets see if that actually works/feels good.
+    // TODO Add some feature-flags-kinda thing to the UI to toggle this.
+    // FEATURE_FLAG: freeze_results
+    deepFreeze(result);
+
+    // TODO Dirty hack to make `Couldn't return-ify X` errors stackless
+    if (result.default instanceof SyntaxError) {
+      result.default = new StacklessError(result.default);
+    }
+
+    return {
+      result: {
+        type: "return",
+        value: result,
+      },
+    };
+  } catch (error) {
+    let name_index = error.stack.lastIndexOf(`\n    at Engine.RUN_CELL`);
+    if (name_index !== -1) {
+      error.stack = error.stack.slice(0, name_index);
+    }
+    error.stack = error.stack.replace(
+      /$\n    at ConstructedFunction (.*)$/gm,
+      ""
+    );
+
+    return {
+      result: {
+        type: "throw",
+        value: error,
+      },
+    };
+  }
+});
 
 engine.addEventListener("log", (event) => {
   postMessage({

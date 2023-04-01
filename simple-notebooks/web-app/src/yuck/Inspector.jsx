@@ -8,42 +8,19 @@ import { indentUnit } from "@codemirror/language";
 import { Decoration, EditorView } from "@codemirror/view";
 import { ReactWidget } from "react-codemirror-widget";
 import shadow from "react-shadow";
-
-// @ts-ignore
-import inspector_css from "./Inspector.css?inline";
-import observable_inspector from "@observablehq/inspector/src/style.css?inline";
-
-let observable_inspector_sheet = new CSSStyleSheet();
-observable_inspector_sheet.replaceSync(observable_inspector);
-
-let inspector_css_sheet = new CSSStyleSheet();
-inspector_css_sheet.replaceSync(inspector_css);
-
-let AdoptStylesheet = ({ stylesheet }) => {
-  let ref = React.useRef(null);
-  React.useEffect(() => {
-    let shadow_root = ref.current.getRootNode();
-    shadow_root.adoptedStyleSheets = [
-      ...(shadow_root.adoptedStyleSheets ?? []),
-      stylesheet,
-    ];
-
-    return () => {
-      let index = shadow_root.adoptedStyleSheets.indexOf(stylesheet);
-      shadow_root.adoptedStyleSheets = [
-        ...shadow_root.adoptedStyleSheets.slice(0, index),
-        ...shadow_root.adoptedStyleSheets.slice(index + 1),
-      ];
-    };
-  });
-  return <span ref={ref} />;
-};
-
 import { deserialize } from "./deserialize-value-to-show";
 import {
   javascript_syntax_highlighting,
   my_javascript_parser,
 } from "../codemirror-javascript/syntax-highlighting";
+import { CSSish, AdoptStylesheet } from "./adoptedStyleSheets";
+
+// @ts-ignore
+import inspector_css from "./Inspector.css?inline";
+import observable_inspector from "@observablehq/inspector/src/style.css?inline";
+
+let observable_inspector_sheet = new CSSish(observable_inspector);
+let inspector_css_sheet = new CSSish(inspector_css);
 
 let AAAAA = styled.div`
   & .cm-editor {
@@ -274,7 +251,7 @@ export let InspectorNoMemo = ({ value }) => {
     result_deserialized.value instanceof Node
   ) {
     return (
-      <div>
+      <div style={{ display: "inline-block" }}>
         <AdoptStylesheet stylesheet={observable_inspector_sheet} />
         <AdoptStylesheet stylesheet={inspector_css_sheet} />
         <BasicInspector value={result_deserialized} />

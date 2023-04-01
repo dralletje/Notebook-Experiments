@@ -34,6 +34,8 @@ let TYPE_GENERATOR = { prefix: "ƒ*" };
 /** @type {WeakMap<Object, { result: Serialized, context: Context }>} */
 let serialized_cache = new WeakMap();
 
+const objectPrototype = Object.getPrototypeOf({});
+
 /**
  * @param {any} entry
  * @param {Context} context
@@ -365,6 +367,42 @@ export const serialize = (entry, context) => {
     return id;
   }
 
+  function encounterObjWithConstructor(obj) {
+    const found = m.get(obj);
+    if (typeof found === "number") {
+      return found;
+    }
+
+    const id = heap.length;
+    m.set(obj, id);
+
+    let object_root = {
+      type: "@ecmascript/object",
+      constructor: 0,
+      keys: 0,
+      prototype: null,
+    };
+    // Push it so it will be at `id` in the array
+    // (which is important because if it is 0 it will be the first)
+    heap.push(object_root);
+    object_root.constructor = serializeValue(obj.constructor);
+    let { constructor, ...obj_without_constructor } = obj;
+    object_root.object = encounterPlainObj({ ...obj_without_constructor });
+
+    let proto = Object.getPrototypeOf(obj);
+    if (proto && proto !== objectPrototype) {
+      let prototype_simple = {};
+      for (const key in Object.getOwnPropertyDescriptors(proto)) {
+        prototype_simple[key] = proto[key];
+      }
+      Object.setPrototypeOf(prototype_simple, Object.getPrototypeOf(proto));
+      // @ts-ignore
+      object_root.prototype = serializeValue(prototype_simple);
+    }
+
+    return id;
+  }
+
   function serializeValue(obj) {
     switch (typeof obj) {
       case "undefined": {
@@ -522,6 +560,10 @@ export const serialize = (entry, context) => {
           if (obj instanceof context.HTMLCollection) {
             return encounterHtmlCollection(obj);
           }
+        }
+
+        if (obj.constructor !== Object) {
+          return encounterObjWithConstructor(obj);
         }
 
         return encounterPlainObj(obj);

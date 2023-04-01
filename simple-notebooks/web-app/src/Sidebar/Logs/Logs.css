@@ -1,0 +1,34 @@
+.log-list {
+  display: flex;
+  /* flex-direction: column-reverse; */
+  flex-direction: column;
+  flex: 1;
+
+  padding-top: 12px;
+  gap: 8px;
+  overflow: auto;
+
+  background-color: #17018145;
+  /* background-image: url("../yuck/noise-background.png"), #17018145; */
+  border-left: solid 1px #ffffff1f;
+
+  /* Hack to get rid of Flipper div */
+  & > div {
+    display: contents;
+  }
+
+  .log-repeat {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #ffffff99;
+    border-radius: 50%;
+    width: 2em;
+    height: 2em;
+    font-size: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}

@@ -45,7 +45,7 @@ import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
 import { actions } from "./commands.js";
 import { Sidebar } from "./Sidebar.jsx";
 import { useLocalEnvironment } from "./use/use-local-environment.js";
-import { Logs } from "./Sidebar/Logs.jsx";
+import { Logs } from "./Sidebar/Logs/Logs.jsx";
 
 let NotebookStyle = styled.div`
   padding-top: 50px;
