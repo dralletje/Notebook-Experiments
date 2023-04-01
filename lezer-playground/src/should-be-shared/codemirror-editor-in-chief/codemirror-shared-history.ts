@@ -28,11 +28,11 @@ import { isolateHistory, invertedEffects } from "@codemirror/commands";
 export { isolateHistory, invertedEffects };
 
 import {
-  CellDispatchEffect,
-  NestedEditorStatesField,
-  CellIdFacet,
-} from "./MultiEditor";
-import { compact } from "lodash-es";
+  EditorDispatchEffect,
+  EditorsField,
+  EditorIdFacet,
+} from "./editor-in-chief";
+import { compact } from "lodash";
 
 class ForCell<T> {
   constructor(
@@ -140,24 +140,23 @@ class NotebookTransaction {
   }
 
   private get states(): ForCell<EditorState>[] {
-    let cells = Object.entries(
-      this.state.field(NestedEditorStatesField).cells
-    ).map(([cell_id, state]) => new ForCell(cell_id, state));
+    let cells = Object.entries(this.state.field(EditorsField).cells).map(
+      ([cell_id, state]) => new ForCell(cell_id, state)
+    );
 
     return [...cells, new ForCell(null, this.state)];
   }
 
   private get startStates(): ForCell<EditorState>[] {
-    let cells = Object.entries(
-      this.startState.field(NestedEditorStatesField).cells
-    ).map(([cell_id, state]) => new ForCell(cell_id, state));
+    let cells = Object.entries(this.startState.field(EditorsField).cells).map(
+      ([cell_id, state]) => new ForCell(cell_id, state)
+    );
 
     return [...cells, new ForCell(null, this.state)];
   }
 
   private get cell_transactions() {
-    return this.state.field(NestedEditorStatesField)
-      .transactions_to_send_to_cells;
+    return this.state.field(EditorsField).transactions_to_send_to_cells;
   }
 
   get docs() {
@@ -169,7 +168,7 @@ class NotebookTransaction {
   }
 
   get startSelection() {
-    let cell_states = this.startState.field(NestedEditorStatesField);
+    let cell_states = this.startState.field(EditorsField);
     let cell_with_current_selection = cell_states.cell_with_current_selection;
 
     if (cell_with_current_selection != null) {
@@ -194,7 +193,7 @@ class NotebookTransaction {
     let cell_changes: { [cell_id: string]: ChangeSet } = {};
 
     for (let transaction of transactions_to_send_to_cells) {
-      let cell_id = transaction.state.facet(CellIdFacet);
+      let cell_id = transaction.state.facet(EditorIdFacet);
       if (cell_changes[cell_id] == null) {
         cell_changes[cell_id] = transaction.changes;
       } else {
@@ -582,9 +581,8 @@ class CellHistEvent {
 
     let effects: readonly CellStateEffect<any>[] = none;
 
-    let transactions_to_send_to_cells = notebook_tr.state.field(
-      NestedEditorStatesField
-    ).transactions_to_send_to_cells;
+    let transactions_to_send_to_cells =
+      notebook_tr.state.field(EditorsField).transactions_to_send_to_cells;
 
     for (let invert of raw_transaction.startState.facet(invertedEffects)) {
       let result = invert(raw_transaction).map(
@@ -593,7 +591,7 @@ class CellHistEvent {
       if (result.length) effects = effects.concat(result);
     }
     for (let transaction of transactions_to_send_to_cells) {
-      let cell_id = transaction.state.facet(CellIdFacet);
+      let cell_id = transaction.state.facet(EditorIdFacet);
       for (let invert of transaction.startState.facet(invertedEffects)) {
         let result = invert(transaction).map(
           (x) => new CellStateEffect(cell_id, x)
@@ -857,36 +855,36 @@ class HistoryState {
       let rest = branch.length == 1 ? none : branch.slice(0, branch.length - 1);
       if (event.mapped) rest = addMappingToBranch(rest, event.mapped!);
       // DRAL: Instead of "just" applying the changes, we need to apply the changes all
-      // ....  wrapped in CellDispatchEffect's
+      // ....  wrapped in EditorDispatchEffect's
       return state.update({
         changes: undefined,
         selection: undefined,
         effects: compact([
           ...event.effects.map(({ cell_id, value: effect }) => {
             if (cell_id == null) return effect;
-            return CellDispatchEffect.of({
+            return EditorDispatchEffect.of({
               transaction: { effects: effect },
-              cell_id: cell_id,
+              editor_id: cell_id,
             });
           }),
           ...event.changes.items.map(({ cell_id, value: change }) => {
             // TODO Changes can only happen on an actual editor, so this should never be null
             if (cell_id == null) return null;
-            return CellDispatchEffect.of({
+            return EditorDispatchEffect.of({
               // @ts-ignore
               transaction: { changes: change },
-              cell_id: cell_id,
+              editor_id: cell_id,
             });
           }),
           // TODO Same here, selection should never have a null cell_id
           event.startSelection?.cell_id == null
             ? null
-            : CellDispatchEffect.of({
+            : EditorDispatchEffect.of({
                 transaction: {
                   selection: event.startSelection.value,
                   scrollIntoView: true,
                 },
-                cell_id: event.startSelection.cell_id,
+                editor_id: event.startSelection.cell_id,
               }),
         ]),
         annotations: fromHistory.of({ side, rest }),

@@ -779,15 +779,14 @@ let AppScroller = styled.div`
 import { compact, head, isEmpty, range, round, sortBy, uniq } from "lodash-es";
 import {
   create_nested_editor_state,
-  NestedEditorStatesField,
-  nested_cell_states_basics,
-  useNestedViewUpdate,
-} from "./should-be-shared/MultiEditor";
+  EditorInChief,
+  extract_nested_viewupdate,
+} from "./should-be-shared/codemirror-editor-in-chief/editor-in-chief";
 import {
   shared_history,
   historyKeymap,
   historyField,
-} from "./should-be-shared/codemirror-shared-history";
+} from "./should-be-shared/codemirror-editor-in-chief/codemirror-shared-history";
 import { lezerLanguage } from "@codemirror/lang-lezer";
 import { iterate_over_cursor } from "dral-lezer-helpers";
 import { cool_cmd_d } from "./should-be-shared/commands.js";
@@ -819,6 +818,7 @@ const syntax_colors = syntaxHighlighting(
 );
 
 import { parser as lezer_error_parser } from "@dral/lezer-lezer-error";
+import { useCodemirrorKeyhandler } from "../../simple-notebooks/web-app/src/use/use-codemirror-keyhandler.js";
 let lezer_error_lang = new LanguageSupport(
   LRLanguage.define({
     // @ts-ignore
@@ -923,30 +923,6 @@ let Editor = ({ project_name }) => {
   });
 
   let initial_state = React.useMemo(() => {
-    let notebook_state = NestedEditorStatesField.init((editorstate) => {
-      return {
-        cells: {
-          "lezer-grammar": create_nested_editor_state({
-            parent: editorstate,
-            cell_id: "lezer-grammar",
-            doc: _parser_code,
-          }),
-          javascript: create_nested_editor_state({
-            parent: editorstate,
-            cell_id: "javascript",
-            doc: javascript_stuff,
-          }),
-          "code-to-parse": create_nested_editor_state({
-            parent: editorstate,
-            cell_id: "code-to-parse",
-            doc: code_to_parse,
-          }),
-        },
-        transactions_to_send_to_cells: [],
-        cell_with_current_selection: null,
-      };
-    });
-
     // Keep history state in localstorage so you don't lose your history whaaaaaat
     let history = null;
     try {
@@ -965,11 +941,25 @@ let Editor = ({ project_name }) => {
       history = restored_state.field(historyField);
     } catch (error) {}
 
-    return EditorState.create({
+    return EditorInChief.create({
+      editors: (editorstate) => ({
+        "lezer-grammar": create_nested_editor_state({
+          parent: editorstate.editorstate,
+          editor_id: "lezer-grammar",
+          doc: _parser_code,
+        }),
+        javascript: create_nested_editor_state({
+          parent: editorstate.editorstate,
+          editor_id: "javascript",
+          doc: javascript_stuff,
+        }),
+        "code-to-parse": create_nested_editor_state({
+          parent: editorstate.editorstate,
+          editor_id: "code-to-parse",
+          doc: code_to_parse,
+        }),
+      }),
       extensions: [
-        notebook_state,
-        nested_cell_states_basics,
-
         history != null ? historyField.init(() => history) : [],
 
         // This works so smooth omg
@@ -982,15 +972,15 @@ let Editor = ({ project_name }) => {
 
   let viewupdate = useViewUpdate(state, set_state);
 
-  let lezer_grammar_viewupdate = useNestedViewUpdate(
+  let lezer_grammar_viewupdate = extract_nested_viewupdate(
     viewupdate,
     "lezer-grammar"
   );
-  let code_to_parse_viewupdate = useNestedViewUpdate(
+  let code_to_parse_viewupdate = extract_nested_viewupdate(
     viewupdate,
     "code-to-parse"
   );
-  let javascript_stuff_viewupdate = useNestedViewUpdate(
+  let javascript_stuff_viewupdate = extract_nested_viewupdate(
     viewupdate,
     "javascript"
   );
@@ -1019,32 +1009,12 @@ let Editor = ({ project_name }) => {
 
   // Use the nexus' keymaps as shortcuts!
   // This passes on keydown events from the document to the nexus for handling.
-  React.useEffect(() => {
-    let fn = (event) => {
-      if (event.defaultPrevented) {
-        return;
-      }
-      let should_cancel = runScopeHandlers(
-        // @ts-ignore
-        viewupdate.view,
-        event,
-        "editor"
-      );
-      if (should_cancel) {
-        event.preventDefault();
-      }
-    };
-    document.addEventListener("keydown", fn);
-    return () => {
-      document.removeEventListener("keydown", fn);
-    };
-  }, [viewupdate.view]);
+  useCodemirrorKeyhandler(viewupdate);
 
   React.useEffect(() => {
     let serialized = state.toJSON({
       history: historyField,
     });
-    // console.log(`serialized:`, serialized);
     main_scope.child("history").set(serialized.history);
   }, [state]);
 
