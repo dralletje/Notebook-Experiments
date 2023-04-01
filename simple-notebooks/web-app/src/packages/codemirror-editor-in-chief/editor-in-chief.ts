@@ -1,4 +1,4 @@
-import {
+export {
   EditorsField,
   create_nested_editor_state,
   BlurEditorInChiefEffect,
@@ -9,40 +9,19 @@ import {
   EditorIdFacet,
   EditorInChiefEffect,
 } from "./logic";
-import {
+export {
   EditorHasSelectionField,
   EditorHasSelectionEffect,
 } from "./editor-has-selection-extension";
-import { extract_nested_viewupdate } from "./extract-nested-viewupdate";
+export { extract_nested_viewupdate } from "./extract-nested-viewupdate";
 
-import {
+export {
   EditorInChiefStateField,
   EditorInChiefTransaction,
   EditorInChief,
-  EditorInChiefExtension,
   EditorInChiefStateFieldInit,
   EditorInChiefKeymap,
   EditorInChiefView,
 } from "./editor-in-chief-state";
 
-export {
-  extract_nested_viewupdate,
-  EditorsField,
-  EditorIdFacet,
-  EditorExtension,
-  EditorRemoveEffect,
-  EditorAddEffect,
-  EditorHasSelectionField,
-  EditorHasSelectionEffect,
-  create_nested_editor_state,
-  EditorDispatchEffect,
-  EditorInChiefEffect,
-  BlurEditorInChiefEffect,
-  EditorInChiefStateField,
-  EditorInChiefStateFieldInit,
-  EditorInChiefKeymap,
-  EditorInChiefTransaction,
-  EditorInChief,
-  EditorInChiefExtension,
-  EditorInChiefView,
-};
+export type { EditorInChiefExtension } from "./editor-in-chief-state";

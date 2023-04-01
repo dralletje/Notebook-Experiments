@@ -71,7 +71,7 @@ export class ModernMap<K, V> extends Map<K, V> {
   }
   filter<T>(fn: (value: V, key: K, map: this) => boolean) {
     return new ModernMap(
-      this.entries().filter(([key, value]) => fn(value, key, this))
+      this.entries().filter(([key, value]) => fn(value as any, key, this))
     );
   }
   every<T>(fn: (value: V, key: K, map: this) => boolean) {

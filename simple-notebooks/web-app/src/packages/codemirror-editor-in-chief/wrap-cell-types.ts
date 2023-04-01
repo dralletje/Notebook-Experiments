@@ -170,27 +170,22 @@ export class EditorInChiefChangeSet extends EditorInChiefChangeDesc {
 }
 
 // @ts-ignore
-export class CellStateEffect<T>
-  extends ForCell<StateEffect<T>>
-  implements StateEffect<T>
-{
+export class CellStateEffect<T> extends ForCell<StateEffect<T>> {
   is<T>(type: StateEffectType<T>): this is StateEffect<T> {
     return this.value.is(type);
+  }
+
+  map(mapping: EditorInChiefChangeDesc): CellStateEffect<T> {
+    let cell_mapping = mapping.get(this.cell_id);
+    if (cell_mapping == null) return this;
+    return new CellStateEffect(this.cell_id, this.value.map(cell_mapping));
   }
 
   static mapEffects(
     effects: readonly CellStateEffect<any>[],
     mapping: EditorInChiefChangeDesc
   ): readonly CellStateEffect<any>[] {
-    let new_effects = effects.map((effect) =>
-      effect.mapCellNullable((x, cell_id) => {
-        let cell_mapping = mapping.get(cell_id);
-        if (cell_mapping == null) return x;
-        return x.map(cell_mapping);
-      })
-    );
-
-    return new_effects.map((x) => new CellStateEffect(x.cell_id, x.value));
+    return effects.map((effect) => effect.map(mapping));
   }
 }
 
