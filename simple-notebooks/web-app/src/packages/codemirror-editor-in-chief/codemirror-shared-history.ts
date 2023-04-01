@@ -45,89 +45,10 @@ import {
 import { compact } from "lodash";
 import {
   CellChangeDesc,
-  CellChangeSet,
   EditorInChiefSelection,
   CellStateEffect,
-  NotebookText,
+  EditorInChiefChangeSet,
 } from "./wrap-cell-types";
-import { EditorId } from "./logic";
-import { ModernMap } from "../ModernMap";
-
-class ForCell<T> {
-  constructor(
-    public readonly cell_id: EditorId | null,
-    public readonly value: T
-  ) {}
-
-  mapCell<R>(
-    f: (x: T, cell_id: EditorId | null) => NonNullable<R>
-  ): ForCell<R> {
-    return new ForCell(this.cell_id, f(this.value, this.cell_id));
-  }
-  mapCellNullable<R>(
-    f: (x: T, cell_id: EditorId | null) => R | undefined | null
-  ): ForCell<R> | null {
-    let value = f(this.value, this.cell_id);
-    return value == null ? null : new ForCell(this.cell_id, value);
-  }
-
-  toJSON() {
-    return {
-      cell_id: this.cell_id,
-      // @ts-expect-error
-      value: this.value.toJSON(),
-    };
-  }
-
-  static fromJSON<T>(json: any, fromJSON: (json: any) => T): ForCell<T> {
-    return new ForCell(json.cell_id, fromJSON(json.value));
-  }
-}
-
-class NotebookTransaction {
-  constructor(private readonly _transaction: EditorInChiefTransaction) {}
-
-  get state(): EditorInChief {
-    return this._transaction.state;
-  }
-  get startState(): EditorInChief {
-    return this._transaction.startState;
-  }
-
-  private get cell_transactions() {
-    let transactions_to_send_to_cells =
-      this.state.field(EditorsField).transactions_to_send_to_cells;
-
-    let cell_changes: ModernMap<EditorId, Transaction[]> = new ModernMap();
-
-    for (let transaction of transactions_to_send_to_cells) {
-      let cell_id = transaction.state.facet(EditorIdFacet);
-      cell_changes.emplace(cell_id, {
-        insert: (key) => [transaction],
-        update: (value) => [...value, transaction],
-      });
-    }
-
-    return cell_changes;
-  }
-  // private get docs() {
-  //   return compact(this.states.map((x) => x.mapCell((x) => x.doc)));
-  // }
-
-  get startDocs() {
-    return this.startState.editors.mapValues((x) => x.doc);
-  }
-
-  get changes(): CellChangeSet {
-    return new CellChangeSet(
-      this.cell_transactions.mapValues((transactions) => {
-        return transactions
-          .map((x) => x.changes)
-          .reduce((acc, x) => acc.compose(x));
-      })
-    );
-  }
-}
 
 const enum BranchName {
   Done,
@@ -171,8 +92,6 @@ const historyField_ = EditorInChiefStateField.define<HistoryState>({
   update(state: HistoryState, tr: EditorInChiefTransaction): HistoryState {
     let config = tr.state.facet(historyConfig);
 
-    let notebook_tr = new NotebookTransaction(tr);
-
     let fromHist = tr.annotation(fromHistory);
     if (fromHist) {
       // TODO
@@ -185,7 +104,7 @@ const historyField_ = EditorInChiefStateField.define<HistoryState>({
       let other = from == BranchName.Done ? state.undone : state.done;
       if (item)
         other = updateBranch(other, other.length, config.minDepth, item);
-      else other = addSelection(other, notebook_tr.startState.selection);
+      else other = addSelection(other, tr.startState.selection);
       return new HistoryState(
         from == BranchName.Done ? fromHist.rest : other,
         from == BranchName.Done ? other : fromHist.rest
@@ -196,9 +115,7 @@ const historyField_ = EditorInChiefStateField.define<HistoryState>({
     if (isolate == "full" || isolate == "before") state = state.isolate();
 
     if (tr.annotation(Transaction.addToHistory) === false)
-      return !notebook_tr.changes.empty
-        ? state.addMapping(notebook_tr.changes.desc)
-        : state;
+      return !tr.changes.empty ? state.addMapping(tr.changes.desc) : state;
 
     let event = CellHistEvent.fromTransaction(tr);
     let time = tr.annotation(Transaction.time)!,
@@ -214,7 +131,7 @@ const historyField_ = EditorInChiefStateField.define<HistoryState>({
     // TODO
     else if (tr.transaction.selection)
       state = state.addSelection(
-        notebook_tr.startState.selection,
+        tr.startState.selection,
         time,
         userEvent,
         config.newGroupDelay
@@ -326,7 +243,7 @@ class CellHistEvent {
     // events before the first change, in which case a special type of
     // instance is created which doesn't hold any changes, with
     // changes == startSelection == undefined
-    readonly changes: CellChangeSet | undefined,
+    readonly changes: EditorInChiefChangeSet | undefined,
     // The effects associated with this event
     readonly effects: readonly CellStateEffect<any>[],
     // Accumulated mapping (from addToHistory==false) that should be
@@ -360,9 +277,9 @@ class CellHistEvent {
 
   static fromJSON(json: any) {
     return new CellHistEvent(
-      json.changes && CellChangeSet.fromJSON(json.changes),
+      json.changes && EditorInChiefChangeSet.fromJSON(json.changes),
       [],
-      json.mapped && CellChangeDesc.fromJSON(json.mapped),
+      json.mapped && EditorInChiefChangeSet.fromJSON(json.mapped),
       // TODO
       null,
       null
@@ -378,18 +295,18 @@ class CellHistEvent {
   // - Goes through the inverted changes for the main transaction,
   //   but also asks every cell for it's possible inverted changes.
   static fromTransaction(
-    raw_transaction: EditorInChiefTransaction,
+    editor_in_chief_transaction: EditorInChiefTransaction,
     selection?: EditorInChiefSelection
   ) {
-    let notebook_tr = new NotebookTransaction(raw_transaction);
-
     let effects: readonly CellStateEffect<any>[] = none;
 
     let transactions_to_send_to_cells =
-      notebook_tr.state.field(EditorsField).transactions_to_send_to_cells;
+      editor_in_chief_transaction._transactions;
 
-    for (let invert of raw_transaction.startState.facet(invertedEffects)) {
-      let result = invert(raw_transaction).map(
+    for (let invert of editor_in_chief_transaction.startState.facet(
+      invertedEffects
+    )) {
+      let result = invert(editor_in_chief_transaction).map(
         (x) => new CellStateEffect(null, x)
       );
       if (result.length) effects = effects.concat(result);
@@ -404,12 +321,15 @@ class CellHistEvent {
       }
     }
 
-    if (!effects.length && notebook_tr.changes.empty) return null;
+    if (!effects.length && editor_in_chief_transaction.changes.empty)
+      return null;
     return new CellHistEvent(
-      notebook_tr.changes.invert(new NotebookText(notebook_tr.startDocs)),
+      editor_in_chief_transaction.changes.invert(
+        editor_in_chief_transaction.startState.doc
+      ),
       effects,
       undefined,
-      selection || notebook_tr.startState.selection,
+      selection || editor_in_chief_transaction.startState.selection,
       none
     );
   }

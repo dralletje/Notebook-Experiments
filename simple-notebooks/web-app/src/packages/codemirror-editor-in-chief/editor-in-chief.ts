@@ -30,7 +30,12 @@ import {
 } from "./editor-has-selection-extension";
 import { extract_nested_viewupdate } from "./extract-nested-viewupdate";
 import { ModernMap } from "../ModernMap";
-import { EditorInChiefRange, EditorInChiefSelection } from "./wrap-cell-types";
+import {
+  EditorInChiefChangeSet,
+  EditorInChiefRange,
+  EditorInChiefSelection,
+  EditorInChiefText,
+} from "./wrap-cell-types";
 
 export {
   extract_nested_viewupdate,
@@ -88,6 +93,33 @@ export class EditorInChiefTransaction {
 
   get effects() {
     return this.transaction.effects;
+  }
+  get changes(): EditorInChiefChangeSet {
+    return new EditorInChiefChangeSet(
+      this.cell_transactions.mapValues((transactions) => {
+        return transactions
+          .map((x) => x.changes)
+          .reduce((acc, x) => acc.compose(x));
+      })
+    );
+  }
+
+  get _transactions() {
+    return this.state.field(EditorsField).transactions_to_send_to_cells;
+  }
+
+  private get cell_transactions() {
+    let cell_changes: ModernMap<EditorId, Transaction[]> = new ModernMap();
+
+    for (let transaction of this._transactions) {
+      let cell_id = transaction.state.facet(EditorIdFacet);
+      cell_changes.emplace(cell_id, {
+        insert: (key) => [transaction],
+        update: (value) => [...value, transaction],
+      });
+    }
+
+    return cell_changes;
   }
 }
 
@@ -311,6 +343,9 @@ export class EditorInChief {
         new EditorInChiefRange(null, EditorSelection.cursor(0)),
       ]);
     }
+  }
+  get doc(): EditorInChiefText {
+    return this.editors.mapValues((x) => x.doc);
   }
 
   static editors(editorstate: EditorState) {

@@ -39,20 +39,7 @@ class ForCell<T> {
   }
 }
 
-// class ForNotebook<T> {
-//   constructor(public readonly items: ForCell<T>[]) {}
-
-//   forCell(cell_id: EditorId | null): T | undefined {
-//     const x = this.items.find((x) => x.cell_id == cell_id);
-//     return x?.value;
-//   }
-
-//   toJSON() {
-//     return this.items.map((x) => x.toJSON());
-//   }
-// }
-
-export class NotebookText extends ModernMap<EditorId, Text> {}
+export class EditorInChiefText extends ModernMap<EditorId, Text> {}
 
 export class CellChangeDesc {
   private _changedescs: ModernMap<EditorId, ChangeDesc>;
@@ -118,7 +105,7 @@ export class CellChangeDesc {
   }
 }
 
-export class CellChangeSet extends CellChangeDesc {
+export class EditorInChiefChangeSet extends CellChangeDesc {
   private _changespecs: ModernMap<EditorId, ChangeSet>;
   constructor(entries: Iterable<readonly [EditorId, ChangeSet]>) {
     super(entries);
@@ -133,7 +120,7 @@ export class CellChangeSet extends CellChangeDesc {
   }
 
   map(mapping: CellChangeDesc) {
-    return new CellChangeSet(
+    return new EditorInChiefChangeSet(
       this._changespecs.mapValues((x, cell_id) => {
         let cell_mapping = mapping.get(cell_id);
         return cell_mapping == null ? x : x.map(cell_mapping);
@@ -141,8 +128,8 @@ export class CellChangeSet extends CellChangeDesc {
     );
   }
 
-  invert(docs: ModernMap<EditorId, Text>): CellChangeSet {
-    return new CellChangeSet(
+  invert(docs: ModernMap<EditorId, Text>): EditorInChiefChangeSet {
+    return new EditorInChiefChangeSet(
       this._changespecs
         .mapValues((x, cell_id) => {
           let cell_doc = docs.get(cell_id);
@@ -152,8 +139,8 @@ export class CellChangeSet extends CellChangeDesc {
     );
   }
 
-  compose(other: CellChangeSet) {
-    return new CellChangeSet(
+  compose(other: EditorInChiefChangeSet) {
+    return new EditorInChiefChangeSet(
       this._changespecs.mapValues((x, cell_id) => {
         let other_item = other.get(cell_id);
         // @ts-ignore
@@ -173,8 +160,8 @@ export class CellChangeSet extends CellChangeDesc {
   toJSON() {
     return [...this._changespecs.mapValues((x) => x.toJSON()).entries()];
   }
-  static fromJSON(json: ReturnType<CellChangeSet["toJSON"]>) {
-    return new CellChangeSet(
+  static fromJSON(json: ReturnType<EditorInChiefChangeSet["toJSON"]>) {
+    return new EditorInChiefChangeSet(
       json.map(([id, x]) => [id, ChangeSet.fromJSON(x)])
     );
   }
