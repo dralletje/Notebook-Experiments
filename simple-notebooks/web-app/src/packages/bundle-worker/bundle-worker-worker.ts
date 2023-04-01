@@ -46,52 +46,72 @@ let engine_to_json = (engine: Engine) => {
   };
 };
 
-let engine = new Engine(
-  async ({ inputs, code, signal }): Promise<{ result: ExecutionResult }> => {
-    let url = new URL("https://dral.eu/app.js");
-    inputs.__meta__ = {
-      is_in_notebook: true,
-      signal: signal,
-      url: url,
-      import: async (specifier: any) => {
-        return await import(`https://jspm.dev/${specifier}`);
+let engine = new Engine(async function RUN_CELL({
+  id,
+  inputs,
+  code,
+  signal,
+}): Promise<{ result: ExecutionResult }> {
+  let url = new URL("https://dral.eu/app.js");
+  inputs.__meta__ = {
+    is_in_notebook: true,
+    signal: signal,
+    url: url,
+    import: async (specifier: any) => {
+      return await import(`https://jspm.dev/${specifier}`);
+    },
+  };
+
+  let inputs_array = Object.entries({
+    html: html,
+    md: md,
+    ...inputs,
+  });
+
+  let func_name = `CELL_${id}`;
+
+  // TODO Split up this try/catch into one for code compilation,
+  // .... and one for code execution
+  try {
+    let fn = new Function(...inputs_array.map((x) => x[0]), code);
+
+    try {
+      Object.defineProperty(fn, "name", {
+        value: func_name,
+      });
+    } catch {}
+
+    let result = await fn(...inputs_array.map((x) => x[1]));
+
+    // TODO Dirty hack to make `Couldn't return-ify X` errors stackless
+    if (result.default instanceof SyntaxError) {
+      result.default = new StacklessError(result.default);
+    }
+
+    return {
+      result: {
+        type: "return",
+        value: result,
       },
     };
-
-    let inputs_array = Object.entries({
-      html: html,
-      md: md,
-      ...inputs,
-    });
-
-    // TODO Split up this try/catch into one for code compilation,
-    // .... and one for code execution
-    try {
-      let fn = new Function(...inputs_array.map((x) => x[0]), code);
-
-      let result = await fn(...inputs_array.map((x) => x[1]));
-
-      // TODO Dirty hack to make `Couldn't return-ify X` errors stackless
-      if (result.default instanceof SyntaxError) {
-        result.default = new StacklessError(result.default);
-      }
-
-      return {
-        result: {
-          type: "return",
-          value: result,
-        },
-      };
-    } catch (error) {
-      return {
-        result: {
-          type: "throw",
-          value: error,
-        },
-      };
+  } catch (error) {
+    let name_index = error.stack.lastIndexOf(`\n    at Engine.RUN_CELL`);
+    if (name_index !== -1) {
+      error.stack = error.stack.slice(0, name_index);
     }
+    error.stack = error.stack.replace(
+      /$\n    at ConstructedFunction (.*)$/gm,
+      ""
+    );
+
+    return {
+      result: {
+        type: "throw",
+        value: error,
+      },
+    };
   }
-);
+});
 
 engine.addEventListener("log", (event) => {
   postMessage({

@@ -397,7 +397,11 @@ export function transform(ast) {
 
   // Wrap the whole thing in an async function like
   // return (async () => { ... })()
-  let func = t.functionExpression(null, [], t.blockStatement(ast.program.body));
+  let func = t.functionExpression(
+    t.identifier("ConstructedFunction"),
+    [],
+    t.blockStatement(ast.program.body)
+  );
   // Make function async
   func.async = true;
   ast.program.body = [t.returnStatement(t.callExpression(func, []))];

@@ -84,26 +84,24 @@ let InlineCell = ({ cell_id, cylinder, code }) => {
   let viewupdate = useViewUpdate(editor_state, set_editor_state);
 
   return (
-    <div>
-      <shadow.div>
-        <ShadowLogStyle>
-          <Cell
-            cell_id={cell_id}
-            cylinder={{
-              ...cylinder,
-              // @ts-ignore
-              result: {
-                ...cylinder.result,
-                name: undefined,
-              },
-            }}
-            viewupdate={viewupdate}
-            is_selected={false}
-            did_just_get_created={false}
-          />
-        </ShadowLogStyle>
-      </shadow.div>
-    </div>
+    <shadow.div>
+      <ShadowLogStyle>
+        <Cell
+          cell_id={cell_id}
+          cylinder={{
+            ...cylinder,
+            // @ts-ignore
+            result: {
+              ...cylinder.result,
+              name: undefined,
+            },
+          }}
+          viewupdate={viewupdate}
+          is_selected={false}
+          did_just_get_created={false}
+        />
+      </ShadowLogStyle>
+    </shadow.div>
   );
 };
 
@@ -158,7 +156,7 @@ export let Logs = ({ logs, notebook, engine }) => {
                 }}
               >
                 <div
-                  className="log px-3"
+                  className="log mx-3 relative"
                   data-cell-id={log.cell_id}
                   onDoubleClick={() => {
                     let el = document.getElementById(log.cell_id);
@@ -175,6 +173,28 @@ export let Logs = ({ logs, notebook, engine }) => {
                     cylinder={log.cylinder}
                     code={log.code}
                   />
+                  {/* <Timesince time={cylinder.result.time} /> */}
+
+                  {log.repeat > 1 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        background: "rgba(0,0,0,0.5)",
+                        color: "white",
+                        borderRadius: "50%",
+                        width: "2em",
+                        height: "2em",
+                        fontSize: 12,
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      {log.repeat}
+                    </div>
+                  )}
                 </div>
               </Flipped>
             </Interact>

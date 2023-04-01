@@ -169,7 +169,6 @@ let notebook_to_state = ({ filename, notebook }) => {
 };
 
 let serialized_workspace_to_workspace = (serialized) => {
-  console.log(`serialized.id:`, serialized.id);
   return /** @type {Workspace} */ ({
     id: serialized.id,
     files: mapValues(serialized.files, (file) => {

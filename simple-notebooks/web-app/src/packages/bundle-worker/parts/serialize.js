@@ -365,6 +365,30 @@ export const serialize = (entry, context) => {
     return id;
   }
 
+  function encounterObjWithConstructor(obj) {
+    const found = m.get(obj);
+    if (typeof found === "number") {
+      return found;
+    }
+
+    const id = heap.length;
+    m.set(obj, id);
+
+    let object_root = {
+      type: "@ecmascript/object",
+      constructor: 0,
+      keys: 0,
+      prototype: 0,
+    };
+    // Push it so it will be at `id` in the array
+    // (which is important because if it is 0 it will be the first)
+    heap.push(object_root);
+    object_root.constructor = serializeValue(obj.constructor);
+    object_root.object = encounterPlainObj({ ...obj });
+    object_root.prototype = serializeValue(Object.getPrototypeOf(obj));
+    return id;
+  }
+
   function serializeValue(obj) {
     switch (typeof obj) {
       case "undefined": {
@@ -523,6 +547,10 @@ export const serialize = (entry, context) => {
             return encounterHtmlCollection(obj);
           }
         }
+
+        // if (obj.constructor !== Object) {
+        //   return encounterObjWithConstructor(obj);
+        // }
 
         return encounterPlainObj(obj);
       }

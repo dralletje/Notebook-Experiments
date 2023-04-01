@@ -76,6 +76,7 @@ export class EngineLogEvent extends Event {
 }
 
 export type RunCellFunction = (options: {
+  id: CellId;
   signal: AbortSignal;
   code: string;
   inputs: { [key: string]: any };
@@ -205,6 +206,7 @@ export class Engine extends TypedEventTarget<{
       await cylinder.reset();
 
       let { result } = await this.run_cell({
+        id: cell_to_run.cell_id,
         signal: cylinder.signal,
         code: code,
         inputs: inputs,

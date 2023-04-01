@@ -6,6 +6,7 @@ let create_function_with_name_and_body = (
   body,
   modifier = "function"
 ) => {
+  console.log(`name, body:`, name, body);
   try {
     return new Function(`return ${modifier} ${name}(){ ${body} }`)();
   } catch (e) {
@@ -48,7 +49,10 @@ export let deserialize = (index, heap, result_heap = {}) => {
   } else if (result.type === "undefined") {
     return undefined;
   } else if (result.type === "function") {
-    return create_function_with_name_and_body(result.name, result.body);
+    return create_function_with_name_and_body(
+      result.value.name,
+      result.value.body
+    );
   } else if (result.type === "symbol") {
     return Symbol(result.value);
   } else if (result.type === "date") {
@@ -100,6 +104,16 @@ export let deserialize = (index, heap, result_heap = {}) => {
       } catch {}
     }
     return my_class;
+  } else if (result.type === "@ecmascript/object") {
+    let thing = {};
+    thing.constructor = deserialize(result.constructor, heap, result_heap);
+    // console.log(`result:`, result);
+    // console.log(`heap[result.object]:`, heap[result.object]);
+    // thing.object = deserialize(result.object, heap, result_heap);
+    // thing.prototype = deserialize(result.prototype, heap, result_heap);
+    console.log(`thing.constructor.name:`, thing.constructor);
+
+    return thing;
   } else if (result.type === "@ecmascript/async-function") {
     return create_function_with_name_and_body(
       result.value.name,
