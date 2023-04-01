@@ -1,4 +1,5 @@
 import {
+  AnnotationType,
   EditorState,
   Extension,
   Facet,
@@ -48,20 +49,22 @@ type EditorId = string;
 let editor_in_chief_extensions_to_codemirror = (
   extensions: Array<Extension | EditorInChiefExtension> | EditorInChiefExtension
 ): Extension => {
-  return Array.isArray(extensions)
-    ? extensions.map((extension) =>
-        editor_state_extension in extension
-          ? extension[editor_state_extension]
-          : extension
-      )
-    : extensions == null
-    ? null
-    : editor_in_chief_extensions_to_codemirror([extensions]);
+  if (Array.isArray(extensions)) {
+    return extensions.map((extension) =>
+      editor_in_chief_extensions_to_codemirror(extension)
+    );
+  }
+  if (extensions == null) return null;
+
+  return editor_state_extension in extensions
+    ? extensions[editor_state_extension]
+    : extensions;
 };
 
 const editor_state_extension = Symbol("Editor I can pass to codemirror");
-type EditorInChiefExtension =
+export type EditorInChiefExtension =
   | Extension
+  | EditorInChiefExtension[]
   | { [editor_state_extension]: Extension };
 
 type EditorInChiefTransactionSpec = {
@@ -78,8 +81,8 @@ export class EditorInChiefTransaction {
     this.state = new EditorInChief(this.transaction.state);
   }
 
-  annotation(x) {
-    return this.transaction.annotation(x);
+  annotation<T>(type: AnnotationType<T>): T | undefined {
+    return this.transaction.annotation(type);
   }
 
   get effects() {
@@ -87,10 +90,12 @@ export class EditorInChiefTransaction {
   }
 }
 
-type EditorInChiefStateFieldSpec<T> = {
+type EditorInChiefStateFieldSpec<T, JSON = any> = {
   create: (state: EditorInChief) => T;
   update: (value: T, tr: EditorInChiefTransaction) => T;
   provide?: (field: StateField<T>) => Extension | EditorInChiefExtension;
+  toJSON: (value: T) => JSON;
+  fromJSON: (input: JSON) => T;
 };
 export class EditorInChiefStateFieldInit {
   constructor(public init: Extension) {

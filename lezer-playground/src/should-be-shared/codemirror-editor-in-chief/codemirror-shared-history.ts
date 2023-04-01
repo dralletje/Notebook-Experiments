@@ -24,13 +24,25 @@ import {
 } from "@codemirror/state";
 import { KeyBinding, EditorView } from "@codemirror/view";
 
-import { isolateHistory, invertedEffects } from "@codemirror/commands";
-export { isolateHistory, invertedEffects };
+import {
+  isolateHistory,
+  invertedEffects as editor_invertedEffects,
+} from "@codemirror/commands";
+export { isolateHistory };
+
+export const invertedEffects = Facet.define<
+  (tr: EditorInChiefTransaction) => readonly StateEffect<any>[],
+  readonly ((tr: EditorInChiefTransaction) => readonly StateEffect<any>[])[]
+>();
 
 import {
   EditorDispatchEffect,
   EditorsField,
   EditorIdFacet,
+  EditorInChiefStateField,
+  EditorInChiefTransaction,
+  EditorInChief,
+  EditorInChiefExtension,
 } from "./editor-in-chief";
 import { compact } from "lodash";
 
@@ -129,30 +141,32 @@ class CellStateEffect<T>
 }
 
 class NotebookTransaction {
-  constructor(private readonly _transaction: Transaction) {}
+  constructor(private readonly _transaction: EditorInChiefTransaction) {}
 
-  get state(): EditorState {
+  get state(): EditorInChief {
     return this._transaction.state;
   }
 
-  get startState(): EditorState {
+  get startState(): EditorInChief {
     return this._transaction.startState;
   }
 
   private get states(): ForCell<EditorState>[] {
-    let cells = Object.entries(this.state.field(EditorsField).cells).map(
+    let cells = Object.entries(this.state.editors).map(
       ([cell_id, state]) => new ForCell(cell_id, state)
     );
 
-    return [...cells, new ForCell(null, this.state)];
+    return [...cells];
+    // return [...cells, new ForCell(null, this.state)];
   }
 
   private get startStates(): ForCell<EditorState>[] {
-    let cells = Object.entries(this.startState.field(EditorsField).cells).map(
+    let cells = Object.entries(this.startState.editors).map(
       ([cell_id, state]) => new ForCell(cell_id, state)
     );
 
-    return [...cells, new ForCell(null, this.state)];
+    return [...cells];
+    // return [...cells, new ForCell(null, this.state)];
   }
 
   private get cell_transactions() {
@@ -174,7 +188,9 @@ class NotebookTransaction {
     if (cell_with_current_selection != null) {
       if (cell_states.cells[cell_with_current_selection] == null) {
         console.log(`⚠ cell ${cell_with_current_selection} not found`);
-        return new CellEditorSelection(null, this.startState.selection);
+        // TODO
+        throw new Error(`⚠ cell ${cell_with_current_selection} not found`);
+        // return new CellEditorSelection(null, this.startState.selection);
       }
 
       return new CellEditorSelection(
@@ -183,7 +199,9 @@ class NotebookTransaction {
       );
     } else {
       // Mehh
-      return new CellEditorSelection(null, this.startState.selection);
+      throw new Error(`⚠ Ehhh`);
+      // TODO
+      // return new CellEditorSelection(null, this.startState.selection);
     }
   }
 
@@ -368,12 +386,12 @@ function changeEnd(changes: ChangeDesc) {
   return end;
 }
 
-const historyField_ = StateField.define({
+const historyField_ = EditorInChiefStateField.define<HistoryState>({
   create() {
     return HistoryState.empty;
   },
 
-  update(state: HistoryState, tr: Transaction): HistoryState {
+  update(state: HistoryState, tr: EditorInChiefTransaction): HistoryState {
     let config = tr.state.facet(historyConfig);
 
     let notebook_tr = new NotebookTransaction(tr);
@@ -401,7 +419,7 @@ const historyField_ = StateField.define({
     if (isolate == "full" || isolate == "before") state = state.isolate();
 
     if (tr.annotation(Transaction.addToHistory) === false)
-      return !tr.changes.empty
+      return !notebook_tr.changes.empty
         ? state.addMapping(notebook_tr.changes.desc)
         : state;
 
@@ -416,7 +434,8 @@ const historyField_ = StateField.define({
         config.newGroupDelay,
         config.minDepth
       );
-    else if (tr.selection)
+    // TODO
+    else if (tr.transaction.selection)
       state = state.addSelection(
         notebook_tr.startSelection,
         time,
@@ -444,10 +463,13 @@ const historyField_ = StateField.define({
 });
 
 /// Create a history extension with the given configuration.
-export function shared_history(config: HistoryConfig = {}): Extension {
+export function shared_history(
+  config: HistoryConfig = {}
+): EditorInChiefExtension {
   return [
     historyField_,
     historyConfig.of(config),
+    // TODO EditorInChief.domEventHandlers?
     EditorView.domEventHandlers({
       beforeinput(e, view) {
         let command =
@@ -469,7 +491,7 @@ export function shared_history(config: HistoryConfig = {}): Extension {
 /// [serialize](#state.EditorState.toJSON) or
 /// [deserialize](#state.EditorState^fromJSON) state objects in a way
 /// that preserves history.
-export const historyField = historyField_ as StateField<unknown>;
+export const historyField = historyField_ as EditorInChiefStateField<unknown>;
 
 function cmd(side: BranchName, selection: boolean): StateCommand {
   return function ({
@@ -480,7 +502,7 @@ function cmd(side: BranchName, selection: boolean): StateCommand {
     dispatch: (tr: Transaction) => void;
   }) {
     if (!selection && state.readOnly) return false;
-    let historyState = state.field(historyField_, false);
+    let historyState = new EditorInChief(state).field(historyField_, false);
     if (!historyState) return false;
     let tr = historyState.pop(side, state, selection);
     if (!tr) return false;
@@ -504,7 +526,7 @@ export const redoSelection = cmd(BranchName.Undone, true);
 
 function depth(side: BranchName) {
   return function (state: EditorState): number {
-    let histState = state.field(historyField_, false);
+    let histState = state.field(historyField_.field, false);
     if (!histState) return 0;
     let branch = side == BranchName.Done ? histState.done : histState.undone;
     return branch.length - (branch.length && !branch[0].changes ? 1 : 0);
@@ -574,7 +596,7 @@ class CellHistEvent {
   // - Goes through the inverted changes for the main transaction,
   //   but also asks every cell for it's possible inverted changes.
   static fromTransaction(
-    raw_transaction: Transaction,
+    raw_transaction: EditorInChiefTransaction,
     selection?: CellEditorSelection
   ) {
     let notebook_tr = new NotebookTransaction(raw_transaction);
@@ -592,7 +614,7 @@ class CellHistEvent {
     }
     for (let transaction of transactions_to_send_to_cells) {
       let cell_id = transaction.state.facet(EditorIdFacet);
-      for (let invert of transaction.startState.facet(invertedEffects)) {
+      for (let invert of transaction.startState.facet(editor_invertedEffects)) {
         let result = invert(transaction).map(
           (x) => new CellStateEffect(cell_id, x)
         );
