@@ -10,26 +10,17 @@ import {
   combineConfig,
   EditorState,
   Transaction,
-  StateCommand,
   StateEffect,
   Facet,
   Annotation,
-  ChangeSet,
   ChangeDesc,
-  EditorSelection,
 } from "@codemirror/state";
-import { KeyBinding, EditorView } from "@codemirror/view";
 
 import {
   isolateHistory,
   invertedEffects as editor_invertedEffects,
 } from "@codemirror/commands";
 export { isolateHistory };
-
-export const invertedEffects = Facet.define<
-  (tr: EditorInChiefTransaction) => readonly StateEffect<any>[],
-  readonly ((tr: EditorInChiefTransaction) => readonly StateEffect<any>[])[]
->();
 
 import {
   EditorDispatchEffect,
@@ -48,6 +39,15 @@ import {
   CellStateEffect,
   EditorInChiefChangeSet,
 } from "./wrap-cell-types";
+import {
+  EditorInChiefCommand,
+  EditorInChiefKeyBinding,
+} from "./editor-in-chief-state";
+
+export const invertedEffects = Facet.define<
+  (tr: EditorInChiefTransaction) => readonly StateEffect<any>[],
+  readonly ((tr: EditorInChiefTransaction) => readonly StateEffect<any>[])[]
+>();
 
 const enum BranchName {
   Done,
@@ -163,19 +163,19 @@ export function shared_history(
     historyField_,
     historyConfig.of(config),
     // TODO EditorInChief.domEventHandlers?
-    EditorView.domEventHandlers({
-      beforeinput(e, view) {
-        let command =
-          e.inputType == "historyUndo"
-            ? undo
-            : e.inputType == "historyRedo"
-            ? redo
-            : null;
-        if (!command) return false;
-        e.preventDefault();
-        return command(view);
-      },
-    }),
+    // EditorView.domEventHandlers({
+    //   beforeinput(e, view) {
+    //     let command =
+    //       e.inputType == "historyUndo"
+    //         ? undo
+    //         : e.inputType == "historyRedo"
+    //         ? redo
+    //         : null;
+    //     if (!command) return false;
+    //     e.preventDefault();
+    //     return command(view);
+    //   },
+    // }),
     // DRAL
     inverted_add_remove_editor,
   ];
@@ -188,16 +188,13 @@ export function shared_history(
 /// that preserves history.
 export const historyField = historyField_ as EditorInChiefStateField<unknown>;
 
-function cmd(side: BranchName, selection: boolean): StateCommand {
-  return function ({
-    state,
-    dispatch,
-  }: {
-    state: EditorState;
-    dispatch: (tr: Transaction) => void;
-  }) {
-    if (!selection && state.readOnly) return false;
-    let historyState = new EditorInChief(state).field(historyField_, false);
+function cmd(side: BranchName, selection: boolean): EditorInChiefCommand {
+  return function ({ state, dispatch }) {
+    console.trace("##", side);
+
+    // TODO FIgure out selection & check readOnly on sub editors?
+    // if (!selection && state.readOnly) return false;
+    let historyState = state.field(historyField_, false);
     if (!historyState) return false;
     let tr = historyState.pop(side, state, selection);
     if (!tr) return false;
@@ -559,9 +556,9 @@ class HistoryState {
 
   pop(
     side: BranchName,
-    state: EditorState,
+    state: EditorInChief,
     selection: boolean
-  ): Transaction | null {
+  ): EditorInChiefTransaction | null {
     let branch = side == BranchName.Done ? this.done : this.undone;
     if (branch.length == 0) return null;
     let event = branch[branch.length - 1];
@@ -580,8 +577,6 @@ class HistoryState {
       // DRAL: Instead of "just" applying the changes, we need to apply the changes all
       // ....  wrapped in EditorDispatchEffect's
       return state.update({
-        changes: undefined,
-        selection: undefined,
         effects: compact([
           ...event.effects.map(({ cell_id, value: effect }) => {
             if (cell_id == null) return effect;
@@ -591,8 +586,6 @@ class HistoryState {
             });
           }),
           ...event.changes.cellMap.entries().map(([cell_id, change]) => {
-            // TODO Changes can only happen on an actual editor, so this should never be null
-            if (cell_id == null) return null;
             return EditorDispatchEffect.of({
               // @ts-ignore
               transaction: { changes: change },
@@ -627,7 +620,7 @@ class HistoryState {
 /// - Mod-y (Mod-Shift-z on macOS) + Ctrl-Shift-z on Linux: [`redo`](#commands.redo).
 /// - Mod-u: [`undoSelection`](#commands.undoSelection).
 /// - Alt-u (Mod-Shift-u on macOS): [`redoSelection`](#commands.redoSelection).
-export const historyKeymap: readonly KeyBinding[] = [
+export const historyKeymap: readonly EditorInChiefKeyBinding[] = [
   { key: "Mod-z", run: undo, preventDefault: true },
   { key: "Mod-y", mac: "Mod-Shift-z", run: redo, preventDefault: true },
   { linux: "Ctrl-Shift-z", run: redo, preventDefault: true },

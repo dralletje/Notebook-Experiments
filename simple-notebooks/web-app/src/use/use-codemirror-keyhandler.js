@@ -9,18 +9,19 @@ export let useCodemirrorKeyhandler = (viewupdate) => {
       if (event.defaultPrevented) {
         return;
       }
+      console.log(`viewupdate:`, viewupdate);
       let should_cancel = runScopeHandlers(
         // @ts-ignore
         // AAAAAAAA This is a hack to get EditorInChief ViewUpdates to work
         // ........ Else all keymaps will get an EditorInChief state, and they shouldn't!
         // ........ They should get a _normal_ EditorState.
-        // viewupdate.view,
-        {
-          state: viewupdate.view.state.editorstate,
-          dispatch: (...spec) => {
-            viewupdate.view.dispatch(...spec);
-          },
-        },
+        // {
+        //   state: viewupdate.view.state.editorstate,
+        //   dispatch: (...spec) => {
+        //     viewupdate.view.dispatch(...spec);
+        //   },
+        // },
+        viewupdate.view,
         event,
         "editor"
       );

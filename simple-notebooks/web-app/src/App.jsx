@@ -29,6 +29,7 @@ import {
   EditorInChief,
   EditorExtension,
   create_nested_editor_state,
+  EditorInChiefKeymap,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
 import {
@@ -91,6 +92,9 @@ export let create_cell_state = (editorstate, cell) => {
   });
 };
 
+/** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */
+let DEFAULT_CELL_ID_AFTER_CRASH = /** @type {any} */ ("oh-no-what-happened");
+
 /** @param {{ filename: string, notebook: import("./packages/codemirror-notebook/cell").NotebookSerialized}} notebook */
 let notebook_to_state = ({ filename, notebook }) => {
   console.log(`notebook:`, notebook);
@@ -100,8 +104,8 @@ let notebook_to_state = ({ filename, notebook }) => {
         create_cell_state(editorstate, cell)
       );
       if (isEmpty(object)) {
-        object.cell_0 = create_cell_state(editorstate, {
-          id: "cell_0",
+        object[DEFAULT_CELL_ID_AFTER_CRASH] = create_cell_state(editorstate, {
+          id: DEFAULT_CELL_ID_AFTER_CRASH,
           code: "",
           type: "code",
           unsaved_code: "",
@@ -121,7 +125,7 @@ let notebook_to_state = ({ filename, notebook }) => {
           }
         });
         if (cell_order.length === 0) {
-          return ["cell_0"];
+          return [DEFAULT_CELL_ID_AFTER_CRASH];
         } else {
           return cell_order;
         }
@@ -152,7 +156,7 @@ let notebook_to_state = ({ filename, notebook }) => {
       ),
 
       // This works so smooth omg
-      [shared_history(), keymap.of(historyKeymap)],
+      [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
 
       // typescript_extension((state) => {
       //   let notebook = state.field(CellEditorsField);

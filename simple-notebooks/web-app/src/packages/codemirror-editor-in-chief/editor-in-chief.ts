@@ -25,3 +25,4 @@ export {
 } from "./editor-in-chief-state";
 
 export type { EditorInChiefExtension } from "./editor-in-chief-state";
+export type { EditorId } from "./logic";

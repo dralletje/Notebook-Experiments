@@ -1,4 +1,5 @@
 import {
+  Annotation,
   AnnotationType,
   EditorSelection,
   EditorState,
@@ -47,7 +48,12 @@ export type EditorInChiefExtension =
   | { [editor_state_extension]: Extension };
 
 type EditorInChiefTransactionSpec = {
-  effects: StateEffect<any> | StateEffect<any>[];
+  annotations?: Annotation<any> | readonly Annotation<any>[];
+  effects?: StateEffect<any> | readonly StateEffect<any>[];
+
+  userEvent?: string;
+  filter?: boolean;
+  scrollIntoView?: boolean;
 };
 export class EditorInChiefTransaction {
   state: EditorInChief;
@@ -62,6 +68,10 @@ export class EditorInChiefTransaction {
 
   annotation<T>(type: AnnotationType<T>): T | undefined {
     return this.transaction.annotation(type);
+  }
+  get annotations(): readonly Annotation<any>[] {
+    // @ts-ignore
+    return this.transaction.annotations;
   }
 
   get effects() {
@@ -178,12 +188,12 @@ export class EditorInChiefStateField<T> {
 //   }
 // }
 
-type EditorInChiefCommand = (view: {
+export type EditorInChiefCommand = (view: {
   state: EditorInChief;
   dispatch: (...specs: EditorInChiefTransactionSpec[]) => void;
 }) => boolean;
-type EditorInChiefKeyBinding = {
-  key: string;
+export type EditorInChiefKeyBinding = {
+  key?: string;
   linux?: string;
   mac?: string;
   win?: string;
@@ -205,7 +215,14 @@ export class EditorInChiefView {
   dispatch = (...specs: EditorInChiefTransactionSpec[]) => {
     this.view.dispatch(
       ...specs.map((spec) => {
-        return { effects: spec.effects };
+        return {
+          effects: spec.effects,
+          annotations: spec.annotations,
+
+          scrollIntoView: spec.scrollIntoView,
+          filter: spec.filter,
+          userEvent: spec.userEvent,
+        };
       })
     );
   };
@@ -219,18 +236,10 @@ export class EditorInChiefKeymap {
     return this.extension;
   }
 
-  static of(shortcuts: EditorInChiefKeyBinding[]) {
-    return new EditorInChiefKeymap(
-      keymap.of(
-        shortcuts.map((shortcut) => {
-          return {
-            ...shortcut,
-            run: (view) => shortcut.run(new EditorInChiefView(view)),
-            shift: (view) => shortcut.run(new EditorInChiefView(view)),
-          };
-        })
-      )
-    );
+  static of(shortcuts: readonly EditorInChiefKeyBinding[]) {
+    // @ts-expect-error I am piggybacking on the codemirror keymap stuff
+    // ................ because I am too lazy to rewrite the whole keymap stuff
+    return new EditorInChiefKeymap(keymap.of(shortcuts));
   }
 }
 
