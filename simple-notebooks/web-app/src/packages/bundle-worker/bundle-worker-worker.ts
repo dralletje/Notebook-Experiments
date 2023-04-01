@@ -46,6 +46,24 @@ let engine_to_json = (engine: Engine) => {
   };
 };
 
+function deepFreeze(object) {
+  // Retrieve the property names defined on object
+  const propNames = Reflect.ownKeys(object);
+
+  // Freeze properties before freezing self
+  for (const name of propNames) {
+    const value = object[name];
+
+    if ((value && typeof value === "object") || typeof value === "function") {
+      deepFreeze(value);
+    }
+  }
+
+  try {
+    Object.freeze(object);
+  } catch {}
+}
+
 let engine = new Engine(async function RUN_CELL({
   id,
   inputs,
@@ -82,6 +100,13 @@ let engine = new Engine(async function RUN_CELL({
     } catch {}
 
     let result = await fn(...inputs_array.map((x) => x[1]));
+
+    // I am going on a limb here, and freezing everything we get back.
+    // This is to prevent the user from modifying the result of a cell in another cell.
+    // Lets see if that actually works/feels good.
+    // TODO Add some feature-flags-kinda thing to the UI to toggle this.
+    // FEATURE_FLAG: freeze_results
+    deepFreeze(result);
 
     // TODO Dirty hack to make `Couldn't return-ify X` errors stackless
     if (result.default instanceof SyntaxError) {

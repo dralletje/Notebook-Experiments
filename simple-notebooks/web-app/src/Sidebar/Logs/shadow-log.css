@@ -1,0 +1,19 @@
+.cell {
+  border-radius: 5px;
+  overflow: hidden;
+  border: solid 1px #ffffff36;
+
+  .inspector-container {
+    background-color: #70006f26;
+  }
+  .cell-editor {
+    background-color: #70006f45;
+  }
+  .cell-editor:not(:focus-within) {
+    max-height: 85px;
+  }
+
+  .cell-editor .cm-content {
+    margin: 8px;
+  }
+}

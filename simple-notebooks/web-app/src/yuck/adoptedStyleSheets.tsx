@@ -1,13 +1,15 @@
 import React from "react";
 
-interface Node {
-  getRootNode(): ShadowRoot | Document;
-}
-interface ShadowRoot {
-  adoptedStyleSheets: CSSStyleSheet[];
-}
-interface Document {
-  adoptedStyleSheets: CSSStyleSheet[];
+declare global {
+  interface Node {
+    getRootNode(): ShadowRoot | Document;
+  }
+  interface ShadowRoot {
+    adoptedStyleSheets: CSSStyleSheet[];
+  }
+  interface Document {
+    adoptedStyleSheets: CSSStyleSheet[];
+  }
 }
 
 export class CSSish {
@@ -30,7 +32,7 @@ export let AdoptStylesheet = ({ stylesheet }: { stylesheet: CSSish }) => {
   React.useLayoutEffect(() => {
     if (ref.current == null) return;
     let element = ref.current;
-    let shadow_root = element.getRootNode() as any as globalThis.ShadowRoot;
+    let shadow_root = element.getRootNode();
 
     if (stylesheet.sheet == null) {
       if (shadow_root.querySelector(`#${stylesheet.id}`) != null) return;

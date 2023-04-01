@@ -224,7 +224,6 @@ let Render = ({ node }) => {
 
 export let InspectorNoMemo = ({ value }) => {
   let result_deserialized = React.useMemo(() => {
-    console.log(`value.value:`, value.value);
     if (value?.type === "return") {
       return {
         type: /** @type {const} */ ("return"),
