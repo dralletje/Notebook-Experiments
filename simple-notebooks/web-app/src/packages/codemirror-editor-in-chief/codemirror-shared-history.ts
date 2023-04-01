@@ -119,16 +119,13 @@ class NotebookTransaction {
   }
 
   get changes(): CellChangeSet {
-    return new CellChangeSet([
-      ...this.cell_transactions
-        .mapValues((transactions) => {
-          return transactions
-            .map((x) => x.changes)
-            .reduce((acc, x) => acc.compose(x));
-        })
-        .entries()
-        .map(([cell_id, changes]) => new ForCell(cell_id, changes)),
-    ]);
+    return new CellChangeSet(
+      this.cell_transactions.mapValues((transactions) => {
+        return transactions
+          .map((x) => x.changes)
+          .reduce((acc, x) => acc.compose(x));
+      })
+    );
   }
 }
 
@@ -674,7 +671,7 @@ class HistoryState {
               editor_id: cell_id,
             });
           }),
-          ...event.changes.items.map(({ cell_id, value: change }) => {
+          ...event.changes.cellMap.entries().map(([cell_id, change]) => {
             // TODO Changes can only happen on an actual editor, so this should never be null
             if (cell_id == null) return null;
             return EditorDispatchEffect.of({

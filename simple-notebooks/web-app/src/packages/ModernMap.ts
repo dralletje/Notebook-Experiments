@@ -43,6 +43,9 @@ class ModernIterableIterator<T> implements Iterable<T> {
     }
     return false;
   }
+  every(fn: (entry: T, map: this) => boolean): boolean {
+    return !this.some((x) => !fn(x, this));
+  }
 
   toArray() {
     return [...this];
@@ -65,6 +68,17 @@ export class ModernMap<K, V> extends Map<K, V> {
     return new ModernMap(
       this.entries().map(([key, value]) => [key, fn(value, key, this)])
     );
+  }
+  filter<T>(fn: (value: V, key: K, map: this) => boolean) {
+    return new ModernMap(
+      this.entries().filter(([key, value]) => fn(value, key, this))
+    );
+  }
+  every<T>(fn: (value: V, key: K, map: this) => boolean) {
+    return this.entries().every(([key, value]) => fn(value, key, this));
+  }
+  some<T>(fn: (value: V, key: K, map: this) => boolean) {
+    return this.entries().some(([key, value]) => fn(value, key, this));
   }
 
   // Polyfill for emplace proposal
