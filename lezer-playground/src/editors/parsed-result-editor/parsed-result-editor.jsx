@@ -29,7 +29,7 @@ import {
 } from "@codemirror/view";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import React from "react";
-import { dot_gutter } from "../should-be-shared/codemirror-dot-gutter.jsx";
+import { dot_gutter } from "../../should-be-shared/codemirror-dot-gutter.jsx";
 import { tags as t } from "@lezer/highlight";
 import {
   FoldAllEffect,
@@ -45,16 +45,22 @@ import {
   _cursor_to_inspector_lang,
 } from "./cursor-to-inspector-lang.js";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
+// @ts-ignore
 import { ReactWidget } from "react-codemirror-widget";
 import { IoWarning } from "react-icons/io5";
 import { LanguageStateField } from "@dral/codemirror-helpers";
-import { Failure, Loading, usePromise } from "../use/OperationMonadBullshit.js";
+import {
+  Failure,
+  Loading,
+  usePromise,
+} from "../../use/OperationMonadBullshit.js";
 import { Tree } from "@lezer/common";
 
 import {
   ScrollIntoViewButOnlyTheEditor,
   ScrollIntoViewButOnlyTheEditorEffect,
-} from "../should-be-shared/ScrollIntoViewButOnlyTheEditor";
+} from "../../should-be-shared/ScrollIntoViewButOnlyTheEditor";
+import { base_theme } from "../shared.js";
 
 let base_extensions = [
   EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
@@ -80,6 +86,16 @@ let base_extensions = [
 
   scrollPastEnd(),
 ];
+
+let color_theme = EditorView.theme({
+  "& .cm-selectionBackground": {
+    opacity: "1 !important", // Fuuuu
+    background: "rgb(41 51 33 / 56%) !important",
+  },
+  "&.cm-focused .cm-selectionBackground": {
+    background: "rgb(34 82 2 / 56%) !important",
+  },
+});
 
 let inspector_lang = new LanguageSupport(
   LRLanguage.define({
@@ -123,10 +139,14 @@ let highlight_extension = syntaxHighlighting(
 class WarningSignWidget extends ReactWidget {
   constructor() {
     super(
-      <IoWarning
-        key="warning"
-        style={{ color: "red", pointerEvents: "none" }}
-      />
+      (function () {
+        return (
+          <IoWarning
+            key="warning"
+            style={{ color: "red", pointerEvents: "none" }}
+          />
+        );
+      })()
     );
   }
   eq() {
@@ -499,6 +519,7 @@ export let ParsedResultEditor = ({
     >
       <CodeMirror ref={codemirror_ref} state={initial_editor_state}>
         <Extension extension={inspector_lang} />
+        <Extension extension={color_theme} />
         <Extension extension={ScrollIntoViewButOnlyTheEditor} />
         <Extension extension={highlight_extension} />
         <Extension extension={lezer_syntax_classes} />
@@ -506,6 +527,7 @@ export let ParsedResultEditor = ({
 
         <Extension extension={update_what_to_code_selection} />
         <Extension extension={lezer_result_as_lezer_extensions} />
+        <Extension extension={base_theme} />
       </CodeMirror>
     </div>
   );

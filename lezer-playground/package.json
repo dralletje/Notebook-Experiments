@@ -66,6 +66,7 @@
   "devDependencies": {
     "@types/react": "^18.0.32",
     "@types/serviceworker": "^0.0.67",
+    "@types/styled-components": "^5.1.26",
     "@vitejs/plugin-react-swc": "^3.2.0",
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.21",
