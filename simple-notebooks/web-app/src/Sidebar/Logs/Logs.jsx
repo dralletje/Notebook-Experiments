@@ -10,7 +10,7 @@ import { Flipper, Flipped, spring } from "react-flip-toolkit";
 import shadow from "react-shadow/styled-components";
 import { AdoptStylesheet, CSSish } from "../../yuck/adoptedStyleSheets";
 
-import logs_css from "./Logs.css?inline";
+import logs_css from "./Logs.css";
 import shadow_log_css from "./shadow-log.css?inline";
 
 let logs_sheet = new CSSish(logs_css);

@@ -78,7 +78,7 @@ let engine = new Engine(async function RUN_CELL({
     url: url,
     import: async (specifier: any) => {
       let url = new URL(specifier, "https://jspm.dev/");
-      return await import(/* @vite-ignore */ url.toString());
+      return await import(url.toString());
     },
   };
 
