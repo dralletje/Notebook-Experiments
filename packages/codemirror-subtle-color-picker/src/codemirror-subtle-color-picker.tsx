@@ -1,6 +1,9 @@
 import React from "react";
+// @ts-ignore
 import { ReactWidget, useEditorView } from "@dral/react-codemirror-widget";
+// @ts-ignore
 import { ChromePicker } from "react-color";
+// @ts-ignore
 import styled from "styled-components";
 
 let FullscreenDialog = styled.dialog`
