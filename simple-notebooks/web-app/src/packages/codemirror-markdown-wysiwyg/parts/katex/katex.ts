@@ -1,11 +1,17 @@
-import katex from "katex";
-import "katex/dist/katex.min.css";
-
-import { EditorView, WidgetType, Decoration } from "@codemirror/view";
-import { iterate_with_cursor } from "dral-lezer-helpers";
+import {
+  EditorView,
+  WidgetType,
+  Decoration,
+  ViewPlugin,
+} from "@codemirror/view";
 import { range } from "lodash";
-import { syntaxTree } from "@codemirror/language";
 import { CollectFromTree } from "@dral/codemirror-helpers";
+
+import katex from "katex";
+import stupid_styles_inside_shadowdom from "katex/dist/katex.min.css?inline";
+import { adopt_at, CSSish } from "./adoptedStylesheets";
+
+let katex_sheet = new CSSish(stupid_styles_inside_shadowdom);
 
 class KatexWidget extends WidgetType {
   text: string;
@@ -80,6 +86,22 @@ class InlineKatexWidget extends WidgetType {
 }
 
 export let markdown_katex = [
+  ViewPlugin.define((view) => {
+    let element = document.createElement("style");
+    if (view.root instanceof ShadowRoot) {
+      view.root.appendChild(element);
+    } else {
+      document.head.appendChild(element);
+    }
+    let unadopt = adopt_at(element, katex_sheet);
+
+    return {
+      destroy() {
+        unadopt();
+        element.remove();
+      },
+    };
+  }),
   EditorView.baseTheme({
     "katex-widget": {
       display: "inline-block",
