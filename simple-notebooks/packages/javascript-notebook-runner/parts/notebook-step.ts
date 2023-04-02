@@ -8,7 +8,7 @@ import { StacklessError } from "../leaf/StacklessError.js";
 import { groupBy, uniq } from "lodash-es";
 
 import { Engine, EngineTime } from "./engine.js";
-import { DeepReadonly } from "../leaf/DeepReaonly.js";
+import { DeepReadonly } from "../leaf/DeepReadonly.js";
 
 let cells_that_need_running = (
   notebook: Notebook,
@@ -39,19 +39,16 @@ let cells_that_need_running = (
     let should_run_at = EngineTime.latest(
       cylinder.last_internal_run,
 
-      ...graph
-        .get(cell_id)
-        .in.keys()
-        .map((upstream_id: CellId) => {
-          if (!cell_should_run_at_map.has(upstream_id)) {
-            // Due to how sorting works, if the cell is part of a cyclic chain,
-            // we process some of them before we processed their cyclic siblings.
-            // There is a check for this later, so we don't have to worry here.
-            return EngineTime.EARLIEST;
-          } else {
-            return cell_should_run_at_map.get(upstream_id);
-          }
-        }),
+      ...graph.get(cell_id).in.map(([upstream_id]) => {
+        if (!cell_should_run_at_map.has(upstream_id as CellId)) {
+          // Due to how sorting works, if the cell is part of a cyclic chain,
+          // we process some of them before we processed their cyclic siblings.
+          // There is a check for this later, so we don't have to worry here.
+          return EngineTime.EARLIEST;
+        } else {
+          return cell_should_run_at_map.get(upstream_id as CellId);
+        }
+      }),
 
       // This is so that when you have
       // CELL_1: a = 10
@@ -66,7 +63,7 @@ let cells_that_need_running = (
           return EngineTime.LATEST;
         } else if (
           !cell_should_run_at_map.has(upstream_id) &&
-          !graph.get(cell_id).in.has(upstream_id)
+          !graph.get(cell_id).in.some(([x]) => x === upstream_id)
         ) {
           // Cell _was_ part of a cyclic chain AND the sibling cell we're looking at isn't part of our cycle
           // anymore, which means it was changed! So we need to run!!
@@ -279,7 +276,7 @@ export let notebook_step = ({
         result: { type: "throw", value: error },
         running: false,
         waiting: false,
-        upstream_cells: Array.from(graph_entry.in.keys()) as CellId[],
+        upstream_cells: graph_entry.in.map(([id]) => id) as CellId[],
         variables: {},
       });
     });
@@ -310,7 +307,7 @@ export let notebook_step = ({
   let cells_that_can_run = by_status.fine.filter(({ cell_id }) => {
     let graph_node = graph.get(cell_id);
     return by_status.fine.every((possibly_upstream) => {
-      return !graph_node.in.has(possibly_upstream.cell_id);
+      return !graph_node.in.some(([id]) => id === possibly_upstream.cell_id);
     });
   });
   for (let { cell_id } of cells_that_can_run) {

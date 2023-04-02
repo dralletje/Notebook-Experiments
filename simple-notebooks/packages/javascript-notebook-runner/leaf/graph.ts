@@ -23,7 +23,11 @@ type MapOf<T extends [any, any]> = T extends [infer K, infer V]
 
 type Edge = [NodeId, { name: EdgeName }];
 type CompactGraph = ModernMap<NodeId, Array<Edge>>;
-export type Node = { id: NodeId; in: MapOf<Edge>; out: MapOf<Edge> };
+export type Node = {
+  id: NodeId;
+  in: ReadonlyArray<Edge>;
+  out: ReadonlyArray<Edge>;
+};
 export type Graph = ModernMap<NodeId, Node>;
 
 export let disconnected_to_compact_graph = (
@@ -64,16 +68,16 @@ export let inflate_compact_graph = (graph: CompactGraph): Graph => {
       id,
       {
         id,
-        out: new ModernMap(out),
+        out: out,
         // In is filled in later...
-        in: new ModernMap() as MapOf<Edge>,
+        in: [],
       },
     ])
   );
   // ...specifically: here
   for (let [id, node] of expanded_graph) {
     for (let [out_id, { name }] of node.out) {
-      expanded_graph.get(out_id).in.set(id, { name });
+      expanded_graph.get(out_id).in.push([id, { name }]);
     }
   }
   return expanded_graph;
@@ -108,18 +112,15 @@ export let topological_sort = (graph: Graph): NodeId[] => {
 export let multiple_definitions = (graph: Graph) => {
   let doubles = new Map<NodeId, Set<EdgeName>>();
   for (let [cell_id, node] of graph.entries()) {
-    let conflicting_definitions = node.out
-      .values()
-      .filter(({ name: out_name }) => {
-        return node.in.values().some(({ name: in_name }) => {
-          return out_name === in_name;
-        });
-      })
-      .toArray();
+    let conflicting_definitions = node.out.filter(([_, { name: out_name }]) => {
+      return node.in.some(([_, { name: in_name }]) => {
+        return out_name === in_name;
+      });
+    });
     if (conflicting_definitions.length > 0) {
       doubles.set(
         cell_id,
-        new Set(conflicting_definitions.map(({ name }) => name))
+        new Set(conflicting_definitions.map(([_, { name }]) => name))
       );
     }
   }

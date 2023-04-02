@@ -217,7 +217,7 @@ export class Engine extends TypedEventTarget<{
       Object.assign(this.cylinders.get(key), {
         last_run: cell.requested_run_time,
         last_internal_run: this.tick(),
-        upstream_cells: graph_node.in.keys().toArray() as CellId[],
+        upstream_cells: graph_node.in.map(([x]) => x) as CellId[],
 
         result:
           result.type === "return"
