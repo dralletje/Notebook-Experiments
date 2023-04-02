@@ -23,7 +23,6 @@ import {
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { LRParser } from "@lezer/lr";
 import { IoBonfire, IoHeart, IoLogoGithub } from "react-icons/io5";
-import usePath from "react-use-path";
 
 import { CodeMirror, Extension } from "codemirror-x-react";
 import {
@@ -288,7 +287,8 @@ let dont_space_too_much = MaxIdentationSpacesFacet.of(10);
  *  js_stuff: ExecutionResult<{
  *    extensions: import("@codemirror/state").Extension[],
  *  }>
- * }} props */
+ * }} props
+ */
 export let WhatToParseEditor = ({ viewupdate, parser, js_stuff }) => {
   let js_result = js_stuff.or(null);
 

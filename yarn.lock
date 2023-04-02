@@ -792,7 +792,10 @@ __metadata:
     styled-components: ^5.3.9
     typescript: ^5.0.3
   peerDependencies:
+    "@codemirror/view": "*"
     react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -907,7 +910,7 @@ __metadata:
     "@lezer/generator": ^1.2.2
     "@types/react": ^18.0.32
     "@types/serviceworker": ^0.0.67
-    "@vitejs/plugin-react": ^3.1.0
+    "@vitejs/plugin-react-swc": ^3.2.0
     autoprefixer: ^10.4.14
     bezier-easing: ^2.1.0
     codemirror-awesome-line-wrapping: "workspace:^"
@@ -925,8 +928,9 @@ __metadata:
     rollup-plugin-visualizer: ^5.9.0
     style-mod: ^4.0.2
     styled-components: ^5.3.9
-    tailwindcss: ^3.3.1
     vite: ^4.2.1
+  peerDependencies:
+    react-is: "*"
   languageName: unknown
   linkType: soft
 

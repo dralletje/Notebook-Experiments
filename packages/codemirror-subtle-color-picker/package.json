@@ -16,7 +16,10 @@
     "styled-components": "^5.3.9"
   },
   "peerDependencies": {
-    "react": "*"
+    "@codemirror/view": "*",
+    "react": "*",
+    "react-dom": "*",
+    "react-is": "*"
   },
   "devDependencies": {
     "react": "^18.2.0",
