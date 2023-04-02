@@ -123,10 +123,14 @@ let highlight_extension = syntaxHighlighting(
 class WarningSignWidget extends ReactWidget {
   constructor() {
     super(
-      <IoWarning
-        key="warning"
-        style={{ color: "red", pointerEvents: "none" }}
-      />
+      (function () {
+        return (
+          <IoWarning
+            key="warning"
+            style={{ color: "red", pointerEvents: "none" }}
+          />
+        );
+      })()
     );
   }
   eq() {
