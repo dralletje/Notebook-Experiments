@@ -60,6 +60,7 @@ import {
   ScrollIntoViewButOnlyTheEditor,
   ScrollIntoViewButOnlyTheEditorEffect,
 } from "../../should-be-shared/ScrollIntoViewButOnlyTheEditor";
+import { base_theme } from "../shared.js";
 
 let base_extensions = [
   EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
@@ -515,6 +516,7 @@ export let ParsedResultEditor = ({
 
         <Extension extension={update_what_to_code_selection} />
         <Extension extension={lezer_result_as_lezer_extensions} />
+        <Extension extension={base_theme} />
       </CodeMirror>
     </div>
   );

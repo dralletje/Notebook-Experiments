@@ -45,86 +45,12 @@ import { useSearchParamState, useUrl } from "./use/use-url.js";
 import { WhatToParseEditorWithErrorBoundary } from "./editors/what-to-parse-editor/what-to-parse-editor-with-error-boundary.jsx";
 import { Pane, PaneStyle, PaneTab } from "./panel/panel.jsx";
 
-let ThingFromCodemirroPlutoStyleGetRidOfThis = styled.div`
-  display: contents;
+export let App = () => {
+  let [url] = useUrl();
+  let path = url.pathname;
 
-  & .cm-editor .cm-content,
-  & .cm-editor .cm-scroller,
-  & .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
-    font-family: inherit;
-  }
-
-  &:focus-within .cm-editor .cm-matchingBracket {
-    color: var(--cm-matchingBracket-color) !important;
-    font-weight: 700;
-    background-color: var(--cm-matchingBracket-bg-color);
-    border-radius: 2px;
-  }
-
-  & .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
-    height: unset;
-  }
-
-  & .cm-editor .cm-selectionBackground {
-    background: var(--cm-selection-background-blurred);
-  }
-  & .cm-editor.cm-focused .cm-selectionBackground {
-    background: var(--cm-selection-background);
-  }
-
-  & .cm-editor {
-    color: var(--cm-editor-text-color);
-  }
-  & .cm-editor.cm-focused:not(.__) {
-    outline: unset;
-  }
-
-  & .cm-selectionMatch {
-    background: none !important;
-    text-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
-  }
-  @media (prefers-color-scheme: dark) {
-    & .cm-selectionMatch {
-      background: none !important;
-      text-shadow: 0 0 13px rgb(255 255 255);
-    }
-  }
-
-  & .cm-editor .cm-matchingBracket,
-  & .cm-editor .cm-nonmatchingBracket {
-    background-color: unset;
-    color: unset;
-  }
-
-  & .cm-editor .cm-placeholder {
-    color: var(--cm-placeholder-text-color);
-    font-style: italic;
-  }
-
-  /* HEYYYYY */
-  & .cm-editor {
-    height: 100%;
-  }
-
-  & .cm-cursor {
-    border-left-color: #dcdcdc !important;
-  }
-`;
-
-let GeneralEditorStyles = styled.div`
-  height: 100%;
-  font-family: var(--mono-font-family);
-
-  & .cm-scroller {
-    /* padding-left: 16px; */
-  }
-  & .cm-content {
-    padding-top: 8px;
-    padding-bottom: 8px;
-    padding-right: 16px;
-    min-height: 100%;
-  }
-`;
+  return <Editor project_name={path} />;
+};
 
 let AppGrid = styled.div`
   width: 100vw;
@@ -162,17 +88,6 @@ let AppGrid = styled.div`
   }
 `;
 
-export let App = () => {
-  let [url] = useUrl();
-  let path = url.pathname;
-
-  return (
-    <ThingFromCodemirroPlutoStyleGetRidOfThis>
-      <Editor project_name={path} />
-    </ThingFromCodemirroPlutoStyleGetRidOfThis>
-  );
-};
-
 let FillAndCenter = styled.div`
   height: 100%;
   width: 100%;
@@ -200,6 +115,13 @@ let PaneSelect = styled.select`
   border: none;
   font-size: 0.9em;
   padding-inline: 4px;
+`;
+
+let Runtime = styled.div`
+  font-size: 0.9em;
+  margin-left: 8px;
+  opacity: 0.7;
+  align-self: flex-end;
 `;
 
 /** @type {import("./should-be-shared/codemirror-editor-in-chief/logic.js").EditorId} */
@@ -480,17 +402,15 @@ let Editor = ({ project_name }) => {
             </div>
           }
         >
-          <GeneralEditorStyles>
-            <LezerEditor
-              error={
-                generated_parser_code instanceof Failure
-                  ? generated_parser_code.value
-                  : null
-              }
-              viewupdate={lezer_grammar_viewupdate}
-              result={parser}
-            />
-          </GeneralEditorStyles>
+          <LezerEditor
+            error={
+              generated_parser_code instanceof Failure
+                ? generated_parser_code.value
+                : null
+            }
+            viewupdate={lezer_grammar_viewupdate}
+            result={parser}
+          />
         </Pane>
 
         <Pane
@@ -535,32 +455,30 @@ let Editor = ({ project_name }) => {
             </>
           }
         >
-          <GeneralEditorStyles>
-            <WhatToParseEditorWithErrorBoundary
-              viewupdate={code_to_parse_viewupdate}
-              errors={compact([
-                generated_parser_code instanceof Failure
-                  ? {
-                      title: "Lezer grammar error",
-                      error: generated_parser_code.value,
-                    }
-                  : null,
-                js_stuff instanceof Failure
-                  ? { title: "Javascript error", error: js_stuff.value }
-                  : null,
+          <WhatToParseEditorWithErrorBoundary
+            viewupdate={code_to_parse_viewupdate}
+            errors={compact([
+              generated_parser_code instanceof Failure
+                ? {
+                    title: "Lezer grammar error",
+                    error: generated_parser_code.value,
+                  }
+                : null,
+              js_stuff instanceof Failure
+                ? { title: "Javascript error", error: js_stuff.value }
+                : null,
 
-                parser instanceof Failure
-                  ? { title: "Parser generation", error: parser.value }
-                  : null,
-              ])}
-              js_stuff={js_stuff}
-              parser={
-                parser_in_betweens instanceof Success
-                  ? parser_in_betweens.get()
-                  : null
-              }
-            />
-          </GeneralEditorStyles>
+              parser instanceof Failure
+                ? { title: "Parser generation", error: parser.value }
+                : null,
+            ])}
+            js_stuff={js_stuff}
+            parser={
+              parser_in_betweens instanceof Success
+                ? parser_in_betweens.get()
+                : null
+            }
+          />
         </Pane>
 
         <Pane
@@ -571,59 +489,55 @@ let Editor = ({ project_name }) => {
             </>
           }
         >
-          <GeneralEditorStyles>
-            <React.Suspense
-              fallback={
-                <FillAndCenter>
-                  <pre style={{ color: "#ffff004d" }}>
-                    Waiting for{"\n"}editor to load..
-                  </pre>
-                </FillAndCenter>
-              }
-            >
-              {parser_in_betweens instanceof Success ? (
-                <ParsedResultEditor
-                  code_to_parse_viewupdate={code_to_parse_viewupdate}
-                  parser={parser_in_betweens.value}
-                  code_to_parse={code_to_parse}
-                  onSelection={onSelection}
-                />
-              ) : parser_in_betweens instanceof Failure &&
-                parser instanceof Failure ? (
-                generated_parser_code instanceof Failure ? (
-                  <LezerErrorEditor error={generated_parser_code.value} />
-                ) : (
-                  <FillAndCenter>
-                    <pre style={{ color: "red", whiteSpace: "pre-wrap" }}>
-                      {parser_in_betweens.value.toString()}
-                    </pre>
-                  </FillAndCenter>
-                )
+          <React.Suspense
+            fallback={
+              <FillAndCenter>
+                <pre style={{ color: "#ffff004d" }}>
+                  Waiting for{"\n"}editor to load..
+                </pre>
+              </FillAndCenter>
+            }
+          >
+            {parser_in_betweens instanceof Success ? (
+              <ParsedResultEditor
+                code_to_parse_viewupdate={code_to_parse_viewupdate}
+                parser={parser_in_betweens.value}
+                code_to_parse={code_to_parse}
+                onSelection={onSelection}
+              />
+            ) : parser_in_betweens instanceof Failure &&
+              parser instanceof Failure ? (
+              generated_parser_code instanceof Failure ? (
+                <LezerErrorEditor error={generated_parser_code.value} />
               ) : (
                 <FillAndCenter>
-                  <pre style={{ color: "#ffff004d" }}>
-                    Waiting for{"\n"}parser to compile..
+                  <pre style={{ color: "red", whiteSpace: "pre-wrap" }}>
+                    {parser_in_betweens.value.toString()}
                   </pre>
                 </FillAndCenter>
-              )}
-            </React.Suspense>
-          </GeneralEditorStyles>
+              )
+            ) : (
+              <FillAndCenter>
+                <pre style={{ color: "#ffff004d" }}>
+                  Waiting for{"\n"}parser to compile..
+                </pre>
+              </FillAndCenter>
+            )}
+          </React.Suspense>
         </Pane>
 
         <Pane
           style={{ gridArea: "javascript-stuff", backgroundColor: "#180000" }}
           header={<PaneTab title="javascript stuff" process={js_stuff} />}
         >
-          <GeneralEditorStyles>
-            <JavascriptStuffEditor
-              error={
-                javascript_result instanceof Failure
-                  ? javascript_result.value
-                  : null
-              }
-              viewupdate={javascript_stuff_viewupdate}
-            />
-          </GeneralEditorStyles>
+          <JavascriptStuffEditor
+            error={
+              javascript_result instanceof Failure
+                ? javascript_result.value
+                : null
+            }
+            viewupdate={javascript_stuff_viewupdate}
+          />
         </Pane>
 
         <div
@@ -644,10 +558,3 @@ let Editor = ({ project_name }) => {
     </AppScroller>
   );
 };
-
-let Runtime = styled.div`
-  font-size: 0.9em;
-  margin-left: 8px;
-  opacity: 0.7;
-  align-self: flex-end;
-`;
