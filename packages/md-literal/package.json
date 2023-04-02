@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "highlight.js": "^11.6.0",
-    "marked": "^4.1.0"
+    "highlight.js": "^11.7.0",
+    "marked": "^4.3.0"
   }
 }

@@ -5,12 +5,12 @@
   "dependencies": {
     "@codemirror/autocomplete": "^6.4.2",
     "@codemirror/collab": "^6.0.0",
-    "@codemirror/commands": "^6.2.1",
+    "@codemirror/commands": "^6.2.2",
     "@codemirror/lang-javascript": "^6.1.4",
     "@codemirror/lang-lezer": "^6.0.1",
     "@codemirror/lang-markdown": "^6.1.0",
     "@codemirror/language": "^6.6.0",
-    "@codemirror/search": "^6.2.3",
+    "@codemirror/search": "^6.3.0",
     "@codemirror/state": "^6.2.0",
     "@codemirror/view": "^6.9.1",
     "@dral/codemirror-helpers": "workspace:^",
@@ -18,9 +18,9 @@
     "@dral/javascript-basic-serialize": "workspace:^",
     "@dral/javascript-notebook-runner": "workspace:^",
     "@dral/modern-map": "workspace:^",
-    "@ionic/react": "^6.2.7",
+    "@ionic/react": "^7.0.0",
     "@lezer/common": "^1.0.2",
-    "@types/node": "^18.7.18",
+    "@types/node": "^18.15.11",
     "@typescript/vfs": "^1.4.0",
     "codemirror-awesome-line-wrapping": "workspace:^",
     "codemirror-debug-syntax-plugin": "workspace:^",
@@ -37,27 +37,21 @@
     "node-emoji": "^1.11.0",
     "picocolors": "^1.0.0",
     "polyfills": "workspace:^",
-    "prettier": "^2.7.1",
+    "prettier": "^2.8.7",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-codemirror-widget": "workspace:^",
     "react-dom": "^18.2.0",
-    "react-flip-toolkit": "^7.0.16",
+    "react-flip-toolkit": "^7.0.17",
     "react-is": "^18.2.0",
     "react-shadow": "^20.0.0",
     "react-use-path": "^0.3.1",
-    "shallow-equal": "^1.2.1",
-    "socket.io-client": "^4.5.1",
-    "styled-components": "^5.3.5",
+    "shallow-equal": "^3.1.0",
+    "socket.io-client": "^4.6.1",
+    "styled-components": "^5.3.9",
     "ts-opaque": "^3.0.1",
-    "typescript": "^4.8.3",
-    "uuid": "^8.3.2"
-  },
-  "workspaces": {
-    "nohoist": [
-      "typescript",
-      "typescript/**"
-    ]
+    "typescript": "^5.0.3",
+    "uuid": "^9.0.0"
   },
   "scripts": {
     "start": "vite",
@@ -82,14 +76,14 @@
     ]
   },
   "devDependencies": {
-    "@types/react": "^18.0.20",
-    "@types/serviceworker": "^0.0.52",
-    "@vitejs/plugin-react": "^2.1.0",
-    "autoprefixer": "^10.4.12",
-    "postcss": "^8.4.17",
+    "@types/react": "^18.0.32",
+    "@types/serviceworker": "^0.0.67",
+    "@vitejs/plugin-react": "^3.1.0",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.21",
     "postcss-nesting": "^11.2.2",
-    "rollup-plugin-visualizer": "^5.8.3",
-    "tailwindcss": "^3.1.8",
+    "rollup-plugin-visualizer": "^5.9.0",
+    "tailwindcss": "^3.3.1",
     "vite": "^3.1.0"
   }
 }
