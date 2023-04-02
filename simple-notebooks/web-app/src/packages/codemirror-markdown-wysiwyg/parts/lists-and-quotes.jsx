@@ -9,7 +9,7 @@ import { Decoration, EditorView, keymap } from "@codemirror/view";
 import { range } from "lodash";
 import { syntaxTree } from "@codemirror/language";
 
-import { ReactWidget, useEditorView } from "react-codemirror-widget";
+import { ReactWidget, useEditorView } from "@dral/react-codemirror-widget";
 import { iterate_over_cursor, iterate_with_cursor } from "dral-lezer-helpers";
 import { TreeCursor } from "@lezer/common";
 import { DecorationsFromTreeSortForMe } from "@dral/codemirror-helpers";

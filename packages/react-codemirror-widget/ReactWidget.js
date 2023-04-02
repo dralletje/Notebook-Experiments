@@ -4,7 +4,6 @@ import {
   useContext,
   isValidElement,
 } from "react";
-import ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
 import { EditorView, GutterMarker, WidgetType } from "@codemirror/view";
 

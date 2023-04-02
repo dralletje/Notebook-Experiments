@@ -17,7 +17,7 @@ import {
   syntaxTreeAvailable,
 } from "@codemirror/language";
 
-import { ReactWidget, useEditorView } from "react-codemirror-widget";
+import { ReactWidget, useEditorView } from "@dral/react-codemirror-widget";
 import { LanguageStateField } from "@dral/codemirror-helpers";
 
 let fold_style = EditorView.theme({

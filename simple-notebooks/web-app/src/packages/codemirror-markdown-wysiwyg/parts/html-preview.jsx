@@ -10,7 +10,7 @@ import {
   MapMode,
 } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
-import { ReactWidget, useEditorView } from "react-codemirror-widget";
+import { ReactWidget, useEditorView } from "@dral/react-codemirror-widget";
 
 import { IonIcon } from "@ionic/react";
 import { eyeOutline, eye } from "ionicons/icons";

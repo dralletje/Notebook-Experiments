@@ -4,8 +4,11 @@
     "target": "ES2022",
     "sourceMap": true,
     "declaration": true,
+    "jsx": "react-jsx",
     "strict": true,
     "outDir": "dist",
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
     "skipLibCheck": true
   }
 }

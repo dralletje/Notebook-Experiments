@@ -45,7 +45,7 @@ import {
   _cursor_to_inspector_lang,
 } from "./cursor-to-inspector-lang.js";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
-import { ReactWidget } from "react-codemirror-widget";
+import { ReactWidget } from "@dral/react-codemirror-widget";
 import { IoWarning } from "react-icons/io5";
 import { LanguageStateField } from "@dral/codemirror-helpers";
 import { Failure, Loading, usePromise } from "../use/OperationMonadBullshit.js";

@@ -6,7 +6,7 @@ import { CodeMirror, Extension } from "codemirror-x-react";
 import { EditorState, Prec } from "@codemirror/state";
 import { indentUnit } from "@codemirror/language";
 import { Decoration, EditorView } from "@codemirror/view";
-import { ReactWidget } from "react-codemirror-widget";
+import { ReactWidget } from "@dral/react-codemirror-widget";
 import shadow from "react-shadow";
 import { deserialize } from "./deserialize-value-to-show";
 import {

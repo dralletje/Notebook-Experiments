@@ -2,16 +2,24 @@
   "name": "@dral/codemirror-subtle-color-picker",
   "version": "1.0.0",
   "description": "",
-  "main": "codemirror-subtle-color-picker.jsx",
+  "main": "./dist/codemirror-subtle-color-picker.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "watch": "tsc --watch"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@codemirror/state": "^6.2.0",
-    "@codemirror/view": "^6.9.3",
+    "@dral/react-codemirror-widget": "workspace:^",
+    "react-color": "^2.19.3",
+    "styled-components": "^5.3.9"
+  },
+  "peerDependencies": {
+    "react": "*"
+  },
+  "devDependencies": {
     "react": "^18.2.0",
-    "react-color": "^2.19.3"
+    "typescript": "^5.0.3"
   }
 }

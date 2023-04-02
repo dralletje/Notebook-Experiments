@@ -7,7 +7,7 @@ import {
   DecorationsFromTree,
   DecorationsFromTreeSortForMe,
 } from "@dral/codemirror-helpers";
-import { ReactWidget } from "react-codemirror-widget";
+import { ReactWidget } from "@dral/react-codemirror-widget";
 import { iterate_with_cursor } from "dral-lezer-helpers";
 
 let markdown_styling_base_theme = EditorView.baseTheme({

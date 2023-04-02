@@ -750,17 +750,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@codemirror/view@npm:^6.9.3":
-  version: 6.9.3
-  resolution: "@codemirror/view@npm:6.9.3"
-  dependencies:
-    "@codemirror/state": ^6.1.4
-    style-mod: ^4.0.0
-    w3c-keyname: ^2.2.4
-  checksum: 718ecbb021ca75eb89003f73c846a07d36a708dcfec8345f0f0dbcfc0d0df5ea6f114918694b2730a6d49e5e50502bcce79ce7ff94ce55748e068e5a35073755
-  languageName: node
-  linkType: hard
-
 "@cspotcode/source-map-support@npm:^0.8.0":
   version: 0.8.1
   resolution: "@cspotcode/source-map-support@npm:0.8.1"
@@ -797,10 +786,13 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@dral/codemirror-subtle-color-picker@workspace:packages/codemirror-subtle-color-picker"
   dependencies:
-    "@codemirror/state": ^6.2.0
-    "@codemirror/view": ^6.9.3
+    "@dral/react-codemirror-widget": "workspace:^"
     react: ^18.2.0
     react-color: ^2.19.3
+    styled-components: ^5.3.9
+    typescript: ^5.0.3
+  peerDependencies:
+    react: "*"
   languageName: unknown
   linkType: soft
 
@@ -910,6 +902,7 @@ __metadata:
     "@dral/lezer-inspector": "*"
     "@dral/lezer-lezer-error": "workspace:*"
     "@dral/modern-map": "workspace:^"
+    "@dral/react-codemirror-widget": "workspace:^"
     "@lezer/common": ^1.0.2
     "@lezer/generator": ^1.2.2
     "@types/react": ^18.0.32
@@ -925,7 +918,6 @@ __metadata:
     postcss: ^8.4.21
     process: ^0.11.10
     react: ^18.2.0
-    react-codemirror-widget: "workspace:^"
     react-dom: ^18.2.0
     react-icons: ^4.8.0
     react-use-path: ^0.3.1
@@ -965,6 +957,7 @@ __metadata:
     "@dral/javascript-basic-serialize": "workspace:^"
     "@dral/javascript-notebook-runner": "workspace:^"
     "@dral/modern-map": "workspace:^"
+    "@dral/react-codemirror-widget": "workspace:^"
     "@ionic/react": ^7.0.0
     "@lezer/common": ^1.0.2
     "@types/node": ^18.15.11
@@ -994,7 +987,6 @@ __metadata:
     prettier: ^2.8.7
     react: ^18.2.0
     react-beautiful-dnd: ^13.1.1
-    react-codemirror-widget: "workspace:^"
     react-dom: ^18.2.0
     react-flip-toolkit: ^7.0.17
     react-is: ^18.2.0
@@ -1037,6 +1029,16 @@ __metadata:
     strip-color: ^0.1.0
     ts-node: ^10.9.1
     write-file-atomic: ^5.0.0
+  languageName: unknown
+  linkType: soft
+
+"@dral/react-codemirror-widget@workspace:^, @dral/react-codemirror-widget@workspace:packages/react-codemirror-widget":
+  version: 0.0.0-use.local
+  resolution: "@dral/react-codemirror-widget@workspace:packages/react-codemirror-widget"
+  peerDependencies:
+    "@codemirror/view": "*"
+    react: ^18.2.0
+    react-dom: ^18.2.0
   languageName: unknown
   linkType: soft
 
@@ -4965,17 +4967,6 @@ __metadata:
   checksum: 5f90f7c0ab77a14dfcd496cbd94bbde457612f380c6fc815f3bba7b52effd75132948fcaa661a902a184bb1e6ae5896dcf5b0c77c4ddf809a2c65288f3eed5a7
   languageName: node
   linkType: hard
-
-"react-codemirror-widget@workspace:^, react-codemirror-widget@workspace:packages/react-codemirror-widget":
-  version: 0.0.0-use.local
-  resolution: "react-codemirror-widget@workspace:packages/react-codemirror-widget"
-  dependencies:
-    react-dom: ^18.2.0
-  peerDependencies:
-    "@codemirror/view": ^6.2.0
-    react: ^18.2.0
-  languageName: unknown
-  linkType: soft
 
 "react-color@npm:^2.19.3":
   version: 2.19.3

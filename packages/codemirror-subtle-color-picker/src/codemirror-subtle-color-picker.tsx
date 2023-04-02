@@ -1,5 +1,5 @@
 import React from "react";
-import { ReactWidget, useEditorView } from "react-codemirror-widget";
+import { ReactWidget, useEditorView } from "@dral/react-codemirror-widget";
 import { ChromePicker } from "react-color";
 import styled from "styled-components";
 
@@ -43,14 +43,19 @@ let Ughhhhh = styled.div`
   }
 `;
 
-export let SubtleColorPicker = ({ from, to, color }) => {
+export let SubtleColorPicker = ({
+  from,
+  to,
+  color,
+}: {
+  from: number;
+  to: number;
+  color: string;
+}) => {
   let editorview = useEditorView();
 
-  /** @type {import("react").MutableRefObject<HTMLDialogElement>} */
-  let dialog_ref = React.useRef(/** @type {any} */ (null));
-
-  /** @type {import("react").MutableRefObject<HTMLButtonElement>} */
-  let color_ref = React.useRef(/** @type {any} */ (null));
+  let dialog_ref = React.useRef(null as any as HTMLDialogElement);
+  let color_ref = React.useRef(null as any as HTMLButtonElement);
 
   return (
     <>
@@ -89,12 +94,13 @@ export let SubtleColorPicker = ({ from, to, color }) => {
           outline: "1px solid #ffffff4f",
           borderRadius: 10,
         }}
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) {
+        onBlur={(event: FocusEvent) => {
+          // @ts-ignore
+          if (!event.currentTarget?.contains?.(event.relatedTarget)) {
             dialog_ref.current.close();
           }
         }}
-        onMouseDown={(event) => {
+        onMouseDown={(event: Event) => {
           if (event.target === event.currentTarget) {
             dialog_ref.current.close();
           }
@@ -117,7 +123,7 @@ export let SubtleColorPicker = ({ from, to, color }) => {
               },
             }}
             color={color}
-            onChange={(color) => {
+            onChange={(color: { hex: string }) => {
               editorview.dispatch({
                 changes: {
                   from,
@@ -133,8 +139,8 @@ export let SubtleColorPicker = ({ from, to, color }) => {
   );
 };
 
-let div_cache = null;
-export let ask_css_to_sanitize_color = (color) => {
+let div_cache: HTMLDivElement | null = null;
+export let ask_css_to_sanitize_color = (color: string) => {
   if (div_cache == null) {
     div_cache = document.createElement("div");
   }
@@ -144,12 +150,11 @@ export let ask_css_to_sanitize_color = (color) => {
 };
 
 export class ColorPickerWidget extends ReactWidget {
-  /**
-   * @param {number} from
-   * @param {number} to
-   * @param {string} color
-   */
-  constructor(from, to, color) {
+  from: number;
+  to: number;
+  color: string;
+
+  constructor(from: number, to: number, color: string) {
     super(
       // I AM SO SORRY ABOUT THIS
       // But @vitejs/plugin-react-swc changes this JSX fragment to something
@@ -172,7 +177,7 @@ export class ColorPickerWidget extends ReactWidget {
     this.color = color;
   }
 
-  eq(other) {
+  eq(other: ColorPickerWidget) {
     return (
       this.from === other.from &&
       this.to === other.to &&

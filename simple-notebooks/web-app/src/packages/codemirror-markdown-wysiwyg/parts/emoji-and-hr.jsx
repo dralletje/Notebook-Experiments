@@ -3,7 +3,7 @@ import { syntaxTree } from "@codemirror/language";
 import { Decoration, EditorView } from "@codemirror/view";
 import emoji from "node-emoji";
 import { iterate_with_cursor } from "dral-lezer-helpers";
-import { ReactWidget } from "react-codemirror-widget";
+import { ReactWidget } from "@dral/react-codemirror-widget";
 import { RangeSetBuilder, RangeValue } from "@codemirror/state";
 import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
