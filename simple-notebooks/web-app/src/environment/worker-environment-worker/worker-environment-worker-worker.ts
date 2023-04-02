@@ -108,7 +108,7 @@ let engine = new Engine(async function RUN_CELL({
     // Lets see if that actually works/feels good.
     // TODO Add some feature-flags-kinda thing to the UI to toggle this.
     // FEATURE_FLAG: freeze_results
-    deepFreeze(result);
+    // deepFreeze(result);
 
     // TODO Dirty hack to make `Couldn't return-ify X` errors stackless
     if (result.default instanceof SyntaxError) {
@@ -122,14 +122,16 @@ let engine = new Engine(async function RUN_CELL({
       },
     };
   } catch (error) {
-    let name_index = error.stack.lastIndexOf(`\n    at Engine.RUN_CELL`);
-    if (name_index !== -1) {
-      error.stack = error.stack.slice(0, name_index);
-    }
-    error.stack = error.stack.replace(
-      /$\n    at ConstructedFunction (.*)$/gm,
-      ""
-    );
+    try {
+      let name_index = error.stack.lastIndexOf(`\n    at Engine.RUN_CELL`);
+      if (name_index !== -1) {
+        error.stack = error.stack.slice(0, name_index);
+      }
+      error.stack = error.stack.replace(
+        /$\n    at ConstructedFunction (.*)$/gm,
+        ""
+      );
+    } catch {}
 
     return {
       result: {

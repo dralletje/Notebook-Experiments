@@ -111,7 +111,7 @@ let engine = new Engine(async function RUN_CELL({
     // Lets see if that actually works/feels good.
     // TODO Add some feature-flags-kinda thing to the UI to toggle this.
     // FEATURE_FLAG: freeze_results
-    deepFreeze(result);
+    // deepFreeze(result);
 
     // TODO Dirty hack to make `Couldn't return-ify X` errors stackless
     if (result.default instanceof SyntaxError) {
