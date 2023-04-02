@@ -914,7 +914,7 @@ __metadata:
     "@lezer/generator": ^1.2.2
     "@types/react": ^18.0.32
     "@types/serviceworker": ^0.0.67
-    "@vitejs/plugin-react": ^3.1.0
+    "@vitejs/plugin-react-swc": ^3.2.0
     autoprefixer: ^10.4.14
     bezier-easing: ^2.1.0
     codemirror-awesome-line-wrapping: "workspace:^"
