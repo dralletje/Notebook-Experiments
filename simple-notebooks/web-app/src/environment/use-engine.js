@@ -1,72 +1,82 @@
 import React from "react";
-import { get_bundle_worker } from "../packages/bundle-worker/bundle-worker.js";
 import immer, { original } from "immer";
 import { isEqual } from "lodash";
+import { AddLogEvent, Engine, UpdateEngineEvent } from "./Environment";
 
 /**
- * @typedef EngineLog
- * @type {{
- *  id: string;
- *  cell_id:string;
- *  code: string;
- *  cylinder: import("../packages/codemirror-notebook/cell.js").CylinderShadow,
- *  repeat: number;
- *  time: Date;
- * }}
- *
- * TODO Use `time` property in log to show "last updated" time
+ * @param {{
+ *  target: EventTarget;
+ *  type: string;
+ *  listener: (e: any) => void;
+ * }} props
+ * @param {React.DependencyList} deps
  */
+let useEventListener = ({ target, type, listener }, deps) => {
+  React.useEffect(() => {
+    target.addEventListener(type, listener);
+    return () => {
+      target.removeEventListener(type, listener);
+    };
+  }, [target, ...deps]);
+};
 
 /**
  * @param {{
  *  filename: string;
  *  notebook: import("../packages/codemirror-notebook/cell.js").NotebookSerialized;
  * }} notebook
- * @returns {[import("../packages/codemirror-notebook/cell.js").EngineShadow, EngineLog[]]}
+ * @param {import("./Environment.js").Environment} environment
+ * @returns {[
+ *  import("../packages/codemirror-notebook/cell.js").EngineShadow,
+ *  import("./Environment.js").EngineLog[],
+ * ]}
  */
-export let useLocalEnvironment = (notebook) => {
+export let useEngine = (notebook, environment) => {
   let [state, set_state] = React.useState(
     /**
      * @type {{
      *  engine: import("../packages/codemirror-notebook/cell.js").EngineShadow,
-     *  logs: EngineLog[],
+     *  logs: import("./Environment.js").EngineLog[],
      * }}
      */
     ({ engine: { cylinders: {} }, logs: [] })
   );
 
-  let bundle_worker = React.useMemo(() => {
-    return get_bundle_worker();
-  }, []);
+  let engine = React.useMemo(() => environment.createEngine(), []);
+
+  // Start the engine!
   React.useEffect(() => {
+    engine.start();
     return () => {
+      // Clear logs as well
       set_state({ engine: { cylinders: {} }, logs: [] });
-      bundle_worker.terminate();
+      engine.stop();
     };
   }, []);
 
-  React.useEffect(() => {
-    let handler = (event) => {
-      if (event.data.type === "update-engine") {
+  useEventListener(
+    {
+      target: engine,
+      type: "update-engine",
+      listener: (/** @type {UpdateEngineEvent} */ event) => {
+        let engine = event.engineShadow;
         set_state(
           immer((x) => {
-            x.engine = event.data.engine;
+            x.engine = engine;
           })
         );
-      }
-    };
+      },
+    },
+    [engine, set_state]
+  );
 
-    bundle_worker.addEventListener("message", handler);
-    return () => {
-      bundle_worker.removeEventListener("message", handler);
-    };
-  }, [bundle_worker, set_state]);
-
-  React.useEffect(() => {
-    let handler = (event) => {
-      if (event.data.type === "add-log") {
-        /** @type {Omit<EngineLog, "cell">} */
-        let log = event.data.log;
+  useEventListener(
+    {
+      target: engine,
+      type: "add-log",
+      listener: (/** @type {AddLogEvent} */ event) => {
+        /** @type {Omit<import("./Environment.js").EngineLog, "cell">} */
+        let log = event.log;
         set_state(
           immer((x) => {
             // @ts-ignore
@@ -107,31 +117,18 @@ export let useLocalEnvironment = (notebook) => {
             ];
           })
         );
-      }
-    };
-    bundle_worker.addEventListener("message", handler);
-    return () => {
-      bundle_worker.removeEventListener("message", handler);
-    };
-  }, [bundle_worker, set_state]);
+      },
+    },
+    [engine, set_state]
+  );
 
   let last_sent_notebook = React.useRef(/** @type {any} */ (null));
   React.useEffect(() => {
     if (isEqual(last_sent_notebook.current, notebook)) return;
     last_sent_notebook.current = notebook;
 
-    bundle_worker.postMessage({
-      type: "update-notebook",
-      notebook: notebook.notebook,
-    });
+    engine.update_notebook(notebook.notebook);
   }, [notebook]);
-  // React.useEffect(() => {
-  //   if (!socket.connected) {
-  //     socket.connect();
-  //   }
-  //   return () => {
-  //     socket.close();
-  //   };
-  // }, [socket]);
+
   return [state.engine, state.logs];
 };

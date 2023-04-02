@@ -1,7 +1,7 @@
 import React from "react";
 
 import styled from "styled-components";
-import { isEqual, mapValues } from "lodash";
+import { isEqual } from "lodash";
 import { useViewUpdate } from "codemirror-x-react/viewupdate";
 
 import {
@@ -25,7 +25,6 @@ import {
   CellTypeFacet,
 } from "./packages/codemirror-notebook/cell";
 import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
-import { useEngine } from "./use/use-engine";
 
 import { IonIcon } from "@ionic/react";
 import {
@@ -44,8 +43,8 @@ import { DragAndDropItem, DragAndDropList } from "./yuck/DragAndDropStuff.jsx";
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
 import { actions } from "./commands.js";
 import { Sidebar } from "./Sidebar.jsx";
-import { useLocalEnvironment } from "./use/use-local-environment.js";
 import { Logs } from "./Sidebar/Logs/Logs.jsx";
+import { useEngine } from "./environment/use-engine.js";
 
 // @ts-ignore
 let NotebookStyle = styled.div`
@@ -64,10 +63,10 @@ let NotebookStyle = styled.div`
  * @param {{
  *  state: EditorInChief,
  *  onChange: (state: EditorInChief) => void,
- *  socket: any,
+ *  environment: import("./environment/Environment.js").Environment,
  * }} props
  */
-export function NotebookView({ state, onChange, socket }) {
+export function NotebookView({ state, onChange, environment }) {
   let viewupdate = useViewUpdate(state, onChange);
   useCodemirrorKeyhandler(viewupdate);
 
@@ -116,16 +115,7 @@ export function NotebookView({ state, onChange, socket }) {
     };
   }, [notebook, state.facet(NotebookFilename)]);
 
-  //////////////////////////////////////////
-
-  // let engine = useEngine(notebook_with_filename, socket);
-  // let logs = [];
-
-  //////////////////////////////////////////
-
-  let [engine, logs] = useLocalEnvironment(notebook_with_filename);
-
-  //////////////////////////////////////////
+  let [engine, logs] = useEngine(notebook_with_filename, environment);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>

@@ -76,8 +76,12 @@ let engine = new Engine(async function RUN_CELL({
     signal: signal,
     url: url,
     import: async (specifier: any) => {
-      let url = new URL(specifier, "https://jspm.dev/");
-      return await import(url.toString());
+      if (specifier.startsWith("./") || specifier.includes(":")) {
+        let url = new URL(specifier, "https://jspm.dev/");
+        return await import(url.toString());
+      } else {
+        return await import(specifier);
+      }
     },
   };
 

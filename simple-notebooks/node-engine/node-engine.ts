@@ -148,7 +148,11 @@ let create_fork = async (signal, onChange, onLog) => {
     {
       env: {
         FORCE_COLOR: "true",
-        NODE_OPTIONS: "--experimental-import-meta-resolve",
+        NODE_OPTIONS: [
+          "--experimental-import-meta-resolve",
+          "--experimental-network-imports",
+          "--enable-source-maps",
+        ].join(" "),
       },
       signal: signal,
       stdio: ["pipe", "pipe", "pipe", "ipc"],
@@ -224,10 +228,14 @@ class Circuit {
 
   async restart() {
     (await this.process).kill();
-    this.process = create_fork(this.signal, (engine) => {
-      this.engine = engine;
-      this.onChange(engine);
-    });
+    this.process = create_fork(
+      this.signal,
+      (engine) => {
+        this.engine = engine;
+        this.onChange(engine);
+      },
+      this.onLog
+    );
   }
 }
 
@@ -242,31 +250,6 @@ io.on("connection", (socket) => {
   let workspace_ref: { [filename: string]: { current: Notebook } } = {};
 
   let engines: { [filename: string]: Circuit } = {};
-
-  socket.on("load-workspace-from-directory", async () => {
-    let files = await read_all_files(DIRECTORY);
-    let workspace: Workspace = {
-      files: {},
-    };
-
-    for (let file of files) {
-      if (/\.(t|j)sx?$/.test(file)) {
-        try {
-          workspace.files[file] = await load_notebook(DIRECTORY, file);
-        } catch (error) {
-          if (error instanceof NotNotebookError) {
-            // Fine
-          } else {
-            throw error;
-          }
-        }
-      } else {
-        // Show other files too?
-      }
-    }
-
-    socket.emit("load-workspace-from-directory", workspace);
-  });
 
   socket.on("notebook", async (notebook) => {
     workspace_ref[notebook.filename] = { current: notebook.notebook };
@@ -323,6 +306,38 @@ app.get("/", (req, res) => {
     why_are_you_here: "????",
     you_should_connect_with_websocket: true,
   });
+});
+
+app.get("/workspace", async (req, res) => {
+  try {
+    let files = await read_all_files(DIRECTORY);
+    let workspace: Workspace = {
+      files: {},
+    };
+
+    for (let file of files) {
+      if (/\.(t|j)sx?$/.test(file)) {
+        try {
+          workspace.files[file] = await load_notebook(DIRECTORY, file);
+        } catch (error) {
+          if (error instanceof NotNotebookError) {
+            // Fine
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        // Show other files too?
+      }
+    }
+
+    res.send(workspace);
+  } catch (error) {
+    console.error(error);
+    res.status(400).send({
+      error: error.message,
+    });
+  }
 });
 
 server.listen(process.env.PORT ?? 3099, () => {

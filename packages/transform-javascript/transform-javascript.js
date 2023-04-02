@@ -28,6 +28,7 @@ export function transform_code(code, { filename }) {
           tokens: true,
           plugins: [
             "jsx",
+            "doExpressions",
             [
               "typescript",
               {

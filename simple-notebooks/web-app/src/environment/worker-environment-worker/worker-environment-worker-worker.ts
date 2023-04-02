@@ -5,11 +5,7 @@ import pc from "picocolors";
 import { html, md } from "@dral/javascript-basic-serialize/html";
 import { serialize } from "@dral/javascript-basic-serialize";
 
-import {
-  Engine,
-  notebook_to_string,
-  StacklessError,
-} from "@dral/javascript-notebook-runner";
+import { Engine, StacklessError } from "@dral/javascript-notebook-runner";
 import type {
   Notebook,
   ExecutionResult,
