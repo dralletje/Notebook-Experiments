@@ -53,12 +53,6 @@
     "typescript": "^4.8.3",
     "uuid": "^8.3.2"
   },
-  "workspaces": {
-    "nohoist": [
-      "typescript",
-      "typescript/**"
-    ]
-  },
   "scripts": {
     "start": "vite",
     "build": "vite build"
