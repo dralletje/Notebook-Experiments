@@ -54,7 +54,7 @@ let InlineCell = ({ cell_id, cylinder, code }) => {
         CellMetaField.init(() => {
           return {
             code: code,
-            requested_run_time: -Infinity,
+            requested_run_time: 0,
             type: "code",
             folded: false,
           };

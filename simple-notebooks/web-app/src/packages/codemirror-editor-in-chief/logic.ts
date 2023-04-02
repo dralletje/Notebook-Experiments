@@ -10,7 +10,6 @@ import {
   EditorStateConfig,
 } from "@codemirror/state";
 import immer from "immer";
-import { invertedEffects } from "@codemirror/commands";
 import { EditorInChief } from "./editor-in-chief";
 import {
   EditorHasSelectionEffect,
@@ -18,7 +17,11 @@ import {
   editor_has_selection_extension,
 } from "./editor-has-selection-extension";
 
-export type EditorId = string;
+declare const opaque: unique symbol;
+type Opaque<BaseType, BrandType = unknown> = BaseType & {
+  readonly [opaque]: BrandType;
+};
+export type EditorId = Opaque<string, "EditorId">;
 
 export let EditorIdFacet = Facet.define<EditorId, EditorId>({
   combine: (x) => x[0],
@@ -246,29 +249,4 @@ export let EditorsField = StateField.define<{
       throw new Error(`Error while updating EditorsField: ${error}`);
     }
   },
-});
-
-export let inverted_add_remove_editor = invertedEffects.of((transaction) => {
-  /** @type {Array<StateEffect<any>>} */
-  let inverted_effects = [];
-  for (let effect of transaction.effects) {
-    if (effect.is(EditorAddEffect)) {
-      inverted_effects.push(
-        EditorRemoveEffect.of({
-          editor_id: effect.value.editor_id,
-        })
-      );
-    } else if (effect.is(EditorRemoveEffect)) {
-      let { editor_id } = effect.value;
-      let cell_state =
-        transaction.startState.field(EditorsField).cells[editor_id];
-      inverted_effects.push(
-        EditorAddEffect.of({
-          editor_id: editor_id,
-          state: cell_state,
-        })
-      );
-    }
-  }
-  return inverted_effects;
 });

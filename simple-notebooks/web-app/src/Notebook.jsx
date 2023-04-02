@@ -1,7 +1,7 @@
 import React from "react";
 
 import styled from "styled-components";
-import { isEqual, mapValues } from "lodash";
+import { isEqual } from "lodash";
 import { useViewUpdate } from "codemirror-x-react/viewupdate";
 
 import {
@@ -25,7 +25,6 @@ import {
   CellTypeFacet,
 } from "./packages/codemirror-notebook/cell";
 import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
-import { useEngine } from "./use/use-engine";
 
 import { IonIcon } from "@ionic/react";
 import {
@@ -44,9 +43,10 @@ import { DragAndDropItem, DragAndDropList } from "./yuck/DragAndDropStuff.jsx";
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
 import { actions } from "./commands.js";
 import { Sidebar } from "./Sidebar.jsx";
-import { useLocalEnvironment } from "./use/use-local-environment.js";
 import { Logs } from "./Sidebar/Logs/Logs.jsx";
+import { useEngine } from "./environment/use-engine.js";
 
+// @ts-ignore
 let NotebookStyle = styled.div`
   padding-top: 50px;
   min-height: 100vh;
@@ -63,9 +63,10 @@ let NotebookStyle = styled.div`
  * @param {{
  *  state: EditorInChief,
  *  onChange: (state: EditorInChief) => void,
+ *  environment: import("./environment/Environment.js").Environment,
  * }} props
  */
-export function NotebookView({ state, onChange }) {
+export function NotebookView({ state, onChange, environment }) {
   let viewupdate = useViewUpdate(state, onChange);
   useCodemirrorKeyhandler(viewupdate);
 
@@ -86,19 +87,24 @@ export function NotebookView({ state, onChange }) {
       id: state.facet(NotebookId),
       filename: state.facet(NotebookFilename),
       cell_order: state.field(CellOrderField),
-      cells: mapValues(cell_editor_states, (cell_state) => {
-        let type = cell_state.facet(CellTypeFacet);
-        return {
-          id: cell_state.facet(EditorIdFacet),
-          unsaved_code: cell_state.doc.toString(),
-          ...cell_state.field(CellMetaField),
-          type: type,
+      cells: Object.fromEntries(
+        cell_editor_states.entries().map(([cell_id, cell_state]) => {
+          let type = cell_state.facet(CellTypeFacet);
+          return [
+            cell_id,
+            {
+              id: cell_state.facet(EditorIdFacet),
+              unsaved_code: cell_state.doc.toString(),
+              ...cell_state.field(CellMetaField),
+              type: type,
 
-          // This autosaves the text cells
-          // TODO? Do we want this?
-          ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
-        };
-      }),
+              // This autosaves the text cells
+              // TODO? Do we want this?
+              ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
+            },
+          ];
+        })
+      ),
     });
   }, [cell_editor_states, cell_order]);
 
@@ -109,8 +115,7 @@ export function NotebookView({ state, onChange }) {
     };
   }, [notebook, state.facet(NotebookFilename)]);
 
-  // let engine = useEngine(notebook_with_filename, socket);
-  let [engine, logs] = useLocalEnvironment(notebook_with_filename);
+  let [engine, logs] = useEngine(notebook_with_filename, environment);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>

@@ -2,8 +2,9 @@ import { invertedEffects } from "@codemirror/commands";
 import { Annotation, Facet, StateEffect, StateField } from "@codemirror/state";
 import immer from "immer";
 import { v4 as uuidv4 } from "uuid";
+import { EditorId } from "../codemirror-editor-in-chief/logic";
 
-export type CellId = string;
+export type CellId = EditorId;
 
 export let empty_cell = (type: "code" | "text" = "code"): Cell => {
   return {
@@ -11,7 +12,7 @@ export let empty_cell = (type: "code" | "text" = "code"): Cell => {
     type: type,
     code: "",
     unsaved_code: "",
-    requested_run_time: -Infinity,
+    requested_run_time: 0,
   };
 };
 
@@ -45,7 +46,7 @@ export let CellMetaField = StateField.define<CellMeta>({
   create() {
     return {
       code: "",
-      requested_run_time: -Infinity,
+      requested_run_time: 0,
       folded: false,
       type: "code",
     };

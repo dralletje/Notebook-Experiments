@@ -44,7 +44,8 @@ let dont_end_up_just_before_semicolon = ({ cursorOffset, formatted }) => {
 export let format_with_prettier = ({ code, cursor }) => {
   /** @type {PrettierResult} */
   let { formatted, cursorOffset } = prettier.formatWithCursor(code, {
-    parser: "typescript",
+    // parser: "typescript",
+    parser: "babel-ts",
     plugins: [prettier_typescript_parser],
     printWidth: 60,
     tabWidth: 2,

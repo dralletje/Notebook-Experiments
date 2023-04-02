@@ -1,0 +1,12 @@
+{
+  "name": "@dral/javascript-basic-serialize",
+  "version": "1.0.0",
+  "description": "",
+  "main": "javascript-basic-serialize.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

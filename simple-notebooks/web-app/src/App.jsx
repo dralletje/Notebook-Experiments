@@ -29,6 +29,7 @@ import {
   EditorInChief,
   EditorExtension,
   create_nested_editor_state,
+  EditorInChiefKeymap,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
 import {
@@ -37,23 +38,13 @@ import {
 } from "./packages/codemirror-notebook/add-move-and-run-cells.js";
 import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
 import { add_single_cell_when_all_cells_are_removed } from "./packages/codemirror-notebook/add-cell-when-last-is-removed";
-import { useSocket } from "./use/use-socket.js";
 
 import "./App.css";
 import { ScopedStorage, useScopedStorage } from "./use/scoped-storage.js";
-import { notebook_state_to_notebook_serialized } from "./notebook-utils";
-import { DEFAULT_WORKSPACE } from "./yuck/DEFAULT_WORKSPACE";
 
-/**
- * @typedef WorkspaceSerialized
- * @property {string} id
- * @property {{
- *  [filename: string]: {
- *    filename: string,
- *    notebook: import("./packages/codemirror-notebook/cell").NotebookSerialized,
- *  }
- * }} files
- */
+import { SocketEnvironment } from "./environment/SocketEnvironment";
+import { WorkerEnvironment } from "./environment/WorkerEnvironment";
+import { useWorkerStorage, useSocketStorage } from "./use/use-storage";
 
 /**
  * @typedef Workspace
@@ -91,16 +82,43 @@ export let create_cell_state = (editorstate, cell) => {
   });
 };
 
+/** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */
+let DEFAULT_CELL_ID_AFTER_CRASH = /** @type {any} */ ("oh-no-what-happened");
+
 /** @param {{ filename: string, notebook: import("./packages/codemirror-notebook/cell").NotebookSerialized}} notebook */
-let notebook_to_state = ({ filename, notebook }) => {
+export let notebook_to_state = ({ filename, notebook }) => {
   return EditorInChief.create({
     editors: (editorstate) => {
-      return mapValues(notebook.cells, (cell) =>
+      let object = mapValues(notebook.cells, (cell) =>
         create_cell_state(editorstate, cell)
       );
+      if (isEmpty(object)) {
+        object[DEFAULT_CELL_ID_AFTER_CRASH] = create_cell_state(editorstate, {
+          id: DEFAULT_CELL_ID_AFTER_CRASH,
+          code: "",
+          type: "code",
+          unsaved_code: "",
+          requested_run_time: 0,
+        });
+      }
+      return object;
     },
     extensions: [
-      CellOrderField.init(() => notebook.cell_order),
+      CellOrderField.init(() => {
+        let cell_order = notebook.cell_order.filter((x) => {
+          if (notebook.cells[x]) {
+            return true;
+          } else {
+            console.warn("cell order has cell that doesn't exist", x);
+            return false;
+          }
+        });
+        if (cell_order.length === 0) {
+          return [DEFAULT_CELL_ID_AFTER_CRASH];
+        } else {
+          return cell_order;
+        }
+      }),
       EditorExtension.of(
         CellTypeFacet.compute(
           [CellMetaField],
@@ -127,7 +145,7 @@ let notebook_to_state = ({ filename, notebook }) => {
       ),
 
       // This works so smooth omg
-      [shared_history(), keymap.of(historyKeymap)],
+      [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
 
       // typescript_extension((state) => {
       //   let notebook = state.field(CellEditorsField);
@@ -168,18 +186,7 @@ let notebook_to_state = ({ filename, notebook }) => {
   });
 };
 
-let serialized_workspace_to_workspace = (serialized) => {
-  return /** @type {Workspace} */ ({
-    id: serialized.id,
-    files: mapValues(serialized.files, (file) => {
-      return {
-        filename: file.filename,
-        state: notebook_to_state(file),
-      };
-    }),
-  });
-};
-
+// @ts-ignore
 let FileTab = styled.button`
   background: none;
   border: none;
@@ -201,57 +208,28 @@ let FileTab = styled.button`
   }
 `;
 
-let workspace_storage = new ScopedStorage("workspace");
-
 function App() {
-  let [workspace_json, set_workspace_json] = useScopedStorage(
-    workspace_storage,
-    DEFAULT_WORKSPACE
-  );
-  let update_localstorage = React.useMemo(() => {
-    return throttle((/** @type {Workspace} */ workspace) => {
-      set_workspace_json(
-        JSON.stringify(
-          /** @type {WorkspaceSerialized} */ ({
-            id: workspace.id,
-            files: mapValues(workspace.files, (file) => {
-              return {
-                filename: file.filename,
-                notebook: notebook_state_to_notebook_serialized(file.state),
-              };
-            }),
-          })
-        )
-      );
-    }, 500);
-  }, [set_workspace_json]);
+  // let path = new URL(window.location.href)
+  // path.
 
-  let initial_workspace = React.useMemo(() => {
-    let workspace = JSON.parse(workspace_json);
-    return serialized_workspace_to_workspace(workspace);
-  }, []);
+  //////////////////////////////////////////////////////////////
 
-  let [workspace, set_workspace] = React.useState(initial_workspace);
+  // let [workspace, set_workspace] = useSocketStorage();
+  // let environment = React.useRef(SocketEnvironment).current;
+
+  //////////////////////////////////////////////////////////////
+
+  let [workspace, set_workspace] = useWorkerStorage();
+  let environment = React.useRef(WorkerEnvironment).current;
+
+  //////////////////////////////////////////////////////////////
 
   let [open_file, set_open_file] = React.useState(
     /** @type {string | null} */ (null)
   );
-
-  // let socket = useSocket();
-
-  // React.useEffect(() => {
-  //   socket.emit("load-workspace-from-directory");
-  //   // @ts-ignore
-  //   socket.once("load-workspace-from-directory", (workspace) => {
-  //     console.log(`workspace YEH:`, workspace);
-  //     set_workspace(serialized_workspace_to_workspace(workspace));
-  //   });
-  // }, []);
-
   if (workspace == null) {
     return <div></div>;
   }
-
   if (open_file == null) {
     let first_file = Object.keys(workspace.files)[0];
     if (first_file != null) {
@@ -298,6 +276,7 @@ function App() {
         <div></div>
       ) : (
         <NotebookView
+          environment={environment}
           key={open_file}
           state={workspace.files[open_file].state}
           onChange={(state) => {
@@ -305,8 +284,6 @@ function App() {
               // @ts-ignore
               workspace.files[open_file].state = state;
             });
-
-            update_localstorage(new_workspace);
 
             set_workspace(new_workspace);
           }}
