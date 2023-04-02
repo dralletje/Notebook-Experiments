@@ -914,6 +914,7 @@ __metadata:
     "@lezer/generator": ^1.2.2
     "@types/react": ^18.0.32
     "@types/serviceworker": ^0.0.67
+    "@types/styled-components": ^5.1.26
     "@vitejs/plugin-react-swc": ^3.2.0
     autoprefixer: ^10.4.14
     bezier-easing: ^2.1.0
@@ -1565,7 +1566,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/hoist-non-react-statics@npm:^3.3.0":
+"@types/hoist-non-react-statics@npm:*, @types/hoist-non-react-statics@npm:^3.3.0":
   version: 3.3.1
   resolution: "@types/hoist-non-react-statics@npm:3.3.1"
   dependencies:
@@ -1673,6 +1674,17 @@ __metadata:
   version: 0.0.67
   resolution: "@types/serviceworker@npm:0.0.67"
   checksum: 550283b28abde0c33269baf5ed8d66c5f9e73da86f2a4434854261e81951159de0b5655d53efbfd278a7580f6fcc6a7ded79cc019eca77490fbdc451478306c1
+  languageName: node
+  linkType: hard
+
+"@types/styled-components@npm:^5.1.26":
+  version: 5.1.26
+  resolution: "@types/styled-components@npm:5.1.26"
+  dependencies:
+    "@types/hoist-non-react-statics": "*"
+    "@types/react": "*"
+    csstype: ^3.0.2
+  checksum: 84f53b3101739b20d1731554fb7735bc2f3f5d050a8b392e9845403c8c8bbd729737d033978649f9195a97b557875b010d46e35a4538564a2d0dbcce661dbf76
   languageName: node
   linkType: hard
 

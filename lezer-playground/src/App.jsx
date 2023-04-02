@@ -780,6 +780,7 @@ import { compact, head, isEmpty, range, round, sortBy, uniq } from "lodash-es";
 import {
   create_nested_editor_state,
   EditorInChief,
+  EditorInChiefKeymap,
   extract_nested_viewupdate,
 } from "./should-be-shared/codemirror-editor-in-chief/editor-in-chief";
 import {
@@ -793,6 +794,7 @@ import { cool_cmd_d } from "./should-be-shared/commands.js";
 import {
   ask_css_to_sanitize_color,
   ColorPickerWidget,
+  // @ts-ignore
 } from "@dral/codemirror-subtle-color-picker";
 import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
@@ -897,6 +899,18 @@ let requestIdlePromise = async (signal) => {
   }
 };
 
+/** @type {import("./should-be-shared/codemirror-editor-in-chief/logic.js").EditorId} */
+// @ts-ignore
+let LEZER_GRAMMAR_EDITOR_ID = "lezer-grammar";
+
+/** @type {import("./should-be-shared/codemirror-editor-in-chief/logic.js").EditorId} */
+// @ts-ignore
+let JAVASCRIPT_EDITOR_ID = "javascript";
+
+/** @type {import("./should-be-shared/codemirror-editor-in-chief/logic.js").EditorId} */
+// @ts-ignore
+let WHAT_TO_PARSE_EDITOR_ID = "code-to-parse";
+
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {
   let main_scope = lezer_playground_storage.child(project_name);
@@ -935,27 +949,27 @@ let Editor = ({ project_name }) => {
         },
         {},
         {
-          history: historyField,
+          history: historyField.field,
         }
       );
-      history = restored_state.field(historyField);
+      history = restored_state.field(historyField.field);
     } catch (error) {}
 
     return EditorInChief.create({
       editors: (editorstate) => ({
-        "lezer-grammar": create_nested_editor_state({
+        [LEZER_GRAMMAR_EDITOR_ID]: create_nested_editor_state({
           parent: editorstate.editorstate,
-          editor_id: "lezer-grammar",
+          editor_id: LEZER_GRAMMAR_EDITOR_ID,
           doc: _parser_code,
         }),
-        javascript: create_nested_editor_state({
+        [WHAT_TO_PARSE_EDITOR_ID]: create_nested_editor_state({
           parent: editorstate.editorstate,
-          editor_id: "javascript",
+          editor_id: JAVASCRIPT_EDITOR_ID,
           doc: javascript_stuff,
         }),
-        "code-to-parse": create_nested_editor_state({
+        [WHAT_TO_PARSE_EDITOR_ID]: create_nested_editor_state({
           parent: editorstate.editorstate,
-          editor_id: "code-to-parse",
+          editor_id: WHAT_TO_PARSE_EDITOR_ID,
           doc: code_to_parse,
         }),
       }),
@@ -963,7 +977,7 @@ let Editor = ({ project_name }) => {
         history != null ? historyField.init(() => history) : [],
 
         // This works so smooth omg
-        [shared_history(), keymap.of(historyKeymap)],
+        [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
       ],
     });
   }, []);
@@ -974,15 +988,15 @@ let Editor = ({ project_name }) => {
 
   let lezer_grammar_viewupdate = extract_nested_viewupdate(
     viewupdate,
-    "lezer-grammar"
+    LEZER_GRAMMAR_EDITOR_ID
   );
   let code_to_parse_viewupdate = extract_nested_viewupdate(
     viewupdate,
-    "code-to-parse"
+    WHAT_TO_PARSE_EDITOR_ID
   );
   let javascript_stuff_viewupdate = extract_nested_viewupdate(
     viewupdate,
-    "javascript"
+    JAVASCRIPT_EDITOR_ID
   );
 
   React.useEffect(() => {
@@ -1335,7 +1349,7 @@ let Editor = ({ project_name }) => {
 
   let onSelection = React.useCallback(
     (/** @type {readonly [Number, number]} */ [from, to]) => {
-      console.log("Letsgooooo");
+      // @ts-ignore
       code_to_parse_viewupdate.view.dispatch({
         selection: { anchor: to, head: from },
         effects: [

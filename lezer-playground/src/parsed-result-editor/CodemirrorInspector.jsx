@@ -17,6 +17,7 @@ import {
   syntaxTreeAvailable,
 } from "@codemirror/language";
 
+// @ts-ignore
 import { ReactWidget, useEditorView } from "react-codemirror-widget";
 import { LanguageStateField } from "@dral/codemirror-helpers";
 
