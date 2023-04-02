@@ -29,13 +29,30 @@ let element_key_symbol = Symbol("Element key");
  * Use this Widget to render (P)react components as codemirror widgets.
  */
 export class ReactWidget extends WidgetType {
+  /** @type {import("react").ReactNode} */
+  element;
+
   /** @param {import("react").ReactNode} element */
   constructor(element) {
     super();
     this.element = element;
   }
 
+  /** @param {ReactWidget} other */
   eq(other) {
+    // // Make typescript happy
+    // if (this.element == null || other.element == null) return false;
+    // if (typeof this.element !== "object" || typeof other.element !== "object")
+    //   return false;
+    // if (!("key" in this.element) || !("key" in other.element)) return false;
+
+    // // The actual check
+    // return (
+    //   this.element.key != null &&
+    //   this.element.type === other.element.type &&
+    //   this.element.key === other.element.key
+    // );
+
     return false;
   }
 

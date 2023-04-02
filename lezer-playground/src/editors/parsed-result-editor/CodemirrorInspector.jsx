@@ -179,6 +179,33 @@ let what_to_fold = StateField.define({
   // provide: (value) => EditorView.decorations.from(value, (value) => Decoration.none)
 });
 
+class FoldedRegionWidget extends WidgetType {
+  constructor(from, to) {
+    super();
+    this.from = from;
+    this.to = to;
+  }
+
+  toDOM(view) {
+    let element = document.createElement("span");
+    element.className = "ellipsis";
+    element.addEventListener("click", () => {
+      view.dispatch({
+        effects: UnfoldEffect.of({ from: this.from, to: this.to }),
+      });
+    });
+    let inner = document.createElement("span");
+    inner.className = "ellipsis";
+    inner.textContent = " … ";
+    element.appendChild(inner);
+    return element;
+  }
+
+  eq(other) {
+    return this.from === other.from && this.to === other.to;
+  }
+}
+
 let FoldedRegion = ({ from, to }) => {
   let view = useEditorView();
 
@@ -232,14 +259,6 @@ let but_disable_all_editting = EditorState.transactionFilter.of((tr) => {
   return tr;
 });
 
-// class SpaceWidget extends ReactWidget {
-//   constructor() {
-//     super(" ");
-//   }
-//   eq() {
-//     return true;
-//   }
-// }
 class SpaceWidget extends WidgetType {
   eq() {
     return true;
@@ -427,6 +446,8 @@ export let lezer_result_as_lezer_extensions = [
     let folds = state.field(what_to_fold);
     let decorations = /** @type {Array<Range<Decoration>>} */ ([]);
 
+    console.log(`what_to_fold:`, what_to_fold);
+
     // console.time("FOLDS")
     let did_fold = /** @type {Array<[from: number, to: number]>} */ ([]);
     for (let [from, to] of folds) {
@@ -470,7 +491,10 @@ export let lezer_result_as_lezer_extensions = [
       ) {
         decorations.push(
           Decoration.replace({
-            widget: new ReactWidget(<FoldedRegion to={to} from={from} />),
+            widget: new ReactWidget(
+              <FoldedRegion key={`${to}-${from}`} to={to} from={from} />
+            ),
+            // widget: new FoldedRegionWidget(to, from),
           }).range(
             from + character_to_show_in_front,
             to - character_to_show_in_the_back
