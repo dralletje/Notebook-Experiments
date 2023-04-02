@@ -6,5 +6,6 @@
     "allowSyntheticDefaultImports": true,
     "noEmit": true,
     "jsx": "react"
-  }
+  },
+  "include": ["src/**/*"]
 }

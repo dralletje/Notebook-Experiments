@@ -1,26 +1,8 @@
 import React from "react";
 import styled from "styled-components";
 import { EditorState, StateEffect } from "@codemirror/state";
-import {
-  Decoration,
-  drawSelection,
-  EditorView,
-  keymap,
-  placeholder,
-  runScopeHandlers,
-} from "@codemirror/view";
-import {
-  bracketMatching,
-  LanguageSupport,
-  LRLanguage,
-} from "@codemirror/language";
-import { closeBrackets } from "@codemirror/autocomplete";
-import {
-  highlightSelectionMatches,
-  search,
-  searchKeymap,
-} from "@codemirror/search";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { Decoration, EditorView, keymap } from "@codemirror/view";
+import { LanguageSupport, LRLanguage } from "@codemirror/language";
 import { LRParser } from "@lezer/lr";
 import { IoBonfire, IoHeart, IoLogoGithub } from "react-icons/io5";
 
@@ -29,20 +11,13 @@ import {
   useViewUpdate,
   CodemirrorFromViewUpdate,
 } from "codemirror-x-react/viewupdate";
-import {
-  awesome_line_wrapping,
-  MaxIdentationSpacesFacet,
-} from "codemirror-awesome-line-wrapping";
+import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
 import { LezerGeneratorWorker } from "@dral/lezer-generator-worker/lezer-generator-worker.js";
 import { TransformJavascriptWorker } from "@dral/dralbook-transform-javascript/worker/transform-javascript-worker.js";
 
 ////////////////////
 import { basic_javascript_setup } from "./should-be-shared/codemirror-javascript-setup.js";
-import { dot_gutter } from "./should-be-shared/codemirror-dot-gutter.jsx";
-import {
-  ScrollIntoViewButOnlyTheEditor,
-  ScrollIntoViewButOnlyTheEditorEffect,
-} from "./should-be-shared/ScrollIntoViewButOnlyTheEditor";
+import { ScrollIntoViewButOnlyTheEditorEffect } from "./should-be-shared/ScrollIntoViewButOnlyTheEditor";
 ////////////////////
 
 import { ParsedResultEditor } from "./parsed-result-editor/parsed-result-editor.jsx";
@@ -63,38 +38,13 @@ import {
 } from "./default-field-codes.js";
 import "./App.css";
 
+import { WhatToParseEditor } from "./editors/what-to-parse-editor/what-to-parse-editor";
+
 /**
  * @template T
  * @typedef ExecutionResult
  * @type {import("./use/OperationMonadBullshit.js").ExecutionResult<T>}
  */
-
-let base_extensions = [
-  EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
-  dot_gutter,
-  EditorState.tabSize.of(2),
-  placeholder("The rest is still unwritten..."),
-  bracketMatching({}),
-  closeBrackets(),
-  highlightSelectionMatches(),
-  drawSelection({ cursorBlinkRate: 0 }),
-
-  search({
-    caseSensitive: true,
-    top: true,
-  }),
-  keymap.of(searchKeymap),
-  keymap.of([indentWithTab]),
-  cool_cmd_d,
-  keymap.of(defaultKeymap),
-
-  ScrollIntoViewButOnlyTheEditor,
-  EditorView.theme({
-    ".cm-content": {
-      "caret-color": "white",
-    },
-  }),
-];
 
 let ThingFromCodemirroPlutoStyleGetRidOfThis = styled.div`
   display: contents;
@@ -269,76 +219,6 @@ export let JavascriptStuffEditor = ({ viewupdate, error }) => {
 
 /** @type {Array<import("@codemirror/state").Extension>} */
 let NO_EXTENSIONS = [];
-
-let what_to_parse_theme = [
-  EditorView.theme({
-    ".cm-selectionMatch": {
-      "text-shadow": "0 0 13px rgb(255 255 255 / 70%) !important",
-    },
-  }),
-];
-
-let dont_space_too_much = MaxIdentationSpacesFacet.of(10);
-
-/**
- * @param {{
- *  viewupdate: import("codemirror-x-react/viewupdate.js").GenericViewUpdate,
- *  parser: import("@lezer/lr").LRParser | null,
- *  js_stuff: ExecutionResult<{
- *    extensions: import("@codemirror/state").Extension[],
- *  }>
- * }} props
- */
-export let WhatToParseEditor = ({ viewupdate, parser, js_stuff }) => {
-  let js_result = js_stuff.or(null);
-
-  let parser_extension = React.useMemo(() => {
-    if (parser) {
-      // @ts-ignore
-      let language = LRLanguage.define({ parser: parser });
-      return new LanguageSupport(language);
-    } else {
-      return EditorView.updateListener.of(() => {});
-    }
-  }, [parser]);
-
-  let custom_extensions = js_result?.extensions ?? NO_EXTENSIONS;
-
-  let [exception, set_exception] = React.useState(/** @type {any} */ (null));
-  let exceptionSinkExtension = React.useMemo(() => {
-    return EditorView.exceptionSink.of((error) => {
-      set_exception(error);
-    });
-  }, [set_exception]);
-
-  if (exception) {
-    throw exception;
-  }
-
-  // Try adding the parser extension to the list of extensions to see if it doesn't error.
-  // If it does, we throw the error to the error boundary.
-  // This is necessary because an error on the state/extension side would otherwise kill the whole app
-  // (because it would be thrown from the Nexus state...)
-  React.useMemo(() => {
-    if (custom_extensions != null) {
-      viewupdate.startState.update({
-        effects: StateEffect.appendConfig.of(custom_extensions),
-      }).state;
-    }
-  }, [custom_extensions]);
-
-  return (
-    <CodemirrorFromViewUpdate viewupdate={viewupdate}>
-      <Extension extension={base_extensions} />
-      <Extension extension={parser_extension} />
-      <Extension extension={custom_extensions} />
-      <Extension extension={exceptionSinkExtension} />
-      <Extension extension={awesome_line_wrapping} />
-      <Extension extension={what_to_parse_theme} />
-      <Extension extension={dont_space_too_much} />
-    </CodemirrorFromViewUpdate>
-  );
-};
 
 let ErrorBox = styled.div`
   color: rgb(181 181 181);
@@ -780,6 +660,7 @@ import { compact, head, isEmpty, range, round, sortBy, uniq } from "lodash-es";
 import {
   create_nested_editor_state,
   EditorInChief,
+  EditorInChiefKeymap,
   extract_nested_viewupdate,
 } from "./should-be-shared/codemirror-editor-in-chief/editor-in-chief";
 import {
@@ -819,6 +700,7 @@ const syntax_colors = syntaxHighlighting(
 
 import { parser as lezer_error_parser } from "@dral/lezer-lezer-error";
 import { useCodemirrorKeyhandler } from "../../simple-notebooks/web-app/src/use/use-codemirror-keyhandler.js";
+import { base_extensions } from "./editors/shared.js";
 let lezer_error_lang = new LanguageSupport(
   LRLanguage.define({
     // @ts-ignore
@@ -897,6 +779,19 @@ let requestIdlePromise = async (signal) => {
   }
 };
 
+let LEZER_EDITOR_ID =
+  /** @type {import("./should-be-shared/codemirror-editor-in-chief/logic.js").EditorId} */ (
+    "lezer-grammar"
+  );
+let JAVASCRIPT_EDITOR_ID =
+  /** @type {import("./should-be-shared/codemirror-editor-in-chief/logic.js").EditorId} */ (
+    "javascript"
+  );
+let CODE_TO_PARSE_EDITOR_ID =
+  /** @type {import("./should-be-shared/codemirror-editor-in-chief/logic.js").EditorId} */ (
+    "code-to-parse"
+  );
+
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {
   let main_scope = lezer_playground_storage.child(project_name);
@@ -935,27 +830,27 @@ let Editor = ({ project_name }) => {
         },
         {},
         {
-          history: historyField,
+          history: historyField.field,
         }
       );
-      history = restored_state.field(historyField);
+      history = restored_state.field(historyField.field);
     } catch (error) {}
 
     return EditorInChief.create({
       editors: (editorstate) => ({
-        "lezer-grammar": create_nested_editor_state({
+        [LEZER_EDITOR_ID]: create_nested_editor_state({
           parent: editorstate.editorstate,
-          editor_id: "lezer-grammar",
+          editor_id: LEZER_EDITOR_ID,
           doc: _parser_code,
         }),
-        javascript: create_nested_editor_state({
+        [JAVASCRIPT_EDITOR_ID]: create_nested_editor_state({
           parent: editorstate.editorstate,
-          editor_id: "javascript",
+          editor_id: JAVASCRIPT_EDITOR_ID,
           doc: javascript_stuff,
         }),
-        "code-to-parse": create_nested_editor_state({
+        [CODE_TO_PARSE_EDITOR_ID]: create_nested_editor_state({
           parent: editorstate.editorstate,
-          editor_id: "code-to-parse",
+          editor_id: CODE_TO_PARSE_EDITOR_ID,
           doc: code_to_parse,
         }),
       }),
@@ -963,7 +858,7 @@ let Editor = ({ project_name }) => {
         history != null ? historyField.init(() => history) : [],
 
         // This works so smooth omg
-        [shared_history(), keymap.of(historyKeymap)],
+        [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
       ],
     });
   }, []);
@@ -974,15 +869,15 @@ let Editor = ({ project_name }) => {
 
   let lezer_grammar_viewupdate = extract_nested_viewupdate(
     viewupdate,
-    "lezer-grammar"
+    LEZER_EDITOR_ID
   );
   let code_to_parse_viewupdate = extract_nested_viewupdate(
     viewupdate,
-    "code-to-parse"
+    CODE_TO_PARSE_EDITOR_ID
   );
   let javascript_stuff_viewupdate = extract_nested_viewupdate(
     viewupdate,
-    "javascript"
+    JAVASCRIPT_EDITOR_ID
   );
 
   React.useEffect(() => {
@@ -1335,7 +1230,7 @@ let Editor = ({ project_name }) => {
 
   let onSelection = React.useCallback(
     (/** @type {readonly [Number, number]} */ [from, to]) => {
-      console.log("Letsgooooo");
+      // @ts-ignore
       code_to_parse_viewupdate.view.dispatch({
         selection: { anchor: to, head: from },
         effects: [
