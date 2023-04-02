@@ -94,8 +94,12 @@ export let deserialize = (index, heap, result_heap = {}) => {
       );
       return md(strings, ...interpolations);
     } else if (result.type === "@ecmascript/class") {
-      let my_class = class {};
+      let ugh = {};
+      ugh["aaaa"] = class {};
+      let my_class = ugh["aaaa"];
+
       result_heap[index] = my_class;
+
       try {
         my_class = eval(`let x = class ${result.name} {}; x`);
       } catch {}

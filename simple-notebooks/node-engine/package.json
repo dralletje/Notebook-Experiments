@@ -5,7 +5,7 @@
   "type": "module",
   "main": "node-engine.js",
   "scripts": {
-    "start": "nodemon --ext \"js,ts\" --watch ../packages/transform-javascript --watch . --exec \"ts-node --esm -T ./node-engine.ts\"",
+    "start": "nodemon --ext \"js,ts\" --watch ../packages/transform-javascript --watch ../packages --watch . --exec \"ts-node --esm -T ./node-engine.ts\"",
     "test": "ts-node --esm -T ./tests/tests.ts"
   },
   "author": "",
@@ -28,7 +28,8 @@
     "stack-trace-anynode": "^1.0.0-pre3",
     "stacktrace-js": "^2.0.2",
     "stacktrace-parser": "^0.1.10",
-    "strip-color": "^0.1.0"
+    "strip-color": "^0.1.0",
+    "write-file-atomic": "^5.0.0"
   },
   "devDependencies": {
     "@types/lodash-es": "^4.17.6",

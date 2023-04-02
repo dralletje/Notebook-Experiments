@@ -1,16 +1,14 @@
-import { invariant } from "../leaf/invariant";
+import { invariant } from "../leaf/invariant.js";
 
 import * as Graph from "../leaf/graph.js";
 
-import { ParsedCell } from "./parse-cell.js";
-import { CellId, Notebook, VariableName } from "../types.js";
+import { ParsedCells } from "./parse-cache.js";
+import { CellId, Notebook } from "../types.js";
 import { StacklessError } from "../leaf/StacklessError.js";
-import { mapValues, groupBy, uniq } from "lodash-es";
+import { groupBy, uniq } from "lodash-es";
 
-import { Engine, EngineTime, LivingValue } from "./engine";
-import { DeepReadonly } from "../leaf/DeepReaonly";
-
-type ParsedCells = { [key: CellId]: ParsedCell | null };
+import { Engine, EngineTime } from "./engine.js";
+import { DeepReadonly } from "../leaf/DeepReaonly.js";
 
 let cells_that_need_running = (
   notebook: Notebook,
@@ -90,7 +88,7 @@ let cells_that_need_running = (
   return cells_that_should_run;
 };
 
-let notebook_to_disconnected_graph = (
+export let notebook_to_disconnected_graph = (
   parsed_cells: ParsedCells
 ): Graph.DisconnectedGraph => {
   return Object.entries(parsed_cells).map(([cell_id, parsed_cell]) => {

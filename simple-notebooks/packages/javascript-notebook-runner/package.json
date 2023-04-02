@@ -1,0 +1,22 @@
+{
+  "name": "@dral/javascript-notebook-runner",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./dist/javascript-notebook-runner.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Michiel Dral <m.c.dral@gmail.com>",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.0.3"
+  },
+  "dependencies": {
+    "@dral/dralbook-transform-javascript": "workspace:^",
+    "@dral/modern-map": "workspace:^",
+    "@iarna/toml": "^2.2.5",
+    "lodash-es": "^4.17.21",
+    "ts-opaque": "^3.0.1"
+  }
+}

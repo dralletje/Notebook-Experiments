@@ -109,7 +109,7 @@ let notebook_to_state = ({ filename, notebook }) => {
           code: "",
           type: "code",
           unsaved_code: "",
-          requested_run_time: -Infinity,
+          requested_run_time: 0,
         });
       }
       return object;
@@ -234,6 +234,9 @@ let FileTab = styled.button`
 let workspace_storage = new ScopedStorage("workspace");
 
 function App() {
+  // let path = new URL(window.location.href)
+  // path.
+
   let [workspace_json, set_workspace_json] = useScopedStorage(
     workspace_storage,
     DEFAULT_WORKSPACE
@@ -263,9 +266,11 @@ function App() {
 
   let [workspace, set_workspace] = React.useState(initial_workspace);
 
-  let [open_file, set_open_file] = React.useState(
-    /** @type {string | null} */ (null)
-  );
+  //////////////////////////////////////////////////////////////
+
+  // let [workspace, set_workspace] = React.useState(
+  //   /** @type {Workspace | null} */ (null)
+  // );
 
   // let socket = useSocket();
 
@@ -278,10 +283,14 @@ function App() {
   //   });
   // }, []);
 
+  //////////////////////////////////////////////////////////////
+
+  let [open_file, set_open_file] = React.useState(
+    /** @type {string | null} */ (null)
+  );
   if (workspace == null) {
     return <div></div>;
   }
-
   if (open_file == null) {
     let first_file = Object.keys(workspace.files)[0];
     if (first_file != null) {
@@ -328,6 +337,7 @@ function App() {
         <div></div>
       ) : (
         <NotebookView
+          // socket={socket}
           key={open_file}
           state={workspace.files[open_file].state}
           onChange={(state) => {
@@ -336,7 +346,7 @@ function App() {
               workspace.files[open_file].state = state;
             });
 
-            update_localstorage(new_workspace);
+            // update_localstorage(new_workspace);
 
             set_workspace(new_workspace);
           }}

@@ -2,10 +2,10 @@ import pc from "picocolors";
 import { omit } from "lodash-es";
 import Opaque from "ts-opaque";
 import { CellId, Notebook, VariableName } from "../types";
-import { ParseCache } from "./parse-cell";
-import { ExecutionResult, notebook_step } from "./notebook-step";
-import { TypedEventTarget } from "../leaf/typed-event-target";
-import { invariant } from "../leaf/invariant";
+import { ParseCache } from "./parse-cache.js";
+import { ExecutionResult, notebook_step } from "./notebook-step.js";
+import { TypedEventTarget } from "../leaf/typed-event-target.js";
+import { invariant } from "../leaf/invariant.js";
 import { ModernMap } from "@dral/modern-map";
 
 export type LivingValue = Opaque<unknown, "LivingValue">;
@@ -190,11 +190,11 @@ export class Engine extends TypedEventTarget<{
         })
       );
 
-      console.groupCollapsed(pc.blue(pc.bold(`RUNNING CELL: ${cell.id}`)));
-      console.log("Notebook:", notebook);
-      console.log(`Engine:`, this);
-      console.log(pc.blue(code));
-      console.groupEnd();
+      // console.groupCollapsed(pc.blue(pc.bold(`RUNNING CELL: ${cell.id}`)));
+      // console.log("Notebook:", notebook);
+      // console.log(`Engine:`, this);
+      // console.log(pc.blue(code));
+      // console.groupEnd();
 
       // Look for requested variable names in other cylinders
       let inputs = {};

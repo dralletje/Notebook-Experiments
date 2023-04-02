@@ -115,7 +115,11 @@ export let useLocalEnvironment = (notebook) => {
     };
   }, [bundle_worker, set_state]);
 
+  let last_sent_notebook = React.useRef(/** @type {any} */ (null));
   React.useEffect(() => {
+    if (isEqual(last_sent_notebook.current, notebook)) return;
+    last_sent_notebook.current = notebook;
+
     bundle_worker.postMessage({
       type: "update-notebook",
       notebook: notebook.notebook,

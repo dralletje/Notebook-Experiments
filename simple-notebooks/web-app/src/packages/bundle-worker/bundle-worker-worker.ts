@@ -2,13 +2,18 @@ import "polyfills";
 import { throttle } from "lodash-es";
 import pc from "picocolors";
 
-import { html, md } from "./leaf/html.js";
-import { ExecutionResult } from "./parts/notebook-step.js";
-import { Notebook } from "./types.js";
-import { serialize } from "./parts/serialize";
-import { StacklessError } from "./leaf/StacklessError.js";
+import { html, md } from "@dral/javascript-basic-serialize/html";
+import { serialize } from "@dral/javascript-basic-serialize";
 
-import { Engine } from "./parts/engine.js";
+import {
+  Engine,
+  notebook_to_string,
+  StacklessError,
+} from "@dral/javascript-notebook-runner";
+import type {
+  Notebook,
+  ExecutionResult,
+} from "@dral/javascript-notebook-runner";
 
 let serialize_with_default = ({ value, fallback, context }) => {
   try {
@@ -166,5 +171,9 @@ addEventListener("message", async (event) => {
   if (message.type === "update-notebook") {
     let { notebook } = message;
     engine.update(notebook);
+
+    // let parsed = engine.parse_cache.parse_notebook(notebook.cells);
+    // let thing = notebook_to_string(notebook, parsed);
+    // console.log(`{thing}:`, { thing });
   }
 });

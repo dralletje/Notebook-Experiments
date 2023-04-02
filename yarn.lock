@@ -713,6 +713,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@dral/javascript-basic-serialize@workspace:simple-notebooks/packages/javascript-basic-serialize":
+  version: 0.0.0-use.local
+  resolution: "@dral/javascript-basic-serialize@workspace:simple-notebooks/packages/javascript-basic-serialize"
+  languageName: unknown
+  linkType: soft
+
+"@dral/javascript-notebook-runner@workspace:simple-notebooks/packages/javascript-notebook-runner":
+  version: 0.0.0-use.local
+  resolution: "@dral/javascript-notebook-runner@workspace:simple-notebooks/packages/javascript-notebook-runner"
+  dependencies:
+    "@dral/dralbook-transform-javascript": "workspace:^"
+    "@dral/modern-map": "workspace:^"
+    "@iarna/toml": ^2.2.5
+    lodash-es: ^4.17.21
+    ts-opaque: ^3.0.1
+    typescript: ^5.0.3
+  languageName: unknown
+  linkType: soft
+
 "@dral/lezer-generator-worker@workspace:^, @dral/lezer-generator-worker@workspace:packages/lezer-generator-worker":
   version: 0.0.0-use.local
   resolution: "@dral/lezer-generator-worker@workspace:packages/lezer-generator-worker"
@@ -896,6 +915,7 @@ __metadata:
     stacktrace-parser: ^0.1.10
     strip-color: ^0.1.0
     ts-node: ^10.9.1
+    write-file-atomic: ^5.0.0
   languageName: unknown
   linkType: soft
 
@@ -5655,6 +5675,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "statebasednotebook@workspace:."
   dependencies:
+    react: ^18.2.0
+    react-dom: ^18.2.0
     turbo: ^1.5.6
   languageName: unknown
   linkType: soft
@@ -6369,6 +6391,16 @@ __metadata:
   version: 1.0.2
   resolution: "wrappy@npm:1.0.2"
   checksum: 159da4805f7e84a3d003d8841557196034155008f817172d4e986bd591f74aa82aa7db55929a54222309e01079a65a92a9e6414da5a6aa4b01ee44a511ac3ee5
+  languageName: node
+  linkType: hard
+
+"write-file-atomic@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "write-file-atomic@npm:5.0.0"
+  dependencies:
+    imurmurhash: ^0.1.4
+    signal-exit: ^3.0.7
+  checksum: 6ee16b195572386cb1c905f9d29808f77f4de2fd063d74a6f1ab6b566363832d8906a493b764ee715e57ab497271d5fc91642a913724960e8e845adf504a9837
   languageName: node
   linkType: hard
 

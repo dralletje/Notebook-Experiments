@@ -1,3 +1,4 @@
+import { isEqual } from "lodash";
 import React from "react";
 
 /**
@@ -26,7 +27,11 @@ export let useEngine = (notebook, socket) => {
     };
   }, [notebook, socket]);
 
+  let last_sent_notebook = React.useRef(/** @type {any} */ (null));
   React.useEffect(() => {
+    if (isEqual(last_sent_notebook.current, notebook)) return;
+    last_sent_notebook.current = notebook;
+
     socket.emit("notebook", notebook);
   }, [notebook, socket]);
 

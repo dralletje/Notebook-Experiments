@@ -1,6 +1,6 @@
 import React from "react";
 import * as ReactDOM from "react-dom/server";
-import { HTML_MIME_SYMBOL, MARKDOWN_MIME_SYMBOL } from "../leaf/html.js";
+import { HTML_MIME_SYMBOL, MARKDOWN_MIME_SYMBOL } from "./html.js";
 
 const typedArrTypes = [
   "Int8Array",
@@ -44,13 +44,6 @@ const objectPrototype = Object.getPrototypeOf({});
 export const serialize = (entry, context) => {
   const m = new Map();
   const heap = [];
-
-  if (typeof entry === "object" && serialized_cache.has(entry)) {
-    const cached = serialized_cache.get(entry);
-    if (cached?.context === context) {
-      return cached.result;
-    }
-  }
 
   function encounterClass(_class) {
     const found = m.get(_class);
@@ -141,13 +134,22 @@ export const serialize = (entry, context) => {
     heap.push({ type: "object", value: refArray });
 
     for (const key in plainObj) {
-      if (Object.prototype.hasOwnProperty.call(plainObj, key)) {
-        // Don't serialize the __proto__ for now
-        refArray.push({
-          key: serializeValue(key),
-          value: serializeValue(plainObj[key]),
-        });
-      }
+      try {
+        if (Object.prototype.hasOwnProperty.call(plainObj, key)) {
+          // Don't serialize the __proto__ for now
+          refArray.push({
+            key: serializeValue(key),
+            value: serializeValue(plainObj[key]),
+          });
+        }
+      } catch {}
+    }
+
+    for (let key of Object.getOwnPropertySymbols(plainObj)) {
+      refArray.push({
+        key: serializeValue(key),
+        value: serializeValue(plainObj[key]),
+      });
     }
 
     return id;
@@ -386,8 +388,7 @@ export const serialize = (entry, context) => {
     // (which is important because if it is 0 it will be the first)
     heap.push(object_root);
     object_root.constructor = serializeValue(obj.constructor);
-    let { constructor, ...obj_without_constructor } = obj;
-    object_root.object = encounterPlainObj({ ...obj_without_constructor });
+    object_root.object = encounterPlainObj(obj);
 
     let proto = Object.getPrototypeOf(obj);
     if (proto && proto !== objectPrototype) {
@@ -581,13 +582,6 @@ export const serialize = (entry, context) => {
   const result = /** @type {Serialized} */ ({});
   for (let i = 0; i < heap.length; i++) {
     result[i] = heap[i];
-  }
-
-  if (
-    (typeof entry === "object" && entry != null) ||
-    typeof entry === "function"
-  ) {
-    serialized_cache.set(entry, { result, context });
   }
 
   return result;

@@ -2,6 +2,7 @@ import { transform_code } from "@dral/dralbook-transform-javascript";
 import { ModernMap } from "@dral/modern-map";
 
 type Code = string;
+export type ParsedCells = { [key: string]: ParsedCell | null };
 
 export type ParsedCell =
   | Readonly<{
@@ -72,9 +73,7 @@ export class ParseCache {
     });
   }
 
-  parse_notebook(notebook: { [key: string]: InputCell }): {
-    [key: string]: ParsedCell;
-  } {
+  parse_notebook(notebook: { [key: string]: InputCell }): ParsedCells {
     for (let [id, input_cell] of Object.entries(notebook)) {
       this.parse(input_cell);
     }

@@ -6,17 +6,17 @@ import http from "node:http";
 import chalk from "chalk";
 import { join } from "node:path";
 
-import { mapValues } from "lodash-es";
-
+import { mapValues, throttle } from "lodash-es";
 import {
-  load_notebook,
+  Notebook,
   NotNotebookError,
-  save_notebook,
-} from "./save-and-load-notebook-file.js";
+  ParseCache,
+} from "@dral/javascript-notebook-runner";
 
-import { readdir, stat, mkdtemp } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import { fork, exec as exec_callback } from "node:child_process";
 import { promisify } from "node:util";
+import { load_notebook, save_notebook } from "./save-and-load-notebook-file.js";
 
 const exec = promisify(exec_callback);
 
@@ -65,11 +65,6 @@ export type Cylinder = {
   variables: { [name: string]: any };
   upstream_cells: Array<CellId>;
   invalidation_token: { call: () => Promise<any> };
-};
-
-export type Notebook = {
-  cells: { [key: CellId]: Cell };
-  cell_order: CellId[];
 };
 
 export type Workspace = {
@@ -146,7 +141,7 @@ const DIRECTORY = new URL(`../cell-environments/src`, import.meta.url).pathname;
 
 let async = async (async) => async();
 
-let create_fork = async (signal, onChange) => {
+let create_fork = async (signal, onChange, onLog) => {
   let process = fork(
     new URL(`./Circuit/Circuit.ts`, import.meta.url).pathname,
     [],
@@ -186,22 +181,31 @@ let create_fork = async (signal, onChange) => {
       // this.onChange(this.engine);
       onChange(message.engine);
     }
+    if (message.type === "add-log") {
+      onLog(message.log);
+    }
   });
   return process;
 };
 
 class Circuit {
   process: Promise<import("child_process").ChildProcess>;
+  parse_cache: ParseCache = new ParseCache();
 
   constructor(
     public engine: Engine,
     public onChange: (engine: Engine) => void,
+    public onLog: (log: any) => void,
     public signal: AbortSignal
   ) {
-    this.process = create_fork(this.signal, (engine) => {
-      this.engine = engine;
-      this.onChange(engine);
-    });
+    this.process = create_fork(
+      this.signal,
+      (engine) => {
+        this.engine = engine;
+        this.onChange(engine);
+      },
+      onLog
+    );
 
     this.engine = engine;
     this.onChange = onChange;
@@ -226,6 +230,11 @@ class Circuit {
     });
   }
 }
+
+let save_notebook_throttled = throttle(save_notebook, 1000, {
+  leading: true,
+  trailing: true,
+});
 
 io.on("connection", (socket) => {
   let abort_controller = new AbortController();
@@ -260,11 +269,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("notebook", async (notebook) => {
-    save_notebook(notebook, DIRECTORY).catch((error) => {
-      console.error(chalk.bold.red(`Error saving notebook`));
-      console.error(error);
-    });
-
     workspace_ref[notebook.filename] = { current: notebook.notebook };
     engines[notebook.filename] ??= new Circuit(
       {
@@ -279,10 +283,23 @@ io.on("connection", (socket) => {
           engine: engine_to_json(engine),
         });
       },
+      (log) => {
+        socket.emit("add-log", {
+          filename: notebook.filename,
+          log: log,
+        });
+      },
+
       abort_controller.signal
     );
 
     let circuit = engines[notebook.filename];
+
+    let parsed = circuit.parse_cache.parse_notebook(notebook.notebook.cells);
+    save_notebook_throttled(notebook, parsed, DIRECTORY).catch((error) => {
+      console.error(chalk.bold.red(`Error saving notebook`));
+      console.error(error);
+    });
 
     circuit.update_notebook(notebook.notebook);
   });

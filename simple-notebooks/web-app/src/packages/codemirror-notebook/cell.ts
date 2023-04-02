@@ -12,7 +12,7 @@ export let empty_cell = (type: "code" | "text" = "code"): Cell => {
     type: type,
     code: "",
     unsaved_code: "",
-    requested_run_time: -Infinity,
+    requested_run_time: 0,
   };
 };
 
@@ -46,7 +46,7 @@ export let CellMetaField = StateField.define<CellMeta>({
   create() {
     return {
       code: "",
-      requested_run_time: -Infinity,
+      requested_run_time: 0,
       folded: false,
       type: "code",
     };

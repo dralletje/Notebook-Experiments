@@ -64,9 +64,10 @@ let NotebookStyle = styled.div`
  * @param {{
  *  state: EditorInChief,
  *  onChange: (state: EditorInChief) => void,
+ *  socket: any,
  * }} props
  */
-export function NotebookView({ state, onChange }) {
+export function NotebookView({ state, onChange, socket }) {
   let viewupdate = useViewUpdate(state, onChange);
   useCodemirrorKeyhandler(viewupdate);
 
@@ -115,8 +116,16 @@ export function NotebookView({ state, onChange }) {
     };
   }, [notebook, state.facet(NotebookFilename)]);
 
+  //////////////////////////////////////////
+
   // let engine = useEngine(notebook_with_filename, socket);
+  // let logs = [];
+
+  //////////////////////////////////////////
+
   let [engine, logs] = useLocalEnvironment(notebook_with_filename);
+
+  //////////////////////////////////////////
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
