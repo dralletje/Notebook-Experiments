@@ -1,53 +1,26 @@
 import React from "react";
 import styled from "styled-components";
 import { EditorState, StateEffect } from "@codemirror/state";
-import {
-  Decoration,
-  drawSelection,
-  EditorView,
-  keymap,
-  placeholder,
-  runScopeHandlers,
-} from "@codemirror/view";
-import {
-  bracketMatching,
-  LanguageSupport,
-  LRLanguage,
-} from "@codemirror/language";
-import { closeBrackets } from "@codemirror/autocomplete";
-import {
-  highlightSelectionMatches,
-  search,
-  searchKeymap,
-} from "@codemirror/search";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { Decoration, EditorView } from "@codemirror/view";
+import { LanguageSupport, LRLanguage } from "@codemirror/language";
 import { LRParser } from "@lezer/lr";
 import { IoBonfire, IoHeart, IoLogoGithub } from "react-icons/io5";
-import usePath from "react-use-path";
 
 import { CodeMirror, Extension } from "codemirror-x-react";
 import {
   useViewUpdate,
   CodemirrorFromViewUpdate,
 } from "codemirror-x-react/viewupdate";
-import {
-  awesome_line_wrapping,
-  MaxIdentationSpacesFacet,
-} from "codemirror-awesome-line-wrapping";
+import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
 import { LezerGeneratorWorker } from "@dral/lezer-generator-worker/lezer-generator-worker.js";
 import { TransformJavascriptWorker } from "@dral/dralbook-transform-javascript/worker/transform-javascript-worker.js";
+import { WhatToParseEditor } from "./editors/what-to-parse-editor/what-to-parse-editor";
 
 ////////////////////
-import { basic_javascript_setup } from "./should-be-shared/codemirror-javascript-setup.js";
-import { dot_gutter } from "./should-be-shared/codemirror-dot-gutter.jsx";
-import {
-  ScrollIntoViewButOnlyTheEditor,
-  ScrollIntoViewButOnlyTheEditorEffect,
-} from "./should-be-shared/ScrollIntoViewButOnlyTheEditor";
+import { ScrollIntoViewButOnlyTheEditorEffect } from "./should-be-shared/ScrollIntoViewButOnlyTheEditor";
 ////////////////////
 
-import { ParsedResultEditor } from "./parsed-result-editor/parsed-result-editor.jsx";
-import { lezer_syntax_extensions } from "./editors/lezer-editor.js";
+import { ParsedResultEditor } from "./editors/parsed-result-editor/parsed-result-editor";
 import {
   Failure,
   Loading,
@@ -69,33 +42,6 @@ import "./App.css";
  * @typedef ExecutionResult
  * @type {import("./use/OperationMonadBullshit.js").ExecutionResult<T>}
  */
-
-let base_extensions = [
-  EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
-  dot_gutter,
-  EditorState.tabSize.of(2),
-  placeholder("The rest is still unwritten..."),
-  bracketMatching({}),
-  closeBrackets(),
-  highlightSelectionMatches(),
-  drawSelection({ cursorBlinkRate: 0 }),
-
-  search({
-    caseSensitive: true,
-    top: true,
-  }),
-  keymap.of(searchKeymap),
-  keymap.of([indentWithTab]),
-  cool_cmd_d,
-  keymap.of(defaultKeymap),
-
-  ScrollIntoViewButOnlyTheEditor,
-  EditorView.theme({
-    ".cm-content": {
-      "caret-color": "white",
-    },
-  }),
-];
 
 let ThingFromCodemirroPlutoStyleGetRidOfThis = styled.div`
   display: contents;
@@ -162,183 +108,6 @@ let ThingFromCodemirroPlutoStyleGetRidOfThis = styled.div`
     border-left-color: #dcdcdc !important;
   }
 `;
-
-let position_from_error = (error) => {
-  let position_stuff = error?.message?.match?.(/^[^(]* \((\d+):(\d+)\)$/);
-
-  if (position_stuff) {
-    let [_, _line, _column] = position_stuff;
-    let line = Number(_line);
-    let column = Number(_column);
-    return { line, column };
-  } else {
-    return null;
-  }
-};
-
-/** @param {{ viewupdate: import("codemirror-x-react/viewupdate").GenericViewUpdate, result: ExecutionResult<any>, error: Error? }} props */
-export let LezerEditor = ({ viewupdate, result, error }) => {
-  let error_extension = React.useMemo(() => {
-    if (error != null) {
-      let position = position_from_error(error);
-      if (position) {
-        let { line, column } = position;
-        return EditorView.decorations.of((view) => {
-          try {
-            let line_start = view.state.doc.line(line).from;
-            return Decoration.set(
-              Decoration.mark({
-                class: "programming-error-oops",
-              }).range(line_start + column, line_start + column + 1)
-            );
-          } catch (error) {
-            console.error("Derp:", error);
-            return Decoration.none;
-          }
-        });
-      }
-    }
-    return NO_EXTENSIONS;
-  }, [error]);
-
-  return (
-    <CodemirrorFromViewUpdate viewupdate={viewupdate}>
-      <Extension extension={base_extensions} />
-      <Extension extension={lezer_syntax_extensions} />
-      <Extension extension={awesome_line_wrapping} />
-      <Extension extension={error_extension} />
-    </CodemirrorFromViewUpdate>
-  );
-};
-
-let javascript_specific_extension = [
-  DecorationsFromTree(({ cursor, mutable_decorations, doc }) => {
-    if (cursor.name === "String") {
-      let text_from = cursor.from + 1;
-      let text_to = cursor.to - 1;
-
-      let text = doc.sliceString(text_from, text_to);
-      if (text.startsWith(" ") || text.endsWith(" ")) return;
-      let color = ask_css_to_sanitize_color(text);
-
-      if (color != "") {
-        mutable_decorations.push(
-          Decoration.widget({
-            block: false,
-            widget: new ColorPickerWidget(text_from, text_to, color),
-          }).range(text_from)
-        );
-      }
-    }
-  }),
-];
-
-/** @param {{ viewupdate: import("codemirror-x-react/viewupdate").GenericViewUpdate, error: Error? }} props */
-export let JavascriptStuffEditor = ({ viewupdate, error }) => {
-  let error_extension = React.useMemo(() => {
-    if (error != null) {
-      let position = position_from_error(error);
-      if (position) {
-        let { line, column } = position;
-        return EditorView.decorations.of((view) => {
-          try {
-            let line_start = view.state.doc.line(line).from;
-            return Decoration.set(
-              Decoration.mark({
-                class: "programming-error-oops",
-              }).range(line_start + column, line_start + column + 1)
-            );
-          } catch (error) {
-            console.error("Derp:", error);
-            return Decoration.none;
-          }
-        });
-      }
-    }
-    return NO_EXTENSIONS;
-  }, [error]);
-
-  return (
-    <CodemirrorFromViewUpdate viewupdate={viewupdate}>
-      <Extension extension={base_extensions} />
-      <Extension extension={basic_javascript_setup} />
-      <Extension extension={javascript_specific_extension} />
-      <Extension extension={error_extension} />
-    </CodemirrorFromViewUpdate>
-  );
-};
-
-/** @type {Array<import("@codemirror/state").Extension>} */
-let NO_EXTENSIONS = [];
-
-let what_to_parse_theme = [
-  EditorView.theme({
-    ".cm-selectionMatch": {
-      "text-shadow": "0 0 13px rgb(255 255 255 / 70%) !important",
-    },
-  }),
-];
-
-let dont_space_too_much = MaxIdentationSpacesFacet.of(10);
-
-/**
- * @param {{
- *  viewupdate: import("codemirror-x-react/viewupdate.js").GenericViewUpdate,
- *  parser: import("@lezer/lr").LRParser | null,
- *  js_stuff: ExecutionResult<{
- *    extensions: import("@codemirror/state").Extension[],
- *  }>
- * }} props */
-export let WhatToParseEditor = ({ viewupdate, parser, js_stuff }) => {
-  let js_result = js_stuff.or(null);
-
-  let parser_extension = React.useMemo(() => {
-    if (parser) {
-      // @ts-ignore
-      let language = LRLanguage.define({ parser: parser });
-      return new LanguageSupport(language);
-    } else {
-      return EditorView.updateListener.of(() => {});
-    }
-  }, [parser]);
-
-  let custom_extensions = js_result?.extensions ?? NO_EXTENSIONS;
-
-  let [exception, set_exception] = React.useState(/** @type {any} */ (null));
-  let exceptionSinkExtension = React.useMemo(() => {
-    return EditorView.exceptionSink.of((error) => {
-      set_exception(error);
-    });
-  }, [set_exception]);
-
-  if (exception) {
-    throw exception;
-  }
-
-  // Try adding the parser extension to the list of extensions to see if it doesn't error.
-  // If it does, we throw the error to the error boundary.
-  // This is necessary because an error on the state/extension side would otherwise kill the whole app
-  // (because it would be thrown from the Nexus state...)
-  React.useMemo(() => {
-    if (custom_extensions != null) {
-      viewupdate.startState.update({
-        effects: StateEffect.appendConfig.of(custom_extensions),
-      }).state;
-    }
-  }, [custom_extensions]);
-
-  return (
-    <CodemirrorFromViewUpdate viewupdate={viewupdate}>
-      <Extension extension={base_extensions} />
-      <Extension extension={parser_extension} />
-      <Extension extension={custom_extensions} />
-      <Extension extension={exceptionSinkExtension} />
-      <Extension extension={awesome_line_wrapping} />
-      <Extension extension={what_to_parse_theme} />
-      <Extension extension={dont_space_too_much} />
-    </CodemirrorFromViewUpdate>
-  );
-};
 
 let ErrorBox = styled.div`
   color: rgb(181 181 181);
@@ -791,11 +560,6 @@ import {
 import { lezerLanguage } from "@codemirror/lang-lezer";
 import { iterate_over_cursor } from "dral-lezer-helpers";
 import { cool_cmd_d } from "./should-be-shared/commands.js";
-import {
-  ask_css_to_sanitize_color,
-  ColorPickerWidget,
-  // @ts-ignore
-} from "@dral/codemirror-subtle-color-picker";
 import { DecorationsFromTree } from "@dral/codemirror-helpers";
 
 let lezer_playground_storage = new ScopedStorage("lezer-playground");
@@ -821,6 +585,10 @@ const syntax_colors = syntaxHighlighting(
 
 import { parser as lezer_error_parser } from "@dral/lezer-lezer-error";
 import { useCodemirrorKeyhandler } from "../../simple-notebooks/web-app/src/use/use-codemirror-keyhandler.js";
+import { base_extensions } from "./editors/shared";
+import { JavascriptStuffEditor } from "./editors/javascript-editor/javascript-editor.jsx";
+import { LezerEditor } from "./editors/lezer-editor/lezer-editor.jsx";
+
 let lezer_error_lang = new LanguageSupport(
   LRLanguage.define({
     // @ts-ignore
@@ -962,7 +730,7 @@ let Editor = ({ project_name }) => {
           editor_id: LEZER_GRAMMAR_EDITOR_ID,
           doc: _parser_code,
         }),
-        [WHAT_TO_PARSE_EDITOR_ID]: create_nested_editor_state({
+        [JAVASCRIPT_EDITOR_ID]: create_nested_editor_state({
           parent: editorstate.editorstate,
           editor_id: JAVASCRIPT_EDITOR_ID,
           doc: javascript_stuff,

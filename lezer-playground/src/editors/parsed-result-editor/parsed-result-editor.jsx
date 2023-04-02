@@ -29,7 +29,7 @@ import {
 } from "@codemirror/view";
 import { CodeMirror, Extension } from "codemirror-x-react";
 import React from "react";
-import { dot_gutter } from "../should-be-shared/codemirror-dot-gutter.jsx";
+import { dot_gutter } from "../../should-be-shared/codemirror-dot-gutter.jsx";
 import { tags as t } from "@lezer/highlight";
 import {
   FoldAllEffect,
@@ -45,16 +45,21 @@ import {
   _cursor_to_inspector_lang,
 } from "./cursor-to-inspector-lang.js";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
+// @ts-ignore
 import { ReactWidget } from "react-codemirror-widget";
 import { IoWarning } from "react-icons/io5";
 import { LanguageStateField } from "@dral/codemirror-helpers";
-import { Failure, Loading, usePromise } from "../use/OperationMonadBullshit.js";
+import {
+  Failure,
+  Loading,
+  usePromise,
+} from "../../use/OperationMonadBullshit.js";
 import { Tree } from "@lezer/common";
 
 import {
   ScrollIntoViewButOnlyTheEditor,
   ScrollIntoViewButOnlyTheEditorEffect,
-} from "../should-be-shared/ScrollIntoViewButOnlyTheEditor";
+} from "../../should-be-shared/ScrollIntoViewButOnlyTheEditor";
 
 let base_extensions = [
   EditorView.scrollMargins.of(() => ({ top: 32, bottom: 32 })),
@@ -123,10 +128,14 @@ let highlight_extension = syntaxHighlighting(
 class WarningSignWidget extends ReactWidget {
   constructor() {
     super(
-      <IoWarning
-        key="warning"
-        style={{ color: "red", pointerEvents: "none" }}
-      />
+      (function () {
+        return (
+          <IoWarning
+            key="warning"
+            style={{ color: "red", pointerEvents: "none" }}
+          />
+        );
+      })()
     );
   }
   eq() {
