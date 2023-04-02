@@ -151,12 +151,20 @@ export class ColorPickerWidget extends ReactWidget {
    */
   constructor(from, to, color) {
     super(
-      <SubtleColorPicker
-        key="subtle-color-picker"
-        from={from}
-        to={to}
-        color={color}
-      />
+      // I AM SO SORRY ABOUT THIS
+      // But @vitejs/plugin-react-swc changes this JSX fragment to something
+      // that contains `this`... and I can't use `this` before `super()`!
+      // So I have to use an IIFE that has it's own `this`.
+      (function () {
+        return (
+          <SubtleColorPicker
+            key="subtle-color-picker"
+            from={from}
+            to={to}
+            color={color}
+          />
+        );
+      })()
     );
 
     this.from = from;
