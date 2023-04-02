@@ -18,7 +18,7 @@
     "chalk": "^5.0.1",
     "cors": "^2.8.5",
     "express": "^4.18.1",
-    "immer": "^9.0.15",
+    "immer": "^9.0.21",
     "import-meta-resolve": "^2.1.0",
     "lodash-es": "^4.17.21",
     "node-fetch": "^3.2.10",

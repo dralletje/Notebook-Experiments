@@ -2,7 +2,7 @@
   "name": "@dral/modern-map",
   "version": "1.0.0",
   "description": "",
-  "main": "./modern-map.js",
+  "main": "./dist/modern-map.js",
   "type": "module",
   "scripts": {
     "build": "tsc",
