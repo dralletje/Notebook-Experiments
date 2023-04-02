@@ -22,6 +22,7 @@
     "@lezer/common": "^1.0.2",
     "@types/node": "^18.15.11",
     "@typescript/vfs": "^1.4.0",
+    "@vitejs/plugin-react-swc": "^3.2.0",
     "codemirror-awesome-line-wrapping": "workspace:^",
     "codemirror-debug-syntax-plugin": "workspace:^",
     "codemirror-x-react": "workspace:^",
