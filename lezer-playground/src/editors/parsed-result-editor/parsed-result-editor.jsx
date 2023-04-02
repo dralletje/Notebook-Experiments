@@ -87,6 +87,16 @@ let base_extensions = [
   scrollPastEnd(),
 ];
 
+let color_theme = EditorView.theme({
+  "& .cm-selectionBackground": {
+    opacity: "1 !important", // Fuuuu
+    background: "rgb(41 51 33 / 56%) !important",
+  },
+  "&.cm-focused .cm-selectionBackground": {
+    background: "rgb(34 82 2 / 56%) !important",
+  },
+});
+
 let inspector_lang = new LanguageSupport(
   LRLanguage.define({
     // @ts-ignore
@@ -509,6 +519,7 @@ export let ParsedResultEditor = ({
     >
       <CodeMirror ref={codemirror_ref} state={initial_editor_state}>
         <Extension extension={inspector_lang} />
+        <Extension extension={color_theme} />
         <Extension extension={ScrollIntoViewButOnlyTheEditor} />
         <Extension extension={highlight_extension} />
         <Extension extension={lezer_syntax_classes} />

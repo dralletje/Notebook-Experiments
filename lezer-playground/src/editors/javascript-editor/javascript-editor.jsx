@@ -49,6 +49,29 @@ let javascript_specific_extension = [
   }),
 ];
 
+let theme = EditorView.theme(
+  {
+    "& .cm-selectionBackground": {
+      background: "rgb(80 40 80 / 56%) !important",
+    },
+    "&.cm-focused .cm-selectionBackground": {
+      background: "hsl(0deg 61.98% 33.32% / 48%) !important",
+    },
+    // "&.cm-editor .cm-selectionMatch": {
+    //   "text-shadow": "0 0 13px rgb(255 7 7)",
+    // },
+    // ".cm-searchMatch": {
+    //   "background-color": "#4800568a",
+    // },
+    // ".cm-searchMatch-selected": {
+    //   "background-color": "#ff00ff8a",
+    // },
+  },
+  {
+    dark: true,
+  }
+);
+
 /** @param {{ viewupdate: import("codemirror-x-react/viewupdate").GenericViewUpdate, error: Error? }} props */
 export let JavascriptStuffEditor = ({ viewupdate, error }) => {
   let error_extension = React.useMemo(() => {
@@ -76,6 +99,7 @@ export let JavascriptStuffEditor = ({ viewupdate, error }) => {
 
   return (
     <CodemirrorFromViewUpdate viewupdate={viewupdate}>
+      <Extension extension={theme} />
       <Extension extension={base_extensions} />
       <Extension extension={basic_javascript_setup} />
       <Extension extension={javascript_specific_extension} />
