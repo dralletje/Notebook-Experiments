@@ -242,22 +242,48 @@ let Grid = styled.table`
   padding: 10px;
   background: darkslategray;
   color: white;
+
+  .excell {
+    width: calc(100% / ${ALPHABET.length});
+    border: #e5e7eb solid 2px;
+  }
 `;
+
+// @ts-ignore
+import inspector_css from "./yuck/Inspector.css?inline";
+// @ts-ignore
+import observable_inspector from "@observablehq/inspector/src/style.css?inline";
+import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
+
+let observable_inspector_sheet = new CSSish(observable_inspector);
+let inspector_css_sheet = new CSSish(inspector_css);
 
 let Value = ({ result }) => {
   if (result == null) return <div />;
   if (result?.type === "pending") {
-    return <Inspector value={result} />;
+    return (
+      <React.Fragment>
+        <AdoptStylesheet stylesheet={observable_inspector_sheet} />
+        <AdoptStylesheet stylesheet={inspector_css_sheet} />
+
+        <Inspector value={result} />
+      </React.Fragment>
+    );
   }
 
   let value = deserialize(0, result.value);
   return (
-    <Inspector
-      value={{
-        type: "return",
-        value,
-      }}
-    />
+    <React.Fragment>
+      <AdoptStylesheet stylesheet={observable_inspector_sheet} />
+      <AdoptStylesheet stylesheet={inspector_css_sheet} />
+
+      <Inspector
+        value={{
+          type: "return",
+          value,
+        }}
+      />
+    </React.Fragment>
   );
 };
 
