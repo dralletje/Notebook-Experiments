@@ -9,7 +9,7 @@ import { Engine, StacklessError } from "@dral/javascript-notebook-runner";
 import {
   Notebook,
   ExecutionResult,
-  NotebookArchitect,
+  SheetArchitect,
 } from "@dral/javascript-notebook-runner";
 
 let serialize_with_default = ({ value, fallback, context }) => {
@@ -165,7 +165,7 @@ type CircuitMessage = {
   notebook: Notebook;
 };
 
-let architect = new NotebookArchitect();
+let architect = new SheetArchitect();
 
 addEventListener("message", async (event) => {
   let message: CircuitMessage = event.data;

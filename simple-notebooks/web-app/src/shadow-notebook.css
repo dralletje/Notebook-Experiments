@@ -1,6 +1,6 @@
 .cell {
   border-radius: 5px;
-  border: solid 1px #ffffff36;
+  /* border: solid 1px #ffffff36; */
 
   .inspector-container {
     background-color: rgb(0 74 18 / 29%) !important;

@@ -34,35 +34,35 @@ export let DragAndDropList = ({ children, editor_in_chief }) => {
   let cell_order = editor_in_chief.state.field(CellOrderField);
 
   return (
-    <DragDropContext
-      onDragEnd={({ draggableId, destination, source }) => {
-        if (destination) {
-          editor_in_chief.dispatch({
-            effects: CellOrderEffect.of({
-              cell_id: draggableId,
-              // from: source.index,
-              index: destination.index,
-            }),
-          });
-        }
-      }}
+    // <DragDropContext
+    //   onDragEnd={({ draggableId, destination, source }) => {
+    //     if (destination) {
+    //       editor_in_chief.dispatch({
+    //         effects: CellOrderEffect.of({
+    //           cell_id: draggableId,
+    //           // from: source.index,
+    //           index: destination.index,
+    //         }),
+    //       });
+    //     }
+    //   }}
+    // >
+    //   <Droppable droppableId="cells">
+    //     {(provided) => (
+    <DragAndDropListStyle
+    // {...provided.droppableProps}
+    // ref={provided.innerRef}
     >
-      <Droppable droppableId="cells">
-        {(provided) => (
-          <DragAndDropListStyle
-            {...provided.droppableProps}
-            ref={provided.innerRef}
-          >
-            <Flipper flipKey={cell_order.join(",")} spring={"stiff"}>
-              <div data-can-start-cell-selection className="flex flex-col">
-                {children}
-              </div>
-            </Flipper>
-            {provided.placeholder}
-          </DragAndDropListStyle>
-        )}
-      </Droppable>
-    </DragDropContext>
+      <Flipper flipKey={cell_order.join(",")} spring={"stiff"}>
+        <div data-can-start-cell-selection className="flex flex-col">
+          {children}
+        </div>
+      </Flipper>
+      {/* {provided.placeholder} */}
+    </DragAndDropListStyle>
+    //     )}
+    //   </Droppable>
+    // </DragDropContext>
   );
 };
 
@@ -101,56 +101,56 @@ export let DragAndDropItem = ({
 }) => {
   let cell_type = editor_in_chief.state.editor(cell_id).facet(CellTypeFacet);
   return (
-    <Draggable draggableId={cell_id} index={index}>
-      {(provided, snapshot) => (
-        <Flipped
-          translate
-          // Scale animation screws with codemirrors cursor calculations :/
-          scale={false}
-          flipId={cell_id}
-        >
-          <CellContainer
-            id={id}
-            data-can-start-selection={false}
-            ref={provided.innerRef}
-            {...provided.draggableProps}
-            className={compact([
-              snapshot.isDragging && !snapshot.dropAnimation
-                ? "dragging"
-                : null,
-              "cell-container",
-              `cell-${cell_type}`,
-            ]).join(" ")}
-          >
-            <ContextMenuWrapper options={context_options}>
-              <div
-                style={{ minWidth: 20 }}
-                {...provided.dragHandleProps}
-                onClick={() => {
-                  editor_in_chief.dispatch({
-                    effects: [
-                      EditorDispatchEffect.of({
-                        editor_id: cell_id,
-                        transaction: {
-                          effects: MutateCellMetaEffect.of((cell) => {
-                            cell.folded = !cell.folded;
-                          }),
-                        },
+    // <Draggable draggableId={cell_id} index={index}>
+    //   {(provided, snapshot) => (
+    <Flipped
+      translate
+      // Scale animation screws with codemirrors cursor calculations :/
+      scale={false}
+      flipId={cell_id}
+    >
+      <CellContainer
+        id={id}
+        data-can-start-selection={false}
+        // ref={provided.innerRef}
+        // {...provided.draggableProps}
+        className={compact([
+          // snapshot.isDragging && !snapshot.dropAnimation
+          //   ? "dragging"
+          //   : null,
+          "cell-container",
+          `cell-${cell_type}`,
+        ]).join(" ")}
+      >
+        <ContextMenuWrapper options={context_options}>
+          <div
+            style={{ minWidth: 20 }}
+            // {...provided.dragHandleProps}
+            onClick={() => {
+              editor_in_chief.dispatch({
+                effects: [
+                  EditorDispatchEffect.of({
+                    editor_id: cell_id,
+                    transaction: {
+                      effects: MutateCellMetaEffect.of((cell) => {
+                        cell.folded = !cell.folded;
                       }),
-                      BlurEditorInChiefEffect.of(),
-                    ],
-                  });
-                }}
-                className="drag-handle"
-              />
-            </ContextMenuWrapper>
+                    },
+                  }),
+                  BlurEditorInChiefEffect.of(),
+                ],
+              });
+            }}
+            className="drag-handle"
+          />
+        </ContextMenuWrapper>
 
-            {children}
+        {children}
 
-            <div style={{ minWidth: 20 }} data-can-start-cell-selection />
-          </CellContainer>
-        </Flipped>
-      )}
-    </Draggable>
+        <div style={{ minWidth: 20 }} data-can-start-cell-selection />
+      </CellContainer>
+    </Flipped>
+    //   )}
+    // </Draggable>
   );
 };

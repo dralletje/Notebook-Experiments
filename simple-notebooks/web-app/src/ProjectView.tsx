@@ -41,7 +41,7 @@ import { actions } from "./commands.js";
 import { Logs } from "./Sidebar/Logs/Logs.jsx";
 import { useEngine } from "./environment/use-engine.js";
 import { Environment } from "./environment/Environment";
-import { Excell } from "./Excel";
+import { Excell } from "./ExcellView";
 import { useUrl } from "./packages/use-url/use-url";
 import { NotebookView } from "./NotebookView";
 import shadow from "react-shadow/styled-components";

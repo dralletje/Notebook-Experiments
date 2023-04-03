@@ -124,42 +124,6 @@ export let notebook_to_state = () => {
 
       // This works so smooth omg
       [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
-
-      // typescript_extension((state) => {
-      //   let notebook = state.field(CellEditorsField);
-
-      //   let code = "";
-      //   let cursor = 0;
-      //   /** @type {{ [cell_id: string]: { start: number, end: number } }} */
-      //   let cell_map = {};
-
-      //   let type_references = `
-      //   /// <reference lib="es5" />
-      //   /// <reference lib="es2015" />
-      //   /// <reference lib="es2015.collection" />
-      //   /// <reference lib="es2015.core" />
-      //   /// <reference types="node" />
-      //   `;
-      //   code += type_references;
-      //   cursor += type_references.length;
-
-      //   for (let cell_id of notebook.cell_order) {
-      //     let cell_state = notebook.cells[cell_id];
-      //     let cell = cell_state.field(CellMetaField);
-      //     let unsaved_code = cell_state.doc.toString();
-
-      //     // Using unsaved code because I want typescript to be very optimistic
-      //     let code_to_add = unsaved_code;
-      //     cell_map[cell_id] = {
-      //       start: cursor,
-      //       end: cursor + code_to_add.length,
-      //     };
-      //     code += code_to_add + "\n";
-      //     cursor += code_to_add.length + 1;
-      //   }
-
-      //   return { code, cell_map };
-      // }),
     ],
   });
 };
@@ -212,19 +176,21 @@ export function Excell() {
 
   let [engine, logs] = useEngine(notebook_with_filename, environment);
 
+  console.log(`engine:`, engine);
+
   return (
     <Grid>
       <thead>
         <tr>
           <th />
           {ALPHABET.split("").map((letter) => (
-            <th>{letter}</th>
+            <th key={letter}>{letter}</th>
           ))}
         </tr>
       </thead>
       <tbody>
         {chunk(EXCEL_CELLS, ALPHABET.length).map((row, i) => (
-          <tr>
+          <tr key={i}>
             <th>{i + 1}</th>
             {row
               .map((cell_id) => notebook.cells[cell_id])
@@ -247,15 +213,17 @@ export function Excell() {
 
 let Grid = styled.table`
   padding: 10px;
-  background: darkslategray;
-  color: white;
+  background: #232204;
+  color: #ffffffcf;
   height: auto;
   align-self: flex-start;
   flex: 1;
 
-  th,
+  th {
+    border: 1px solid rgb(238 238 238 / 45%);
+  }
   td {
-    border: #e5e7eb solid 2px;
+    border: 1px solid rgb(238 238 238 / 17%);
   }
   th {
     min-width: 25px;

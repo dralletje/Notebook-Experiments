@@ -1,13 +1,15 @@
-import { groupBy, uniq } from "lodash-es";
+import { groupBy, uniq, range } from "lodash-es";
 import { ModernMap } from "@dral/modern-map";
 import { invariant } from "../leaf/invariant.js";
 import { StacklessError } from "../leaf/StacklessError.js";
 
 import { ParseCache, ParsedCells } from "./parse-cache.js";
-import { Notebook } from "../types.js";
+import { Cell, Notebook } from "../types.js";
 
 import * as Graph from "../leaf/graph.js";
 import { Blueprint, CellId, Chamber, Mistake } from "./blueprint.js";
+
+let ALPHABET = "ABCDEF";
 
 export let notebook_to_disconnected_graph = (
   parsed_cells: ParsedCells
@@ -123,7 +125,35 @@ let get_analysis_results = (
 export class SheetArchitect {
   private parse_cache: ParseCache = new ParseCache();
 
-  design(notebook: Notebook): Blueprint {
+  design(_notebook: Notebook): Blueprint {
+    let notebook: Notebook = {
+      ..._notebook,
+      cell_order: [
+        ..._notebook.cell_order,
+        ...ALPHABET.split("").map((x) => x as CellId),
+      ],
+      cells: {
+        ..._notebook.cells,
+        ...Object.fromEntries(
+          ALPHABET.split("").map((column_id) => {
+            return [
+              column_id,
+              {
+                id: column_id as CellId,
+                type: "code",
+                code: `${column_id} = [${range(1, 10)
+                  .map((x) => `${column_id}${x}`)
+                  .join(", ")}]`,
+                folded: false,
+                requested_run_time: 0,
+              } as Cell,
+            ];
+          })
+        ),
+      },
+    };
+    console.log(`notebook:`, notebook);
+
     let parsed_cells = this.parse_cache.parse_notebook(notebook.cells);
 
     let graph = Graph.inflate_compact_graph(
