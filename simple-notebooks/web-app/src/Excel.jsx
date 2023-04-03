@@ -264,6 +264,8 @@ let Grid = styled.table`
   td {
     width: calc(100% / ${ALPHABET.length});
     min-width: 50px;
+    max-width: 200px;
+    overflow: hidden;
   }
 `;
 
@@ -305,7 +307,14 @@ let Cell = ({ viewupdate, cylinder }) => {
       <AdoptStylesheet stylesheet={observable_inspector_sheet} />
       <AdoptStylesheet stylesheet={inspector_css_sheet} />
 
-      <Value result={cylinder?.result} />
+      <div
+        style={{
+          overflow: "auto",
+          fontSize: 12,
+        }}
+      >
+        <Value result={cylinder?.result} />
+      </div>
       <CodemirrorFromViewUpdate viewupdate={viewupdate} />
     </td>
   );
