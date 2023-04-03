@@ -1,32 +1,13 @@
 import TOML from "@iarna/toml";
-import { difference, mapValues, merge, takeWhile, uniq } from "lodash-es";
+import { mapValues, merge, takeWhile } from "lodash-es";
 
 import type { Cell, CellId, Notebook } from "../types.js";
-import * as Graph from "../leaf/graph.js";
-import { notebook_to_disconnected_graph } from "./notebook-step.js";
-import { ParsedCells } from "./parse-cache.js";
-import { ModernMap } from "@dral/modern-map";
+import { Blueprint } from "./notebook-architect";
 import { invariant } from "../leaf/invariant.js";
 
 const OPEN = "// ╔═╡";
 const BODY = "// ╠═╡";
 const _cell_suffix = "\n\n";
-
-export let topological_sort_notebook = (
-  notebook: Notebook,
-  parsed: ParsedCells
-) => {
-  let graph = Graph.inflate_compact_graph(
-    Graph.disconnected_to_compact_graph(notebook_to_disconnected_graph(parsed))
-  );
-
-  let graph_on_cell_order: Graph.Graph = new ModernMap(
-    notebook.cell_order.map((id) => [id, graph.get(id)])
-  );
-
-  let sorted = Graph.topological_sort(graph_on_cell_order);
-  return sorted.map((id) => notebook.cells[id as CellId]);
-};
 
 let prefix_with_cool_markers = (string: string) => {
   return (
@@ -64,7 +45,40 @@ let get_markdown_cells_before = (notebook: Notebook, index: number) => {
   return result;
 };
 
-export let notebook_to_string = (notebook: Notebook, parsed: ParsedCells) => {
+let emit_code_cell = (cell: Cell & { type: "code" }) => {
+  let result = "";
+  result += format_toml_block({
+    cells: {
+      [cell.id]: {
+        // @ts-ignore
+        folded: cell.folded ?? false,
+      },
+    },
+  });
+  result += cell.code;
+  result += _cell_suffix;
+  return result;
+};
+
+let emit_markdown_cell = (cell: Cell & { type: "text" }) => {
+  let result = "";
+  result += format_toml_block({
+    cells: {
+      [cell.id]: {
+        type: "text",
+      },
+    },
+  });
+
+  result += cell.code
+    .split("\n")
+    .map((line) => `// ${line}`)
+    .join("\n");
+  result += _cell_suffix;
+  return result;
+};
+
+export let notebook_to_string = (notebook: Notebook, blueprint: Blueprint) => {
   let result = "";
 
   result += format_toml_block({
@@ -74,49 +88,28 @@ export let notebook_to_string = (notebook: Notebook, parsed: ParsedCells) => {
   // Add empty `export {}` so my typescript knows it is a module
   result += "export {};\n\n";
 
-  let sorted = topological_sort_notebook(notebook, parsed);
-
-  let sorted_ids = sorted.map((x) => x.id);
-  invariant(
-    uniq(sorted_ids).length === sorted_ids.length,
-    `Duplicate cells returned by sorting algorithm`
-  );
-  invariant(
-    difference(sorted_ids, notebook.cell_order).length === 0,
-    `More cells in the sorted array than in the original cell order.`
-  );
-  invariant(
-    difference(notebook.cell_order, sorted_ids).length === 0,
-    `Fewer cells in the sorted array than in the original cell order.`
-  );
-
-  for (let cell of sorted) {
+  for (let cell_id of notebook.cell_order) {
+    let cell = notebook.cells[cell_id];
     if (cell.type === "text") {
-      result += format_toml_block({
-        cells: {
-          [cell.id]: {
-            type: "text",
-          },
-        },
-      });
-
-      result += cell.code
-        .split("\n")
-        .map((line) => `// ${line}`)
-        .join("\n");
-      result += _cell_suffix;
-    } else {
-      result += format_toml_block({
-        cells: {
-          [cell.id]: {
-            // @ts-ignore
-            folded: cell.folded ?? false,
-          },
-        },
-      });
-      result += cell.code;
-      result += _cell_suffix;
+      result += emit_markdown_cell(cell as any);
     }
+  }
+
+  console.log(`blueprint:`, blueprint);
+
+  for (let cell_id of blueprint.chambers.keys()) {
+    let cell = notebook.cells[cell_id];
+    // prettier-ignore
+    invariant(cell.type === "code", `Cell "${cell_id} is not code, found in chambers`);
+    result += emit_code_cell(cell as any);
+  }
+
+  for (let cell_id of blueprint.mistakes.keys()) {
+    let cell = notebook.cells[cell_id];
+    console.log(`cell:`, cell);
+    // prettier-ignore
+    invariant(cell.type === "code", `Cell "${cell_id} is not code, found in mistakes`);
+    result += emit_code_cell(cell as any);
   }
 
   // This now sometimes prints it as inline (`"Cell Order": ["a", "b", "c"]`),

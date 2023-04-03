@@ -50,6 +50,7 @@ import {
   ContextMenu,
   ContextMenuWrapper,
 } from "./packages/react-contextmenu/react-contextmenu.jsx";
+import { Excell } from "./Excel.jsx";
 
 /**
  * @typedef Workspace
@@ -297,6 +298,7 @@ function App() {
       >
         {Object.keys(workspace.files).map((filename) => (
           <ContextMenuWrapper
+            key={filename}
             options={[
               {
                 title: "Remove",
@@ -329,7 +331,6 @@ function App() {
             ]}
           >
             <FileTab
-              key={filename}
               aria-selected={filename === open_file}
               onClick={() => {
                 set_url(`/${filename}`);
@@ -340,6 +341,8 @@ function App() {
           </ContextMenuWrapper>
         ))}
       </div>
+
+      <Excell />
 
       {open_file == null ? (
         <div></div>

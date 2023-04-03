@@ -5,11 +5,16 @@ import pc from "picocolors";
 import { html, md } from "@dral/javascript-basic-serialize/html";
 import { serialize } from "@dral/javascript-basic-serialize";
 
-import { Engine, StacklessError } from "@dral/javascript-notebook-runner";
+import {
+  Engine,
+  StacklessError,
+  notebook_to_string,
+} from "@dral/javascript-notebook-runner";
 import type {
   Notebook,
   ExecutionResult,
 } from "@dral/javascript-notebook-runner";
+import { Architect } from "@dral/javascript-notebook-runner/dist/parts/notebook-architect";
 
 let serialize_with_default = ({ value, fallback, context }) => {
   try {
@@ -164,14 +169,16 @@ type CircuitMessage = {
   notebook: Notebook;
 };
 
+let architect = new Architect();
+
 addEventListener("message", async (event) => {
   let message: CircuitMessage = event.data;
   if (message.type === "update-notebook") {
     let { notebook } = message;
-    engine.update(notebook);
+    let blueprint = architect.design(notebook);
+    engine.update(blueprint);
 
-    // let parsed = engine.parse_cache.parse_notebook(notebook.cells);
-    // let thing = notebook_to_string(notebook, parsed);
-    // console.log(`{thing}:`, { thing });
+    let thing = notebook_to_string(notebook, blueprint);
+    console.log(`{thing}:`, { thing });
   }
 });

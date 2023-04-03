@@ -1,12 +1,10 @@
 import pc from "picocolors";
-import { omit } from "lodash-es";
 import Opaque from "ts-opaque";
 import { CellId, Notebook, VariableName } from "../types";
-import { ParseCache } from "./parse-cache.js";
-import { ExecutionResult, notebook_step } from "./notebook-step.js";
+import { ExecutionResult, find_cell_to_run_now } from "./notebook-step.js";
 import { TypedEventTarget } from "../leaf/typed-event-target.js";
-import { invariant } from "../leaf/invariant.js";
 import { ModernMap } from "@dral/modern-map";
+import { Architect, Blueprint } from "./notebook-architect";
 
 export type LivingValue = Opaque<unknown, "LivingValue">;
 export type EngineTime = Opaque<number, "RunTracker">;
@@ -91,10 +89,13 @@ export class Engine extends TypedEventTarget<{
   change: EngineChangeEvent;
   log: EngineLogEvent;
 }> {
-  private pending_notebook: Notebook = { cell_order: [], cells: {} };
+  private pending_blueprint: Blueprint = {
+    arrangment: [],
+    chambers: new ModernMap(),
+    mistakes: new ModernMap(),
+  };
   private is_busy: boolean = false;
 
-  parse_cache: ParseCache = new ParseCache();
   cylinders: ModernMap<CellId, Cylinder> = new ModernMap();
   // graph: Graph.Graph;
 
@@ -110,21 +111,21 @@ export class Engine extends TypedEventTarget<{
     this.run_cell = run_cell;
   }
 
-  async update(notebook: Notebook) {
-    this.pending_notebook = notebook;
+  async update(blueprint: Blueprint) {
+    this.pending_blueprint = blueprint;
 
     if (this.is_busy) return;
 
     this.is_busy = true;
-    while (await this.update_once(notebook)) {}
+    while (await this.update_once(this.pending_blueprint)) {}
     this.is_busy = false;
   }
 
-  private async update_once(notebook: Notebook): Promise<boolean> {
+  private async update_once(blueprint: Blueprint): Promise<boolean> {
     let did_change = false;
 
     // Make sure every cell has a cylinder
-    for (let [cell_id, cell] of Object.entries(this.pending_notebook.cells)) {
+    for (let [cell_id, cell] of blueprint.chambers) {
       this.cylinders.emplace(cell_id as CellId, {
         insert: (cell_id) => new Cylinder(cell_id),
       });
@@ -134,10 +135,11 @@ export class Engine extends TypedEventTarget<{
     // Get next cell to run
     /////////////////////////////////////
 
-    let cell_to_run = notebook_step({
+    console.log(`blueprint:`, blueprint);
+
+    let chamber_to_run = find_cell_to_run_now({
       engine: this,
-      filename: "app.tsx",
-      notebook: this.pending_notebook,
+      blueprint: blueprint,
       onChange: (fn) => {
         did_change = true;
         fn(this);
@@ -145,15 +147,17 @@ export class Engine extends TypedEventTarget<{
       },
     });
 
+    console.log(`chamber_to_run:`, chamber_to_run);
+
     /////////////////////////////////////
     // Delete overdue cylinders
     /////////////////////////////////////
     // "Just" run all handlers for deleted cells
     // TODO? I just know this will bite me later
     // TODO Wrap abort controller handles so I can show when they go wrong
-    let deleted_cylinders = this.cylinders.values().filter((cylinder) => {
-      return cylinder.id in notebook.cells === false;
-    });
+    let deleted_cylinders = this.cylinders
+      .values()
+      .filter((cylinder) => !blueprint.chambers.has(cylinder.id));
     for (let deleted_cylinder of deleted_cylinders) {
       await deleted_cylinder.reset();
       this.cylinders.delete(deleted_cylinder.id);
@@ -164,20 +168,10 @@ export class Engine extends TypedEventTarget<{
     /////////////////////////////////////
     // Run it!
     /////////////////////////////////////
-    if (cell_to_run) {
+    if (chamber_to_run) {
       did_change = true;
 
-      let key = cell_to_run.cell_id;
-      let cell = notebook.cells[key];
-      let cylinder = this.cylinders.get(key);
-      let graph_node = cell_to_run.graph_node;
-
-      let parsed = this.parse_cache.parse(cell);
-      invariant("output" in parsed, `Parsed error shouldn't end up here`);
-      let {
-        code,
-        meta: { last_created_name },
-      } = parsed.output;
+      let cylinder = this.cylinders.get(chamber_to_run.id);
 
       cylinder.running = true;
       cylinder.waiting = false;
@@ -185,20 +179,20 @@ export class Engine extends TypedEventTarget<{
       this.dispatchEvent(
         new EngineLogEvent({
           id: event_id,
-          cell_id: cell_to_run.cell_id,
-          code: cell.code,
+          cell_id: chamber_to_run.id,
+          code: chamber_to_run.code,
         })
       );
 
-      // console.groupCollapsed(pc.blue(pc.bold(`RUNNING CELL: ${cell.id}`)));
-      // console.log("Notebook:", notebook);
-      // console.log(`Engine:`, this);
-      // console.log(pc.blue(code));
-      // console.groupEnd();
+      console.groupCollapsed(
+        pc.blue(pc.bold(`RUNNING CELL: ${chamber_to_run.id}`))
+      );
+      console.log(pc.blue(chamber_to_run.code));
+      console.groupEnd();
 
       // Look for requested variable names in other cylinders
       let inputs = {};
-      for (let [in_cell, { name: in_name }] of graph_node.in) {
+      for (let [in_cell, { name: in_name }] of chamber_to_run.node.in) {
         let in_cylinder = this.cylinders.get(in_cell as CellId);
         if (in_name in in_cylinder.variables) {
           inputs[in_name] = in_cylinder.variables[in_name];
@@ -208,36 +202,35 @@ export class Engine extends TypedEventTarget<{
       await cylinder.reset();
 
       let { result } = await this.run_cell({
-        id: cell_to_run.cell_id,
+        id: chamber_to_run.id,
         signal: cylinder.signal,
-        code: code,
+        code: chamber_to_run.code,
         inputs: inputs,
       });
 
-      Object.assign(this.cylinders.get(key), {
-        last_run: cell.requested_run_time,
+      Object.assign(cylinder, {
+        last_run: chamber_to_run.requested_run_time,
         last_internal_run: this.tick(),
-        upstream_cells: graph_node.in.map(([x]) => x) as CellId[],
+        upstream_cells: chamber_to_run.node.in.map(([x]) => x) as CellId[],
 
         result:
           result.type === "return"
             ? {
                 type: "return",
-                name: last_created_name,
+                name: chamber_to_run.name,
                 value: result.value.default,
               }
             : result,
         running: false,
-        variables:
-          result.type === "return" ? omit(result.value, "default") : {},
+        variables: result.type === "return" ? result.value : {},
       });
 
       this.dispatchEvent(new EngineChangeEvent());
       this.dispatchEvent(
         new EngineLogEvent({
           id: event_id,
-          cell_id: cell_to_run.cell_id,
-          code: cell.code,
+          cell_id: chamber_to_run.id,
+          code: chamber_to_run.code,
         })
       );
     }

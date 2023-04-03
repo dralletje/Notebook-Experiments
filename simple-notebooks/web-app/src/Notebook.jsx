@@ -88,7 +88,8 @@ export function NotebookView({ state, onChange, environment }) {
       filename: state.facet(NotebookFilename),
       cell_order: state.field(CellOrderField),
       cells: Object.fromEntries(
-        cell_editor_states.entries().map(([cell_id, cell_state]) => {
+        state.field(CellOrderField).map((cell_id) => {
+          let cell_state = state.editor(cell_id);
           let type = cell_state.facet(CellTypeFacet);
           return [
             cell_id,
