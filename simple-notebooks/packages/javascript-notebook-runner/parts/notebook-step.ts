@@ -1,8 +1,8 @@
 import { invariant } from "../leaf/invariant.js";
-import { CellId, Notebook } from "../types.js";
+import { CellId } from "../types.js";
 import { Engine, EngineTime } from "./engine.js";
 import { DeepReadonly } from "../leaf/DeepReadonly.js";
-import { Blueprint, Chamber } from "./notebook-architect.js";
+import { Blueprint, Chamber } from "../blueprint/blueprint.js";
 
 let cells_that_need_running = (
   blueprint: Blueprint,

@@ -1,19 +1,13 @@
-import Opaque from "ts-opaque";
-import { ParseCache } from "./parse-cache.js";
-import { invariant } from "../leaf/invariant.js";
-import { ModernMap } from "@dral/modern-map";
-
-export type VariableName = Opaque<unknown, "VariableName">;
-function VariableName(name: string): VariableName {
-  return name as any;
-}
-
-import { ParsedCells } from "./parse-cache.js";
-import { Cell, CellId, Notebook } from "../types.js";
-import { StacklessError } from "../leaf/StacklessError.js";
 import { groupBy, uniq } from "lodash-es";
+import { ModernMap } from "@dral/modern-map";
+import { invariant } from "../leaf/invariant.js";
+import { StacklessError } from "../leaf/StacklessError.js";
+
+import { ParseCache, ParsedCells } from "./parse-cache.js";
+import { CellId, Notebook } from "../types.js";
 
 import * as Graph from "../leaf/graph.js";
+import { Blueprint, Chamber, Mistake } from "./blueprint.js";
 
 export let notebook_to_disconnected_graph = (
   parsed_cells: ParsedCells
@@ -134,29 +128,7 @@ let get_analysis_results = (
   );
 };
 
-export interface Chamber {
-  id: CellId;
-  requested_run_time: number;
-  name: string;
-  code: string;
-  node: Graph.Node;
-}
-
-export interface Mistake {
-  id: CellId;
-  requested_run_time: number;
-  message: string;
-  node: Graph.Node;
-}
-
-export type Blueprint = {
-  // graph: Graph.Graph;
-  // arrangment: Array<CellId>;
-  chambers: ModernMap<CellId, Chamber>;
-  mistakes: ModernMap<CellId, Mistake>;
-};
-
-export class Architect {
+export class NotebookArchitect {
   private parse_cache: ParseCache = new ParseCache();
 
   design(notebook: Notebook): Blueprint {
@@ -219,7 +191,6 @@ export class Architect {
     );
 
     return {
-      // arrangment: arrangement,
       chambers: new ModernMap(
         arrangement
           .filter((cell_id) => chambers.has(cell_id))

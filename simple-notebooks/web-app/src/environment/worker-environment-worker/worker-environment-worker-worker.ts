@@ -10,11 +10,11 @@ import {
   StacklessError,
   notebook_to_string,
 } from "@dral/javascript-notebook-runner";
-import type {
+import {
   Notebook,
   ExecutionResult,
+  NotebookArchitect,
 } from "@dral/javascript-notebook-runner";
-import { Architect } from "@dral/javascript-notebook-runner/dist/parts/notebook-architect";
 
 let serialize_with_default = ({ value, fallback, context }) => {
   try {
@@ -169,7 +169,7 @@ type CircuitMessage = {
   notebook: Notebook;
 };
 
-let architect = new Architect();
+let architect = new NotebookArchitect();
 
 addEventListener("message", async (event) => {
   let message: CircuitMessage = event.data;

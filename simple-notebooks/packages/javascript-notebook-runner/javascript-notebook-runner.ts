@@ -8,3 +8,6 @@ export {
 
 export type { Notebook } from "./types.js";
 export type { ExecutionResult } from "./parts/notebook-step.js";
+
+export { NotebookArchitect } from "./blueprint/notebook-architect";
+export type { Blueprint, Chamber, Mistake } from "./blueprint/blueprint.js";

@@ -4,7 +4,7 @@ import { CellId, Notebook, VariableName } from "../types";
 import { ExecutionResult, find_cell_to_run_now } from "./notebook-step.js";
 import { TypedEventTarget } from "../leaf/typed-event-target.js";
 import { ModernMap } from "@dral/modern-map";
-import { Architect, Blueprint } from "./notebook-architect";
+import { Blueprint } from "../blueprint/blueprint";
 
 export type LivingValue = Opaque<unknown, "LivingValue">;
 export type EngineTime = Opaque<number, "RunTracker">;
