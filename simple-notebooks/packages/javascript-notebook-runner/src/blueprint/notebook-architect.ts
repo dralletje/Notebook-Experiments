@@ -132,8 +132,6 @@ export class NotebookArchitect {
       )
     );
 
-    console.log(`graph:`, graph);
-
     let code_cell_ids = notebook.cell_order.filter(
       (x) => notebook.cells[x].type === "code"
     );
@@ -183,8 +181,6 @@ export class NotebookArchitect {
     let arrangement = Graph.topological_sort(graph).map(
       (cell_id) => cell_id as CellId
     );
-
-    console.log(`mistakes:`, mistakes);
 
     return {
       chambers: new ModernMap(

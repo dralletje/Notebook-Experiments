@@ -5,10 +5,10 @@ import { Blueprint, CellId, Chamber, Mistake } from "../blueprint/blueprint.js";
 import { StacklessError } from "../javascript-notebook-runner.js";
 import { ModernMap } from "@dral/modern-map";
 
-let cells_that_need_running = (
+export let find_pending_cells = (
   blueprint: Blueprint,
   engine: DeepReadonly<Engine>
-): CellId[] => {
+) => {
   let cell_should_run_at_map = new Map<CellId, EngineTime>();
   let cells_that_should_run: CellId[] = [];
 
@@ -82,26 +82,9 @@ let cells_that_need_running = (
     }
   }
 
-  return cells_that_should_run;
-};
-
-// TODO Not used in this file
-export type ExecutionResult<T = any, E = any> =
-  | { type: "return"; value: T }
-  | { type: "throw"; value: E };
-
-export let find_cell_to_run_now = ({
-  engine,
-  blueprint,
-}: {
-  engine: DeepReadonly<Engine>;
-  blueprint: Blueprint;
-}) => {
-  let cells_to_run = cells_that_need_running(blueprint, engine);
-
   let pending_chambers = new ModernMap<CellId, Chamber>();
   let pending_mistakes = new ModernMap<CellId, Mistake>();
-  for (let cell_id of cells_to_run) {
+  for (let cell_id of cells_that_should_run) {
     if (blueprint.chambers.has(cell_id)) {
       pending_chambers.set(cell_id, blueprint.chambers.get(cell_id));
     } else if (blueprint.mistakes.has(cell_id)) {
@@ -110,14 +93,27 @@ export let find_cell_to_run_now = ({
       throw new Error("AAAAA");
     }
   }
+  return { pending_chambers, pending_mistakes };
+};
 
+// TODO Not used in this file
+export type ExecutionResult<T = any, E = any> =
+  | { type: "return"; value: T }
+  | { type: "throw"; value: E };
+
+export let find_chamber_to_run_now = ({
+  engine,
+  pending_chambers,
+}: {
+  engine: DeepReadonly<Engine>;
+  pending_chambers: ModernMap<CellId, Chamber>;
+}) => {
   /////////////////////////////////////
   // Find next cell to run
   /////////////////////////////////////
 
   // If there is no cell that needs running, we're done!
-  if (pending_chambers.size === 0)
-    return { pending_chambers, pending_mistakes };
+  if (pending_chambers.size === 0) return null;
 
   // By default just run the first (topologically sorted)
   let chamber_to_run = pending_chambers.values().toArray()[0];
@@ -141,5 +137,5 @@ export let find_cell_to_run_now = ({
     }
   }
 
-  return { chamber_to_run, pending_chambers, pending_mistakes };
+  return chamber_to_run;
 };

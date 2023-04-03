@@ -1,7 +1,12 @@
 import pc from "picocolors";
 import Opaque from "ts-opaque";
 import { Notebook, VariableName } from "../types";
-import { ExecutionResult, find_cell_to_run_now } from "./notebook-step.js";
+import {
+  ExecutionResult,
+  find_cell_to_run_now,
+  find_chamber_to_run_now,
+  find_pending_cells,
+} from "./notebook-step.js";
 import { TypedEventTarget } from "../leaf/typed-event-target.js";
 import { ModernMap } from "@dral/modern-map";
 import { Blueprint, CellId } from "../blueprint/blueprint";
@@ -142,14 +147,9 @@ export class Engine extends TypedEventTarget<{
     // Get next cell to run
     /////////////////////////////////////
 
-    let { chamber_to_run, pending_chambers, pending_mistakes } = groupCollapsed(
-      "FIND CELL TO RUN",
-      () => {
-        return find_cell_to_run_now({
-          engine: this,
-          blueprint: blueprint,
-        });
-      }
+    let { pending_chambers, pending_mistakes } = groupCollapsed(
+      "Pending chambers and mistakes",
+      () => find_pending_cells(blueprint, this)
     );
 
     let did_update_pending = false;
@@ -203,6 +203,13 @@ export class Engine extends TypedEventTarget<{
     /////////////////////////////////////
     // Run it!
     /////////////////////////////////////
+    let chamber_to_run = groupCollapsed("Find chamber to run now", () =>
+      find_chamber_to_run_now({
+        engine: this,
+        pending_chambers,
+      })
+    );
+
     if (chamber_to_run) {
       did_change = true;
 
