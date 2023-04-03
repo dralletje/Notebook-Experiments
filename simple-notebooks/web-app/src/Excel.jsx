@@ -92,7 +92,7 @@ const ALPHABET = "ABCDEF";
 // @ts-ignore
 let EXCEL_CELLS =
   /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId[]} */ (
-    range(1, 10).flatMap((i) => ALPHABET.split("").map((j) => `${j}${i}`))
+    range(1, 5).flatMap((i) => ALPHABET.split("").map((j) => `${j}${i}`))
   );
 export let notebook_to_state = () => {
   return EditorInChief.create({

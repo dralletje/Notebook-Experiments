@@ -21,7 +21,7 @@ type MapOf<T extends [any, any]> = T extends [infer K, infer V]
   ? ModernMap<K, V>
   : never;
 
-type Edge = [NodeId, { name: EdgeName }];
+type Edge = [NodeId, { in: EdgeName; out: EdgeName }];
 type CompactGraph = ModernMap<NodeId, Array<Edge>>;
 export type Node = {
   id: NodeId;
@@ -42,9 +42,11 @@ export let disconnected_to_compact_graph = (
           return [
             ...cells
               .filter((cell) => cell.imports.includes(exported))
-              .map((cell) => [cell.id, { name: exported }] as Edge),
+              .map(
+                (cell) => [cell.id, { in: exported, out: exported }] as Edge
+              ),
 
-            // Also add cells that have an export of the same name as this cell.
+            // Also add cells that have an export of the same from as this cell.
             // Think of this graph more as "Cell X influences Cell Y" rather than only
             // "Cell Y uses a variable in Cell X".
             // This is because we want to be able to connect these cells later
@@ -53,7 +55,9 @@ export let disconnected_to_compact_graph = (
               .filter(
                 (cell) => cell.exports.includes(exported) && cell.id !== cell_id
               )
-              .map((cell) => [cell.id, { name: exported }] as Edge),
+              .map(
+                (cell) => [cell.id, { in: exported, out: exported }] as Edge
+              ),
           ];
         }),
       ];
@@ -70,14 +74,14 @@ export let inflate_compact_graph = (graph: CompactGraph): Graph => {
         id,
         out: out,
         // In is filled in later...
-        in: [],
+        in: [] as Edge[],
       },
     ])
   );
   // ...specifically: here
   for (let [id, node] of expanded_graph) {
-    for (let [out_id, { name }] of node.out) {
-      expanded_graph.get(out_id).in.push([id, { name }]);
+    for (let [out_id, edge] of node.out) {
+      expanded_graph.get(out_id).in.push([id, edge]);
     }
   }
   return expanded_graph;
@@ -112,15 +116,15 @@ export let topological_sort = (graph: Graph): NodeId[] => {
 export let multiple_definitions = (graph: Graph) => {
   let doubles = new Map<NodeId, Set<EdgeName>>();
   for (let [cell_id, node] of graph.entries()) {
-    let conflicting_definitions = node.out.filter(([_, { name: out_name }]) => {
-      return node.in.some(([_, { name: in_name }]) => {
-        return out_name === in_name;
+    let conflicting_definitions = node.out.filter(([_, { out }]) => {
+      return node.in.some(([_, { in: in_name }]) => {
+        return out === in_name;
       });
     });
     if (conflicting_definitions.length > 0) {
       doubles.set(
         cell_id,
-        new Set(conflicting_definitions.map(([_, { name }]) => name))
+        new Set(conflicting_definitions.map(([_, { out }]) => out))
       );
     }
   }
@@ -170,8 +174,8 @@ export let cycles = (graph: Graph): Array<Array<Edge>> => {
       return;
     }
     visited.push(id);
-    for (let [out, { name }] of graph.get(id).out) {
-      visit(out, [...group, [id, { name }]]);
+    for (let [out, edge] of graph.get(id).out) {
+      visit(out, [...group, [id, edge]]);
     }
   };
 

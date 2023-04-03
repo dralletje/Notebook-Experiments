@@ -195,10 +195,10 @@ export class Engine extends TypedEventTarget<{
 
       // Look for requested variable names in other cylinders
       let inputs = {};
-      for (let [in_cell, { name: in_name }] of chamber_to_run.node.in) {
+      for (let [in_cell, edge] of chamber_to_run.node.in) {
         let in_cylinder = this.cylinders.get(in_cell as CellId);
-        if (in_name in in_cylinder.variables) {
-          inputs[in_name] = in_cylinder.variables[in_name];
+        if (edge.out in in_cylinder.variables) {
+          inputs[edge.in] = in_cylinder.variables[edge.out];
         }
       }
 
