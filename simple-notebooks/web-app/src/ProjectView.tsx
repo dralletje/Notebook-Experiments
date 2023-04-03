@@ -36,32 +36,14 @@ import {
 import { ContextMenuItem } from "./packages/react-contextmenu/react-contextmenu";
 import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
 
-import { CellMemo } from "./Cell.jsx";
-import { TextCell } from "./TextCell.jsx";
-import { CellErrorBoundary } from "./yuck/CellErrorBoundary.jsx";
-import { DragAndDropItem, DragAndDropList } from "./yuck/DragAndDropStuff.jsx";
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
 import { actions } from "./commands.js";
-import { Sidebar } from "./Sidebar.jsx";
 import { Logs } from "./Sidebar/Logs/Logs.jsx";
 import { useEngine } from "./environment/use-engine.js";
 import { Environment } from "./environment/Environment";
 import { Excell } from "./Excel";
 import { useUrl } from "./packages/use-url/use-url";
 import { NotebookView } from "./NotebookView";
-
-// @ts-ignore
-let NotebookStyle = styled.div`
-  padding-top: 50px;
-  min-height: 100vh;
-  padding-bottom: 100px;
-
-  flex: 1;
-  flex-basis: clamp(700px, 100vw - 200px, 900px);
-  flex-grow: 0;
-
-  min-width: 0;
-`;
 
 export function ProjectView({
   state,
@@ -126,27 +108,11 @@ export function ProjectView({
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
       <Excell />
 
-      <div
-        style={{
-          width: 400,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "stretch",
-          height: `calc(100vh - 50px)`,
-          position: "sticky",
-          top: 50,
-          overflowY: "auto",
-          backgroundColor: "black",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-          }}
-        >
+      <Sidebar className={`tab-${tab}`}>
+        <nav>
           <a
             href="#notebook"
+            className={tab === "notebook" ? "active" : ""}
             onClick={(e) => {
               e.preventDefault();
               set_tab("notebook");
@@ -156,6 +122,7 @@ export function ProjectView({
           </a>
           <a
             href="#logs"
+            className={tab === "logs" ? "active" : ""}
             onClick={(e) => {
               e.preventDefault();
               set_tab("logs");
@@ -163,17 +130,68 @@ export function ProjectView({
           >
             Logs
           </a>
-        </div>
+        </nav>
 
-        <div>
+        <section>
           {tab === "logs" && (
             <Logs logs={logs} notebook={notebook} engine={engine} />
           )}
           {tab === "notebook" && (
             <NotebookView engine={engine} viewupdate={viewupdate} />
           )}
-        </div>
-      </div>
+        </section>
+      </Sidebar>
     </div>
   );
 }
+
+let NOISE_BACKGROUND = new URL(
+  "./yuck/noise-background.png",
+  import.meta.url
+).toString();
+
+let Sidebar = styled.div`
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  height: calc(100vh - 50px);
+  position: sticky;
+  top: 50px;
+  overflow-y: auto;
+  background-color: black;
+
+  &.tab-notebook {
+    background-color: #01412d;
+  }
+  &.tab-logs {
+    background-color: rgba(23, 1, 129, 0.27);
+  }
+
+  nav {
+    background: url(${NOISE_BACKGROUND}), rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: row;
+
+    a {
+      flex: 1;
+      text-align: center;
+      padding: 5px 10px;
+      font-weight: bold;
+
+      &.active {
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+
+      &:not(.active):hover {
+        background-color: rgba(0, 0, 0, 0.3);
+      }
+    }
+  }
+
+  section {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+`;

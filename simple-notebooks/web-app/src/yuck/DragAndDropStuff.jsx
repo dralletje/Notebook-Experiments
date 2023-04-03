@@ -124,7 +124,7 @@ export let DragAndDropItem = ({
           >
             <ContextMenuWrapper options={context_options}>
               <div
-                style={{ minWidth: 50 }}
+                style={{ minWidth: 20 }}
                 {...provided.dragHandleProps}
                 onClick={() => {
                   editor_in_chief.dispatch({
@@ -146,6 +146,8 @@ export let DragAndDropItem = ({
             </ContextMenuWrapper>
 
             {children}
+
+            <div style={{ minWidth: 20 }} data-can-start-cell-selection />
           </CellContainer>
         </Flipped>
       )}
