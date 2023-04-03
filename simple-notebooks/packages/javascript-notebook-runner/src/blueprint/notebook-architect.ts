@@ -18,11 +18,12 @@ export let notebook_to_disconnected_graph = (
       if (parsed != null && "output" in parsed) {
         return {
           id: cell_id as CellId,
-          // TODO Hack to get sheets working
-          // exports: [cell_id] as Graph.EdgeName[],
-          // exports: ...parsed.output.meta.output as Graph.EdgeName[],
-          exports: [...parsed.output.meta.output, cell_id] as Graph.EdgeName[],
-          imports: parsed.output.meta.input as Graph.EdgeName[],
+          exports: [
+            ...parsed.output.meta.output,
+            // TODO This is a "Hack" to get sheets working
+            { in: "default" as Graph.EdgeName, out: cell_id as Graph.EdgeName },
+          ],
+          imports: parsed.output.meta.input,
         };
       } else {
         return {
@@ -52,85 +53,71 @@ let get_analysis_results = (
   graph: Graph.Graph
 ): StaticResult[] => {
   let cyclicals = Graph.cycles(graph);
-
-  // Hack to put cycles in, as they work weird so don't work nicely with
-  // the "what cells to run" logic.
-  let cycles_to_run = cyclicals.flatMap((cycle) =>
-    cycle.some(([cell_id]) => cells_to_run.includes(cell_id as CellId))
-      ? cycle.map(([cell_id]) => cell_id)
-      : []
-  );
-
   let multiple_definitions = Graph.multiple_definitions(graph);
 
-  return uniq([...cells_to_run, ...cycles_to_run]).flatMap(
-    (cell_id: CellId) => {
-      let parsed = parsed_cells[cell_id];
-      // Error while parsing the code, so we display babel error
-      if ("error" in parsed) {
-        return {
-          type: "error",
-          cell_id: cell_id,
-          error: new StacklessError(parsed.error),
-        };
-      } else if (!("output" in parsed)) {
+  return uniq(cells_to_run).flatMap((cell_id: CellId) => {
+    let parsed = parsed_cells[cell_id];
+    // Error while parsing the code, so we display babel error
+    if ("error" in parsed) {
+      return {
+        type: "error",
+        cell_id: cell_id,
+        error: new StacklessError(parsed.error),
+      };
+    } else if (!("output" in parsed)) {
+      // prettier-ignore
+      invariant(parsed.static != null, `parsed.static shouldn't be null when parsed.output is null`);
+      return {
+        type: "static",
+        cell_id,
+      };
+    } else if (parsed.output.meta.has_top_level_return) {
+      return {
+        type: "error",
+        cell_id: cell_id,
         // prettier-ignore
-        invariant(parsed.static != null, `parsed.static shouldn't be null when parsed.output is null`);
-        return {
-          type: "static",
-          cell_id,
-        };
-      } else if (parsed.output.meta.has_top_level_return) {
-        return {
-          type: "error",
-          cell_id: cell_id,
-          // prettier-ignore
-          error: new StacklessError("Top level return statements are not allowed"),
-        };
-      } else if (multiple_definitions.has(cell_id)) {
-        let joined = Array.from(multiple_definitions.get(cell_id)).join(", ");
-        return {
-          type: "error",
-          cell_id: cell_id,
-          // prettier-ignore
-          error: new StacklessError(`Multiple definitions of ${joined}`),
-        };
-      } else if (
-        cyclicals.some((group) => group.some(([x]) => x === cell_id))
-      ) {
-        let my_cycles = cyclicals
-          .filter((group) => group.some(([x]) => x === cell_id))
-          .map((cycle) => {
-            // Find this cell in the cycle, and then start it from there
-            let start_index = cycle.findIndex(([x]) => x === cell_id);
-            return [
-              ...cycle.slice(start_index),
-              ...cycle.slice(0, start_index),
-              cycle[start_index],
-            ];
-          });
-
-        let my_cycles_text = my_cycles
-          .map(
-            (x) =>
-              "(" + x.map(([x, { name }]) => `\`${name}\``).join(" -> ") + ")"
-          )
-          .join(", ");
-
+        error: new StacklessError("Top level return statements are not allowed"),
+      };
+    } else if (multiple_definitions.has(cell_id)) {
+      let joined = Array.from(multiple_definitions.get(cell_id)).join(", ");
+      return {
+        type: "error",
+        cell_id: cell_id,
         // prettier-ignore
-        return {
+        error: new StacklessError(`Multiple definitions of ${joined}`),
+      };
+    } else if (cyclicals.some((group) => group.some(([x]) => x === cell_id))) {
+      let my_cycles = cyclicals
+        .filter((group) => group.some(([x]) => x === cell_id))
+        .map((cycle) => {
+          // Find this cell in the cycle, and then start it from there
+          let start_index = cycle.findIndex(([x]) => x === cell_id);
+          return [
+            ...cycle.slice(start_index),
+            ...cycle.slice(0, start_index),
+            cycle[start_index],
+          ];
+        });
+
+      let my_cycles_text = my_cycles
+        .map(
+          (x) => "(" + x.map(([x, edge]) => `\`${edge.in}\``).join(" -> ") + ")"
+        )
+        .join(", ");
+
+      // prettier-ignore
+      return {
         type: "error",
         cell_id: cell_id,
         error: new StacklessError(`Cyclical dependency ${my_cycles_text}`),
       };
-      } else {
-        return {
-          type: "fine",
-          cell_id,
-        };
-      }
+    } else {
+      return {
+        type: "fine",
+        cell_id,
+      };
     }
-  );
+  });
 };
 
 export class NotebookArchitect {
@@ -144,6 +131,8 @@ export class NotebookArchitect {
         notebook_to_disconnected_graph(parsed_cells)
       )
     );
+
+    console.log(`graph:`, graph);
 
     let code_cell_ids = notebook.cell_order.filter(
       (x) => notebook.cells[x].type === "code"
@@ -194,6 +183,8 @@ export class NotebookArchitect {
     let arrangement = Graph.topological_sort(graph).map(
       (cell_id) => cell_id as CellId
     );
+
+    console.log(`mistakes:`, mistakes);
 
     return {
       chambers: new ModernMap(
