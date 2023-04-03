@@ -203,8 +203,6 @@ export function Excell() {
     });
   }, [cell_editor_states, EXCEL_CELLS]);
 
-  console.log(`notebook:`, notebook);
-
   let notebook_with_filename = React.useMemo(() => {
     return {
       filename: "Excel",
@@ -213,8 +211,6 @@ export function Excell() {
   }, [notebook, state.facet(NotebookFilename)]);
 
   let [engine, logs] = useEngine(notebook_with_filename, environment);
-
-  console.log(`engine:`, engine);
 
   return (
     <Grid>

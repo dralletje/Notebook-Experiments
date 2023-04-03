@@ -3,6 +3,7 @@ import { CellId } from "../types.js";
 import { Engine, EngineTime } from "./engine.js";
 import { DeepReadonly } from "../leaf/DeepReadonly.js";
 import { Blueprint, Chamber } from "../blueprint/blueprint.js";
+import { StacklessError } from "../javascript-notebook-runner.js";
 
 let cells_that_need_running = (
   blueprint: Blueprint,
@@ -10,7 +11,11 @@ let cells_that_need_running = (
 ): CellId[] => {
   let cell_should_run_at_map = new Map<CellId, EngineTime>();
   let cells_that_should_run: CellId[] = [];
-  for (let [cell_id, chamber] of blueprint.chambers) {
+
+  for (let [cell_id, chamber] of [
+    ...blueprint.chambers,
+    ...blueprint.mistakes,
+  ]) {
     let cylinder = engine.cylinders.get(cell_id);
 
     // prettier-ignore
@@ -109,7 +114,7 @@ export let find_cell_to_run_now = ({
         Object.assign(engine.cylinders.get(cell_id), {
           last_run: mistake.requested_run_time,
           last_internal_run: engine.tick(),
-          result: { type: "throw", value: mistake.message },
+          result: { type: "throw", value: new StacklessError(mistake.message) },
           running: false,
           waiting: false,
           upstream_cells: mistake.node.in.map(([id]) => id) as CellId[],

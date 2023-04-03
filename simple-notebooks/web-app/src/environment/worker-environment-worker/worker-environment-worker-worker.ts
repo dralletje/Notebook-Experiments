@@ -178,7 +178,6 @@ addEventListener("message", async (event) => {
     let blueprint = architect.design(notebook);
     engine.update(blueprint);
 
-    let thing = notebook_to_string(notebook, blueprint);
-    console.log(`{thing}:`, { thing });
+    // let thing = notebook_to_string(notebook, blueprint);
   }
 });

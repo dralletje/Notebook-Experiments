@@ -17,7 +17,10 @@ export let notebook_to_disconnected_graph = (
     if (parsed != null && "output" in parsed) {
       return {
         id: cell_id as CellId,
-        exports: parsed.output.meta.output as Graph.EdgeName[],
+        // TODO Hack to get sheets working
+        // exports: [cell_id] as Graph.EdgeName[],
+        // exports: ...parsed.output.meta.output as Graph.EdgeName[],
+        exports: [...parsed.output.meta.output, cell_id] as Graph.EdgeName[],
         imports: parsed.output.meta.input as Graph.EdgeName[],
       };
     } else {

@@ -95,8 +95,6 @@ export let notebook_to_string = (notebook: Notebook, blueprint: Blueprint) => {
     }
   }
 
-  console.log(`blueprint:`, blueprint);
-
   for (let cell_id of blueprint.chambers.keys()) {
     let cell = notebook.cells[cell_id];
     // prettier-ignore
@@ -106,7 +104,6 @@ export let notebook_to_string = (notebook: Notebook, blueprint: Blueprint) => {
 
   for (let cell_id of blueprint.mistakes.keys()) {
     let cell = notebook.cells[cell_id];
-    console.log(`cell:`, cell);
     // prettier-ignore
     invariant(cell.type === "code", `Cell "${cell_id} is not code, found in mistakes`);
     result += emit_code_cell(cell as any);

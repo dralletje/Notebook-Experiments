@@ -129,12 +129,15 @@ export class Engine extends TypedEventTarget<{
         insert: (cell_id) => new Cylinder(cell_id),
       });
     }
+    for (let [cell_id, cell] of blueprint.mistakes) {
+      this.cylinders.emplace(cell_id as CellId, {
+        insert: (cell_id) => new Cylinder(cell_id),
+      });
+    }
 
     /////////////////////////////////////
     // Get next cell to run
     /////////////////////////////////////
-
-    console.log(`blueprint:`, blueprint);
 
     let chamber_to_run = find_cell_to_run_now({
       engine: this,
@@ -146,8 +149,6 @@ export class Engine extends TypedEventTarget<{
       },
     });
 
-    console.log(`chamber_to_run:`, chamber_to_run);
-
     /////////////////////////////////////
     // Delete overdue cylinders
     /////////////////////////////////////
@@ -156,7 +157,11 @@ export class Engine extends TypedEventTarget<{
     // TODO Wrap abort controller handles so I can show when they go wrong
     let deleted_cylinders = this.cylinders
       .values()
-      .filter((cylinder) => !blueprint.chambers.has(cylinder.id));
+      .filter(
+        (cylinder) =>
+          !blueprint.chambers.has(cylinder.id) &&
+          !blueprint.mistakes.has(cylinder.id)
+      );
     for (let deleted_cylinder of deleted_cylinders) {
       await deleted_cylinder.reset();
       this.cylinders.delete(deleted_cylinder.id);
@@ -183,9 +188,8 @@ export class Engine extends TypedEventTarget<{
         })
       );
 
-      console.groupCollapsed(
-        pc.blue(pc.bold(`RUNNING CELL: ${chamber_to_run.id}`))
-      );
+      // prettier-ignore
+      console.groupCollapsed(pc.blue(pc.bold(`RUNNING CELL: ${chamber_to_run.id}`)));
       console.log(pc.blue(chamber_to_run.code));
       console.groupEnd();
 
@@ -221,7 +225,11 @@ export class Engine extends TypedEventTarget<{
               }
             : result,
         running: false,
-        variables: result.type === "return" ? result.value : {},
+        variables:
+          result.type === "return"
+            ? // TODO Hack to get sheets working
+              { ...result.value, [chamber_to_run.id]: result.value.default }
+            : {},
       });
 
       this.dispatchEvent(new EngineChangeEvent());
