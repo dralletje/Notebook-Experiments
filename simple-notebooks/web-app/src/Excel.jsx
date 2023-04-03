@@ -214,22 +214,33 @@ export function Excell() {
 
   return (
     <Grid>
-      {chunk(EXCEL_CELLS, ALPHABET.length).map((row, i) => (
+      <thead>
         <tr>
-          {row
-            .map((cell_id) => notebook.cells[cell_id])
-            .map((cell, index) => (
-              <Cell
-                key={cell.id}
-                cell_id={cell.id}
-                viewupdate={extract_nested_viewupdate(viewupdate, cell.id)}
-                cylinder={engine.cylinders[cell.id]}
-                is_selected={selected_cells.includes(cell.id)}
-                did_just_get_created={last_created_cells.includes(cell.id)}
-              />
-            ))}
+          <th />
+          {ALPHABET.split("").map((letter) => (
+            <th>{letter}</th>
+          ))}
         </tr>
-      ))}
+      </thead>
+      <tbody>
+        {chunk(EXCEL_CELLS, ALPHABET.length).map((row, i) => (
+          <tr>
+            <th>{i}</th>
+            {row
+              .map((cell_id) => notebook.cells[cell_id])
+              .map((cell, index) => (
+                <Cell
+                  key={cell.id}
+                  cell_id={cell.id}
+                  viewupdate={extract_nested_viewupdate(viewupdate, cell.id)}
+                  cylinder={engine.cylinders[cell.id]}
+                  is_selected={selected_cells.includes(cell.id)}
+                  did_just_get_created={last_created_cells.includes(cell.id)}
+                />
+              ))}
+          </tr>
+        ))}
+      </tbody>
     </Grid>
   );
 }
@@ -239,9 +250,16 @@ let Grid = styled.table`
   background: darkslategray;
   color: white;
 
-  .excell {
-    width: calc(100% / ${ALPHABET.length});
+  th,
+  td {
     border: #e5e7eb solid 2px;
+  }
+  th {
+    min-width: 25px;
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+  td {
+    width: calc(100% / ${ALPHABET.length});
   }
 `;
 
@@ -257,29 +275,17 @@ let inspector_css_sheet = new CSSish(inspector_css);
 let Value = ({ result }) => {
   if (result == null) return <div />;
   if (result?.type === "pending") {
-    return (
-      <React.Fragment>
-        <AdoptStylesheet stylesheet={observable_inspector_sheet} />
-        <AdoptStylesheet stylesheet={inspector_css_sheet} />
-
-        <Inspector value={result} />
-      </React.Fragment>
-    );
+    return <Inspector value={result} />;
   }
 
   let value = deserialize(0, result.value);
   return (
-    <React.Fragment>
-      <AdoptStylesheet stylesheet={observable_inspector_sheet} />
-      <AdoptStylesheet stylesheet={inspector_css_sheet} />
-
-      <Inspector
-        value={{
-          type: "return",
-          value,
-        }}
-      />
-    </React.Fragment>
+    <Inspector
+      value={{
+        type: "return",
+        value,
+      }}
+    />
   );
 };
 
@@ -292,6 +298,9 @@ let Value = ({ result }) => {
 let Cell = ({ viewupdate, cylinder }) => {
   return (
     <td className="excell">
+      <AdoptStylesheet stylesheet={observable_inspector_sheet} />
+      <AdoptStylesheet stylesheet={inspector_css_sheet} />
+
       <Value result={cylinder?.result} />
       <CodemirrorFromViewUpdate viewupdate={viewupdate} />
     </td>
