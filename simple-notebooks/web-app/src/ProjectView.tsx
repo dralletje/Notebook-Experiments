@@ -173,9 +173,15 @@ let Sidebar = styled.div`
 
   &.tab-notebook {
     background-color: #01412d;
+    nav {
+      border-bottom: solid 3px #081c14;
+    }
   }
   &.tab-logs {
     background-color: rgba(23, 1, 129, 0.27);
+    nav {
+      border-bottom: solid 1px #090715;
+    }
   }
 
   nav {
