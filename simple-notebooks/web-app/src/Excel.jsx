@@ -225,7 +225,7 @@ export function Excell() {
       <tbody>
         {chunk(EXCEL_CELLS, ALPHABET.length).map((row, i) => (
           <tr>
-            <th>{i}</th>
+            <th>{i + 1}</th>
             {row
               .map((cell_id) => notebook.cells[cell_id])
               .map((cell, index) => (

@@ -225,7 +225,11 @@ export class Engine extends TypedEventTarget<{
               }
             : result,
         running: false,
-        variables: result.type === "return" ? result.value : {},
+        variables:
+          result.type === "return"
+            ? // TODO Hack to get sheets working
+              { ...result.value, [chamber_to_run.id]: result.value.default }
+            : {},
       });
 
       this.dispatchEvent(new EngineChangeEvent());
