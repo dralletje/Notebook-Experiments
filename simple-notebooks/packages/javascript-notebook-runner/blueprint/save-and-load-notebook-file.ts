@@ -2,7 +2,7 @@ import TOML from "@iarna/toml";
 import { mapValues, merge, takeWhile } from "lodash-es";
 
 import type { Cell, CellId, Notebook } from "../types.js";
-import { Blueprint } from "../blueprint/notebook-architect.js";
+import { Blueprint } from "./blueprint.js";
 import { invariant } from "../leaf/invariant.js";
 
 const OPEN = "// ╔═╡";

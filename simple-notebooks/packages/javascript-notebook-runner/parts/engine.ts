@@ -90,7 +90,6 @@ export class Engine extends TypedEventTarget<{
   log: EngineLogEvent;
 }> {
   private pending_blueprint: Blueprint = {
-    arrangment: [],
     chambers: new ModernMap(),
     mistakes: new ModernMap(),
   };
