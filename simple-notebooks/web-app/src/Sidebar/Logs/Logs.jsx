@@ -10,7 +10,9 @@ import { Flipper, Flipped, spring } from "react-flip-toolkit";
 import shadow from "react-shadow/styled-components";
 import { AdoptStylesheet, CSSish } from "../../yuck/adoptedStyleSheets";
 
-import logs_css from "./Logs.css";
+// @ts-ignore
+import logs_css from "./Logs.css?inline";
+// @ts-ignore
 import shadow_log_css from "./shadow-log.css?inline";
 
 let logs_sheet = new CSSish(logs_css);
@@ -65,7 +67,10 @@ let InlineCell = ({ cell_id, cylinder, code }) => {
 
   let [editor_state, set_editor_state] = React.useState(initial_editor_state);
 
-  let viewupdate = useViewUpdate(editor_state, set_editor_state);
+  let viewupdate = useViewUpdate(
+    editor_state,
+    /** @type {any} */ (set_editor_state)
+  );
 
   return (
     <shadow.div>
@@ -77,6 +82,7 @@ let InlineCell = ({ cell_id, cylinder, code }) => {
           // @ts-ignore
           result: {
             ...cylinder.result,
+            // @ts-ignore
             name: undefined,
           },
         }}
@@ -90,7 +96,7 @@ let InlineCell = ({ cell_id, cylinder, code }) => {
 
 /**
  * @param {{
- *  logs: import("../../use/use-local-environment.js").EngineLog[],
+ *  logs: import("../../environment/Environment.js").EngineLog[],
  *  notebook: import("../../packages/codemirror-notebook/cell.js").Notebook,
  *  engine: import("../../packages/codemirror-notebook/cell.js").EngineShadow,
  * }} props

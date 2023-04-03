@@ -3,7 +3,6 @@ import Opaque from "ts-opaque";
 import { Notebook, VariableName } from "../types";
 import {
   ExecutionResult,
-  find_cell_to_run_now,
   find_chamber_to_run_now,
   find_pending_cells,
 } from "./notebook-step.js";

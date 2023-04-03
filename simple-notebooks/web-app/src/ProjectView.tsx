@@ -44,6 +44,13 @@ import { Environment } from "./environment/Environment";
 import { Excell } from "./Excel";
 import { useUrl } from "./packages/use-url/use-url";
 import { NotebookView } from "./NotebookView";
+import shadow from "react-shadow/styled-components";
+import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
+
+// @ts-ignore
+import shadow_notebook_css from "./shadow-notebook.css?inline";
+
+let shadow_notebook = new CSSish(shadow_notebook_css);
 
 export function ProjectView({
   state,
@@ -137,7 +144,10 @@ export function ProjectView({
             <Logs logs={logs} notebook={notebook} engine={engine} />
           )}
           {tab === "notebook" && (
-            <NotebookView engine={engine} viewupdate={viewupdate} />
+            <shadow.div>
+              <AdoptStylesheet stylesheet={shadow_notebook} />
+              <NotebookView engine={engine} viewupdate={viewupdate} />
+            </shadow.div>
           )}
         </section>
       </Sidebar>

@@ -10,4 +10,5 @@ export type { Notebook } from "./types.js";
 export type { ExecutionResult } from "./parts/notebook-step.js";
 
 export { NotebookArchitect } from "./blueprint/notebook-architect.js";
+export { SheetArchitect } from "./blueprint/sheet-architect.js";
 export type { Blueprint, Chamber, Mistake } from "./blueprint/blueprint.js";
