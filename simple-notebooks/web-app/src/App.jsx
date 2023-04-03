@@ -45,6 +45,11 @@ import { ScopedStorage, useScopedStorage } from "./use/scoped-storage.js";
 import { SocketEnvironment } from "./environment/SocketEnvironment";
 import { WorkerEnvironment } from "./environment/WorkerEnvironment";
 import { useWorkerStorage, useSocketStorage } from "./use/use-storage";
+import { useUrl } from "./packages/use-url/use-url.js";
+import {
+  ContextMenu,
+  ContextMenuWrapper,
+} from "./packages/react-contextmenu/react-contextmenu.jsx";
 
 /**
  * @typedef Workspace
@@ -89,23 +94,13 @@ let DEFAULT_CELL_ID_AFTER_CRASH = /** @type {any} */ ("oh-no-what-happened");
 export let notebook_to_state = ({ filename, notebook }) => {
   return EditorInChief.create({
     editors: (editorstate) => {
-      let object = mapValues(notebook.cells, (cell) =>
+      return mapValues(notebook.cells, (cell) =>
         create_cell_state(editorstate, cell)
       );
-      if (isEmpty(object)) {
-        object[DEFAULT_CELL_ID_AFTER_CRASH] = create_cell_state(editorstate, {
-          id: DEFAULT_CELL_ID_AFTER_CRASH,
-          code: "",
-          type: "code",
-          unsaved_code: "",
-          requested_run_time: 0,
-        });
-      }
-      return object;
     },
     extensions: [
       CellOrderField.init(() => {
-        let cell_order = notebook.cell_order.filter((x) => {
+        return notebook.cell_order.filter((x) => {
           if (notebook.cells[x]) {
             return true;
           } else {
@@ -113,11 +108,6 @@ export let notebook_to_state = ({ filename, notebook }) => {
             return false;
           }
         });
-        if (cell_order.length === 0) {
-          return [DEFAULT_CELL_ID_AFTER_CRASH];
-        } else {
-          return cell_order;
-        }
       }),
       EditorExtension.of(
         CellTypeFacet.compute(
@@ -209,8 +199,15 @@ let FileTab = styled.button`
 `;
 
 function App() {
-  // let path = new URL(window.location.href)
-  // path.
+  let [url, set_url, replace_url] = useUrl();
+  let [_, open_file, ...rest] = url.pathname.split("/");
+  if (open_file === "") open_file = "notes";
+  React.useEffect(() => {
+    document.title = open_file;
+  }, [open_file]);
+  // if (!filename.match(/\.tsx?$|\.jsx?$|.mjsx?$/)) {
+  //   replace_url(["", "app", ...rest].join("/"));
+  // }
 
   //////////////////////////////////////////////////////////////
 
@@ -224,18 +221,57 @@ function App() {
 
   //////////////////////////////////////////////////////////////
 
-  let [open_file, set_open_file] = React.useState(
-    /** @type {string | null} */ (null)
-  );
+  /** @type {import("./packages/codemirror-notebook/cell").CellId} */
+  let EMPTY_TITLE_CELL_ID = /** @type {any} */ ("Something-Wonderful𓃰");
+  /** @type {import("./packages/codemirror-notebook/cell").CellId} */
+  let EMPTY_CODE_CELL_ID = /** @type {any} */ ("So-Exciting𓆉");
+
+  if (!(open_file in workspace.files)) {
+    set_workspace(
+      produce(workspace, (workspace) => {
+        workspace.files[open_file] = {
+          // @ts-ignore
+          id: /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */ (
+            open_file
+          ),
+          // @ts-ignore
+          state: notebook_to_state({
+            filename: open_file,
+            notebook: {
+              id: /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */ (
+                open_file
+              ),
+              cell_order: [EMPTY_TITLE_CELL_ID, EMPTY_CODE_CELL_ID],
+              cells: {
+                [EMPTY_TITLE_CELL_ID]:
+                  /** @type {import("./packages/codemirror-notebook/cell").Cell} */ ({
+                    id: EMPTY_TITLE_CELL_ID,
+                    type: "text",
+                    unsaved_code: `# ${open_file}`,
+                    code: `# ${open_file}`,
+                    requested_run_time: 0,
+                    folded: false,
+                  }),
+                [EMPTY_CODE_CELL_ID]:
+                  /** @type {import("./packages/codemirror-notebook/cell").Cell} */ ({
+                    id: EMPTY_CODE_CELL_ID,
+                    type: "code",
+                    unsaved_code: "",
+                    code: "",
+                    requested_run_time: 0,
+                    folded: false,
+                  }),
+              },
+            },
+          }),
+        };
+      })
+    );
+    return;
+  }
+
   if (workspace == null) {
     return <div></div>;
-  }
-  if (open_file == null) {
-    let first_file = Object.keys(workspace.files)[0];
-    if (first_file != null) {
-      set_open_file(first_file);
-    }
-    return <div>Uhh</div>;
   }
 
   return (
@@ -260,15 +296,48 @@ function App() {
         }}
       >
         {Object.keys(workspace.files).map((filename) => (
-          <FileTab
-            key={filename}
-            aria-selected={filename === open_file}
-            onClick={() => {
-              set_open_file(filename);
-            }}
+          <ContextMenuWrapper
+            options={[
+              {
+                title: "Remove",
+                onClick: () => {
+                  if (confirm("Are you sure you want to remove this note?")) {
+                    set_workspace(
+                      produce(workspace, (workspace) => {
+                        delete workspace.files[filename];
+                      })
+                    );
+                  }
+                  set_url(`/`);
+                },
+              },
+              {
+                title: "Rename",
+                onClick: () => {
+                  let new_filename = prompt("New note name", filename);
+                  if (new_filename == null) return;
+                  set_workspace(
+                    produce(workspace, (workspace) => {
+                      // @ts-ignore
+                      workspace[new_filename] = workspace.files[filename];
+                      delete workspace.files[filename];
+                    })
+                  );
+                  set_url(`/${new_filename}`);
+                },
+              },
+            ]}
           >
-            {filename}
-          </FileTab>
+            <FileTab
+              key={filename}
+              aria-selected={filename === open_file}
+              onClick={() => {
+                set_url(`/${filename}`);
+              }}
+            >
+              {filename}
+            </FileTab>
+          </ContextMenuWrapper>
         ))}
       </div>
 
