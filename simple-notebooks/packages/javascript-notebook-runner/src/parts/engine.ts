@@ -1,10 +1,10 @@
 import pc from "picocolors";
 import Opaque from "ts-opaque";
-import { CellId, Notebook, VariableName } from "../types";
+import { Notebook, VariableName } from "../types";
 import { ExecutionResult, find_cell_to_run_now } from "./notebook-step.js";
 import { TypedEventTarget } from "../leaf/typed-event-target.js";
 import { ModernMap } from "@dral/modern-map";
-import { Blueprint } from "../blueprint/blueprint";
+import { Blueprint, CellId } from "../blueprint/blueprint";
 
 export type LivingValue = Opaque<unknown, "LivingValue">;
 export type EngineTime = Opaque<number, "RunTracker">;
@@ -225,11 +225,7 @@ export class Engine extends TypedEventTarget<{
               }
             : result,
         running: false,
-        variables:
-          result.type === "return"
-            ? // TODO Hack to get sheets working
-              { ...result.value, [chamber_to_run.id]: result.value.default }
-            : {},
+        variables: result.type === "return" ? result.value : {},
       });
 
       this.dispatchEvent(new EngineChangeEvent());

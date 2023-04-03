@@ -4,33 +4,35 @@ import { invariant } from "../leaf/invariant.js";
 import { StacklessError } from "../leaf/StacklessError.js";
 
 import { ParseCache, ParsedCells } from "./parse-cache.js";
-import { CellId, Notebook } from "../types.js";
+import { Notebook } from "../types.js";
 
 import * as Graph from "../leaf/graph.js";
-import { Blueprint, Chamber, Mistake } from "./blueprint.js";
+import { Blueprint, CellId, Chamber, Mistake } from "./blueprint.js";
 
 export let notebook_to_disconnected_graph = (
   parsed_cells: ParsedCells
 ): Graph.DisconnectedGraph => {
-  return Object.entries(parsed_cells).map(([cell_id, parsed_cell]) => {
-    let parsed = parsed_cells[cell_id];
-    if (parsed != null && "output" in parsed) {
-      return {
-        id: cell_id as CellId,
-        // TODO Hack to get sheets working
-        // exports: [cell_id] as Graph.EdgeName[],
-        // exports: ...parsed.output.meta.output as Graph.EdgeName[],
-        exports: [...parsed.output.meta.output, cell_id] as Graph.EdgeName[],
-        imports: parsed.output.meta.input as Graph.EdgeName[],
-      };
-    } else {
-      return {
-        id: cell_id as CellId,
-        exports: [],
-        imports: [],
-      };
-    }
-  });
+  return [
+    ...Object.entries(parsed_cells).map(([cell_id, parsed_cell]) => {
+      let parsed = parsed_cells[cell_id];
+      if (parsed != null && "output" in parsed) {
+        return {
+          id: cell_id as CellId,
+          // TODO Hack to get sheets working
+          // exports: [cell_id] as Graph.EdgeName[],
+          // exports: ...parsed.output.meta.output as Graph.EdgeName[],
+          exports: [...parsed.output.meta.output, cell_id] as Graph.EdgeName[],
+          imports: parsed.output.meta.input as Graph.EdgeName[],
+        };
+      } else {
+        return {
+          id: cell_id as CellId,
+          exports: [],
+          imports: [],
+        };
+      }
+    }),
+  ];
 };
 
 type StaticResult =

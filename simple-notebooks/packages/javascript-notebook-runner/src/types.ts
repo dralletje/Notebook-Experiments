@@ -1,8 +1,8 @@
 import * as Graph from "./leaf/graph.js";
 import type { Opaque } from "ts-opaque";
 import { Engine } from "./parts/engine.js";
+import { CellId } from "./blueprint/blueprint.js";
 
-export type CellId = Opaque<string, "CellId"> & Graph.NodeId;
 export type VariableName = Opaque<string, "VariableName"> & Graph.EdgeName;
 
 export type Cell = {

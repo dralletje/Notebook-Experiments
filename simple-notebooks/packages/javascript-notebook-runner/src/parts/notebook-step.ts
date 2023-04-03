@@ -1,8 +1,7 @@
 import { invariant } from "../leaf/invariant.js";
-import { CellId } from "../types.js";
 import { Engine, EngineTime } from "./engine.js";
 import { DeepReadonly } from "../leaf/DeepReadonly.js";
-import { Blueprint, Chamber } from "../blueprint/blueprint.js";
+import { Blueprint, CellId, Chamber } from "../blueprint/blueprint.js";
 import { StacklessError } from "../javascript-notebook-runner.js";
 
 let cells_that_need_running = (

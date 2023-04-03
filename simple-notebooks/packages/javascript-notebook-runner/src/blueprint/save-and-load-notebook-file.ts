@@ -1,8 +1,8 @@
 import TOML from "@iarna/toml";
 import { mapValues, merge, takeWhile } from "lodash-es";
 
-import type { Cell, CellId, Notebook } from "../types.js";
-import { Blueprint } from "./blueprint.js";
+import type { Cell, Notebook } from "../types.js";
+import { Blueprint, CellId } from "./blueprint.js";
 import { invariant } from "../leaf/invariant.js";
 
 const OPEN = "// ╔═╡";

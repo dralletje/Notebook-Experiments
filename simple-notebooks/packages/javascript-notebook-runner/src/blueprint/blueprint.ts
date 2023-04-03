@@ -1,7 +1,11 @@
+import type { Opaque } from "ts-opaque";
 import { ModernMap } from "@dral/modern-map";
-import { CellId } from "../types.js";
 
 import * as Graph from "../leaf/graph.js";
+
+export type CellId = Opaque<string, "CellId"> & Graph.NodeId;
+
+export type VariableName = Opaque<string, "VariableName"> & Graph.EdgeName;
 
 export interface Chamber {
   id: CellId;
