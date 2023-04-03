@@ -19,7 +19,7 @@ import {
   CellIdOrder,
   cell_movement_extension,
 } from "./packages/codemirror-notebook/cell-movement";
-import { NotebookView } from "./Notebook";
+import { NotebookView } from "./NotebookView";
 import {
   NotebookFilename,
   NotebookId,
@@ -88,37 +88,25 @@ export let create_cell_state = (editorstate, cell) => {
 };
 
 // const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const ALPHABET = "AB";
+const ALPHABET = "ABCDEF";
 // @ts-ignore
 let EXCEL_CELLS =
   /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId[]} */ (
-    range(1, 2).flatMap((i) => ALPHABET.split("").map((j) => `${j}${i}`))
+    range(1, 10).flatMap((i) => ALPHABET.split("").map((j) => `${j}${i}`))
   );
 export let notebook_to_state = () => {
   return EditorInChief.create({
     editors: (editorstate) => {
-      // return Object.fromEntries(
-      //   EXCEL_CELLS.map((cell_id) => [
-      //     cell_id,
-      //     create_cell_state(editorstate, {
-      //       id: cell_id,
-      //       code: "1",
-      //       unsaved_code: "1",
-      //     }),
-      //   ])
-      // );
-      return {
-        A1: create_cell_state(editorstate, {
-          id: "A1",
-          code: "B1",
-          unsaved_code: "B1",
-        }),
-        B1: create_cell_state(editorstate, {
-          id: "B1",
-          code: `"B1!"`,
-          unsaved_code: `"B1!"`,
-        }),
-      };
+      return Object.fromEntries(
+        EXCEL_CELLS.map((cell_id) => [
+          cell_id,
+          create_cell_state(editorstate, {
+            id: cell_id,
+            code: "1",
+            unsaved_code: "1",
+          }),
+        ])
+      );
     },
     extensions: [
       SelectedCellsField,
@@ -180,7 +168,7 @@ export function Excell() {
   let [state, set_state] = React.useState(() => notebook_to_state());
   let environment = React.useRef(WorkerEnvironment).current;
 
-  let viewupdate = useViewUpdate(state, set_state);
+  let viewupdate = useViewUpdate(state, /** @type {any} */ (set_state));
   // useCodemirrorKeyhandler(viewupdate);
 
   let cell_editor_states = state.editors;
@@ -261,6 +249,9 @@ let Grid = styled.table`
   padding: 10px;
   background: darkslategray;
   color: white;
+  height: auto;
+  align-self: flex-start;
+  flex: 1;
 
   th,
   td {
@@ -272,6 +263,7 @@ let Grid = styled.table`
   }
   td {
     width: calc(100% / ${ALPHABET.length});
+    min-width: 50px;
   }
 `;
 

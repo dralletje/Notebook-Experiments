@@ -208,6 +208,7 @@ export const SelectionArea = ({ on_selection, children }) => {
     <selection-area-wrapper
       style={{ display: "contents" }}
       ref={element_ref}
+      // @ts-ignore
       onMouseDown={onmousedown}
     >
       <SimpleDialog open={selection != null}>

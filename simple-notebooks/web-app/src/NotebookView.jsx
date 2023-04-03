@@ -2,7 +2,10 @@ import React from "react";
 
 import styled from "styled-components";
 import { isEqual } from "lodash";
-import { useViewUpdate } from "codemirror-x-react/viewupdate";
+import {
+  GenericViewUpdate,
+  useViewUpdate,
+} from "codemirror-x-react/viewupdate";
 
 import {
   SelectCellsEffect,
@@ -61,19 +64,16 @@ let NotebookStyle = styled.div`
 
 /**
  * @param {{
- *  state: EditorInChief,
- *  onChange: (state: EditorInChief) => void,
- *  environment: import("./environment/Environment.js").Environment,
+ *  viewupdate: GenericViewUpdate<EditorInChief>,
+ *  engine: import("./packages/codemirror-notebook/cell").EngineShadow
  * }} props
  */
-export function NotebookView({ state, onChange, environment }) {
-  let viewupdate = useViewUpdate(state, onChange);
-  useCodemirrorKeyhandler(viewupdate);
+export function NotebookView({ viewupdate, engine }) {
+  let { state, view: editor_in_chief } = viewupdate;
 
   let cell_editor_states = state.editors;
   let cell_order = state.field(CellOrderField);
-  let selected_cells = viewupdate.state.field(SelectedCellsField);
-  let editor_in_chief = viewupdate.view;
+  let selected_cells = state.field(SelectedCellsField);
 
   /**
    * Keep track of what cells are just created by the users,
@@ -109,90 +109,78 @@ export function NotebookView({ state, onChange, environment }) {
     });
   }, [cell_editor_states, cell_order]);
 
-  let notebook_with_filename = React.useMemo(() => {
-    return {
-      filename: state.facet(NotebookFilename),
-      notebook: notebook,
-    };
-  }, [notebook, state.facet(NotebookFilename)]);
+  // let notebook_with_filename = React.useMemo(() => {
+  //   return {
+  //     filename: state.facet(NotebookFilename),
+  //     notebook: notebook,
+  //   };
+  // }, [notebook, state.facet(NotebookFilename)]);
 
-  let [engine, logs] = useEngine(notebook_with_filename, environment);
+  // let [engine, logs] = useEngine(notebook_with_filename, environment);
 
   return (
-    <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
-      <SelectionArea
-        on_selection={(new_selected_cells) => {
-          if (!isEqual(new_selected_cells, selected_cells)) {
-            viewupdate.view.dispatch({
-              effects: [
-                SelectCellsEffect.of(new_selected_cells),
-                BlurEditorInChiefEffect.of(),
-              ],
-            });
-          }
-        }}
-      >
-        <NotebookStyle>
-          <DragAndDropList editor_in_chief={editor_in_chief}>
-            {cell_order
-              .map((cell_id) => notebook.cells[cell_id])
-              .map((cell, index) => (
-                <DragAndDropItem
-                  key={cell.id}
-                  index={index}
-                  id={cell.id}
-                  cell_id={cell.id}
-                  editor_in_chief={editor_in_chief}
-                  context_options={cell_actions({ editor_in_chief, cell })}
-                >
-                  <CellErrorBoundary>
-                    {editor_in_chief.state
-                      .editor(cell.id)
-                      .facet(CellTypeFacet) === "text" ? (
-                      <TextCell
-                        cell_id={cell.id}
-                        viewupdate={viewupdate}
-                        is_selected={selected_cells.includes(cell.id)}
-                        did_just_get_created={last_created_cells.includes(
-                          cell.id
-                        )}
-                      />
-                    ) : (
-                      <CellMemo
-                        cell_id={cell.id}
-                        viewupdate={extract_nested_viewupdate(
-                          viewupdate,
-                          cell.id
-                        )}
-                        cylinder={engine.cylinders[cell.id]}
-                        is_selected={selected_cells.includes(cell.id)}
-                        did_just_get_created={last_created_cells.includes(
-                          cell.id
-                        )}
-                      />
-                    )}
-                  </CellErrorBoundary>
-                </DragAndDropItem>
-              ))}
-          </DragAndDropList>
-        </NotebookStyle>
-        <div style={{ flex: 1, minWidth: 16 }} />
-      </SelectionArea>
-      <div
-        style={{
-          width: 400,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "stretch",
-          height: `calc(100vh - 50px)`,
-          position: "sticky",
-          top: 50,
-          overflowY: "auto",
-        }}
-      >
-        <Logs logs={logs} notebook={notebook} engine={engine} />
-      </div>
-    </div>
+    <SelectionArea
+      on_selection={(new_selected_cells) => {
+        if (!isEqual(new_selected_cells, selected_cells)) {
+          viewupdate.view.dispatch({
+            effects: [
+              SelectCellsEffect.of(
+                /** @type {import("./packages/codemirror-editor-in-chief/logic.js").EditorId[]} */ (
+                  new_selected_cells
+                )
+              ),
+              BlurEditorInChiefEffect.of(),
+            ],
+          });
+        }
+      }}
+    >
+      <NotebookStyle>
+        <DragAndDropList editor_in_chief={editor_in_chief}>
+          {cell_order
+            .map((cell_id) => notebook.cells[cell_id])
+            .map((cell, index) => (
+              <DragAndDropItem
+                key={cell.id}
+                index={index}
+                id={cell.id}
+                cell_id={cell.id}
+                editor_in_chief={editor_in_chief}
+                context_options={cell_actions({ editor_in_chief, cell })}
+              >
+                <CellErrorBoundary>
+                  {editor_in_chief.state
+                    .editor(cell.id)
+                    .facet(CellTypeFacet) === "text" ? (
+                    <TextCell
+                      cell_id={cell.id}
+                      viewupdate={viewupdate}
+                      is_selected={selected_cells.includes(cell.id)}
+                      did_just_get_created={last_created_cells.includes(
+                        cell.id
+                      )}
+                    />
+                  ) : (
+                    <CellMemo
+                      cell_id={cell.id}
+                      viewupdate={extract_nested_viewupdate(
+                        viewupdate,
+                        cell.id
+                      )}
+                      cylinder={engine.cylinders[cell.id]}
+                      is_selected={selected_cells.includes(cell.id)}
+                      did_just_get_created={last_created_cells.includes(
+                        cell.id
+                      )}
+                    />
+                  )}
+                </CellErrorBoundary>
+              </DragAndDropItem>
+            ))}
+        </DragAndDropList>
+      </NotebookStyle>
+      <div style={{ flex: 1, minWidth: 16 }} />
+    </SelectionArea>
   );
 }
 

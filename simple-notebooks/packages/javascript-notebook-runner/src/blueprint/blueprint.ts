@@ -23,8 +23,6 @@ export interface Mistake {
 }
 
 export type Blueprint = {
-  // graph: Graph.Graph;
-  // arrangment: Array<CellId>;
   chambers: ModernMap<CellId, Chamber>;
   mistakes: ModernMap<CellId, Mistake>;
 };

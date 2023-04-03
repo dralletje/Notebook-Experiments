@@ -19,7 +19,6 @@ import {
   CellIdOrder,
   cell_movement_extension,
 } from "./packages/codemirror-notebook/cell-movement";
-import { NotebookView } from "./Notebook";
 import {
   NotebookFilename,
   NotebookId,
@@ -39,18 +38,14 @@ import {
 import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
 import { add_single_cell_when_all_cells_are_removed } from "./packages/codemirror-notebook/add-cell-when-last-is-removed";
 
-import "./App.css";
-import { ScopedStorage, useScopedStorage } from "./use/scoped-storage.js";
-
 import { SocketEnvironment } from "./environment/SocketEnvironment";
 import { WorkerEnvironment } from "./environment/WorkerEnvironment";
 import { useWorkerStorage, useSocketStorage } from "./use/use-storage";
 import { useUrl } from "./packages/use-url/use-url.js";
-import {
-  ContextMenu,
-  ContextMenuWrapper,
-} from "./packages/react-contextmenu/react-contextmenu.jsx";
-import { Excell } from "./Excel.jsx";
+import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu.jsx";
+import { ProjectView } from "./ProjectView";
+
+import "./App.css";
 
 /**
  * @typedef Workspace
@@ -342,14 +337,12 @@ function App() {
         ))}
       </div>
 
-      <Excell />
-
       {open_file == null ? (
         <div></div>
       ) : (
-        <NotebookView
-          environment={environment}
+        <ProjectView
           key={open_file}
+          environment={environment}
           state={workspace.files[open_file].state}
           onChange={(state) => {
             let new_workspace = produce(workspace, (workspace) => {
