@@ -5,6 +5,8 @@ import { ExecutionResult, find_cell_to_run_now } from "./notebook-step.js";
 import { TypedEventTarget } from "../leaf/typed-event-target.js";
 import { ModernMap } from "@dral/modern-map";
 import { Blueprint, CellId } from "../blueprint/blueprint";
+import { StacklessError } from "../javascript-notebook-runner";
+import { groupCollapsed } from "../leaf/group";
 
 export type LivingValue = Opaque<unknown, "LivingValue">;
 export type EngineTime = Opaque<number, "RunTracker">;
@@ -35,7 +37,8 @@ export class Cylinder {
   /**
    * Why do I need this, if it is already in the graph?
    * I need to know what cells the last run of this cell depended on
-   * so I can find out about them even if they are deleted.
+   * so I can find out about them even if they are deleted or
+   * no longer connected in the next run.
    */
   upstream_cells: Array<CellId> = [];
   /**
@@ -139,15 +142,43 @@ export class Engine extends TypedEventTarget<{
     // Get next cell to run
     /////////////////////////////////////
 
-    let chamber_to_run = find_cell_to_run_now({
-      engine: this,
-      blueprint: blueprint,
-      onChange: (fn) => {
-        did_change = true;
-        fn(this);
-        this.dispatchEvent(new EngineChangeEvent());
-      },
-    });
+    let { chamber_to_run, pending_chambers, pending_mistakes } = groupCollapsed(
+      "FIND CELL TO RUN",
+      () => {
+        return find_cell_to_run_now({
+          engine: this,
+          blueprint: blueprint,
+        });
+      }
+    );
+
+    let did_update_pending = false;
+    if (pending_chambers.size > 0 || pending_mistakes.size > 0) {
+      for (let chamber of pending_chambers.values()) {
+        let cylinder = this.cylinders.get(chamber.id);
+        if (!cylinder.waiting) {
+          cylinder.waiting = true;
+          did_update_pending = true;
+        }
+      }
+
+      for (let mistake of pending_mistakes.values()) {
+        let cylinder = this.cylinders.get(mistake.id);
+        Object.assign(cylinder, {
+          last_run: mistake.requested_run_time,
+          last_internal_run: this.tick(),
+          result: { type: "throw", value: new StacklessError(mistake.message) },
+          running: false,
+          waiting: false,
+          upstream_cells: mistake.node.in.map(([id]) => id) as CellId[],
+          variables: {},
+        });
+        did_update_pending = true;
+      }
+    }
+    if (did_update_pending) {
+      this.dispatchEvent(new EngineChangeEvent());
+    }
 
     /////////////////////////////////////
     // Delete overdue cylinders
@@ -189,21 +220,23 @@ export class Engine extends TypedEventTarget<{
       );
 
       // prettier-ignore
-      console.groupCollapsed(pc.blue(pc.bold(`RUNNING CELL: ${chamber_to_run.id}`)));
-      console.log(pc.blue(chamber_to_run.code));
-      console.groupEnd();
-
-      // Look for requested variable names in other cylinders
-      let inputs = {};
-      for (let [in_cell, edge] of chamber_to_run.node.in) {
-        let in_cylinder = this.cylinders.get(in_cell as CellId);
-        if (edge.out in in_cylinder.variables) {
-          inputs[edge.in] = in_cylinder.variables[edge.out];
+      let inputs  = groupCollapsed(pc.blue(pc.bold(`RUNNING CELL`)), pc.blue(chamber_to_run.id), () => {
+        console.log(pc.blue(chamber_to_run.code));
+        
+        // Look for requested variable names in other cylinders
+        let inputs = {};
+        for (let [in_cell, edge] of chamber_to_run.node.in) {
+          let in_cylinder = this.cylinders.get(in_cell as CellId);
+          if (edge.out in in_cylinder.variables) {
+            inputs[edge.in] = in_cylinder.variables[edge.out];
+          }
         }
-      }
+
+        console.log(`inputs:`, inputs)
+        return inputs
+      })
 
       await cylinder.reset();
-
       let { result } = await this.run_cell({
         id: chamber_to_run.id,
         signal: cylinder.signal,

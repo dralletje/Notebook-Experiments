@@ -88,25 +88,37 @@ export let create_cell_state = (editorstate, cell) => {
 };
 
 // const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const ALPHABET = "ABCDEF";
+const ALPHABET = "AB";
 // @ts-ignore
 let EXCEL_CELLS =
   /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId[]} */ (
-    range(1, 5).flatMap((i) => ALPHABET.split("").map((j) => `${j}${i}`))
+    range(1, 2).flatMap((i) => ALPHABET.split("").map((j) => `${j}${i}`))
   );
 export let notebook_to_state = () => {
   return EditorInChief.create({
     editors: (editorstate) => {
-      return Object.fromEntries(
-        EXCEL_CELLS.map((cell_id) => [
-          cell_id,
-          create_cell_state(editorstate, {
-            id: cell_id,
-            code: "1",
-            unsaved_code: "1",
-          }),
-        ])
-      );
+      // return Object.fromEntries(
+      //   EXCEL_CELLS.map((cell_id) => [
+      //     cell_id,
+      //     create_cell_state(editorstate, {
+      //       id: cell_id,
+      //       code: "1",
+      //       unsaved_code: "1",
+      //     }),
+      //   ])
+      // );
+      return {
+        A1: create_cell_state(editorstate, {
+          id: "A1",
+          code: "B1",
+          unsaved_code: "B1",
+        }),
+        B1: create_cell_state(editorstate, {
+          id: "B1",
+          code: `"B1!"`,
+          unsaved_code: `"B1!"`,
+        }),
+      };
     },
     extensions: [
       SelectedCellsField,

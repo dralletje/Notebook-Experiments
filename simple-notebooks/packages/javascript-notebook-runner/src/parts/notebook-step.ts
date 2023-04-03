@@ -1,8 +1,9 @@
 import { invariant } from "../leaf/invariant.js";
 import { Engine, EngineTime } from "./engine.js";
 import { DeepReadonly } from "../leaf/DeepReadonly.js";
-import { Blueprint, CellId, Chamber } from "../blueprint/blueprint.js";
+import { Blueprint, CellId, Chamber, Mistake } from "../blueprint/blueprint.js";
 import { StacklessError } from "../javascript-notebook-runner.js";
+import { ModernMap } from "@dral/modern-map";
 
 let cells_that_need_running = (
   blueprint: Blueprint,
@@ -12,10 +13,15 @@ let cells_that_need_running = (
   let cells_that_should_run: CellId[] = [];
 
   for (let [cell_id, chamber] of [
+    // TODO Dirtiest hack yet, but to pick up changes in mistakes (who possibly no ordered topologicaly),
+    // .... I need to run them twice, so they can be picked up in the second run.
+    ...blueprint.mistakes,
     ...blueprint.chambers,
     ...blueprint.mistakes,
   ]) {
     let cylinder = engine.cylinders.get(cell_id);
+    console.log(`cylinder:`, cylinder);
+    console.log(`chamber:`, chamber);
 
     // prettier-ignore
     invariant(chamber.requested_run_time != null, `cell.requested_run_time shouldn't be null`);
@@ -87,39 +93,19 @@ export type ExecutionResult<T = any, E = any> =
 export let find_cell_to_run_now = ({
   engine,
   blueprint,
-  onChange,
 }: {
   engine: DeepReadonly<Engine>;
   blueprint: Blueprint;
-  onChange: (mutate: (engine: Engine) => void) => void;
 }) => {
   let cells_to_run = cells_that_need_running(blueprint, engine);
 
-  let fine_cells: Array<Chamber> = [];
-
+  let pending_chambers = new ModernMap<CellId, Chamber>();
+  let pending_mistakes = new ModernMap<CellId, Mistake>();
   for (let cell_id of cells_to_run) {
     if (blueprint.chambers.has(cell_id)) {
-      let cylinder = engine.cylinders.get(cell_id);
-      if (!cylinder.waiting) {
-        onChange((engine) => {
-          engine.cylinders.get(cylinder.id).waiting = true;
-        });
-        continue;
-      }
-      fine_cells.push(blueprint.chambers.get(cell_id));
+      pending_chambers.set(cell_id, blueprint.chambers.get(cell_id));
     } else if (blueprint.mistakes.has(cell_id)) {
-      let mistake = blueprint.mistakes.get(cell_id);
-      onChange((engine) => {
-        Object.assign(engine.cylinders.get(cell_id), {
-          last_run: mistake.requested_run_time,
-          last_internal_run: engine.tick(),
-          result: { type: "throw", value: new StacklessError(mistake.message) },
-          running: false,
-          waiting: false,
-          upstream_cells: mistake.node.in.map(([id]) => id) as CellId[],
-          variables: {},
-        });
-      });
+      pending_mistakes.set(cell_id, blueprint.mistakes.get(cell_id));
     } else {
       throw new Error("AAAAA");
     }
@@ -130,15 +116,16 @@ export let find_cell_to_run_now = ({
   /////////////////////////////////////
 
   // If there is no cell that needs running, we're done!
-  if (fine_cells.length === 0) return;
+  if (pending_chambers.size === 0)
+    return { pending_chambers, pending_mistakes };
 
   // By default just run the first (topologically sorted)
-  let chamber_to_run = fine_cells[0];
+  let chamber_to_run = pending_chambers.values().toArray()[0];
 
   // Additionally, find all cells that can run now (have no pending upstream cells)
   // and find the one that was requested to run the shortest time ago
-  let cells_that_can_run = fine_cells.filter((chamber) => {
-    return fine_cells.every((possibly_upstream) => {
+  let cells_that_can_run = pending_chambers.values().filter((chamber) => {
+    return pending_chambers.values().every((possibly_upstream) => {
       return !chamber.node.in.some(([id]) => id === possibly_upstream.id);
     });
   });
@@ -154,5 +141,5 @@ export let find_cell_to_run_now = ({
     }
   }
 
-  return chamber_to_run;
+  return { chamber_to_run, pending_chambers, pending_mistakes };
 };

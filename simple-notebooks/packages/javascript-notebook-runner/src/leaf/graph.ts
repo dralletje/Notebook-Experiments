@@ -12,8 +12,8 @@ export type EdgeName = Opaque<string, "EdgeName">;
 
 export type DisconnectedNode = {
   id: NodeId;
-  imports: Array<EdgeName>;
-  exports: Array<EdgeName>;
+  imports: Array<{ in: EdgeName; out: EdgeName }>;
+  exports: Array<{ in: EdgeName; out: EdgeName }>;
 };
 export type DisconnectedGraph = Array<DisconnectedNode>;
 
@@ -40,11 +40,23 @@ export let disconnected_to_compact_graph = (
         cell.id,
         cell.exports.flatMap((exported) => {
           return [
-            ...cells
-              .filter((cell) => cell.imports.includes(exported))
-              .map(
-                (cell) => [cell.id, { in: exported, out: exported }] as Edge
-              ),
+            ...cells.flatMap((cell) => {
+              return cell.imports
+                .filter((imported) => imported.in === exported.out)
+                .map((imported) => {
+                  return [
+                    cell.id,
+                    { in: imported.in, out: exported.out },
+                  ] as Edge;
+                });
+            }),
+            // .filter((cell) =>
+            //   cell.imports.some((imported) => imported.in === exported.out)
+            // )
+            // .map(
+            //   (cell) =>
+            //     [cell.id, { in: exported.in, out: exported.out }] as Edge
+            // ),
 
             // Also add cells that have an export of the same from as this cell.
             // Think of this graph more as "Cell X influences Cell Y" rather than only
@@ -53,10 +65,16 @@ export let disconnected_to_compact_graph = (
             // for finding cycles and conflicting definitions
             ...cells
               .filter(
-                (cell) => cell.exports.includes(exported) && cell.id !== cell_id
+                (cell) =>
+                  cell.exports.some(
+                    (also_exported) => also_exported.out === exported.out
+                  ) &&
+                  cell.id !== cell_id &&
+                  exported.out !== "default"
               )
               .map(
-                (cell) => [cell.id, { in: exported, out: exported }] as Edge
+                (cell) =>
+                  [cell.id, { in: exported.in, out: exported.out }] as Edge
               ),
           ];
         }),
