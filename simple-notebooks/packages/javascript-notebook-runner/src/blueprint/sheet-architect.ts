@@ -152,7 +152,6 @@ export class SheetArchitect {
         ),
       },
     };
-    console.log(`notebook:`, notebook);
 
     let parsed_cells = this.parse_cache.parse_notebook(notebook.cells);
 

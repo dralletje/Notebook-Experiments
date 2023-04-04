@@ -113,7 +113,9 @@ export function ProjectView({
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
-      <Excell />
+      <main style={{ overflow: "auto" }}>
+        <Excell />
+      </main>
 
       <Sidebar className={`tab-${tab}`}>
         <nav>
@@ -161,6 +163,7 @@ let NOISE_BACKGROUND = new URL(
 ).toString();
 
 let Sidebar = styled.div`
+  min-width: 300px;
   width: 400px;
   display: flex;
   flex-direction: column;

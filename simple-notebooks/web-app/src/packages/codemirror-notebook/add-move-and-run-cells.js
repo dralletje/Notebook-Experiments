@@ -163,7 +163,6 @@ export let cell_keymap = Prec.high(
     {
       key: "Shift-Enter",
       run: ({ state, dispatch }) => {
-        console.log("hi");
         // TODO Should just not apply this to text cells to begin with 🤷‍♀️ but cba
         if (state.facet(CellTypeFacet) === "text") return false;
 

@@ -20,8 +20,8 @@ export let find_pending_cells = (
     ...blueprint.mistakes,
   ]) {
     let cylinder = engine.cylinders.get(cell_id);
-    console.log(`cylinder:`, cylinder);
-    console.log(`chamber:`, chamber);
+    // console.log(`cylinder:`, cylinder);
+    // console.log(`chamber:`, chamber);
 
     // prettier-ignore
     invariant(chamber.requested_run_time != null, `cell.requested_run_time shouldn't be null`);

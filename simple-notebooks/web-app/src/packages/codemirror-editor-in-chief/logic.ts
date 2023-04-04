@@ -109,7 +109,9 @@ export let create_nested_editor_state = ({
   });
 };
 
-export let BlurEditorInChiefEffect = StateEffect.define<void>();
+export let BlurEditorInChiefEffect = StateEffect.define<void>({
+  map: () => null, // Needs `null` or codemirror will throw it out
+});
 
 export let EditorDispatchEffect = StateEffect.define<{
   editor_id: EditorId;

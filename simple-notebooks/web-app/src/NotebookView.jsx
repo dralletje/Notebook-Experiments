@@ -51,15 +51,9 @@ import { useEngine } from "./environment/use-engine.js";
 
 // @ts-ignore
 let NotebookStyle = styled.div`
-  padding-top: 50px;
-  min-height: 100vh;
+  padding-top: 16px;
+  /* min-height: 100vh; */
   padding-bottom: 100px;
-
-  flex: 1;
-  flex-basis: clamp(700px, 100vw - 200px, 900px);
-  flex-grow: 0;
-
-  min-width: 0;
 `;
 
 /**

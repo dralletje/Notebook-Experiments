@@ -10,7 +10,7 @@ import { TypedEventTarget } from "../leaf/typed-event-target.js";
 import { ModernMap } from "@dral/modern-map";
 import { Blueprint, CellId } from "../blueprint/blueprint";
 import { StacklessError } from "../javascript-notebook-runner";
-import { groupCollapsed } from "../leaf/group";
+import { groupCollapsed, groupSilent } from "../leaf/group";
 
 export type LivingValue = Opaque<unknown, "LivingValue">;
 export type EngineTime = Opaque<number, "RunTracker">;
@@ -146,7 +146,7 @@ export class Engine extends TypedEventTarget<{
     // Get next cell to run
     /////////////////////////////////////
 
-    let { pending_chambers, pending_mistakes } = groupCollapsed(
+    let { pending_chambers, pending_mistakes } = groupSilent(
       "Pending chambers and mistakes",
       () => find_pending_cells(blueprint, this)
     );
@@ -202,7 +202,7 @@ export class Engine extends TypedEventTarget<{
     /////////////////////////////////////
     // Run it!
     /////////////////////////////////////
-    let chamber_to_run = groupCollapsed("Find chamber to run now", () =>
+    let chamber_to_run = groupSilent("Find chamber to run now", () =>
       find_chamber_to_run_now({
         engine: this,
         pending_chambers,
@@ -226,9 +226,8 @@ export class Engine extends TypedEventTarget<{
       );
 
       // prettier-ignore
-      let inputs  = groupCollapsed(pc.blue(pc.bold(`RUNNING CELL`)), pc.blue(chamber_to_run.id), () => {
-        console.log(pc.blue(chamber_to_run.code));
-        
+      let inputs  = groupSilent(pc.blue(pc.bold(`RUNNING CELL`)), pc.blue(chamber_to_run.id), () => {
+        // console.log(pc.blue(chamber_to_run.code));
         // Look for requested variable names in other cylinders
         let inputs = {};
         for (let [in_cell, edge] of chamber_to_run.node.in) {
@@ -237,8 +236,7 @@ export class Engine extends TypedEventTarget<{
             inputs[edge.in] = in_cylinder.variables[edge.out];
           }
         }
-
-        console.log(`inputs:`, inputs)
+        // console.log(`inputs:`, inputs)
         return inputs
       })
 

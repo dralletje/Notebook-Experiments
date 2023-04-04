@@ -37,3 +37,17 @@ export function groupCollapsed<T>(
     console.groupEnd();
   }
 }
+
+export function groupSilent<T>(tag: string, fn: () => T): T;
+export function groupSilent<T>(tag: string, subject: any, fn: () => T): T;
+export function groupSilent<T>(
+  tag: string,
+  subject: any | (() => T),
+  fn?: () => T
+): T {
+  if (fn == null) {
+    return subject();
+  } else {
+    return fn();
+  }
+}
