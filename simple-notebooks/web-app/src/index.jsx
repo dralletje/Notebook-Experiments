@@ -10,11 +10,11 @@ import { enablePatches } from "immer";
 enablePatches();
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-if (window.location.search === "?sheet") {
-  root.render(<SheetApp />);
-} else {
-  root.render(<App />);
-}
+root.render(<SheetApp />);
+// if (window.location.search === "?sheet") {
+// } else {
+//   root.render(<App />);
+// }
 
 navigator.serviceWorker
   .register("/unpkg-cache-service-worker.js")
