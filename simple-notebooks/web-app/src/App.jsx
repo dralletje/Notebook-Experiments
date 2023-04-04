@@ -132,42 +132,6 @@ export let notebook_to_state = ({ filename, notebook }) => {
 
       // This works so smooth omg
       [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
-
-      // typescript_extension((state) => {
-      //   let notebook = state.field(CellEditorsField);
-
-      //   let code = "";
-      //   let cursor = 0;
-      //   /** @type {{ [cell_id: string]: { start: number, end: number } }} */
-      //   let cell_map = {};
-
-      //   let type_references = `
-      //   /// <reference lib="es5" />
-      //   /// <reference lib="es2015" />
-      //   /// <reference lib="es2015.collection" />
-      //   /// <reference lib="es2015.core" />
-      //   /// <reference types="node" />
-      //   `;
-      //   code += type_references;
-      //   cursor += type_references.length;
-
-      //   for (let cell_id of notebook.cell_order) {
-      //     let cell_state = notebook.cells[cell_id];
-      //     let cell = cell_state.field(CellMetaField);
-      //     let unsaved_code = cell_state.doc.toString();
-
-      //     // Using unsaved code because I want typescript to be very optimistic
-      //     let code_to_add = unsaved_code;
-      //     cell_map[cell_id] = {
-      //       start: cursor,
-      //       end: cursor + code_to_add.length,
-      //     };
-      //     code += code_to_add + "\n";
-      //     cursor += code_to_add.length + 1;
-      //   }
-
-      //   return { code, cell_map };
-      // }),
     ],
   });
 };
