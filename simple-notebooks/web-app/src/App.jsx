@@ -2,40 +2,15 @@ import React from "react";
 import { produce } from "immer";
 import { mapValues } from "lodash";
 import styled from "styled-components";
-import {
-  CellMetaField,
-  CellTypeFacet,
-} from "./packages/codemirror-notebook/cell";
-import {
-  SelectedCellsField,
-  selected_cells_keymap,
-} from "./packages/codemirror-notebook/cell-selection";
-import { EditorView, keymap } from "@codemirror/view";
+import { CellMetaField } from "./packages/codemirror-notebook/cell";
 import {
   shared_history,
   historyKeymap,
 } from "./packages/codemirror-editor-in-chief/codemirror-shared-history";
 import {
-  CellIdOrder,
-  cell_movement_extension,
-} from "./packages/codemirror-notebook/cell-movement";
-import {
-  NotebookFilename,
-  NotebookId,
-} from "./packages/codemirror-notebook/cell";
-// import { typescript_extension } from "./packages/typescript-server-webworker/codemirror-typescript.js";
-import {
   EditorInChief,
-  EditorExtension,
   EditorInChiefKeymap,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
-import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
-import {
-  cell_keymap,
-  notebook_keymap,
-} from "./packages/codemirror-notebook/add-move-and-run-cells.js";
-import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
-import { add_single_cell_when_all_cells_are_removed } from "./packages/codemirror-notebook/add-cell-when-last-is-removed";
 
 import { SocketEnvironment } from "./environment/SocketEnvironment";
 import { WorkerEnvironment } from "./environment/WorkerEnvironment";
@@ -44,8 +19,10 @@ import { useUrl } from "./packages/use-url/use-url.js";
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu.jsx";
 import { ProjectView } from "./ProjectView";
 
-import "./App.css";
 import { notebook_state_to_notebook_serialized } from "./notebook-utils";
+import { create_codemirror_notebook } from "./packages/codemirror-notebook/codemirror-notebook";
+
+import "./App.css";
 
 /**
  * @typedef Workspace
@@ -57,11 +34,6 @@ import { notebook_state_to_notebook_serialized } from "./notebook-utils";
  *  }
  * }} files
  */
-
-let cell_id_order_from_notebook_facet = CellIdOrder.compute(
-  [CellOrderField.field],
-  (state) => state.field(CellOrderField.field)
-);
 
 /**
  * @param {EditorInChief} editorstate
@@ -91,41 +63,7 @@ export let notebook_to_state = ({ filename, notebook }) => {
       );
     },
     extensions: [
-      CellOrderField.init(() => {
-        return notebook.cell_order.filter((x) => {
-          if (notebook.cells[x]) {
-            return true;
-          } else {
-            console.warn("cell order has cell that doesn't exist", x);
-            return false;
-          }
-        });
-      }),
-      EditorExtension.of(
-        CellTypeFacet.compute(
-          [CellMetaField],
-          (state) => state.field(CellMetaField).type
-        )
-      ),
-
-      cell_id_order_from_notebook_facet,
-      cell_movement_extension,
-
-      SelectedCellsField,
-      selected_cells_keymap,
-      LastCreatedCells,
-      add_single_cell_when_all_cells_are_removed,
-
-      EditorExtension.of(cell_keymap),
-      notebook_keymap,
-
-      NotebookId.of(notebook.id),
-      NotebookFilename.of(filename),
-
-      EditorExtension.of(
-        EditorView.scrollMargins.of(() => ({ top: 200, bottom: 100 }))
-      ),
-
+      create_codemirror_notebook(filename, notebook),
       // This works so smooth omg
       [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
     ],
@@ -161,9 +99,6 @@ function App() {
   React.useEffect(() => {
     document.title = open_file;
   }, [open_file]);
-  // if (!filename.match(/\.tsx?$|\.jsx?$|.mjsx?$/)) {
-  //   replace_url(["", "app", ...rest].join("/"));
-  // }
 
   //////////////////////////////////////////////////////////////
 
