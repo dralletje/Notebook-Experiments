@@ -41,6 +41,7 @@ import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 // @ts-ignore
 import shadow_notebook_css from "./shadow-notebook.css?inline";
 import { EditorState } from "@codemirror/state";
+import { EXCEL_CELLS } from "./Sheet/sheet-utils";
 
 let shadow_notebook = new CSSish(shadow_notebook_css);
 
@@ -59,24 +60,27 @@ export function ProjectView({
 }) {
   let _viewupdate = useViewUpdate(_state, onChange);
 
-  let viewupdate = extract_nested_viewupdate(
+  let sheet_viewupdate = extract_nested_viewupdate(
+    _viewupdate,
+    "sheet" as EditorId
+  ) as any as GenericViewUpdate<EditorInChief<EditorState>>;
+  let notebook_viewupdate = extract_nested_viewupdate(
     _viewupdate,
     "notebook" as EditorId
   ) as any as GenericViewUpdate<EditorInChief<EditorState>>;
 
-  let state = viewupdate.state;
-  let editor_in_chief = viewupdate.view;
+  let notebook_editorstates = notebook_viewupdate.state.editors;
+  let notebook_cell_order = notebook_viewupdate.state.field(CellOrderField);
 
-  let cell_editor_states = state.editors;
-  let cell_order = state.field(CellOrderField);
-  let selected_cells = state.field(SelectedCellsField);
+  let sheet_editorstates = sheet_viewupdate.state.editors;
+  let sheet_cell_order = EXCEL_CELLS;
 
   let notebook = React.useMemo(() => {
     return /** @type {import("./packages/codemirror-notebook/cell").Notebook} */ {
-      cell_order: state.field(CellOrderField),
-      cells: Object.fromEntries(
-        state.field(CellOrderField).map((cell_id) => {
-          let cell_state = state.editor(cell_id);
+      cell_order: [...notebook_cell_order, ...sheet_cell_order],
+      cells: Object.fromEntries([
+        ...notebook_cell_order.map((cell_id) => {
+          let cell_state = notebook_editorstates.get(cell_id);
           let type = cell_state.facet(CellTypeFacet);
           return [
             cell_id,
@@ -91,10 +95,22 @@ export function ProjectView({
               ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
             },
           ];
-        })
-      ),
+        }),
+        ...sheet_cell_order.map((cell_id) => {
+          let cell_state = sheet_editorstates.get(cell_id);
+          return [
+            cell_id,
+            {
+              id: cell_state.facet(EditorIdFacet),
+              unsaved_code: cell_state.doc.toString(),
+              ...cell_state.field(CellMetaField),
+              type: "code",
+            },
+          ];
+        }),
+      ]),
     };
-  }, [cell_editor_states, cell_order]);
+  }, [notebook_editorstates, notebook_cell_order]);
 
   let notebook_with_filename = React.useMemo(() => {
     return { filename: filename, notebook: notebook };
@@ -111,7 +127,7 @@ export function ProjectView({
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
       <main style={{ overflow: "auto" }}>
-        <Excell />
+        <Excell viewupdate={sheet_viewupdate} engine={engine} />
       </main>
 
       <Sidebar className={`tab-${tab}`}>
@@ -145,7 +161,7 @@ export function ProjectView({
           {tab === "notebook" && (
             <shadow.div>
               <AdoptStylesheet stylesheet={shadow_notebook} />
-              <NotebookView engine={engine} viewupdate={viewupdate} />
+              <NotebookView engine={engine} viewupdate={notebook_viewupdate} />
             </shadow.div>
           )}
         </section>

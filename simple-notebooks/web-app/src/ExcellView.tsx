@@ -5,6 +5,7 @@ import styled from "styled-components";
 import {
   CellMetaField,
   CellTypeFacet,
+  EngineShadow,
   MutateCellMetaEffect,
 } from "./packages/codemirror-notebook/cell";
 import { EditorView, keymap } from "@codemirror/view";
@@ -56,46 +57,13 @@ import { deserialize } from "./yuck/deserialize-value-to-show.js";
  * }}
  */
 
-export function Excell() {
-  let [state, set_state] = React.useState(() => sheet_to_editorinchief({}));
-  let environment = React.useRef(WorkerEnvironment).current;
-
-  let viewupdate = useViewUpdate(state, /** @type {any} */ (set_state));
-  // useCodemirrorKeyhandler(viewupdate);
-
-  let cell_editor_states = state.editors;
-  let editor_in_chief = viewupdate.view;
-
-  let notebook = React.useMemo(() => {
-    return /** @type {import("./packages/codemirror-notebook/cell").Notebook} */ ({
-      id: "test",
-      filename: "test",
-      cell_order: EXCEL_CELLS,
-      cells: Object.fromEntries(
-        EXCEL_CELLS.map((cell_id) => {
-          let cell_state = editor_in_chief.state.editor(cell_id);
-          return [
-            cell_id,
-            {
-              id: cell_id,
-              unsaved_code: cell_state.doc.toString(),
-              ...cell_state.field(CellMetaField),
-            },
-          ];
-        })
-      ),
-    });
-  }, [cell_editor_states, EXCEL_CELLS]);
-
-  let notebook_with_filename = React.useMemo(() => {
-    return {
-      filename: "Excel",
-      notebook: notebook,
-    };
-  }, [notebook]);
-
-  let [engine, logs] = useEngine(notebook_with_filename, environment);
-
+export function Excell({
+  viewupdate,
+  engine,
+}: {
+  viewupdate: GenericViewUpdate<EditorInChief<EditorState>>;
+  engine: EngineShadow;
+}) {
   return (
     <Grid>
       <thead>
@@ -110,18 +78,16 @@ export function Excell() {
         {chunk(EXCEL_CELLS, ALPHABET.length).map((row, i) => (
           <tr key={i}>
             <th>{i + 1}</th>
-            {row
-              .map((cell_id) => notebook.cells[cell_id])
-              .map((cell, index) => (
-                <Cell
-                  key={cell.id}
-                  // cell_id={cell.id}
-                  viewupdate={extract_nested_viewupdate(viewupdate, cell.id)}
-                  cylinder={engine.cylinders[cell.id]}
-                  // is_selected={selected_cells.includes(cell.id)}
-                  // did_just_get_created={last_created_cells.includes(cell.id)}
-                />
-              ))}
+            {row.map((cell_id) => (
+              <Cell
+                key={cell_id}
+                // cell_id={cell_id}
+                viewupdate={extract_nested_viewupdate(viewupdate, cell_id)}
+                cylinder={engine.cylinders[cell_id]}
+                // is_selected={selected_cells.includes(cell_id)}
+                // did_just_get_created={last_created_cells.includes(cell_id)}
+              />
+            ))}
           </tr>
         ))}
       </tbody>
@@ -222,6 +188,7 @@ import {
   sheet_to_editorinchief,
   sheetcell_to_editorstate,
 } from "./Sheet/sheet-utils";
+import { CellOrderField } from "./packages/codemirror-notebook/cell-order";
 
 let observable_inspector_sheet = new CSSish(observable_inspector);
 let inspector_css_sheet = new CSSish(inspector_css);
@@ -257,7 +224,7 @@ let Cell = ({ viewupdate, cylinder }) => {
 
   return (
     <td
-      tabIndex={-1}
+      tabIndex={0}
       className={compact([
         "excell",
         has_normal_focus && "has-normal-focus",

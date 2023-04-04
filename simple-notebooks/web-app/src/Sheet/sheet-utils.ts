@@ -76,7 +76,10 @@ export let EXCEL_CELLS =
     10
   ).flatMap((i) => ALPHABET.split("").map((j) => `${j}${i}` as EditorId));
 
-export let sheet_to_editorinchief = (notebook: NotebookSerialized) => {
+export let sheet_to_editorinchief = (
+  notebook: NotebookSerialized,
+  extensions = []
+) => {
   return EditorInChief.create({
     editors: (editorstate) => {
       return Object.fromEntries(
@@ -91,6 +94,7 @@ export let sheet_to_editorinchief = (notebook: NotebookSerialized) => {
       );
     },
     extensions: [
+      extensions,
       // This works so smooth omg
       [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
     ],

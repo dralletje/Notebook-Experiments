@@ -62,85 +62,88 @@ export function NotebookView({ viewupdate, engine }) {
     editor_in_chief.state.field(LastCreatedCells, false) ?? [];
 
   return (
-    <SelectionArea
-      on_selection={(new_selected_cells) => {
-        if (!isEqual(new_selected_cells, selected_cells)) {
-          viewupdate.view.dispatch({
-            effects: [
-              SelectCellsEffect.of(
-                /** @type {import("../packages/codemirror-editor-in-chief/logic.js").EditorId[]} */ (
-                  new_selected_cells
-                )
-              ),
-              BlurEditorInChiefEffect.of(),
-            ],
-          });
+    <div
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.defaultPrevented) {
+          return;
+        }
+        let should_cancel = runScopeHandlers(
+          // @ts-ignore
+          viewupdate.view,
+          event,
+          // TODO Change this scope to something EditorInChief specific?
+          "editor"
+        );
+        if (should_cancel) {
+          event.preventDefault();
         }
       }}
     >
-      <NotebookStyle
-        onKeyDown={(event) => {
-          if (event.defaultPrevented) {
-            return;
-          }
-          let should_cancel = runScopeHandlers(
-            // @ts-ignore
-            viewupdate.view,
-            event,
-            // TODO Change this scope to something EditorInChief specific?
-            "editor"
-          );
-          if (should_cancel) {
-            event.preventDefault();
+      <SelectionArea
+        on_selection={(new_selected_cells) => {
+          if (!isEqual(new_selected_cells, selected_cells)) {
+            viewupdate.view.dispatch({
+              effects: [
+                SelectCellsEffect.of(
+                  /** @type {import("../packages/codemirror-editor-in-chief/logic.js").EditorId[]} */ (
+                    new_selected_cells
+                  )
+                ),
+                BlurEditorInChiefEffect.of(),
+              ],
+            });
           }
         }}
       >
-        <DragAndDropList editor_in_chief={editor_in_chief}>
-          {cell_order.map((cell_id, index) => {
-            let cell_viewupdate = extract_nested_viewupdate(
-              viewupdate,
-              cell_id
-            );
-            return (
-              <DragAndDropItem
-                key={cell_id}
-                index={index}
-                id={cell_id}
-                cell_id={cell_id}
-                editor_in_chief={editor_in_chief}
-                context_options={cell_actions({ editor_in_chief, cell_id })}
-              >
-                <CellErrorBoundary>
-                  {editor_in_chief.state
-                    .editor(cell_id)
-                    .facet(CellTypeFacet) === "text" ? (
-                    <TextCell
-                      cell_id={cell_id}
-                      viewupdate={viewupdate}
-                      is_selected={selected_cells.includes(cell_id)}
-                      did_just_get_created={last_created_cells.includes(
-                        cell_id
-                      )}
-                    />
-                  ) : (
-                    <CellMemo
-                      cell_id={cell_id}
-                      viewupdate={cell_viewupdate}
-                      cylinder={engine.cylinders[cell_id]}
-                      is_selected={selected_cells.includes(cell_id)}
-                      did_just_get_created={last_created_cells.includes(
-                        cell_id
-                      )}
-                    />
-                  )}
-                </CellErrorBoundary>
-              </DragAndDropItem>
-            );
-          })}
-        </DragAndDropList>
-      </NotebookStyle>
-      <div style={{ flex: 1, minWidth: 16 }} />
-    </SelectionArea>
+        <NotebookStyle>
+          <DragAndDropList editor_in_chief={editor_in_chief}>
+            {cell_order.map((cell_id, index) => {
+              let cell_viewupdate = extract_nested_viewupdate(
+                viewupdate,
+                cell_id
+              );
+              return (
+                <DragAndDropItem
+                  key={cell_id}
+                  index={index}
+                  id={cell_id}
+                  cell_id={cell_id}
+                  editor_in_chief={editor_in_chief}
+                  context_options={cell_actions({ editor_in_chief, cell_id })}
+                >
+                  <CellErrorBoundary>
+                    {editor_in_chief.state
+                      .editor(cell_id)
+                      .facet(CellTypeFacet) === "text" ? (
+                      <TextCell
+                        cell_id={cell_id}
+                        viewupdate={viewupdate}
+                        is_selected={selected_cells.includes(cell_id)}
+                        did_just_get_created={last_created_cells.includes(
+                          cell_id
+                        )}
+                      />
+                    ) : (
+                      <CellMemo
+                        cell_id={cell_id}
+                        viewupdate={cell_viewupdate}
+                        cylinder={engine.cylinders[cell_id]}
+                        is_selected={selected_cells.includes(cell_id)}
+                        did_just_get_created={last_created_cells.includes(
+                          cell_id
+                        )}
+                      />
+                    )}
+                  </CellErrorBoundary>
+                </DragAndDropItem>
+              );
+            })}
+          </DragAndDropList>
+        </NotebookStyle>
+        <div style={{ flex: 1, minWidth: 16 }} />
+      </SelectionArea>
+    </div>
   );
 }
 

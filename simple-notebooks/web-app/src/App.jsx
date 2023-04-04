@@ -76,17 +76,23 @@ let NOTEBOOK_EDITOR_ID =
   /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */ (
     "notebook"
   );
+let SHEET_EDITOR_ID =
+  /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */ (
+    "sheet"
+  );
 
 let project_to_editorinchief = (/** @type {Project} */ project) => {
   return EditorInChief.create({
     editors: (parent) => {
-      let x = notebook_to_editorinchief(
-        project.notebook,
-        parent.section_editor_extensions(NOTEBOOK_EDITOR_ID)
-      );
-      console.log(`x.field(Selected):`, x.field(SelectedCellsField));
       return {
-        notebook: x,
+        notebook: notebook_to_editorinchief(
+          project.notebook,
+          parent.section_editor_extensions(NOTEBOOK_EDITOR_ID)
+        ),
+        sheet: sheet_to_editorinchief(
+          project.notebook,
+          parent.section_editor_extensions(SHEET_EDITOR_ID)
+        ),
       };
     },
     extensions: [],
