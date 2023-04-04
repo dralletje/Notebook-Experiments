@@ -1,9 +1,10 @@
 .cell {
   border-radius: 5px;
   /* border: solid 1px #ffffff36; */
+  background-color: transparent !important;
 
   .inspector-container {
-    background-color: rgb(0 74 18 / 29%) !important;
+    background-color: transparent !important;
   }
   .cell-editor {
     background-color: rgb(0 27 8 / 27%) !important;
