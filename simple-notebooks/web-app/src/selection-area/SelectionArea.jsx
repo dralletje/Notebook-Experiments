@@ -76,10 +76,6 @@ export const SelectionArea = ({ on_selection, children }) => {
         ?.canStartSelection !== "false"
     ) {
       e.preventDefault();
-      console.log(
-        `target.closest("[tabindex]"):`,
-        target.closest("[tabindex]")
-      );
       target.closest("[tabindex]")?.focus();
       on_selection([]);
       set_selection({
@@ -280,21 +276,16 @@ let SimpleDialog = ({ open, children }) => {
       }
     } else {
       ref.current.close();
-      console.log(
-        `ref.current.getRootNode().activeElement:`,
-        ref.current.getRootNode().activeElement
-      );
 
       // Dialog.close() wants to move focus back to whatever had focus before,
       // which is fine-ish, but it also wants to set focusVisible to true,
       // which is not fine, so we blur and focus quickly to get rid of that.
-
+      // TODO THIS DOESN'T WORK SADLY
+      /** @type {HTMLElement} */
       // @ts-ignore
-      ref.current.getRootNode().activeElement?.blur?.();
-      // @ts-ignore
-      ref.current.getRootNode().activeElement?.focus({
-        focusVisible: false,
-      });
+      let element = ref.current.getRootNode().activeElement;
+      element?.blur();
+      element?.focus();
     }
   }, [open]);
 
