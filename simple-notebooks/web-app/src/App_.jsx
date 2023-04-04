@@ -34,8 +34,6 @@ import { create_codemirror_notebook } from "./packages/codemirror-notebook/codem
 
 import "./App.css";
 import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selection";
-import { NotebookView } from "./Notebook/NotebookView.jsx";
-import { IndependentNotebook } from "./IndependentNotebook";
 
 /**
  * @typedef Workspace
@@ -84,10 +82,29 @@ let SHEET_EDITOR_ID =
   );
 
 let project_to_editorinchief = (/** @type {Project} */ project) => {
-  return notebook_to_editorinchief(project.notebook);
+  return EditorInChief.create({
+    editors: (parent) => {
+      return {
+        notebook: notebook_to_editorinchief(
+          project.notebook,
+          parent.section_editor_extensions(NOTEBOOK_EDITOR_ID)
+        ),
+        sheet: sheet_to_editorinchief(
+          project.notebook,
+          parent.section_editor_extensions(SHEET_EDITOR_ID)
+        ),
+      };
+    },
+    extensions: [],
+  });
 };
 let editorinchief_to_project = (/** @type {EditorInChief} */ editorinchief) => {
-  return { notebook: editorinchief_to_notebook(editorinchief) };
+  return {
+    [NOTEBOOK_EDITOR_ID]: editorinchief_to_notebook(
+      // @ts-ignore
+      editorinchief.editor(NOTEBOOK_EDITOR_ID)
+    ),
+  };
 };
 
 function App() {
@@ -195,7 +212,7 @@ function App() {
         ))}
       </div>
 
-      <IndependentNotebook
+      <ProjectView
         key={open_file}
         filename={open_file}
         environment={environment}

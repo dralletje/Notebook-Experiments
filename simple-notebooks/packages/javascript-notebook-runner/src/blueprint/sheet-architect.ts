@@ -9,7 +9,8 @@ import { Cell, Notebook } from "../types.js";
 import * as Graph from "../leaf/graph.js";
 import { Blueprint, CellId, Chamber, Mistake } from "./blueprint.js";
 
-let ALPHABET = "ABCDEF";
+// let ALPHABET = "ABCDEF";
+let ALPHABET = "AB";
 
 export let notebook_to_disconnected_graph = (
   parsed_cells: ParsedCells
