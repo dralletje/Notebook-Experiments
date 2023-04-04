@@ -50,15 +50,19 @@ export class Cylinder {
    */
   last_internal_run: EngineTime = EngineTime.EARLIEST;
 
-  private abort_controller: AbortController = new AbortController();
-  async reset() {
+  private abort_controller: AbortController | null = null;
+  reset() {
+    if (this.abort_controller == null) return false;
+
     // If there was a previous run, allow performing cleanup.
     this.abort_controller?.abort();
-    // Wait a tick for the abort to actually happen (possibly)
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    let abort_controller = new AbortController();
-    this.abort_controller = abort_controller;
+    this.abort_controller = null;
+    return true;
+  }
+  run() {
+    this.abort_controller = new AbortController();
+    this.running = true;
+    this.waiting = false;
   }
   get signal() {
     return this.abort_controller.signal;
@@ -123,7 +127,14 @@ export class Engine extends TypedEventTarget<{
     if (this.is_busy) return;
 
     this.is_busy = true;
-    while (await this.update_once(this.pending_blueprint)) {}
+    let start = performance.now();
+    let i = 0;
+    while (await this.update_once(this.pending_blueprint)) {
+      i++;
+    }
+    let end = performance.now();
+    console.log(pc.green(`Engine update took ${Math.round(end - start)}ms`));
+    console.log(pc.green(`${i} @ ${Math.round((end - start) / i)}ms`));
     this.is_busy = false;
   }
 
@@ -192,12 +203,25 @@ export class Engine extends TypedEventTarget<{
           !blueprint.chambers.has(cylinder.id) &&
           !blueprint.mistakes.has(cylinder.id)
       );
+    let needs_tick = false;
     for (let deleted_cylinder of deleted_cylinders) {
-      await deleted_cylinder.reset();
+      if (deleted_cylinder.reset()) {
+        needs_tick = true;
+      }
       this.cylinders.delete(deleted_cylinder.id);
     }
 
-    let event_id = this.tick();
+    for (let pending_chamber of pending_chambers.values()) {
+      let cylinder = this.cylinders.get(pending_chamber.id);
+      if (cylinder.reset()) {
+        needs_tick = true;
+      }
+    }
+
+    // Wait a tick for the abort to actually happen (possibly)
+    // if (needs_tick) {
+    //   await new Promise((resolve) => setTimeout(resolve, 0));
+    // }
 
     /////////////////////////////////////
     // Run it!
@@ -208,14 +232,14 @@ export class Engine extends TypedEventTarget<{
         pending_chambers,
       })
     );
+    // let chamber_to_run = [...pending_chambers][0]?.[1];
 
     if (chamber_to_run) {
       did_change = true;
-
+      let event_id = this.tick();
       let cylinder = this.cylinders.get(chamber_to_run.id);
 
-      cylinder.running = true;
-      cylinder.waiting = false;
+      cylinder.run();
       this.dispatchEvent(new EngineChangeEvent());
       this.dispatchEvent(
         new EngineLogEvent({
@@ -240,7 +264,6 @@ export class Engine extends TypedEventTarget<{
         return inputs
       })
 
-      await cylinder.reset();
       let { result } = await this.run_cell({
         id: chamber_to_run.id,
         signal: cylinder.signal,

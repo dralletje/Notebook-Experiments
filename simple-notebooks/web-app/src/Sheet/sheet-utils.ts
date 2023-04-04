@@ -19,11 +19,13 @@ import {
   historyKeymap,
   shared_history,
 } from "../packages/codemirror-editor-in-chief/codemirror-shared-history";
-import { Excell } from "../ExcellView";
 import { HyperfocusField } from "../packages/codemirror-sheet/hyperfocus";
 import { cell_keymap } from "../packages/codemirror-sheet/sheet-keymap";
+import { EditorState } from "@codemirror/state";
 
-export let editorinchief_to_sheet = (state: EditorInChief): Notebook => {
+export let editorinchief_to_sheet = (
+  state: EditorInChief<EditorState>
+): Notebook => {
   let cell_editor_states = state.editors;
   return {
     cell_order: state.field(CellOrderField),
@@ -46,8 +48,8 @@ export let editorinchief_to_sheet = (state: EditorInChief): Notebook => {
 };
 
 export let sheetcell_to_editorstate = (
-  editorinchief: EditorInChief,
-  cell: Excell
+  editorinchief: EditorInChief<EditorState>,
+  cell: any
 ) => {
   return editorinchief.create_section_editor({
     editor_id: cell.id as EditorId,
@@ -67,13 +69,13 @@ export let sheetcell_to_editorstate = (
   });
 };
 
-// const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-export const ALPHABET = "ABCDEF";
+// export const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+export const ALPHABET = "ABCDEFGH";
 // @ts-ignore
 export let EXCEL_CELLS =
   /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId[]} */ range(
     1,
-    10
+    30
   ).flatMap((i) => ALPHABET.split("").map((j) => `${j}${i}` as EditorId));
 
 export let sheet_to_editorinchief = (
@@ -87,8 +89,8 @@ export let sheet_to_editorinchief = (
           cell_id,
           sheetcell_to_editorstate(editorstate, {
             id: cell_id,
-            code: "1",
-            unsaved_code: "1",
+            code: "",
+            unsaved_code: "",
           }),
         ])
       );

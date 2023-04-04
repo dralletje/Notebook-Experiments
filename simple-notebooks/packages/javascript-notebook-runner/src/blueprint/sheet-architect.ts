@@ -169,6 +169,9 @@ export class SheetArchitect {
       (x) => notebook.cells[x].type === "code"
     );
 
+    let chambers = new ModernMap<CellId, Chamber>();
+    let mistakes = new ModernMap<CellId, Mistake>();
+
     let analysis_results = get_analysis_results(
       code_cell_ids,
       parsed_cells,
@@ -183,9 +186,6 @@ export class SheetArchitect {
       error: [],
       ...(groupBy(analysis_results, (result) => result.type) as any),
     };
-
-    let chambers = new ModernMap<CellId, Chamber>();
-    let mistakes = new ModernMap<CellId, Mistake>();
 
     for (let result of by_status.error) {
       let cell = notebook.cells[result.cell_id];

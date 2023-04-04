@@ -1,5 +1,5 @@
 import "polyfills";
-import { throttle } from "lodash-es";
+import { isEqual, throttle } from "lodash-es";
 import pc from "picocolors";
 
 import { html, md } from "@dral/javascript-basic-serialize/html";
@@ -11,6 +11,9 @@ import {
   ExecutionResult,
   SheetArchitect,
 } from "@dral/javascript-notebook-runner";
+import { enablePatches, produceWithPatches } from "immer";
+
+enablePatches();
 
 let serialize_with_default = ({ value, fallback, context }) => {
   try {
@@ -144,19 +147,40 @@ let engine = new Engine(async function RUN_CELL({
 });
 
 engine.addEventListener("log", (event) => {
-  postMessage({
-    type: "add-log",
-    log: event.log,
-  });
+  // postMessage({
+  //   type: "add-log",
+  //   log: event.log,
+  // });
 });
 
-let throttled_postmessage = throttle(postMessage);
+let throttled_change = throttle((fn) => fn(), 100, {
+  leading: true,
+  trailing: true,
+});
 
+let last_engine = null;
 engine.addEventListener("change", (event) => {
   let target_huh = event.target ?? event.currentTarget;
-  throttled_postmessage({
-    type: "update-engine",
-    engine: engine_to_json(target_huh),
+
+  throttled_change(() => {
+    let current_engine = engine_to_json(target_huh);
+    // @ts-ignore
+    let [new_value, patches] = produceWithPatches(last_engine, (draft) => {
+      if (last_engine == null) return current_engine;
+      for (let key in current_engine.cylinders) {
+        if (
+          !isEqual(last_engine.cylinders[key], current_engine.cylinders[key])
+        ) {
+          draft.cylinders[key] = current_engine.cylinders[key];
+        }
+      }
+    });
+    last_engine = current_engine;
+
+    postMessage({
+      type: "update-engine",
+      patches: patches,
+    });
   });
 });
 
@@ -171,7 +195,10 @@ addEventListener("message", async (event) => {
   let message: CircuitMessage = event.data;
   if (message.type === "update-notebook") {
     let { notebook } = message;
+    let start = performance.now();
     let blueprint = architect.design(notebook);
+    let end = performance.now();
+    console.log(`Blueprint took ${end - start}ms`);
     engine.update(blueprint);
 
     // let thing = notebook_to_string(notebook, blueprint);

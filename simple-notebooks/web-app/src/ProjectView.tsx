@@ -39,7 +39,7 @@ import shadow from "react-shadow/styled-components";
 import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 
 // @ts-ignore
-import shadow_notebook_css from "./shadow-notebook.css?inline";
+import shadow_notebook_css from "./yuck/shadow-notebook.css?inline";
 import { EditorState } from "@codemirror/state";
 import { EXCEL_CELLS } from "./Sheet/sheet-utils";
 
@@ -126,7 +126,7 @@ export function ProjectView({
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
-      <main style={{ overflow: "auto" }}>
+      <main style={{ overflow: "auto", flex: 1 }}>
         <Excell viewupdate={sheet_viewupdate} engine={engine} />
       </main>
 
@@ -134,7 +134,7 @@ export function ProjectView({
         <nav>
           <a
             href="#notebook"
-            className={tab === "notebook" ? "active" : ""}
+            aria-current={tab === "notebook" ? "page" : undefined}
             onClick={(e) => {
               e.preventDefault();
               set_tab("notebook");
@@ -144,6 +144,7 @@ export function ProjectView({
           </a>
           <a
             href="#logs"
+            aria-current={tab === "logs" ? "page" : undefined}
             className={tab === "logs" ? "active" : ""}
             onClick={(e) => {
               e.preventDefault();
@@ -171,28 +172,34 @@ export function ProjectView({
 }
 
 let Sidebar = styled.div`
-  min-width: 500px;
-  width: 600px;
+  min-width: 400px;
+  width: 500px;
 
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  height: calc(100vh - 50px);
+  height: calc(100vh - 30px);
   position: sticky;
   top: 50px;
   overflow-y: auto;
   background-color: black;
 
+  /* border-top: 5px solid white; */
+  border-left: 5px solid white;
+  border-right: 5px solid white;
+
   &.tab-notebook {
     background-color: #01412d;
+    border-color: rgb(4 33 22);
     nav {
       background: #01412d;
     }
   }
   &.tab-logs {
-    background-color: rgb(23, 1, 129);
+    background-color: rgb(19, 14, 48);
+    border-color: rgb(9 7 24);
     nav {
-      background: rgb(23, 1, 129);
+      background: rgb(19, 14, 48);
     }
   }
 
@@ -210,14 +217,19 @@ let Sidebar = styled.div`
       text-align: center;
       padding: 5px 10px;
       font-weight: bold;
-      background-color: rgba(0, 0, 0, 0.5);
+      user-select: none;
 
-      &.active {
+      background-color: rgba(0, 0, 0, 0.5);
+      color: #ffffff66;
+
+      &[aria-current="page"] {
         background-color: rgba(0, 0, 0, 0);
+        color: #ffffffd4;
+        cursor: initial;
       }
 
-      &:not(.active):hover {
-        background-color: rgba(0, 0, 0, 0.3);
+      &:not([aria-current="page"]):hover {
+        background-color: rgba(0, 0, 0, 0.4);
       }
     }
   }

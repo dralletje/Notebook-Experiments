@@ -2,14 +2,18 @@ import { io } from "socket.io-client";
 import { AddLogEvent, Engine, UpdateEngineEvent } from "./Environment";
 
 import { get_worker_environment_worker } from "./worker-environment-worker/worker-environment-worker.js";
+import { applyPatches } from "immer";
 
 class WorkerEngine extends Engine {
   /** @type {ReturnType<get_worker_environment_worker>} */
   worker;
+  engine = null;
 
   on_message = (event) => {
     if (event.data.type === "update-engine") {
-      this.dispatchEvent(new UpdateEngineEvent(event.data.engine));
+      this.engine = applyPatches(this.engine, event.data.patches);
+
+      this.dispatchEvent(new UpdateEngineEvent(this.engine));
     } else if (event.data.type === "add-log") {
       this.dispatchEvent(new AddLogEvent(event.data.log));
     }

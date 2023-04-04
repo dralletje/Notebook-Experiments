@@ -1,39 +1,22 @@
 import React from "react";
 import { produce } from "immer";
-import { chunk, compact, range } from "lodash";
+import { chunk, compact } from "lodash";
 import styled from "styled-components";
 import {
-  CellMetaField,
-  CellTypeFacet,
   EngineShadow,
   MutateCellMetaEffect,
 } from "./packages/codemirror-notebook/cell";
-import { EditorView, keymap } from "@codemirror/view";
-import {
-  shared_history,
-  historyKeymap,
-} from "./packages/codemirror-editor-in-chief/codemirror-shared-history";
-import { NotebookView } from "./Notebook/NotebookView";
-import { cell_keymap } from "./packages/codemirror-sheet/sheet-keymap.js";
-// import { typescript_extension } from "./packages/typescript-server-webworker/codemirror-typescript.js";
 import {
   EditorInChief,
-  EditorExtension,
-  EditorInChiefKeymap,
-  EditorIdFacet,
   extract_nested_viewupdate,
   EditorHasSelectionField,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
-import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
 
-import { WorkerEnvironment } from "./environment/WorkerEnvironment";
 import {
   CodemirrorFromViewUpdate,
   GenericViewUpdate,
-  useViewUpdate,
 } from "codemirror-x-react/viewupdate.js";
 import { Extension } from "codemirror-x-react";
-import { useEngine } from "./environment/use-engine.js";
 import { Inspector } from "inspector-x-react";
 import { deserialize } from "./yuck/deserialize-value-to-show.js";
 
@@ -65,37 +48,95 @@ export function Excell({
   engine: EngineShadow;
 }) {
   return (
-    <Grid>
-      <thead>
-        <tr>
-          <td />
-          {ALPHABET.split("").map((letter) => (
-            <th key={letter}>{letter}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {chunk(EXCEL_CELLS, ALPHABET.length).map((row, i) => (
-          <tr key={i}>
-            <th>{i + 1}</th>
-            {row.map((cell_id) => (
-              <Cell
-                key={cell_id}
-                // cell_id={cell_id}
-                viewupdate={extract_nested_viewupdate(viewupdate, cell_id)}
-                cylinder={engine.cylinders[cell_id]}
-                // is_selected={selected_cells.includes(cell_id)}
-                // did_just_get_created={last_created_cells.includes(cell_id)}
-              />
+    <React.Fragment>
+      <AdoptStylesheet stylesheet={observable_inspector_sheet} />
+      <AdoptStylesheet stylesheet={inspector_css_sheet} />
+      <Table>
+        <thead>
+          <tr>
+            <td />
+            {ALPHABET.split("").map((letter) => (
+              <th key={letter}>{letter}</th>
             ))}
           </tr>
+        </thead>
+        <tbody>
+          {chunk(EXCEL_CELLS, ALPHABET.length).map((row, i) => (
+            <tr key={i}>
+              <th>{i + 1}</th>
+              {row.map((cell_id) => (
+                <CellMemo
+                  key={cell_id}
+                  viewupdate={extract_nested_viewupdate(viewupdate, cell_id)}
+                  cylinder={engine.cylinders[cell_id]}
+                />
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+
+      {/* <Grid>
+        <div className="corner" />
+        {ALPHABET.split("").map((letter) => (
+          <div key={letter} className="horizontal-header">
+            {letter}
+          </div>
         ))}
-      </tbody>
-    </Grid>
+        {chunk(EXCEL_CELLS, ALPHABET.length).map((row, i) => (
+          <React.Fragment key={i}>
+            <div className="vertical-header">{i + 1}</div>
+            {row.map((cell_id) => (
+              <CellMemo
+                key={cell_id}
+                viewupdate={extract_nested_viewupdate(viewupdate, cell_id)}
+                cylinder={engine.cylinders[cell_id]}
+              />
+            ))}
+          </React.Fragment>
+        ))}
+      </Grid> */}
+    </React.Fragment>
   );
 }
 
-let Grid = styled.table`
+let Grid = styled.div`
+  display: grid;
+
+  // Grid with 27 columns,
+  // the first one 50 pixels wide, the rest 100 pixels wide
+  grid-template-columns: 50px repeat(26, 100px);
+
+  .horizontal-header {
+    position: sticky;
+    top: 0;
+  }
+  .vertical-header {
+    position: sticky;
+    left: 0;
+  }
+  .corner {
+    position: sticky;
+    top: 0;
+    left: 0;
+  }
+
+  .horizontal-header,
+  .vertical-header,
+  .corner {
+    outline: rgb(238 238 238 / 68%) solid 1px;
+    outline-offset: -1px;
+
+    min-width: 25px;
+    background-color: #1c1b04;
+    z-index: 1;
+  }
+  .corner {
+    z-index: 2;
+  }
+`;
+
+let Table = styled.table`
   padding: 10px;
   background: #232204;
   color: #ffffffcf;
@@ -182,13 +223,7 @@ import {
   HyperfocusEffect,
   HyperfocusField,
 } from "./packages/codemirror-sheet/hyperfocus";
-import {
-  ALPHABET,
-  EXCEL_CELLS,
-  sheet_to_editorinchief,
-  sheetcell_to_editorstate,
-} from "./Sheet/sheet-utils";
-import { CellOrderField } from "./packages/codemirror-notebook/cell-order";
+import { ALPHABET, EXCEL_CELLS } from "./Sheet/sheet-utils";
 
 let observable_inspector_sheet = new CSSish(observable_inspector);
 let inspector_css_sheet = new CSSish(inspector_css);
@@ -212,13 +247,13 @@ let Value = ({ result }) => {
   );
 };
 
-/**
- * @param {{
- *  viewupdate: GenericViewUpdate<EditorState>;
- *  cylinder: import("./packages/codemirror-notebook/cell").CylinderShadow;
- * }} props
- */
-let Cell = ({ viewupdate, cylinder }) => {
+let Cell = ({
+  viewupdate,
+  cylinder,
+}: {
+  viewupdate: GenericViewUpdate<EditorState>;
+  cylinder: import("./packages/codemirror-notebook/cell").CylinderShadow;
+}) => {
   let has_normal_focus = viewupdate.state.field(EditorHasSelectionField, false);
   let has_hyper_focus = viewupdate.state.field(HyperfocusField, false);
 
@@ -296,10 +331,7 @@ let Cell = ({ viewupdate, cylinder }) => {
         }
       }}
     >
-      <div style={{ height: 25, width: 200 }}>
-        <AdoptStylesheet stylesheet={observable_inspector_sheet} />
-        <AdoptStylesheet stylesheet={inspector_css_sheet} />
-
+      <div style={{ height: 25, width: 70 }}>
         {has_hyper_focus ? (
           <CodemirrorFromViewUpdate viewupdate={viewupdate}>
             <Extension extension={basic_sheet_setup} />
@@ -313,3 +345,10 @@ let Cell = ({ viewupdate, cylinder }) => {
     </td>
   );
 };
+
+let CellMemo = React.memo(Cell, (prev, next) => {
+  return (
+    prev.viewupdate.state === next.viewupdate.state &&
+    prev.cylinder === next.cylinder
+  );
+});

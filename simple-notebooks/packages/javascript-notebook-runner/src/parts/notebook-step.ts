@@ -120,21 +120,20 @@ export let find_chamber_to_run_now = ({
 
   // Additionally, find all cells that can run now (have no pending upstream cells)
   // and find the one that was requested to run the shortest time ago
-  let cells_that_can_run = pending_chambers.values().filter((chamber) => {
-    return pending_chambers.values().every((possibly_upstream) => {
-      return !chamber.node.in.some(([id]) => id === possibly_upstream.id);
-    });
-  });
-  for (let chamber of cells_that_can_run) {
-    if (
-      // Has the cell been requested to run, or is it running because of upstream
-      chamber.requested_run_time !==
-        engine.cylinders.get(chamber.id).last_run &&
-      // Is the cell requested to run earlier than the current cell to run
-      chamber.requested_run_time > chamber_to_run.requested_run_time
-    ) {
-      chamber_to_run = chamber;
+  for (let [id, chamber] of pending_chambers.entries()) {
+    // Has the cell been requested to run, or is it running because of upstream
+    if (chamber.requested_run_time === engine.cylinders.get(id).last_run)
+      continue;
+
+    // Is the cell requested to run earlier than the current cell to run
+    if (chamber.requested_run_time <= chamber_to_run.requested_run_time)
+      continue;
+
+    for (let [upstream_id] of chamber.node.in) {
+      if (pending_chambers.has(upstream_id as CellId)) continue;
     }
+
+    chamber_to_run = chamber;
   }
 
   return chamber_to_run;

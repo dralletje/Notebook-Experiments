@@ -39,12 +39,9 @@ import shadow from "react-shadow/styled-components";
 import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 
 // @ts-ignore
-import shadow_notebook_css from "./shadow-notebook.css?inline";
 import { EditorState } from "@codemirror/state";
 import { EXCEL_CELLS } from "./Sheet/sheet-utils";
 import { NotebookViewWithDragAndDrop } from "./Notebook/NotebookViewWithDragAndDrop";
-
-let shadow_notebook = new CSSish(shadow_notebook_css);
 
 let Sheet = () => {};
 
@@ -142,7 +139,7 @@ let Sidebar = styled.div`
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  height: calc(100vh - 50px);
+  height: calc(100vh - 30px);
   position: sticky;
   top: 50px;
   overflow-y: auto;

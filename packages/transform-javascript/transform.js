@@ -213,6 +213,16 @@ let to_string = (ast) => {
   }
 };
 
+let has_async = (ast) => {
+  let has_async = false;
+  traverse(ast, {
+    AwaitExpression({ node }) {
+      has_async = true;
+    },
+  });
+  return has_async;
+};
+
 /**
  * @param {import("./babel-helpers.js").AST} ast
  * @returns {{ [exported_as: string]: string }}
@@ -395,16 +405,10 @@ export function transform(ast) {
     },
   });
 
-  // Wrap the whole thing in an async function like
-  // return (async () => { ... })()
-  let func = t.functionExpression(
-    t.identifier("ConstructedFunction"),
-    [],
-    t.blockStatement(ast.program.body)
-  );
-  // Make function async
-  func.async = true;
-  ast.program.body = [t.returnStatement(t.callExpression(func, []))];
+  ast.program.body = has_async(ast)
+    ? [wrap_in_async_function(ast.program.body)]
+    : ast.program.body;
+
   return {
     ast: ast,
     meta: {
@@ -424,4 +428,17 @@ export function transform(ast) {
 
 let remove_semicolon = (code) => {
   return code.replace(/;$/, "");
+};
+
+let wrap_in_async_function = (body) => {
+  // Wrap the whole thing in an async function like
+  // return (async () => { ... })()
+  let func = t.functionExpression(
+    t.identifier("ConstructedFunction"),
+    [],
+    t.blockStatement(body)
+  );
+  // Make function async
+  func.async = true;
+  return t.returnStatement(t.callExpression(func, []));
 };

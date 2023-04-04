@@ -43,28 +43,6 @@ import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selectio
  * }} files
  */
 
-// @ts-ignore
-let FileTab = styled.button`
-  background: none;
-  border: none;
-
-  padding-left: 24px;
-  padding-right: 24px;
-
-  &[aria-selected="true"] {
-    background: white;
-    color: black;
-  }
-  &:not([aria-selected="true"]):hover {
-    background: black;
-    color: white;
-    text-decoration: underline;
-    text-decoration-thickness: 3px;
-    text-decoration-skip-ink: none;
-    /* text-underline-position: under; */
-  }
-`;
-
 /**
  * @typedef Project
  * @type {{
@@ -153,19 +131,7 @@ function App() {
         alignItems: "stretch",
       }}
     >
-      <div
-        style={{
-          height: 50,
-          position: "sticky",
-          top: 0,
-          backgroundColor: "black",
-          zIndex: 1,
-
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "stretch",
-        }}
-      >
+      <Header>
         {Object.keys(workspace.files).map((filename) => (
           <ContextMenuWrapper
             key={filename}
@@ -201,8 +167,10 @@ function App() {
             ]}
           >
             <FileTab
-              aria-selected={filename === open_file}
-              onClick={() => {
+              aria-current={filename === open_file ? "page" : false}
+              href={`/${filename}`}
+              onClick={(event) => {
+                event.preventDefault();
                 set_url(`/${filename}`);
               }}
             >
@@ -210,7 +178,7 @@ function App() {
             </FileTab>
           </ContextMenuWrapper>
         ))}
-      </div>
+      </Header>
 
       <ProjectView
         key={open_file}
@@ -229,3 +197,48 @@ function App() {
   );
 }
 export default App;
+
+export let Header = styled.header`
+  height: 30px;
+  position: sticky;
+  top: 0;
+  background-color: black;
+
+  body:has(.tab-logs) & {
+    background-color: #090718;
+  }
+  body:has(.tab-notebook) & {
+    background-color: rgb(4 33 22);
+  }
+
+  z-index: 1;
+
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+`;
+
+// @ts-ignore
+let FileTab = styled.a`
+  background: none;
+  border: none;
+
+  padding-top: 2px;
+  padding-left: 24px;
+  padding-right: 24px;
+
+  &[aria-current="page"] {
+    background: #ffffffad;
+    color: black;
+    cursor: default;
+    user-select: none;
+  }
+  &:not([aria-current="page"]):hover {
+    background: #00000061;
+    color: white;
+    /* text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-decoration-skip-ink: none; */
+    /* text-underline-position: under; */
+  }
+`;
