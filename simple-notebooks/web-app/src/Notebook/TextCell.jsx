@@ -7,9 +7,9 @@ import {
 } from "codemirror-x-react/viewupdate.js";
 import { EditorView } from "@codemirror/view";
 import { compact } from "lodash";
-import { basic_markdown_setup } from "./packages/codemirror-markdown-wysiwyg/codemirror-markdown-wysiwyg";
-import { extract_nested_viewupdate } from "./packages/codemirror-editor-in-chief/editor-in-chief";
-import { NudgeCell } from "./packages/codemirror-notebook/cell";
+import { basic_markdown_setup } from "../packages/codemirror-markdown-wysiwyg/codemirror-markdown-wysiwyg";
+import { extract_nested_viewupdate } from "../packages/codemirror-editor-in-chief/editor-in-chief";
+import { NudgeCell } from "../packages/codemirror-notebook/cell";
 import shadow from "react-shadow/styled-components";
 
 let local_style = EditorView.theme({
@@ -48,9 +48,63 @@ let local_style = EditorView.theme({
   },
 });
 
+// Because the markdown editor is so fragile, I put it in a shadow dom.
+// Don't trust people yet to not break it while they add styles to the page.
+let TextCellShadowDom = styled(shadow.div)`
+  flex: 1 1 0px;
+  min-width: 0px;
+
+  font-family: system-ui;
+  font-size: 1.2em;
+
+  position: relative;
+
+  padding-left: 16px;
+
+  &.selected::after {
+    content: "";
+    position: absolute;
+    inset: -0.26rem;
+    left: -1rem;
+    background-color: #20a5ba24;
+    pointer-events: none;
+  }
+
+  transform: scaleX(1);
+  transform-origin: top left;
+
+  transition: filter 0.2s ease-in-out, transform 0.2s ease-in-out;
+
+  .dragging &,
+  .cell-container:has(.drag-handle:hover) &,
+  .cell-container:has(.menu:focus) & {
+    transform: translateX(-2px) translateY(-2px);
+    z-index: 1;
+
+    &::before {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+      inset: -16px 0 -16px -16px;
+      outline: solid 1px #878787;
+      border-radius: 3px;
+
+      backdrop-filter: blur(16px);
+      background-color: var(
+        --background-color,
+        rgb(var(--background-color-rgb) / 10%)
+      );
+    }
+  }
+  .dragging & {
+    --prexisting-transform: translateX(-2px) translateY(-2px);
+    animation: shake 0.2s ease-in-out infinite alternate;
+  }
+`;
+
 /**
  * @param {{
- *  cell_id: import("./packages/codemirror-notebook/cell").CellId,
+ *  cell_id: import("../packages/codemirror-notebook/cell").CellId,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
  *  viewupdate: GenericViewUpdate,
@@ -120,59 +174,3 @@ export let TextCell = ({
     // </shadow.div>
   );
 };
-
-// @ts-ignore AAAAA WHY DOESN'T TYPESCRIPT LIKE STYLED COMPONENTS
-// Also:
-// Because the markdown editor is so fragile, I put it in a shadow dom.
-// Don't trust people yet to not break it while they add styles to the page.
-let TextCellShadowDom = styled(shadow.div)`
-  flex: 1 1 0px;
-  min-width: 0px;
-
-  font-family: system-ui;
-  font-size: 1.2em;
-
-  position: relative;
-
-  padding-left: 16px;
-
-  &.selected::after {
-    content: "";
-    position: absolute;
-    inset: -0.26rem;
-    left: -1rem;
-    background-color: #20a5ba24;
-    pointer-events: none;
-  }
-
-  transform: scaleX(1);
-  transform-origin: top left;
-
-  transition: filter 0.2s ease-in-out, transform 0.2s ease-in-out;
-
-  .dragging &,
-  .cell-container:has(.drag-handle:hover) &,
-  .cell-container:has(.menu:focus) & {
-    transform: translateX(-2px) translateY(-2px);
-    z-index: 1;
-
-    &::before {
-      content: "";
-      position: absolute;
-      pointer-events: none;
-      inset: -16px 0 -16px -16px;
-      outline: solid 1px #878787;
-      border-radius: 3px;
-
-      backdrop-filter: blur(16px);
-      background-color: var(
-        --background-color,
-        rgb(var(--background-color-rgb) / 10%)
-      );
-    }
-  }
-  .dragging & {
-    --prexisting-transform: translateX(-2px) translateY(-2px);
-    animation: shake 0.2s ease-in-out infinite alternate;
-  }
-`;

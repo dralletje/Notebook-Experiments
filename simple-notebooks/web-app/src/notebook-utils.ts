@@ -6,16 +6,19 @@ import {
 import {
   CellMetaField,
   CellTypeFacet,
+  Notebook,
   NotebookFilename,
   NotebookId,
 } from "./packages/codemirror-notebook/cell";
 import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
 
-export let notebook_state_to_notebook_serialized = (state: EditorInChief) => {
+export let notebook_state_to_notebook_serialized = (
+  state: EditorInChief
+): Notebook => {
   let cell_editor_states = state.editors;
-  return /** @type {import("./packages/codemirror-notebook/cell").Notebook} */ {
+  return {
     id: state.facet(NotebookId),
-    filename: state.facet(NotebookFilename),
+    // filename: state.facet(NotebookFilename),
     cell_order: state.field(CellOrderField),
     cells: Object.fromEntries(
       cell_editor_states.mapValues((cell_state) => {

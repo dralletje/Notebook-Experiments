@@ -7,6 +7,7 @@ import {
   CellTypeFacet,
   NotebookFilename,
   NotebookId,
+  NotebookSerialized,
 } from "./cell";
 import { CellIdOrder, cell_movement_extension } from "./cell-movement";
 import { CellOrderField } from "./cell-order";
@@ -18,7 +19,10 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
   (state) => state.field(CellOrderField.field)
 );
 
-export let create_codemirror_notebook = (filename, notebook) => {
+export let create_codemirror_notebook = (
+  filename: string,
+  notebook: NotebookSerialized
+) => {
   return [
     CellOrderField.init(() => {
       return notebook.cell_order.filter((x) => {

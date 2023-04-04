@@ -9,15 +9,15 @@ import { EditorView, placeholder, ViewPlugin } from "@codemirror/view";
 import { compact, isEqual, range } from "lodash";
 import { shallowEqualObjects } from "shallow-equal";
 
-import { Inspector } from "./yuck/Inspector";
+import { Inspector } from "../yuck/Inspector";
 
-import { basic_javascript_setup } from "./codemirror-javascript/codemirror-javascript";
-import { EditorHasSelectionField } from "./packages/codemirror-editor-in-chief/editor-in-chief";
+import { basic_javascript_setup } from "../codemirror-javascript/codemirror-javascript";
+import { EditorHasSelectionField } from "../packages/codemirror-editor-in-chief/editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,
   NudgeCell,
-} from "./packages/codemirror-notebook/cell";
+} from "../packages/codemirror-notebook/cell";
 
 let InspectorContainer = styled.div`
   /* padding-left: calc(16px + 4px);
@@ -207,7 +207,7 @@ let local_style = EditorView.theme({
   },
 });
 
-/** @returns {import("./packages/codemirror-notebook/cell").CylinderShadow} */
+/** @returns {import("../packages/codemirror-notebook/cell").CylinderShadow} */
 let default_cylinder = () => {
   return {
     last_run: -Infinity,
@@ -246,8 +246,8 @@ let remove_selection_on_blur_extension = EditorView.domEventHandlers({
 
 /**
  * @param {{
- *  cell_id: import("./packages/codemirror-notebook/cell").CellId,
- *  cylinder: import("./packages/codemirror-notebook/cell").CylinderShadow,
+ *  cell_id: import("../packages/codemirror-notebook/cell").CellId,
+ *  cylinder: import("../packages/codemirror-notebook/cell").CylinderShadow,
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
  *  viewupdate: GenericViewUpdate,

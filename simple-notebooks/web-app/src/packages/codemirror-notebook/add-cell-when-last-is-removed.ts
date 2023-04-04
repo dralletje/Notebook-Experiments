@@ -26,7 +26,6 @@ export let add_single_cell_when_all_cells_are_removed =
     // Add a cell when the last cell is removed
     if (cells_left_after_effects.size === 0) {
       let new_cell = empty_cell();
-      console.log(`transaction.state:`, transaction.state);
       return {
         annotations: NoAnimation.of(true),
         effects: [

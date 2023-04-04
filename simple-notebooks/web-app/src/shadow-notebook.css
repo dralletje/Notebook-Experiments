@@ -8,9 +8,9 @@
   .cell-editor {
     background-color: rgb(0 27 8 / 27%) !important;
   }
-  .cell-editor:not(:focus-within) {
+  /* .cell-editor:not(:focus-within) {
     max-height: 85px;
-  }
+  } */
 
   .cell-editor .cm-content {
     margin: 8px;

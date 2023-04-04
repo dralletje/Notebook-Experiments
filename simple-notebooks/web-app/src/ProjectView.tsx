@@ -37,13 +37,13 @@ import { ContextMenuItem } from "./packages/react-contextmenu/react-contextmenu"
 import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
 
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
-import { actions } from "./commands.js";
+import { actions } from "./Notebook/notebook-commands.js";
 import { Logs } from "./Sidebar/Logs/Logs.jsx";
 import { useEngine } from "./environment/use-engine.js";
 import { Environment } from "./environment/Environment";
 import { Excell } from "./ExcellView";
 import { useUrl } from "./packages/use-url/use-url";
-import { NotebookView } from "./NotebookView";
+import { NotebookView } from "./Notebook/NotebookView";
 import shadow from "react-shadow/styled-components";
 import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 

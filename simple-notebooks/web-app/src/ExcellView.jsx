@@ -16,7 +16,7 @@ import {
   shared_history,
   historyKeymap,
 } from "./packages/codemirror-editor-in-chief/codemirror-shared-history";
-import { NotebookView } from "./NotebookView";
+import { NotebookView } from "./Notebook/NotebookView";
 import { cell_keymap } from "./packages/codemirror-sheet/sheet-keymap.js";
 import {
   NotebookFilename,
