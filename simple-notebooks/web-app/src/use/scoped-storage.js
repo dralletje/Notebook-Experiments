@@ -7,15 +7,20 @@ import React from "react";
 // Don't think I can make this more complex?
 // Wait till I add typescript....
 
+/**
+ * @template T
+ */
 export class ScopedStorage {
   constructor(/** @type {string} */ key) {
     this.key = key;
   }
+
+  /** @returns {T | null} */
   get() {
     try {
       let string_value = localStorage.getItem(this.key);
       if (string_value == null) {
-        return string_value;
+        return null;
       } else {
         return JSON.parse(string_value);
       }
@@ -24,6 +29,7 @@ export class ScopedStorage {
     }
   }
 
+  /** @param {T} value */
   set(value) {
     if (value == null) {
       this.remove();
@@ -48,10 +54,13 @@ export class ScopedStorage {
   }
 }
 
-export let useScopedStorage = (
-  /** @type {ScopedStorage} */ storage,
-  default_value
-) => {
+/**
+ * @template T
+ * @param {ScopedStorage} storage
+ * @param {T} [default_value]
+ * @returns {[T, (value: T) => void]}
+ */
+export let useScopedStorage = (storage, default_value) => {
   // TODO I totally assume `storage` doesn't change and I'm okay with that
 
   let initial_storage = React.useMemo(() => {

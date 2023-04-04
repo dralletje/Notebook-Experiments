@@ -2,51 +2,49 @@ import React from "react";
 import { ScopedStorage, useScopedStorage } from "./scoped-storage.js";
 import { DEFAULT_WORKSPACE } from "../yuck/DEFAULT_WORKSPACE.js";
 import { mapValues, throttle } from "lodash";
-import { Workspace } from "../App.jsx";
 import { WorkspaceSerialized } from "../environment/Environment.js";
 
 let workspace_storage = new ScopedStorage("workspace");
-export let useWorkerStorage = ({
+
+type Workspace<T> = { files: { [key: string]: T } };
+
+export let useWorkerStorage = <Serialized, Living>({
   serialize,
   deserialize,
 }: {
-  serialize: (value: any) => any;
-  deserialize: (value: any) => any;
+  serialize: (value: Living) => Serialized;
+  deserialize: (value: Serialized) => Living;
 }) => {
   let [workspace_json, set_workspace_json] = useScopedStorage(
     workspace_storage,
     DEFAULT_WORKSPACE
   );
-  let update_localstorage = React.useMemo(() => {
-    return throttle((workspace: Workspace) => {
-      set_workspace_json(
-        JSON.stringify({
-          id: workspace.id,
-          files: mapValues(workspace.files, (file) => {
-            return {
-              filename: file.filename,
-              notebook: serialize(file.state),
-            };
-          }),
-        })
-      );
-    }, 500);
-  }, [set_workspace_json]);
 
   let initial_workspace = React.useMemo(() => {
-    let workspace = JSON.parse(workspace_json) as WorkspaceSerialized;
+    let workspace = JSON.parse(workspace_json) as Workspace<Serialized>;
     return {
-      id: workspace.id,
       files: mapValues(workspace.files, (file) => {
-        return {
-          filename: file.filename,
-          state: deserialize(file),
-        };
+        return deserialize(file);
       }),
     };
   }, []);
 
   let [workspace, set_workspace] = React.useState(initial_workspace);
+
+  let update_localstorage = React.useMemo(() => {
+    return throttle(
+      (workspace: { id: string; files: { [key: string]: Living } }) => {
+        set_workspace_json(
+          JSON.stringify({
+            files: mapValues(workspace.files, (file) => {
+              return serialize(file);
+            }),
+          })
+        );
+      },
+      500
+    );
+  }, [set_workspace_json]);
 
   return [
     workspace,

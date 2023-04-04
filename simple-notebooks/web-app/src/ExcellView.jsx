@@ -18,10 +18,6 @@ import {
 } from "./packages/codemirror-editor-in-chief/codemirror-shared-history";
 import { NotebookView } from "./Notebook/NotebookView";
 import { cell_keymap } from "./packages/codemirror-sheet/sheet-keymap.js";
-import {
-  NotebookFilename,
-  NotebookId,
-} from "./packages/codemirror-notebook/cell";
 // import { typescript_extension } from "./packages/typescript-server-webworker/codemirror-typescript.js";
 import {
   EditorInChief,
@@ -68,7 +64,7 @@ import { deserialize } from "./yuck/deserialize-value-to-show.js";
  * @param {EditorInChief} editorstate
  * @param {Excell} cell
  */
-export let create_cell_state = (editorstate, cell) => {
+let create_cell_state = (editorstate, cell) => {
   return editorstate.create_section_editor({
     editor_id: /** @type {any} */ (cell.id),
     doc: cell.unsaved_code ?? cell.code,
@@ -95,7 +91,7 @@ let EXCEL_CELLS =
     range(1, 10).flatMap((i) => ALPHABET.split("").map((j) => `${j}${i}`))
   );
 
-export let notebook_to_state = () => {
+let notebook_to_state = () => {
   return EditorInChief.create({
     editors: (editorstate) => {
       return Object.fromEntries(
@@ -116,9 +112,6 @@ export let notebook_to_state = () => {
       // sheet_keymap,
       // EditorExtension.of(cell_keymap),
       // notebook_keymap,
-
-      // NotebookId.of(notebook.id),
-      // NotebookFilename.of(filename),
 
       // This works so smooth omg
       [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
@@ -170,7 +163,7 @@ export function Excell() {
       filename: "Excel",
       notebook: notebook,
     };
-  }, [notebook, state.facet(NotebookFilename)]);
+  }, [notebook]);
 
   let [engine, logs] = useEngine(notebook_with_filename, environment);
 

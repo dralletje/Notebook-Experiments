@@ -8,11 +8,6 @@ import {
   SelectCellsEffect,
   SelectedCellsField,
 } from "./packages/codemirror-notebook/cell-selection";
-import { SelectionArea } from "./selection-area/SelectionArea";
-import {
-  NotebookFilename,
-  NotebookId,
-} from "./packages/codemirror-notebook/cell";
 
 import {
   BlurEditorInChiefEffect,
@@ -26,18 +21,10 @@ import {
 } from "./packages/codemirror-notebook/cell";
 import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
 
-import { IonIcon } from "@ionic/react";
-import {
-  codeOutline,
-  eyeOutline,
-  planetOutline,
-  textOutline,
-} from "ionicons/icons";
 import { ContextMenuItem } from "./packages/react-contextmenu/react-contextmenu";
 import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
 
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
-import { actions } from "./Notebook/notebook-commands.js";
 import { Logs } from "./Sidebar/Logs/Logs.jsx";
 import { useEngine } from "./environment/use-engine.js";
 import { Environment } from "./environment/Environment";
@@ -53,10 +40,12 @@ import shadow_notebook_css from "./shadow-notebook.css?inline";
 let shadow_notebook = new CSSish(shadow_notebook_css);
 
 export function ProjectView({
+  filename,
   state,
   onChange,
   environment,
 }: {
+  filename: string;
   state: EditorInChief;
   onChange: (state: EditorInChief) => void;
   environment: Environment;
@@ -71,8 +60,6 @@ export function ProjectView({
 
   let notebook = React.useMemo(() => {
     return /** @type {import("./packages/codemirror-notebook/cell").Notebook} */ {
-      id: state.facet(NotebookId),
-      filename: state.facet(NotebookFilename),
       cell_order: state.field(CellOrderField),
       cells: Object.fromEntries(
         state.field(CellOrderField).map((cell_id) => {
@@ -97,11 +84,8 @@ export function ProjectView({
   }, [cell_editor_states, cell_order]);
 
   let notebook_with_filename = React.useMemo(() => {
-    return {
-      filename: state.facet(NotebookFilename),
-      notebook: notebook,
-    };
-  }, [notebook, state.facet(NotebookFilename)]);
+    return { filename: filename, notebook: notebook };
+  }, [notebook, filename]);
 
   let [engine, logs] = useEngine(notebook_with_filename, environment);
 

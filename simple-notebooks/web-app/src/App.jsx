@@ -19,7 +19,11 @@ import { useUrl } from "./packages/use-url/use-url.js";
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu.jsx";
 import { ProjectView } from "./ProjectView";
 
-import { notebook_state_to_notebook_serialized } from "./notebook-utils";
+import {
+  empty_notebook,
+  editorinchief_to_notebook,
+  notebook_to_editorinchief,
+} from "./Notebook/notebook-utils";
 import { create_codemirror_notebook } from "./packages/codemirror-notebook/codemirror-notebook";
 
 import "./App.css";
@@ -28,47 +32,9 @@ import "./App.css";
  * @typedef Workspace
  * @property {string} id
  * @property {{
- *  [filename: string]: {
- *    filename: string,
- *    state: EditorInChief,
- *  }
+ *  [filename: string]: EditorInChief,
  * }} files
  */
-
-/**
- * @param {EditorInChief} editorstate
- * @param {import("./packages/codemirror-notebook/cell").Cell} cell
- */
-export let create_cell_state = (editorstate, cell) => {
-  return editorstate.create_section_editor({
-    editor_id: cell.id,
-    doc: cell.unsaved_code ?? cell.code,
-    extensions: [
-      CellMetaField.init(() => ({
-        code: cell.code,
-        requested_run_time: cell.requested_run_time ?? 0,
-        folded: cell.folded,
-        type: cell.type,
-      })),
-    ],
-  });
-};
-
-/** @param {{ filename: string, notebook: import("./packages/codemirror-notebook/cell").NotebookSerialized}} notebook */
-export let notebook_to_state = ({ filename, notebook }) => {
-  return EditorInChief.create({
-    editors: (editorstate) => {
-      return mapValues(notebook.cells, (cell) =>
-        create_cell_state(editorstate, cell)
-      );
-    },
-    extensions: [
-      create_codemirror_notebook(filename, notebook),
-      // This works so smooth omg
-      [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
-    ],
-  });
-};
 
 // @ts-ignore
 let FileTab = styled.button`
@@ -108,57 +74,19 @@ function App() {
   //////////////////////////////////////////////////////////////
 
   let [workspace, set_workspace] = useWorkerStorage({
-    deserialize: notebook_to_state,
-    serialize: notebook_state_to_notebook_serialized,
+    deserialize: notebook_to_editorinchief,
+    serialize: editorinchief_to_notebook,
   });
   let environment = React.useRef(WorkerEnvironment).current;
 
   //////////////////////////////////////////////////////////////
 
-  /** @type {import("./packages/codemirror-notebook/cell").CellId} */
-  let EMPTY_TITLE_CELL_ID = /** @type {any} */ ("Something-Wonderful𓃰");
-  /** @type {import("./packages/codemirror-notebook/cell").CellId} */
-  let EMPTY_CODE_CELL_ID = /** @type {any} */ ("So-Exciting𓆉");
-
   if (!(open_file in workspace.files)) {
     set_workspace(
-      produce(workspace, (workspace) => {
-        workspace.files[open_file] = {
-          // @ts-ignore
-          id: /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */ (
-            open_file
-          ),
-          // @ts-ignore
-          state: notebook_to_state({
-            filename: open_file,
-            notebook: {
-              id: /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */ (
-                open_file
-              ),
-              cell_order: [EMPTY_TITLE_CELL_ID, EMPTY_CODE_CELL_ID],
-              cells: {
-                [EMPTY_TITLE_CELL_ID]:
-                  /** @type {import("./packages/codemirror-notebook/cell").Cell} */ ({
-                    id: EMPTY_TITLE_CELL_ID,
-                    type: "text",
-                    unsaved_code: `# ${open_file}`,
-                    code: `# ${open_file}`,
-                    requested_run_time: 0,
-                    folded: false,
-                  }),
-                [EMPTY_CODE_CELL_ID]:
-                  /** @type {import("./packages/codemirror-notebook/cell").Cell} */ ({
-                    id: EMPTY_CODE_CELL_ID,
-                    type: "code",
-                    unsaved_code: "",
-                    code: "",
-                    requested_run_time: 0,
-                    folded: false,
-                  }),
-              },
-            },
-          }),
-        };
+      produce(workspace, (/** @type {Workspace} */ workspace) => {
+        workspace.files[open_file] = notebook_to_editorinchief({
+          notebook: empty_notebook(open_file),
+        });
       })
     );
     return;
@@ -235,23 +163,19 @@ function App() {
         ))}
       </div>
 
-      {open_file == null ? (
-        <div></div>
-      ) : (
-        <ProjectView
-          key={open_file}
-          environment={environment}
-          state={workspace.files[open_file].state}
-          onChange={(state) => {
-            let new_workspace = produce(workspace, (workspace) => {
-              // @ts-ignore
-              workspace.files[open_file].state = state;
-            });
-
-            set_workspace(new_workspace);
-          }}
-        />
-      )}
+      <ProjectView
+        key={open_file}
+        filename={open_file}
+        environment={environment}
+        state={workspace.files[open_file]}
+        onChange={(state) => {
+          set_workspace(
+            produce(workspace, (workspace) => {
+              workspace.files[open_file] = /** @type {any} */ (state);
+            })
+          );
+        }}
+      />
     </div>
   );
 }

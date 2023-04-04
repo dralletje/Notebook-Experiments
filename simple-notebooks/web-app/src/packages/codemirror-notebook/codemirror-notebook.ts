@@ -2,13 +2,7 @@ import { EditorView } from "@codemirror/view";
 import { EditorExtension } from "../codemirror-editor-in-chief/logic";
 import { add_single_cell_when_all_cells_are_removed } from "./add-cell-when-last-is-removed";
 import { cell_keymap, notebook_keymap } from "./add-move-and-run-cells";
-import {
-  CellMetaField,
-  CellTypeFacet,
-  NotebookFilename,
-  NotebookId,
-  NotebookSerialized,
-} from "./cell";
+import { CellMetaField, CellTypeFacet, NotebookSerialized } from "./cell";
 import { CellIdOrder, cell_movement_extension } from "./cell-movement";
 import { CellOrderField } from "./cell-order";
 import { SelectedCellsField, selected_cells_keymap } from "./cell-selection";
@@ -19,10 +13,7 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
   (state) => state.field(CellOrderField.field)
 );
 
-export let create_codemirror_notebook = (
-  filename: string,
-  notebook: NotebookSerialized
-) => {
+export let create_codemirror_notebook = (notebook: NotebookSerialized) => {
   return [
     CellOrderField.init(() => {
       return notebook.cell_order.filter((x) => {
@@ -51,8 +42,5 @@ export let create_codemirror_notebook = (
 
     EditorExtension.of(cell_keymap),
     notebook_keymap,
-
-    NotebookId.of(notebook.id),
-    NotebookFilename.of(filename),
   ];
 };

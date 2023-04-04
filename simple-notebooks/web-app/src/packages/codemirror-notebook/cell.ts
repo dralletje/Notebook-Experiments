@@ -72,7 +72,6 @@ export let CellTypeFacet = Facet.define<
 });
 
 export type NotebookSerialized = {
-  id: string;
   cells: { [key: CellId]: Cell };
   cell_order: CellId[];
 };
@@ -87,13 +86,6 @@ export type Cell = {
   requested_run_time: number;
   folded?: boolean;
 };
-
-export let NotebookFilename = Facet.define<string, string>({
-  combine: (a) => a[0],
-});
-export let NotebookId = Facet.define<string, string>({
-  combine: (a) => a[0],
-});
 
 export type Log = {
   id: string;

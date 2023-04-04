@@ -1,4 +1,3 @@
-import { create_cell_state } from "../App.jsx";
 import {
   EditorAddEffect,
   EditorDispatchEffect,
@@ -12,6 +11,7 @@ import {
   MutateCellMetaEffect,
   empty_cell,
 } from "../packages/codemirror-notebook/cell";
+import { create_cell_state } from "./notebook-utils";
 
 export let add_text_above = {
   title: "Add Text Cell Above",

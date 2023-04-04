@@ -21,9 +21,9 @@ import {
   empty_cell,
 } from "./cell";
 import { CellOrderField, CellOrderEffect } from "./cell-order.js";
-import { create_cell_state } from "../../App.jsx";
 import { NoAnimation } from "./last-created-cells.js";
 import { syntaxTree } from "@codemirror/language";
+import { create_cell_state } from "../../Notebook/notebook-utils";
 
 export let notebook_keymap = EditorInChiefKeymap.of([
   {
