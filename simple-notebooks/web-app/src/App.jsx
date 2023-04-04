@@ -1,6 +1,6 @@
 import React from "react";
 import { produce } from "immer";
-import { isEmpty, mapValues, throttle } from "lodash";
+import { mapValues } from "lodash";
 import styled from "styled-components";
 import {
   CellMetaField,
@@ -46,6 +46,7 @@ import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextme
 import { ProjectView } from "./ProjectView";
 
 import "./App.css";
+import { notebook_state_to_notebook_serialized } from "./notebook-utils";
 
 /**
  * @typedef Workspace
@@ -82,9 +83,6 @@ export let create_cell_state = (editorstate, cell) => {
     ],
   });
 };
-
-/** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */
-let DEFAULT_CELL_ID_AFTER_CRASH = /** @type {any} */ ("oh-no-what-happened");
 
 /** @param {{ filename: string, notebook: import("./packages/codemirror-notebook/cell").NotebookSerialized}} notebook */
 export let notebook_to_state = ({ filename, notebook }) => {
@@ -176,7 +174,10 @@ function App() {
 
   //////////////////////////////////////////////////////////////
 
-  let [workspace, set_workspace] = useWorkerStorage();
+  let [workspace, set_workspace] = useWorkerStorage({
+    deserialize: notebook_to_state,
+    serialize: notebook_state_to_notebook_serialized,
+  });
   let environment = React.useRef(WorkerEnvironment).current;
 
   //////////////////////////////////////////////////////////////
