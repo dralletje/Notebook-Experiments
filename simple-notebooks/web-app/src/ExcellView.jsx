@@ -26,7 +26,6 @@ import {
 import {
   EditorInChief,
   EditorExtension,
-  create_nested_editor_state,
   EditorInChiefKeymap,
   EditorIdFacet,
   extract_nested_viewupdate,
@@ -70,8 +69,7 @@ import { deserialize } from "./yuck/deserialize-value-to-show.js";
  * @param {Excell} cell
  */
 export let create_cell_state = (editorstate, cell) => {
-  return create_nested_editor_state({
-    parent: editorstate.editorstate,
+  return editorstate.create_section_editor({
     editor_id: /** @type {any} */ (cell.id),
     doc: cell.unsaved_code ?? cell.code,
     extensions: [

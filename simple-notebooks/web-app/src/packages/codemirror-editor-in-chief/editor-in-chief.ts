@@ -1,6 +1,5 @@
 export {
   EditorsField,
-  create_nested_editor_state,
   BlurEditorInChiefEffect,
   EditorDispatchEffect,
   EditorAddEffect,

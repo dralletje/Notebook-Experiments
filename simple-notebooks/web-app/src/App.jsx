@@ -27,7 +27,6 @@ import {
 import {
   EditorInChief,
   EditorExtension,
-  create_nested_editor_state,
   EditorInChiefKeymap,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
@@ -69,8 +68,7 @@ let cell_id_order_from_notebook_facet = CellIdOrder.compute(
  * @param {import("./packages/codemirror-notebook/cell").Cell} cell
  */
 export let create_cell_state = (editorstate, cell) => {
-  return create_nested_editor_state({
-    parent: editorstate.editorstate,
+  return editorstate.create_section_editor({
     editor_id: cell.id,
     doc: cell.unsaved_code ?? cell.code,
     extensions: [

@@ -1,6 +1,7 @@
 import {
   EditorSelection,
   EditorState,
+  EditorStateConfig,
   Facet,
   StateField,
 } from "@codemirror/state";
@@ -11,6 +12,8 @@ import {
   EditorsField,
   expand_cell_effects_that_are_actually_meant_for_the_nexus,
   EditorId,
+  EditorIdFacet,
+  EditorExtension,
 } from "./logic";
 import {
   EditorInChiefRange,
@@ -26,6 +29,7 @@ import {
   EditorInChiefTransaction,
   EditorInChiefTransactionSpec,
 } from "./wrap/transaction";
+import { editor_has_selection_extension } from "./editor-has-selection-extension";
 
 export class EditorInChiefView {
   constructor(private view: EditorView) {
@@ -92,6 +96,31 @@ export class EditorInChief {
     } else {
       return this.editorstate.field(field, required) as any;
     }
+  }
+
+  section_editor_extensions(editor_id: EditorId) {
+    return [
+      EditorIdFacet.of(editor_id),
+      editor_has_selection_extension,
+      this.facet(EditorExtension) ?? [],
+    ];
+  }
+  create_section_editor({
+    editor_id,
+    doc,
+    extensions,
+    selection,
+  }: {
+    editor_id: EditorId;
+    doc?: EditorStateConfig["doc"];
+    extensions?: EditorStateConfig["extensions"];
+    selection?: EditorStateConfig["selection"];
+  }) {
+    return EditorState.create({
+      doc: doc,
+      selection: selection,
+      extensions: [this.section_editor_extensions(editor_id), extensions ?? []],
+    });
   }
 
   update(...specs: EditorInChiefTransactionSpec[]) {
