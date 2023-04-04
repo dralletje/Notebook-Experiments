@@ -142,8 +142,11 @@ export class SheetArchitect {
                 id: column_id as CellId,
                 type: "code",
                 code: `${column_id} = [${range(1, 10)
-                  .map((x) => `${column_id}${x}`)
-                  .join(", ")}]`,
+                  .map(
+                    (x) =>
+                      `typeof ${column_id}${x} === "undefined" ? null : ${column_id}${x}`
+                  )
+                  .join(", ")}].filter(x => x !== null)`,
                 folded: false,
                 requested_run_time: 0,
               } as Cell,

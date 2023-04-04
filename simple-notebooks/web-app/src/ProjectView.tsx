@@ -141,14 +141,10 @@ export function ProjectView({
   );
 }
 
-let NOISE_BACKGROUND = new URL(
-  "./yuck/noise-background.png",
-  import.meta.url
-).toString();
-
 let Sidebar = styled.div`
-  min-width: 300px;
-  width: 400px;
+  min-width: 500px;
+  width: 600px;
+
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -161,29 +157,34 @@ let Sidebar = styled.div`
   &.tab-notebook {
     background-color: #01412d;
     nav {
-      border-bottom: solid 3px #081c14;
+      background: #01412d;
     }
   }
   &.tab-logs {
-    background-color: rgba(23, 1, 129, 0.27);
+    background-color: rgb(23, 1, 129);
     nav {
-      border-bottom: solid 1px #090715;
+      background: rgb(23, 1, 129);
     }
   }
 
   nav {
-    background: url(${NOISE_BACKGROUND}), rgba(0, 0, 0, 0.2);
+    background: , black;
     display: flex;
     flex-direction: row;
+
+    position: sticky;
+    top: 0;
+    z-index: 1;
 
     a {
       flex: 1;
       text-align: center;
       padding: 5px 10px;
       font-weight: bold;
+      background-color: rgba(0, 0, 0, 0.5);
 
       &.active {
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: rgba(0, 0, 0, 0);
       }
 
       &:not(.active):hover {
@@ -196,5 +197,6 @@ let Sidebar = styled.div`
     display: flex;
     flex-direction: column;
     flex: 1;
+    z-index: 0;
   }
 `;
