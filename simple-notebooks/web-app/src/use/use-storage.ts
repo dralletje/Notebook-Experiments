@@ -26,30 +26,26 @@ export let useWorkerStorage = <Serialized, Living>({
       files: mapValues(workspace.files, (file) => {
         return deserialize(file);
       }),
-    };
+    } as Workspace<Living>;
   }, []);
 
   let [workspace, set_workspace] = React.useState(initial_workspace);
 
   let update_localstorage = React.useMemo(() => {
-    return throttle(
-      (workspace: { id: string; files: { [key: string]: Living } }) => {
-        set_workspace_json(
-          JSON.stringify({
-            files: mapValues(workspace.files, (file) => {
-              return serialize(file);
-            }),
-          })
-        );
-      },
-      500
-    );
+    return throttle((workspace: Workspace<Living>) => {
+      set_workspace_json(
+        JSON.stringify({
+          files: mapValues(workspace.files, (file) => {
+            return serialize(file);
+          }),
+        })
+      );
+    }, 500);
   }, [set_workspace_json]);
 
   return [
     workspace,
-    (workspace) => {
-      // @ts-ignore
+    (workspace: Workspace<Living>) => {
       update_localstorage(workspace);
       set_workspace(workspace);
     },

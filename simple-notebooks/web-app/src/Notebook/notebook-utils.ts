@@ -66,8 +66,6 @@ export let notebook_to_editorinchief = ({
 }: {
   notebook: NotebookSerialized;
 }) => {
-  console.log(`stuff:`, stuff);
-  console.log(`notebook:`, notebook);
   return EditorInChief.create({
     editors: (editorstate) => {
       return mapValues(notebook.cells, (cell) =>
