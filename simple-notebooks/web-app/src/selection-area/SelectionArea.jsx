@@ -115,7 +115,7 @@ export const SelectionArea = ({ on_selection, children }) => {
 
       /** @type {HTMLElement[]} */
       const cell_nodes = Array.from(
-        document.querySelectorAll("[data-cell-id]")
+        element_ref.current.querySelectorAll("[data-cell-id]")
       );
 
       let A = {

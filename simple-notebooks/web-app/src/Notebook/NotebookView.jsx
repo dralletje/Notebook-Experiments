@@ -33,6 +33,7 @@ import { TextCell } from "./TextCell.jsx";
 import { CellErrorBoundary } from "./CellErrorBoundary.jsx";
 import { DragAndDropItem, DragAndDropList } from "./DragAndDropStuff.jsx";
 import * as actions from "./notebook-commands.js";
+import { runScopeHandlers } from "@codemirror/view";
 
 // @ts-ignore
 let NotebookStyle = styled.div`
@@ -77,7 +78,23 @@ export function NotebookView({ viewupdate, engine }) {
         }
       }}
     >
-      <NotebookStyle>
+      <NotebookStyle
+        onKeyDown={(event) => {
+          if (event.defaultPrevented) {
+            return;
+          }
+          let should_cancel = runScopeHandlers(
+            // @ts-ignore
+            viewupdate.view,
+            event,
+            // TODO Change this scope to something EditorInChief specific?
+            "editor"
+          );
+          if (should_cancel) {
+            event.preventDefault();
+          }
+        }}
+      >
         <DragAndDropList editor_in_chief={editor_in_chief}>
           {cell_order.map((cell_id, index) => {
             let cell_viewupdate = extract_nested_viewupdate(

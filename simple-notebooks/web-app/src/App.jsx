@@ -33,6 +33,7 @@ import {
 import { create_codemirror_notebook } from "./packages/codemirror-notebook/codemirror-notebook";
 
 import "./App.css";
+import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selection";
 
 /**
  * @typedef Workspace
@@ -71,11 +72,33 @@ let FileTab = styled.button`
  * }}
  */
 
+let NOTEBOOK_EDITOR_ID =
+  /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */ (
+    "notebook"
+  );
+
 let project_to_editorinchief = (/** @type {Project} */ project) => {
-  return notebook_to_editorinchief(project.notebook);
+  return EditorInChief.create({
+    editors: (parent) => {
+      let x = notebook_to_editorinchief(
+        project.notebook,
+        parent.section_editor_extensions(NOTEBOOK_EDITOR_ID)
+      );
+      console.log(`x.field(Selected):`, x.field(SelectedCellsField));
+      return {
+        notebook: x,
+      };
+    },
+    extensions: [],
+  });
 };
 let editorinchief_to_project = (/** @type {EditorInChief} */ editorinchief) => {
-  return { notebook: editorinchief_to_notebook(editorinchief) };
+  return {
+    [NOTEBOOK_EDITOR_ID]: editorinchief_to_notebook(
+      // @ts-ignore
+      editorinchief.editor(NOTEBOOK_EDITOR_ID)
+    ),
+  };
 };
 
 function App() {

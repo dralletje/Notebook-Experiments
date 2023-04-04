@@ -18,8 +18,11 @@ import {
   historyKeymap,
   shared_history,
 } from "../packages/codemirror-editor-in-chief/codemirror-shared-history";
+import { EditorState } from "@codemirror/state";
 
-export let editorinchief_to_notebook = (state: EditorInChief): Notebook => {
+export let editorinchief_to_notebook = (
+  state: EditorInChief<EditorState>
+): Notebook => {
   let cell_editor_states = state.editors;
   return {
     cell_order: state.field(CellOrderField),
@@ -41,7 +44,10 @@ export let editorinchief_to_notebook = (state: EditorInChief): Notebook => {
   };
 };
 
-export let create_cell_state = (editorstate: EditorInChief, cell: Cell) => {
+export let create_cell_state = (
+  editorstate: EditorInChief<EditorState>,
+  cell: Cell
+) => {
   return editorstate.create_section_editor({
     editor_id: cell.id,
     doc: cell.unsaved_code ?? cell.code,
@@ -56,7 +62,10 @@ export let create_cell_state = (editorstate: EditorInChief, cell: Cell) => {
   });
 };
 
-export let notebook_to_editorinchief = (notebook: NotebookSerialized) => {
+export let notebook_to_editorinchief = (
+  notebook: NotebookSerialized,
+  extensions = []
+) => {
   return EditorInChief.create({
     editors: (editorstate) => {
       return mapValues(notebook.cells, (cell) =>
@@ -64,6 +73,7 @@ export let notebook_to_editorinchief = (notebook: NotebookSerialized) => {
       );
     },
     extensions: [
+      extensions,
       create_codemirror_notebook(notebook),
       // This works so smooth omg
       [shared_history(), EditorInChiefKeymap.of(historyKeymap)],

@@ -2,7 +2,10 @@ import React from "react";
 
 import styled from "styled-components";
 import { isEqual } from "lodash";
-import { useViewUpdate } from "codemirror-x-react/viewupdate";
+import {
+  GenericViewUpdate,
+  useViewUpdate,
+} from "codemirror-x-react/viewupdate";
 
 import {
   SelectCellsEffect,
@@ -11,6 +14,7 @@ import {
 
 import {
   BlurEditorInChiefEffect,
+  EditorId,
   EditorIdFacet,
   EditorInChief,
   extract_nested_viewupdate,
@@ -36,6 +40,7 @@ import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 
 // @ts-ignore
 import shadow_notebook_css from "./shadow-notebook.css?inline";
+import { EditorState } from "@codemirror/state";
 
 let shadow_notebook = new CSSish(shadow_notebook_css);
 
@@ -43,22 +48,28 @@ let Sheet = () => {};
 
 export function ProjectView({
   filename,
-  state,
+  state: _state,
   onChange,
   environment,
 }: {
   filename: string;
-  state: EditorInChief;
-  onChange: (state: EditorInChief) => void;
+  state: EditorInChief<any>;
+  onChange: (state: any) => void;
   environment: Environment;
 }) {
-  let viewupdate = useViewUpdate(state, onChange);
-  useCodemirrorKeyhandler(viewupdate);
+  let _viewupdate = useViewUpdate(_state, onChange);
+
+  let viewupdate = extract_nested_viewupdate(
+    _viewupdate,
+    "notebook" as EditorId
+  ) as any as GenericViewUpdate<EditorInChief<EditorState>>;
+
+  let state = viewupdate.state;
+  let editor_in_chief = viewupdate.view;
 
   let cell_editor_states = state.editors;
   let cell_order = state.field(CellOrderField);
-  let selected_cells = viewupdate.state.field(SelectedCellsField);
-  let editor_in_chief = viewupdate.view;
+  let selected_cells = state.field(SelectedCellsField);
 
   let notebook = React.useMemo(() => {
     return /** @type {import("./packages/codemirror-notebook/cell").Notebook} */ {

@@ -56,9 +56,11 @@ export class EditorInChiefView {
   };
 }
 
-let EditorInChiefCache = new WeakMap<EditorState, EditorInChief>();
+export type MinimalEditorState = EditorState;
 
-export class EditorInChief {
+let EditorInChiefCache = new WeakMap<EditorState, EditorInChief<any>>();
+
+export class EditorInChief<SectionEditor extends MinimalEditorState> {
   constructor(public editorstate: EditorState) {
     this.editorstate = editorstate;
 
@@ -135,11 +137,11 @@ export class EditorInChief {
   get editors() {
     return new ModernMap(
       Object.entries(this.editorstate.field(EditorsField).cells)
-    ) as ModernMap<EditorId, EditorState>;
+    ) as ModernMap<EditorId, SectionEditor>;
   }
 
-  editor(editor_id: EditorId): EditorState;
-  editor(editor_id: EditorId, required?: false): EditorState | undefined {
+  editor(editor_id: EditorId): SectionEditor;
+  editor(editor_id: EditorId, required?: false): SectionEditor | undefined {
     if (required !== false && !this.editors.has(editor_id)) {
       throw new Error(`Editor with id ${editor_id} not found`);
     }
@@ -171,11 +173,13 @@ export class EditorInChief {
   static editors(editorstate: EditorState) {
     return new EditorInChief(editorstate).editors;
   }
-  static create({
+  static create<SectionEditor extends MinimalEditorState>({
     editors,
     extensions = [],
   }: {
-    editors: (editorstate: EditorInChief) => { [key: EditorId]: EditorState };
+    editors: (editorstate: EditorInChief<SectionEditor>) => {
+      [key: EditorId]: EditorState;
+    };
     extensions?: EditorInChiefExtension[];
   }) {
     let extensions_with_state_fields =
