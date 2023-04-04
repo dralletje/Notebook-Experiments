@@ -39,6 +39,8 @@ import shadow_notebook_css from "./shadow-notebook.css?inline";
 
 let shadow_notebook = new CSSish(shadow_notebook_css);
 
+let Sheet = () => {};
+
 export function ProjectView({
   filename,
   state,

@@ -7,10 +7,6 @@ import {
   CellTypeFacet,
   MutateCellMetaEffect,
 } from "./packages/codemirror-notebook/cell";
-import {
-  SelectedCellsField,
-  selected_cells_keymap,
-} from "./packages/codemirror-notebook/cell-selection";
 import { EditorView, keymap } from "@codemirror/view";
 import {
   shared_history,
@@ -60,82 +56,15 @@ import { deserialize } from "./yuck/deserialize-value-to-show.js";
  * }}
  */
 
-/**
- * @param {EditorInChief} editorstate
- * @param {Excell} cell
- */
-let create_cell_state = (editorstate, cell) => {
-  return editorstate.create_section_editor({
-    editor_id: /** @type {any} */ (cell.id),
-    doc: cell.unsaved_code ?? cell.code,
-    extensions: [
-      // @ts-ignore
-      EditorIdFacet.of(cell.id),
-      CellMetaField.init(() => ({
-        code: cell.code,
-        requested_run_time: 0,
-        folded: false,
-        type: "code",
-      })),
-      HyperfocusField,
-      cell_keymap,
-    ],
-  });
-};
-
-// const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const ALPHABET = "ABCDEF";
-// @ts-ignore
-let EXCEL_CELLS =
-  /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId[]} */ (
-    range(1, 10).flatMap((i) => ALPHABET.split("").map((j) => `${j}${i}`))
-  );
-
-let notebook_to_state = () => {
-  return EditorInChief.create({
-    editors: (editorstate) => {
-      return Object.fromEntries(
-        EXCEL_CELLS.map((cell_id) => [
-          cell_id,
-          create_cell_state(editorstate, {
-            id: cell_id,
-            code: "1",
-            unsaved_code: "1",
-          }),
-        ])
-      );
-    },
-    extensions: [
-      SelectedCellsField,
-      selected_cells_keymap,
-
-      // sheet_keymap,
-      // EditorExtension.of(cell_keymap),
-      // notebook_keymap,
-
-      // This works so smooth omg
-      [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
-    ],
-  });
-};
-
 export function Excell() {
-  let [state, set_state] = React.useState(() => notebook_to_state());
+  let [state, set_state] = React.useState(() => sheet_to_editorinchief({}));
   let environment = React.useRef(WorkerEnvironment).current;
 
   let viewupdate = useViewUpdate(state, /** @type {any} */ (set_state));
   // useCodemirrorKeyhandler(viewupdate);
 
   let cell_editor_states = state.editors;
-  let selected_cells = viewupdate.state.field(SelectedCellsField);
   let editor_in_chief = viewupdate.view;
-
-  /**
-   * Keep track of what cells are just created by the users,
-   * so we can animate them in 🤩
-   */
-  let last_created_cells =
-    editor_in_chief.state.field(LastCreatedCells, false) ?? [];
 
   let notebook = React.useMemo(() => {
     return /** @type {import("./packages/codemirror-notebook/cell").Notebook} */ ({
@@ -287,6 +216,12 @@ import {
   HyperfocusEffect,
   HyperfocusField,
 } from "./packages/codemirror-sheet/hyperfocus";
+import {
+  ALPHABET,
+  EXCEL_CELLS,
+  sheet_to_editorinchief,
+  sheetcell_to_editorstate,
+} from "./Sheet/sheet-utils";
 
 let observable_inspector_sheet = new CSSish(observable_inspector);
 let inspector_css_sheet = new CSSish(inspector_css);

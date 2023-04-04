@@ -24,6 +24,12 @@ import {
   editorinchief_to_notebook,
   notebook_to_editorinchief,
 } from "./Notebook/notebook-utils";
+import {
+  empty_sheet,
+  editorinchief_to_sheet,
+  sheet_to_editorinchief,
+} from "./Sheet/sheet-utils";
+
 import { create_codemirror_notebook } from "./packages/codemirror-notebook/codemirror-notebook";
 
 import "./App.css";
@@ -58,6 +64,20 @@ let FileTab = styled.button`
   }
 `;
 
+/**
+ * @typedef Project
+ * @type {{
+ *  notebook: import("./packages/codemirror-notebook/cell").Notebook,
+ * }}
+ */
+
+let project_to_editorinchief = (/** @type {Project} */ project) => {
+  return notebook_to_editorinchief(project.notebook);
+};
+let editorinchief_to_project = (/** @type {EditorInChief} */ editorinchief) => {
+  return { notebook: editorinchief_to_notebook(editorinchief) };
+};
+
 function App() {
   let [url, set_url, replace_url] = useUrl();
   let [_, open_file, ...rest] = url.pathname.split("/");
@@ -74,8 +94,8 @@ function App() {
   //////////////////////////////////////////////////////////////
 
   let [workspace, set_workspace] = useWorkerStorage({
-    deserialize: notebook_to_editorinchief,
-    serialize: editorinchief_to_notebook,
+    deserialize: project_to_editorinchief,
+    serialize: editorinchief_to_project,
   });
   let environment = React.useRef(WorkerEnvironment).current;
 
@@ -84,7 +104,7 @@ function App() {
   if (!(open_file in workspace.files)) {
     set_workspace(
       produce(workspace, (/** @type {Workspace} */ workspace) => {
-        workspace.files[open_file] = notebook_to_editorinchief({
+        workspace.files[open_file] = project_to_editorinchief({
           notebook: empty_notebook(open_file),
         });
       })
