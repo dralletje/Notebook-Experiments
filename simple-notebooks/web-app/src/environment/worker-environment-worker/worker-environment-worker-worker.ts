@@ -146,11 +146,12 @@ let engine = new Engine(async function RUN_CELL({
   }
 });
 
+// TODO Throttle?
 engine.addEventListener("log", (event) => {
-  // postMessage({
-  //   type: "add-log",
-  //   log: event.log,
-  // });
+  postMessage({
+    type: "add-log",
+    log: event.log,
+  });
 });
 
 let throttled_change = throttle((fn) => fn(), 100, {

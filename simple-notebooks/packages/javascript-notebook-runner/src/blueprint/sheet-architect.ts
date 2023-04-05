@@ -58,8 +58,17 @@ let get_analysis_results = (
   let cyclicals = Graph.cycles(graph);
   let multiple_definitions = Graph.multiple_definitions(graph);
 
-  return uniq(cells_to_run).flatMap((cell_id: CellId) => {
+  return cells_to_run.flatMap((cell_id: CellId) => {
     let parsed = parsed_cells[cell_id];
+
+    // TODO? Better empty so comments are also ignore
+    // if (parsed == null || parsed.input.trim() === "") {
+    //   return {
+    //     type: "static",
+    //     cell_id,
+    //   };
+    // }
+
     // Error while parsing the code, so we display babel error
     if ("error" in parsed) {
       return {

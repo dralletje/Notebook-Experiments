@@ -219,9 +219,11 @@ export class Engine extends TypedEventTarget<{
     }
 
     // Wait a tick for the abort to actually happen (possibly)
-    // if (needs_tick) {
-    //   await new Promise((resolve) => setTimeout(resolve, 0));
-    // }
+    if (needs_tick) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    console.log(`pending_chambers:`, pending_chambers);
 
     /////////////////////////////////////
     // Run it!
@@ -232,7 +234,6 @@ export class Engine extends TypedEventTarget<{
         pending_chambers,
       })
     );
-    // let chamber_to_run = [...pending_chambers][0]?.[1];
 
     if (chamber_to_run) {
       did_change = true;
@@ -256,8 +257,10 @@ export class Engine extends TypedEventTarget<{
         let inputs = {};
         for (let [in_cell, edge] of chamber_to_run.node.in) {
           let in_cylinder = this.cylinders.get(in_cell as CellId);
-          if (edge.out in in_cylinder.variables) {
-            inputs[edge.in] = in_cylinder.variables[edge.out];
+          if (in_cylinder != null && edge.out in in_cylinder.variables) {
+              inputs[edge.in] = in_cylinder.variables[edge.out];
+          } else {
+              inputs[edge.in] = undefined;
           }
         }
         // console.log(`inputs:`, inputs)

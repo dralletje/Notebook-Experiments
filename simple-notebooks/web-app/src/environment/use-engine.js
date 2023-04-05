@@ -114,7 +114,7 @@ export let useEngine = (notebook, environment) => {
                 time: new Date(),
                 repeat: 1,
               },
-            ];
+            ].slice(-50, undefined);
           })
         );
       },

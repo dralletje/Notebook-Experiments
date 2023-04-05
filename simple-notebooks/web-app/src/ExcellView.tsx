@@ -331,7 +331,7 @@ let Cell = ({
         }
       }}
     >
-      <div style={{ height: 25, width: 70 }}>
+      <div style={{ height: 25, width: 150 }}>
         {has_hyper_focus ? (
           <CodemirrorFromViewUpdate viewupdate={viewupdate}>
             <Extension extension={basic_sheet_setup} />
