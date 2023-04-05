@@ -25,6 +25,18 @@
   }
 }
 
+.text-cell-editor {
+  transform: unset !important;
+
+  &::before {
+    content: unset !important;
+  }
+}
+.cell {
+  transform: unset !important;
+  outline: unset !important;
+}
+
 /* :focus-visible {
   outline: none;
 } */

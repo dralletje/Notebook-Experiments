@@ -129,6 +129,7 @@ export let ContextMenuWrapper = ({
         display: "contents",
       }}
       onContextMenu={(event) => {
+        if (event.defaultPrevented) return;
         if (dialog_ref.current.open) {
           return;
         }

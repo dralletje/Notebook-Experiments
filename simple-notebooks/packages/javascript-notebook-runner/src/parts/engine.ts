@@ -223,8 +223,6 @@ export class Engine extends TypedEventTarget<{
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
 
-    console.log(`pending_chambers:`, pending_chambers);
-
     /////////////////////////////////////
     // Run it!
     /////////////////////////////////////
