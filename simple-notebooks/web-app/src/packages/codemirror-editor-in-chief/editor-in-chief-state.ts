@@ -7,6 +7,7 @@ import {
 } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { ModernMap } from "@dral/modern-map";
+import { EditorState as GenericEditorState } from "codemirror-x-react/viewupdate";
 
 import {
   EditorsField,
@@ -137,7 +138,7 @@ export class EditorInChief<SectionEditor extends MinimalEditorState> {
   get editors() {
     return new ModernMap(
       Object.entries(this.editorstate.field(EditorsField).cells)
-    ) as ModernMap<EditorId, SectionEditor>;
+    ) as any as ModernMap<EditorId, SectionEditor>;
   }
 
   editor(editor_id: EditorId): SectionEditor;
@@ -156,6 +157,7 @@ export class EditorInChief<SectionEditor extends MinimalEditorState> {
       return new EditorInChiefSelection([
         new EditorInChiefRange(
           cell_with_current_selection,
+          // @ts-ignore Need to make editor EVEN MORE GENERIC
           this.editor(cell_with_current_selection).selection.main
         ),
       ]);
@@ -167,6 +169,7 @@ export class EditorInChief<SectionEditor extends MinimalEditorState> {
     }
   }
   get doc(): EditorInChiefText {
+    // @ts-ignore Need to make editor EVEN MORE GENERIC
     return this.editors.mapValues((x) => x.doc);
   }
 

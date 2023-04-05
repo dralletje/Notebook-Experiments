@@ -8,7 +8,7 @@ import {
 import { EditorInChiefTransaction } from "./transaction";
 
 type EditorInChiefStateFieldSpec<T, JSON = any> = {
-  create: (state: EditorInChief) => T;
+  create: (state: EditorInChief<any>) => T;
   update: (value: T, tr: EditorInChiefTransaction) => T;
   provide?: (field: StateField<T>) => Extension | EditorInChiefExtension;
   toJSON?: (value: T) => JSON;

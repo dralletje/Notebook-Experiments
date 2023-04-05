@@ -4,6 +4,7 @@ import {
   EditorIdFacet,
   EditorInChief,
   EditorInChiefKeymap,
+  EditorInChiefStateField,
 } from "../packages/codemirror-editor-in-chief/editor-in-chief";
 import {
   Cell,
@@ -21,7 +22,7 @@ import {
 } from "../packages/codemirror-editor-in-chief/codemirror-shared-history";
 import { HyperfocusField } from "../packages/codemirror-sheet/hyperfocus";
 import { cell_keymap } from "../packages/codemirror-sheet/sheet-keymap";
-import { EditorState } from "@codemirror/state";
+import { EditorState, StateEffect } from "@codemirror/state";
 
 export let editorinchief_to_sheet = (
   state: EditorInChief<EditorState>
@@ -69,6 +70,23 @@ export let sheetcell_to_editorstate = (
   });
 };
 
+type SelectedCell = { column: number; row: number };
+export const SelectedCellEffect = StateEffect.define<SelectedCell | null>();
+export const SelectedCellField =
+  EditorInChiefStateField.define<SelectedCell | null>({
+    create(state) {
+      return null;
+    },
+    update(value, tr) {
+      for (let effect of tr.effects) {
+        if (effect.is(SelectedCellEffect)) {
+          value = effect.value;
+        }
+      }
+      return value;
+    },
+  });
+
 // export const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 export const ALPHABET = "ABCDEFGH";
 // @ts-ignore
@@ -97,6 +115,7 @@ export let sheet_to_editorinchief = (
     },
     extensions: [
       extensions,
+      SelectedCellField,
       // This works so smooth omg
       [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
     ],

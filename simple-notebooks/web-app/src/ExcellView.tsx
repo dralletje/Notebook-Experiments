@@ -1,6 +1,6 @@
 import React from "react";
 import { produce } from "immer";
-import { chunk, compact } from "lodash";
+import { chunk, compact, range } from "lodash";
 import styled from "styled-components";
 import {
   EngineShadow,
@@ -10,6 +10,7 @@ import {
   EditorInChief,
   extract_nested_viewupdate,
   EditorHasSelectionField,
+  EditorId,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 
 import {
@@ -47,6 +48,8 @@ export function Excell({
   viewupdate: GenericViewUpdate<EditorInChief<EditorState>>;
   engine: EngineShadow;
 }) {
+  let selected_cell = viewupdate.state.field(SelectedCellField, false);
+
   return (
     <React.Fragment>
       <AdoptStylesheet stylesheet={observable_inspector_sheet} />
@@ -61,16 +64,41 @@ export function Excell({
           </tr>
         </thead>
         <tbody>
-          {chunk(EXCEL_CELLS, ALPHABET.length).map((row, i) => (
-            <tr key={i}>
-              <th>{i + 1}</th>
-              {row.map((cell_id) => (
-                <CellMemo
-                  key={cell_id}
-                  viewupdate={extract_nested_viewupdate(viewupdate, cell_id)}
-                  cylinder={engine.cylinders[cell_id]}
-                />
-              ))}
+          {range(1, 2).map((row) => (
+            <tr key={row}>
+              <th>{row}</th>
+              {range(1, ALPHABET.length).map((column) => {
+                let cell_id = `${ALPHABET[column]}${row}` as EditorId;
+                return (
+                  <CellMemo
+                    key={cell_id}
+                    viewupdate={extract_nested_viewupdate(viewupdate, cell_id)}
+                    cylinder={engine.cylinders[cell_id]}
+                    has_normal_focus={
+                      selected_cell?.row == row &&
+                      selected_cell?.column == column
+                    }
+                    onClick={(event) => {
+                      event.preventDefault();
+                      viewupdate.view.dispatch({
+                        effects: [
+                          SelectedCellEffect.of({
+                            row,
+                            column,
+                          }),
+                        ],
+                      });
+                      // cell_viewupdate.view.dispatch({
+                      //   selection: EditorSelection.create([
+                      //     EditorSelection.cursor(
+                      //       cell_viewupdate.state.doc.length
+                      //     ),
+                      //   ]),
+                      // });
+                    }}
+                  />
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -223,7 +251,12 @@ import {
   HyperfocusEffect,
   HyperfocusField,
 } from "./packages/codemirror-sheet/hyperfocus";
-import { ALPHABET, EXCEL_CELLS } from "./Sheet/sheet-utils";
+import {
+  ALPHABET,
+  EXCEL_CELLS,
+  SelectedCellEffect,
+  SelectedCellField,
+} from "./Sheet/sheet-utils";
 
 let observable_inspector_sheet = new CSSish(observable_inspector);
 let inspector_css_sheet = new CSSish(inspector_css);
@@ -248,14 +281,21 @@ let Value = ({ result }) => {
 };
 
 let Cell = ({
+  has_normal_focus,
+  onClick,
   viewupdate,
   cylinder,
 }: {
   viewupdate: GenericViewUpdate<EditorState>;
   cylinder: import("./packages/codemirror-notebook/cell").CylinderShadow;
+  has_normal_focus: boolean;
+  onClick: (
+    event: React.MouseEvent<HTMLTableDataCellElement, MouseEvent>
+  ) => void;
 }) => {
-  let has_normal_focus = viewupdate.state.field(EditorHasSelectionField, false);
   let has_hyper_focus = viewupdate.state.field(HyperfocusField, false);
+
+  console.log(`has_normal_focus:`, has_normal_focus);
 
   return (
     <td
@@ -269,12 +309,7 @@ let Cell = ({
         if (event.defaultPrevented) return;
         if (has_hyper_focus) return;
 
-        event.preventDefault();
-        viewupdate.view.dispatch({
-          selection: EditorSelection.create([
-            EditorSelection.cursor(viewupdate.state.doc.length),
-          ]),
-        });
+        onClick?.(event);
       }}
       onDoubleClick={(event) => {
         if (event.defaultPrevented) return;
@@ -349,6 +384,7 @@ let Cell = ({
 let CellMemo = React.memo(Cell, (prev, next) => {
   return (
     prev.viewupdate.state === next.viewupdate.state &&
-    prev.cylinder === next.cylinder
+    prev.cylinder === next.cylinder &&
+    prev.has_normal_focus === next.has_normal_focus
   );
 });
