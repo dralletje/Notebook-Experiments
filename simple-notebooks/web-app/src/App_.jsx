@@ -195,6 +195,7 @@ export default App;
 let AppStyle = styled.div`
   /* --header-height: 30px; */
   --header-height: 0px;
+  --sidebar-width: 500px;
 
   display: flex;
   flex-direction: column;

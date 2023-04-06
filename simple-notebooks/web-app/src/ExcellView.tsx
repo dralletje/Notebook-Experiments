@@ -65,13 +65,13 @@ export function Excell({
 
       <Grid
         style={{
-          gridTemplateColumns: `70px repeat(${COLUMNS - 1}, 100px)`,
+          gridTemplateColumns: `70px repeat(${COLUMNS}, 100px)`,
         }}
       >
         <React.Fragment key="header">
           <div className="corner-stone" />
 
-          {range(1, COLUMNS).map((column) => (
+          {range(1, COLUMNS + 1).map((column) => (
             <div
               key={column}
               className={[
@@ -85,7 +85,7 @@ export function Excell({
         </React.Fragment>
 
         <React.Fragment key="body">
-          {range(1, ROWS).map((row) => (
+          {range(1, ROWS + 1).map((row) => (
             <React.Fragment key={row}>
               <div
                 className={[
@@ -101,7 +101,7 @@ export function Excell({
                 {row}
               </div>
 
-              {range(1, COLUMNS).map((column) => {
+              {range(1, COLUMNS + 1).map((column) => {
                 return (
                   <CellWrapper
                     key={column}
@@ -138,6 +138,9 @@ let CellWrapper = ({
   // `has_normal_focus` should be replaced with actual browser focus
   let has_normal_focus =
     selected_cell?.row == row && selected_cell?.column == column;
+  let has_hyper_focus =
+    viewupdate.state.editors.get(cell_id)?.field(EditorHasSelectionField) ??
+    false;
 
   let cell_ref = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -166,6 +169,11 @@ let CellWrapper = ({
         });
       }}
       onClick={(event) => {
+        if (event.defaultPrevented) return;
+        if (has_hyper_focus) return;
+        // TODO For some reason this is even gets here because has_hyper_focus
+        // .... gets sneakily set to false by the editor?
+
         event.preventDefault();
         viewupdate.view.dispatch({
           effects: [
@@ -178,7 +186,7 @@ let CellWrapper = ({
       }}
       onDoubleClick={(event) => {
         if (event.defaultPrevented) return;
-        // if (has_hyper_focus) return;
+        if (has_hyper_focus) return;
 
         event.preventDefault();
         let cell_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
@@ -189,20 +197,27 @@ let CellWrapper = ({
         });
       }}
       onKeyDown={(event) => {
+        console.log("GO");
         if (event.target !== event.currentTarget) return;
-        if (event.defaultPrevented) return;
-        // if (has_hyper_focus) return;
-        if (event.metaKey) return;
-
-        if (event.key === "Enter") {
+        if (event.defaultPrevented) {
+          return;
+        }
+        let should_cancel = runScopeHandlers(
+          // @ts-ignore
+          viewupdate.view,
+          event,
+          // TODO Change this scope to something EditorInChief specific?
+          "editor"
+        );
+        console.log(`should_cancel:`, should_cancel);
+        if (should_cancel) {
           event.preventDefault();
-          let cell_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
-          cell_viewupdate.view.dispatch({
-            selection: EditorSelection.create([
-              EditorSelection.cursor(cell_viewupdate.state.doc.length),
-            ]),
-          });
-        } else if (event.key.length === 1) {
+          return;
+        }
+
+        // If unhandeld, we check for a single character keypress
+        // that is most likely something that needs to be inputted
+        if (event.key.length === 1) {
           event.preventDefault();
           let cell_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
           cell_viewupdate.view.dispatch({
@@ -212,62 +227,6 @@ let CellWrapper = ({
               to: cell_viewupdate.state.doc.length,
               insert: event.key,
             },
-          });
-        } else if (event.key === "Backspace") {
-          event.preventDefault();
-          let cell_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
-          cell_viewupdate.view.dispatch({
-            changes: {
-              from: 0,
-              to: cell_viewupdate.state.doc.length,
-              insert: "",
-            },
-            effects: [
-              MutateCellMetaEffect.of((cell) => {
-                cell.code = "";
-                cell.requested_run_time = Date.now();
-              }),
-            ],
-          });
-        } else if (event.key === "ArrowUp") {
-          event.preventDefault();
-          viewupdate.view.dispatch({
-            effects: [
-              SelectedCellEffect.of({
-                row: Math.max(row - 1, 0),
-                column,
-              }),
-            ],
-          });
-        } else if (event.key === "ArrowDown") {
-          event.preventDefault();
-          viewupdate.view.dispatch({
-            effects: [
-              SelectedCellEffect.of({
-                row: row + 1,
-                column,
-              }),
-            ],
-          });
-        } else if (event.key === "ArrowLeft") {
-          event.preventDefault();
-          viewupdate.view.dispatch({
-            effects: [
-              SelectedCellEffect.of({
-                row,
-                column: Math.max(column - 1, 0),
-              }),
-            ],
-          });
-        } else if (event.key === "ArrowRight") {
-          event.preventDefault();
-          viewupdate.view.dispatch({
-            effects: [
-              SelectedCellEffect.of({
-                row,
-                column: column + 1,
-              }),
-            ],
           });
         }
       }}
@@ -347,6 +306,9 @@ let Grid = styled.div`
     align-items: center;
     height: 35px;
 
+    /* TODO NOT WORKING */
+    scroll-margin: var(--header-height) var(--sidebar-width) 0 0;
+
     &.has-normal-focus {
       outline: #1a99ff solid 3px;
       outline-offset: -2px;
@@ -407,6 +369,7 @@ import {
   SheetSizeField,
 } from "./Sheet/sheet-utils";
 import { default_cylinder } from "./environment/use-engine";
+import { runScopeHandlers } from "@codemirror/view";
 
 let observable_inspector_sheet = new CSSish(observable_inspector);
 let inspector_css_sheet = new CSSish(inspector_css);

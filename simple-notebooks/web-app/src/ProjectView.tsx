@@ -178,8 +178,7 @@ let Sidebar = styled.div`
 
   z-index: 10;
 
-  min-width: 400px;
-  width: 500px;
+  width: var(--sidebar-width);
   height: calc(100vh - var(--header-height));
 
   display: flex;

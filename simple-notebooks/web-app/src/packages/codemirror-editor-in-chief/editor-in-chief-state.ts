@@ -142,6 +142,7 @@ export class EditorInChief<SectionEditor extends MinimalEditorState> {
   }
 
   editor(editor_id: EditorId): SectionEditor;
+  editor(editor_id: EditorId, required: false): SectionEditor | undefined;
   editor(editor_id: EditorId, required?: false): SectionEditor | undefined {
     if (required !== false && !this.editors.has(editor_id)) {
       throw new Error(`Editor with id ${editor_id} not found`);
