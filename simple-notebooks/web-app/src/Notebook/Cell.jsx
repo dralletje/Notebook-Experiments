@@ -19,6 +19,7 @@ import {
   NudgeCell,
 } from "../packages/codemirror-notebook/cell";
 import { default_cylinder } from "../environment/use-engine.js";
+import { highlight_cell_references } from "../packages/codemirror-notebook-sheet/codemirror-notebook-sheet";
 
 let InspectorContainer = styled.div`
   /* padding-left: calc(16px + 4px);
@@ -365,6 +366,10 @@ export let Cell = ({
         }}
       >
         <CodemirrorFromViewUpdate ref={editorview_ref} viewupdate={viewupdate}>
+          <Extension
+            key="highlight_cell_references"
+            extension={highlight_cell_references}
+          />
           <Extension
             key="placeholder"
             deps={[]}
