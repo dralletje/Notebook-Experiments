@@ -86,19 +86,31 @@ export let sheet_to_editorinchief = (
   notebook: NotebookSerialized,
   extensions = []
 ) => {
+  // Take cell-id from the URL hash!
+  let initial_selected_cell = null;
+
+  let size = {
+    columns: 26,
+    rows: 30,
+    // columns: 1,
+    // rows: 1,
+  };
+
+  if (window.location.hash !== "") {
+    initial_selected_cell = SheetPosition.fromId(
+      window.location.hash.slice(1) as EditorId,
+      size
+    );
+  }
+
   return EditorInChief.create({
     editors: (editorstate) => {
       return {};
     },
     extensions: [
       extensions,
-      SelectedCellField,
-      SheetSizeField.init(() => ({
-        columns: 26,
-        rows: 30,
-        // columns: 1,
-        // rows: 1,
-      })),
+      SelectedCellField.init(() => initial_selected_cell),
+      SheetSizeField.init(() => size),
       sheet_instant_edits,
       sheet_movement,
 

@@ -181,6 +181,7 @@ let CellWrapper = ({
   return (
     <div
       key={position.id}
+      id={position.id}
       tabIndex={0}
       ref={cell_ref}
       className={compact([

@@ -41,6 +41,7 @@ import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 // @ts-ignore
 import shadow_notebook_css from "./yuck/shadow-notebook.css?inline";
 import { EditorState } from "@codemirror/state";
+import { SelectedCellField } from "./packages/codemirror-sheet/sheet-selected-cell";
 
 let shadow_notebook = new CSSish(shadow_notebook_css);
 
@@ -117,11 +118,26 @@ export function ProjectView({
 
   let [engine, logs] = useEngine(notebook_with_filename, environment);
 
-  let [url, set_url] = useUrl();
-  let tab = url.hash.length === 0 ? "notebook" : url.hash.slice(1);
+  let [url, set_url, set_url_no_backsies] = useUrl();
+  let tab = url.searchParams.get("tab") ?? "notebook";
   let set_tab = (tab) => {
-    set_url(`#${tab}`);
+    let url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    set_url_no_backsies(url);
   };
+
+  let selected_cell = sheet_viewupdate.state.field(SelectedCellField);
+  React.useLayoutEffect(() => {
+    if (selected_cell != null) {
+      let url = new URL(window.location.href);
+      url.hash = `#${selected_cell.id}`;
+      set_url_no_backsies(url);
+    } else {
+      let url = new URL(window.location.href);
+      url.hash = "";
+      set_url_no_backsies(url);
+    }
+  }, [selected_cell]);
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
