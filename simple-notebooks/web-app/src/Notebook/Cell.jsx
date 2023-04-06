@@ -79,6 +79,7 @@ let CellStyle = styled.div`
 
     background-color: white;
     opacity: 0;
+    border-radius: 3px;
   }
 
   &.error::before {

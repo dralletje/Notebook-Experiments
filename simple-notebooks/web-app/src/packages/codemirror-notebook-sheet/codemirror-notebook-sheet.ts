@@ -6,6 +6,12 @@ import { DecorationsFromTree } from "@dral/codemirror-helpers";
 let COLUMN_REFERENCE_REGEX = /^([A-Z]{1,3})$/;
 let CELL_REFERENCE_REGEX = /^([A-Z]{1,3})([0-9]+)$/;
 
+// TODO
+// - Make cell highlighting styled nicer (not in this file)
+// - Hovering over code should highlight all the references in that cell,
+//   the reference you are hovering should just be special-er
+// - Clicking on a reference should jump to the cell
+
 export let highlight_cell_references = Prec.highest([
   EditorView.baseTheme({
     ".notebook-sheet-reference": {
@@ -55,5 +61,33 @@ export let highlight_cell_references = Prec.highest([
         );
       }
     }
+  }),
+  EditorView.domEventHandlers({
+    mouseover: (event, view) => {
+      let target = event.target as HTMLElement;
+      if (target.matches(".notebook-sheet-reference")) {
+        let cell_id = target.textContent;
+        console.log(`cell_id:`, cell_id);
+
+        // TODO Support if we put the sheet in a shadow root
+        let cell_element = document.querySelector(`#${cell_id}`);
+        if (cell_element) {
+          cell_element.classList.add("sheet-cell-highlight");
+        }
+      }
+    },
+    mouseout: (event, view) => {
+      let target = event.target as HTMLElement;
+      if (target.matches(".notebook-sheet-reference")) {
+        let cell_id = target.textContent;
+        console.log(`cell_id:`, cell_id);
+
+        // TODO Support if we put the sheet in a shadow root
+        let cell_element = document.querySelector(`#${cell_id}`);
+        if (cell_element) {
+          cell_element.classList.remove("sheet-cell-highlight");
+        }
+      }
+    },
   }),
 ]);

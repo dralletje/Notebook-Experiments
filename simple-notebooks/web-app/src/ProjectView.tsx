@@ -202,9 +202,12 @@ let Sidebar = styled.div`
   overflow-y: auto;
   background-color: black;
 
+  /* Why are these separate?!
+     Because I think I might want to disable/enable these on a whim */
   border-top: 5px solid white;
   border-left: 5px solid white;
   border-right: 5px solid white;
+  border-bottom: 5px solid white;
 
   &.tab-notebook {
     background-color: #01412d;

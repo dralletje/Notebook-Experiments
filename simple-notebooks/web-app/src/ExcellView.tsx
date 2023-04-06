@@ -297,6 +297,10 @@ let Grid = styled.div`
       outline-offset: -2px;
     }
 
+    &.sheet-cell-highlight {
+      background-color: #361717;
+    }
+
     /* &.active-row,
     &.active-column {
       background-color: #1a99ff1a;
