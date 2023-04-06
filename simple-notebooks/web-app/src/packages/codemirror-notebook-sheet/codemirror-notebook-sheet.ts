@@ -67,7 +67,6 @@ export let highlight_cell_references = Prec.highest([
       let target = event.target as HTMLElement;
       if (target.matches(".notebook-sheet-reference")) {
         let cell_id = target.textContent;
-        console.log(`cell_id:`, cell_id);
 
         // TODO Support if we put the sheet in a shadow root
         let cell_element = document.querySelector(`#${cell_id}`);
@@ -80,7 +79,6 @@ export let highlight_cell_references = Prec.highest([
       let target = event.target as HTMLElement;
       if (target.matches(".notebook-sheet-reference")) {
         let cell_id = target.textContent;
-        console.log(`cell_id:`, cell_id);
 
         // TODO Support if we put the sheet in a shadow root
         let cell_element = document.querySelector(`#${cell_id}`);

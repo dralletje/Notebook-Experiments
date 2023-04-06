@@ -5,7 +5,10 @@ import {
   EditorInChiefEffect,
   EditorInChiefKeymap,
 } from "../codemirror-editor-in-chief/editor-in-chief";
-import { MutateCellMetaEffect } from "../codemirror-notebook/cell";
+import {
+  CellMetaField,
+  MutateCellMetaEffect,
+} from "../codemirror-notebook/cell";
 import { SelectedCellEffect, SelectedCellField } from "./sheet-selected-cell";
 
 let save_and_run = (state) => {
@@ -56,6 +59,29 @@ export let cell_keymap = [
         },
       },
       {
+        // Enter saves the cell and focusses on the cell to the bototm
+        key: "Escape",
+        run: ({ state, dispatch }) => {
+          dispatch({
+            changes: {
+              from: 0,
+              to: state.doc.length,
+              insert: state.field(CellMetaField).code,
+            },
+          });
+
+          // TODO This setTimeout should really not be here,
+          // .... but without it throws an error...... >_< WHY
+          setTimeout(() => {
+            dispatch({
+              effects: [EditorInChiefEffect.of(BlurEditorInChiefEffect.of())],
+            });
+          }, 0);
+
+          return true;
+        },
+      },
+      {
         // Mod-enter actually adds a newline to the cell
         key: "Mod-Enter",
         run: (view) => {
@@ -65,6 +91,9 @@ export let cell_keymap = [
               insert: "\n",
               to: view.state.selection.main.from,
             },
+            selection: EditorSelection.cursor(
+              view.state.selection.main.from + 1
+            ),
           });
           return true;
         },
@@ -73,9 +102,9 @@ export let cell_keymap = [
   ),
   EditorView.domEventHandlers({
     blur: (event, view) => {
-      view.dispatch({
-        effects: [...save_and_run(view.state)],
-      });
+      // view.dispatch({
+      //   effects: [...save_and_run(view.state)],
+      // });
     },
   }),
 ];

@@ -222,7 +222,9 @@ export let EditorsField = StateField.define<{
       });
     } catch (error) {
       console.error(error);
-      throw new Error(`Error while updating EditorsField: ${error}`);
+      throw new Error(`Error while updating EditorsField: ${error}`, {
+        cause: error,
+      });
     }
   },
 });

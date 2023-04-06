@@ -131,18 +131,20 @@ let CellWrapper = ({
   let has_normal_focus =
     selected_cell?.row == position.row &&
     selected_cell?.column == position.column;
-  // let has_hyper_focus =
-  //   viewupdate.state.editors.get(cell_id)?.field(EditorHasSelectionField) ??
-  //   false;
+  let has_hyper_focus =
+    viewupdate.state.editors.get(position.id)?.field(EditorHasSelectionField) ??
+    false;
 
   let cell_ref = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
-    if (has_normal_focus) {
-      cell_ref.current?.focus();
-    } else {
-      cell_ref.current?.blur();
+    if (has_hyper_focus == false) {
+      if (has_normal_focus) {
+        cell_ref.current?.focus();
+      } else {
+        cell_ref.current?.blur();
+      }
     }
-  }, [has_normal_focus]);
+  }, [has_normal_focus, has_hyper_focus]);
 
   let viewupdate_ref_for_events = React.useRef(viewupdate);
   React.useLayoutEffect(() => {
