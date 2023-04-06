@@ -38,9 +38,6 @@ import { NotebookView } from "./Notebook/NotebookView";
 import shadow from "react-shadow/styled-components";
 import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 
-// @ts-ignore
-import { EditorState } from "@codemirror/state";
-import { EXCEL_CELLS } from "./Sheet/sheet-utils";
 import { NotebookViewWithDragAndDrop } from "./Notebook/NotebookViewWithDragAndDrop";
 
 let Sheet = () => {};

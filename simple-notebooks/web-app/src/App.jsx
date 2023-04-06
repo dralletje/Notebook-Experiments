@@ -24,12 +24,6 @@ import {
   editorinchief_to_notebook,
   notebook_to_editorinchief,
 } from "./Notebook/notebook-utils";
-import {
-  empty_sheet,
-  editorinchief_to_sheet,
-  sheet_to_editorinchief,
-} from "./Sheet/sheet-utils";
-
 import { create_codemirror_notebook } from "./packages/codemirror-notebook/codemirror-notebook";
 
 import "./App.css";

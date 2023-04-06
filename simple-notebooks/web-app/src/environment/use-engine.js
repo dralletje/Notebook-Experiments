@@ -81,6 +81,12 @@ export let useEngine = (notebook, environment) => {
           immer((x) => {
             // @ts-ignore
             let previous_log = x.logs.at(-1);
+
+            if (x.engine.cylinders[log.cell_id] == null) {
+              console.warn(`Log came back with cylinder ID we don't have yet`);
+              return;
+            }
+
             let actual_cylinder =
               /** @type {import("../packages/codemirror-notebook/cell.js").CylinderShadow} */ (
                 original(x.engine.cylinders[log.cell_id])

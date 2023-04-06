@@ -24,7 +24,8 @@ export class CSSish {
       sheet.replaceSync(style_text);
       this.sheet = sheet;
     } catch (error) {
-      console.log(`error:`, error);
+      // prettier-ignore
+      console.warn(`Error while constructing stylesheet (will fallback to <style>):`, error);
     }
   }
 }

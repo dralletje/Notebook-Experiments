@@ -41,7 +41,6 @@ import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 // @ts-ignore
 import shadow_notebook_css from "./yuck/shadow-notebook.css?inline";
 import { EditorState } from "@codemirror/state";
-import { EXCEL_CELLS } from "./Sheet/sheet-utils";
 
 let shadow_notebook = new CSSish(shadow_notebook_css);
 
@@ -73,7 +72,7 @@ export function ProjectView({
   let notebook_cell_order = notebook_viewupdate.state.field(CellOrderField);
 
   let sheet_editorstates = sheet_viewupdate.state.editors;
-  let sheet_cell_order = EXCEL_CELLS;
+  let sheet_cell_order = sheet_editorstates.keys().toArray();
 
   let notebook = React.useMemo(() => {
     return /** @type {import("./packages/codemirror-notebook/cell").Notebook} */ {

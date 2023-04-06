@@ -1,18 +1,14 @@
 import React from "react";
-import { produce } from "immer";
-import { chunk, compact, range } from "lodash";
+import { compact, range } from "lodash";
 import styled from "styled-components";
 import {
-  CellMetaField,
   CylinderShadow,
   EngineShadow,
-  MutateCellMetaEffect,
 } from "./packages/codemirror-notebook/cell";
 import {
   EditorInChief,
   extract_nested_viewupdate,
   EditorHasSelectionField,
-  EditorId,
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 
 import {
@@ -52,8 +48,9 @@ export function Excell({
 }) {
   let selected_cell = viewupdate.state.field(SelectedCellField, false);
 
-  let COLUMNS = viewupdate.state.field(SheetSizeField).columns;
-  let ROWS = viewupdate.state.field(SheetSizeField).rows;
+  let sheet_size = viewupdate.state.field(SheetSizeField);
+  let COLUMNS = sheet_size.columns;
+  let ROWS = sheet_size.rows;
 
   return (
     <React.Fragment>
@@ -105,8 +102,7 @@ export function Excell({
                 return (
                   <CellWrapper
                     key={column}
-                    row={row}
-                    column={column}
+                    position={new SheetPosition({ column, row }, sheet_size)}
                     selected_cell={selected_cell}
                     viewupdate={viewupdate}
                     cylinder={engine.cylinders[`${ALPHABET[column - 1]}${row}`]}
@@ -122,25 +118,22 @@ export function Excell({
 }
 
 let CellWrapper = ({
-  column,
-  row,
+  position,
   selected_cell,
   viewupdate,
   cylinder,
 }: {
-  column: number;
-  row: number;
+  position: SheetPosition;
   selected_cell: { row: number; column: number };
   viewupdate: GenericViewUpdate<EditorInChief<EditorState>>;
   cylinder: CylinderShadow;
 }) => {
-  let cell_id = `${ALPHABET[column - 1]}${row}` as EditorId;
-  // `has_normal_focus` should be replaced with actual browser focus
   let has_normal_focus =
-    selected_cell?.row == row && selected_cell?.column == column;
-  let has_hyper_focus =
-    viewupdate.state.editors.get(cell_id)?.field(EditorHasSelectionField) ??
-    false;
+    selected_cell?.row == position.row &&
+    selected_cell?.column == position.column;
+  // let has_hyper_focus =
+  //   viewupdate.state.editors.get(cell_id)?.field(EditorHasSelectionField) ??
+  //   false;
 
   let cell_ref = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -151,53 +144,53 @@ let CellWrapper = ({
     }
   }, [has_normal_focus]);
 
+  let viewupdate_ref_for_events = React.useRef(viewupdate);
+  React.useLayoutEffect(() => {
+    viewupdate_ref_for_events.current = viewupdate;
+  }, [viewupdate_ref_for_events, viewupdate]);
+
+  React.useLayoutEffect(() => {
+    let dom_event_handlers = viewupdate.state.facet(cellEventHandlersField);
+
+    let unsub = [];
+    for (let events of dom_event_handlers) {
+      for (let [event, handler] of Object.entries(events)) {
+        let el = cell_ref.current;
+        if (el) {
+          let listener = (event: Event) => {
+            if (event.defaultPrevented) return;
+
+            let viewupdate = viewupdate_ref_for_events.current;
+            if (handler(event, viewupdate.view, position)) {
+              event.preventDefault();
+            }
+          };
+          el.addEventListener(event, listener);
+          unsub.push(() => el.removeEventListener(event, listener));
+        }
+      }
+    }
+
+    return () => {
+      for (let un of unsub) {
+        un();
+      }
+    };
+  }, [viewupdate.state.facet(cellEventHandlersField)]);
+
   return (
     <div
-      key={cell_id}
+      key={position.id}
       tabIndex={0}
       ref={cell_ref}
       className={compact([
         "sheet-cell",
-        selected_cell?.row == row && "active-row",
-        selected_cell?.column == column && "active-column",
+        selected_cell?.row == position.row && "active-row",
+        selected_cell?.column == position.column && "active-column",
         has_normal_focus && "has-normal-focus",
         // has_hyper_focus && "has-hyper-focus",
       ]).join(" ")}
-      onFocus={() => {
-        viewupdate.view.dispatch({
-          effects: [SelectedCellEffect.of({ row, column })],
-        });
-      }}
-      onClick={(event) => {
-        if (event.defaultPrevented) return;
-        if (has_hyper_focus) return;
-        // TODO For some reason this is even gets here because has_hyper_focus
-        // .... gets sneakily set to false by the editor?
-
-        event.preventDefault();
-        viewupdate.view.dispatch({
-          effects: [
-            SelectedCellEffect.of({
-              row,
-              column,
-            }),
-          ],
-        });
-      }}
-      onDoubleClick={(event) => {
-        if (event.defaultPrevented) return;
-        if (has_hyper_focus) return;
-
-        event.preventDefault();
-        let cell_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
-        cell_viewupdate.view.dispatch({
-          selection: EditorSelection.create([
-            EditorSelection.cursor(cell_viewupdate.state.doc.length),
-          ]),
-        });
-      }}
       onKeyDown={(event) => {
-        console.log("GO");
         if (event.target !== event.currentTarget) return;
         if (event.defaultPrevented) {
           return;
@@ -209,30 +202,14 @@ let CellWrapper = ({
           // TODO Change this scope to something EditorInChief specific?
           "editor"
         );
-        console.log(`should_cancel:`, should_cancel);
         if (should_cancel) {
           event.preventDefault();
           return;
         }
-
-        // If unhandeld, we check for a single character keypress
-        // that is most likely something that needs to be inputted
-        if (event.key.length === 1) {
-          event.preventDefault();
-          let cell_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
-          cell_viewupdate.view.dispatch({
-            selection: EditorSelection.create([EditorSelection.cursor(1)]),
-            changes: {
-              from: 0,
-              to: cell_viewupdate.state.doc.length,
-              insert: event.key,
-            },
-          });
-        }
       }}
     >
       <CellMemo
-        viewupdate={extract_nested_viewupdate(viewupdate, cell_id)}
+        viewupdate={extract_nested_viewupdate(viewupdate, position.id)}
         cylinder={cylinder}
       />
     </div>
@@ -244,7 +221,7 @@ let Grid = styled.div`
 
   grid-template-rows: 35px repeat(auto-fit, 35px);
 
-  background: #232204;
+  background: rgb(33 33 33);
   color: #ffffffcf;
   align-self: flex-start;
   flex: 1;
@@ -257,8 +234,9 @@ let Grid = styled.div`
     /* outline: rgb(238 238 238 / 68%) solid 1px;
     outline-offset: -1px; */
 
+    color: #ffffffa8;
     background-color: rgb(29 29 29);
-    border: 1px solid rgb(157 157 157 / 21%);
+    border: 1px solid rgb(157 157 157 / 35%);
 
     z-index: 1;
 
@@ -273,9 +251,9 @@ let Grid = styled.div`
   }
 
   .active-header {
-    background-color: rgb(19 60 94);
-    outline: solid 1px rgb(25 81 128);
-    outline-offset: -1px;
+    font-weight: bold;
+    color: #ffffffd6;
+    background-color: rgb(28 48 66);
     z-index: 2;
   }
 
@@ -309,10 +287,16 @@ let Grid = styled.div`
     /* TODO NOT WORKING */
     scroll-margin: var(--header-height) var(--sidebar-width) 0 0;
 
+    &:focus-within {
+      outline: #147ace solid 2px;
+      outline-offset: -1px;
+    }
+    &:focus,
     &.has-normal-focus {
       outline: #1a99ff solid 3px;
       outline-offset: -2px;
     }
+
     /* &.active-row,
     &.active-column {
       background-color: #1a99ff1a;
@@ -357,19 +341,15 @@ import observable_inspector from "@observablehq/inspector/src/style.css?inline";
 import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { basic_sheet_setup } from "./codemirror-javascript-sheet/sheet-basics.js";
+import { runScopeHandlers } from "@codemirror/view";
 import {
-  HyperfocusEffect,
-  HyperfocusField,
-} from "./packages/codemirror-sheet/hyperfocus";
-import {
-  ALPHABET,
-  EXCEL_CELLS,
   SelectedCellEffect,
   SelectedCellField,
-  SheetSizeField,
-} from "./Sheet/sheet-utils";
-import { default_cylinder } from "./environment/use-engine";
-import { runScopeHandlers } from "@codemirror/view";
+} from "./packages/codemirror-sheet/sheet-selected-cell";
+import { ALPHABET } from "./packages/codemirror-sheet/alphabet";
+import { SheetSizeField } from "./packages/codemirror-sheet/sheet-layout";
+import { cellEventHandlersField, cell_upsert } from "./Sheet/sheet-utils";
+import { SheetPosition } from "./packages/codemirror-sheet/sheet-position";
 
 let observable_inspector_sheet = new CSSish(observable_inspector);
 let inspector_css_sheet = new CSSish(inspector_css);
@@ -377,19 +357,25 @@ let inspector_css_sheet = new CSSish(inspector_css);
 let Value = ({ result }) => {
   if (result == null) return <div />;
   if (result?.type === "pending") {
-    return <Inspector value={result} />;
+    return (
+      <div className="sheet-inspector">
+        <Inspector value={result} />
+      </div>
+    );
   }
 
   let value = deserialize(0, result.value);
   if (value == null) return null;
 
   return (
-    <Inspector
-      value={{
-        type: "return",
-        value,
-      }}
-    />
+    <div className="sheet-inspector">
+      <Inspector
+        value={{
+          type: "return",
+          value,
+        }}
+      />
+    </div>
   );
 };
 
@@ -413,11 +399,7 @@ let Cell = ({
       </CodemirrorFromViewUpdate>
     );
   } else {
-    return (
-      <div className="sheet-inspector">
-        <Value result={cylinder?.result} />
-      </div>
-    );
+    return <Value result={cylinder?.result} />;
   }
 };
 

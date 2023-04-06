@@ -25,7 +25,6 @@ import {
   notebook_to_editorinchief,
 } from "./Notebook/notebook-utils";
 import {
-  empty_sheet,
   editorinchief_to_sheet,
   sheet_to_editorinchief,
 } from "./Sheet/sheet-utils";

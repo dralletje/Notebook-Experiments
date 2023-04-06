@@ -6,7 +6,7 @@ import {
   EditorInChiefKeymap,
 } from "../codemirror-editor-in-chief/editor-in-chief";
 import { MutateCellMetaEffect } from "../codemirror-notebook/cell";
-import { SelectedCellEffect, SelectedCellField } from "../../Sheet/sheet-utils";
+import { SelectedCellEffect, SelectedCellField } from "./sheet-selected-cell";
 
 let save_and_run = (state) => {
   return [
