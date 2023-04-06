@@ -95,14 +95,18 @@ export let sheet_to_editorinchief = (
       SelectedCellField,
       SheetSizeField.init(() => ({
         columns: 26,
-        rows: 100,
+        rows: 30,
         // columns: 1,
         // rows: 1,
       })),
       sheet_instant_edits,
       sheet_movement,
 
-      // This works so smooth omg
+      // TODO History stuff
+      // .... - I think I just want sheet-wide changes when doing ctrl-z there:
+      // ....   any changes inside a cell should be counted as atomic from "cell enter" till "cell leave"
+      // .... - Should also turn cell run times back
+      // ....   (and engine should understand that changing it back also means it needs to re-run)
       [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
     ],
   });
@@ -124,22 +128,26 @@ export let cell_upsert = (
         })
       : cell_state_existing;
 
-  return {
-    effects: [
-      ...(cell_state_existing == null
-        ? [
+  return [
+    cell_state_existing == null
+      ? {
+          effects: [
             EditorAddEffect.of({
               editor_id: cell_id,
               state: cell_state,
             }),
-          ]
-        : []),
-      EditorDispatchEffect.of({
-        editor_id: cell_id,
-        transaction: fn(cell_state),
-      }),
-    ],
-  };
+          ],
+        }
+      : {},
+    {
+      effects: [
+        EditorDispatchEffect.of({
+          editor_id: cell_id,
+          transaction: fn(cell_state),
+        }),
+      ],
+    },
+  ];
 };
 
 export interface DOMEventMap extends HTMLElementEventMap {
@@ -157,7 +165,7 @@ export type DOMEventHandlers<This> = {
     event: DOMEventMap[event],
     view: {
       state: EditorInChief<EditorState>;
-      dispatch: (tr: EditorInChiefTransactionSpec) => void;
+      dispatch: (...tr: EditorInChiefTransactionSpec[]) => void;
     },
     cell_id: SheetPosition
   ) => boolean | void;
@@ -189,7 +197,7 @@ export let sheet_instant_edits = [
       // if (has_hyper_focus) return;
 
       dispatch(
-        cell_upsert(state, position.id, (cell_state) => ({
+        ...cell_upsert(state, position.id, (cell_state) => ({
           selection: EditorSelection.create([
             EditorSelection.cursor(cell_state.doc.length),
           ]),
@@ -204,7 +212,7 @@ export let sheet_instant_edits = [
       if (event.metaKey || event.ctrlKey) return false;
       if (event.key.length === 1) {
         view.dispatch(
-          cell_upsert(view.state, position.id, (cell_state) => ({
+          ...cell_upsert(view.state, position.id, (cell_state) => ({
             selection: EditorSelection.create([EditorSelection.cursor(1)]),
             changes: {
               from: 0,
@@ -225,7 +233,7 @@ export let sheet_instant_edits = [
         if (!cell_id) return false;
 
         dispatch(
-          cell_upsert(state, cell_id, (cell_state) => ({
+          ...cell_upsert(state, cell_id, (cell_state) => ({
             selection: EditorSelection.create([
               EditorSelection.cursor(cell_state.doc.length),
             ]),
@@ -241,7 +249,7 @@ export let sheet_instant_edits = [
         if (!cell_id) return false;
 
         dispatch(
-          cell_upsert(state, cell_id, (cell_state) => ({
+          ...cell_upsert(state, cell_id, (cell_state) => ({
             changes: {
               from: 0,
               to: cell_state.doc.length,

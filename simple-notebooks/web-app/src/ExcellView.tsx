@@ -191,7 +191,6 @@ let CellWrapper = ({
         // has_hyper_focus && "has-hyper-focus",
       ]).join(" ")}
       onKeyDown={(event) => {
-        if (event.target !== event.currentTarget) return;
         if (event.defaultPrevented) {
           return;
         }
@@ -348,7 +347,7 @@ import {
 } from "./packages/codemirror-sheet/sheet-selected-cell";
 import { ALPHABET } from "./packages/codemirror-sheet/alphabet";
 import { SheetSizeField } from "./packages/codemirror-sheet/sheet-layout";
-import { cellEventHandlersField, cell_upsert } from "./Sheet/sheet-utils";
+import { cellEventHandlersField } from "./Sheet/sheet-utils";
 import { SheetPosition } from "./packages/codemirror-sheet/sheet-position";
 
 let observable_inspector_sheet = new CSSish(observable_inspector);

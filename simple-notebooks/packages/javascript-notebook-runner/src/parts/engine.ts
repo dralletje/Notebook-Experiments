@@ -127,14 +127,14 @@ export class Engine extends TypedEventTarget<{
     if (this.is_busy) return;
 
     this.is_busy = true;
-    let start = performance.now();
-    let i = 0;
+    // let start = performance.now();
+    // let i = 0;
     while (await this.update_once(this.pending_blueprint)) {
-      i++;
+      // i++;
     }
-    let end = performance.now();
-    console.log(pc.green(`Engine update took ${Math.round(end - start)}ms`));
-    console.log(pc.green(`${i} @ ${Math.round((end - start) / i)}ms`));
+    // let end = performance.now();
+    // console.log(pc.green(`Engine update took ${Math.round(end - start)}ms`));
+    // console.log(pc.green(`${i} @ ${Math.round((end - start) / i)}ms`));
     this.is_busy = false;
   }
 

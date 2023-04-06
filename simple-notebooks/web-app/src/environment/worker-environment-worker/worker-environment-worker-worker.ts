@@ -196,10 +196,10 @@ addEventListener("message", async (event) => {
   let message: CircuitMessage = event.data;
   if (message.type === "update-notebook") {
     let { notebook } = message;
-    let start = performance.now();
+    // let start = performance.now();
     let blueprint = architect.design(notebook);
-    let end = performance.now();
-    console.log(`Blueprint took ${end - start}ms`);
+    // let end = performance.now();
+    // console.log(`Blueprint took ${end - start}ms`);
     engine.update(blueprint);
 
     // let thing = notebook_to_string(notebook, blueprint);
