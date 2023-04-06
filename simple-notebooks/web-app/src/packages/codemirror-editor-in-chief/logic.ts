@@ -94,7 +94,7 @@ export let EditorDispatchEffect = StateEffect.define<{
 
 export let EditorInChiefEffect = StateEffect.define<
   | ((
-      state: EditorInChief,
+      state: EditorInChief<any>,
       editor_id: EditorId
     ) => StateEffect<any>[] | StateEffect<any>)
   | StateEffect<any>[]

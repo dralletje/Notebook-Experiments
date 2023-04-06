@@ -6,6 +6,7 @@ import {
   EditorInChiefKeymap,
 } from "../codemirror-editor-in-chief/editor-in-chief";
 import { MutateCellMetaEffect } from "../codemirror-notebook/cell";
+import { SelectedCellEffect, SelectedCellField } from "../../Sheet/sheet-utils";
 
 let save_and_run = (state) => {
   return [
@@ -27,7 +28,13 @@ export let cell_keymap = [
         key: "Shift-Enter",
         run: ({ state, dispatch }) => {
           dispatch({
-            effects: [...save_and_run(state)],
+            effects: [
+              ...save_and_run(state),
+              EditorInChiefEffect.of((state) => {
+                let { column, row } = state.field(SelectedCellField);
+                return SelectedCellEffect.of({ column: column, row: row - 1 });
+              }),
+            ],
           });
           return true;
         },
@@ -37,7 +44,13 @@ export let cell_keymap = [
         key: "Enter",
         run: ({ state, dispatch }) => {
           dispatch({
-            effects: [...save_and_run(state)],
+            effects: [
+              ...save_and_run(state),
+              EditorInChiefEffect.of((state) => {
+                let { column, row } = state.field(SelectedCellField);
+                return SelectedCellEffect.of({ column: column, row: row + 1 });
+              }),
+            ],
           });
           return true;
         },
@@ -49,7 +62,7 @@ export let cell_keymap = [
           view.dispatch({
             changes: {
               from: view.state.selection.main.from,
-              insert: "",
+              insert: "\n",
               to: view.state.selection.main.from,
             },
           });

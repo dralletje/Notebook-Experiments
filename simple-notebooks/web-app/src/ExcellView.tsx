@@ -432,17 +432,16 @@ let Value = ({ result }) => {
 
 let Cell = ({
   viewupdate,
-  cylinder = default_cylinder(),
+  cylinder,
 }: {
   viewupdate: GenericViewUpdate<EditorState>;
   cylinder: import("./packages/codemirror-notebook/cell").CylinderShadow;
 }) => {
-  let has_hyper_focus =
-    viewupdate?.state?.field(EditorHasSelectionField) ||
-    cylinder.running ||
-    cylinder.waiting ||
-    cylinder.last_run !=
-      viewupdate.state?.field(CellMetaField)?.requested_run_time;
+  let has_hyper_focus = viewupdate?.state?.field(EditorHasSelectionField);
+  // cylinder.running ||
+  // cylinder.waiting ||
+  // cylinder.last_run !=
+  //   viewupdate.state?.field(CellMetaField)?.requested_run_time;
 
   if (has_hyper_focus) {
     return (
