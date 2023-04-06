@@ -24,15 +24,12 @@ import {
   editorinchief_to_notebook,
   notebook_to_editorinchief,
 } from "./Notebook/notebook-utils";
-import {
-  editorinchief_to_sheet,
-  sheet_to_editorinchief,
-} from "./Sheet/sheet-utils";
-
 import { create_codemirror_notebook } from "./packages/codemirror-notebook/codemirror-notebook";
 
 import "./App.css";
 import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selection";
+import { NotebookView } from "./Notebook/NotebookView.jsx";
+import { IndependentNotebook } from "./IndependentNotebook";
 
 /**
  * @typedef Workspace
@@ -41,6 +38,28 @@ import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selectio
  *  [filename: string]: EditorInChief,
  * }} files
  */
+
+// @ts-ignore
+let FileTab = styled.button`
+  background: none;
+  border: none;
+
+  padding-left: 24px;
+  padding-right: 24px;
+
+  &[aria-selected="true"] {
+    background: white;
+    color: black;
+  }
+  &:not([aria-selected="true"]):hover {
+    background: black;
+    color: white;
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-decoration-skip-ink: none;
+    /* text-underline-position: under; */
+  }
+`;
 
 /**
  * @typedef Project
@@ -59,29 +78,10 @@ let SHEET_EDITOR_ID =
   );
 
 let project_to_editorinchief = (/** @type {Project} */ project) => {
-  return EditorInChief.create({
-    editors: (parent) => {
-      return {
-        notebook: notebook_to_editorinchief(
-          project.notebook,
-          parent.section_editor_extensions(NOTEBOOK_EDITOR_ID)
-        ),
-        sheet: sheet_to_editorinchief(
-          project.notebook,
-          parent.section_editor_extensions(SHEET_EDITOR_ID)
-        ),
-      };
-    },
-    extensions: [],
-  });
+  return notebook_to_editorinchief(project.notebook);
 };
 let editorinchief_to_project = (/** @type {EditorInChief} */ editorinchief) => {
-  return {
-    [NOTEBOOK_EDITOR_ID]: editorinchief_to_notebook(
-      // @ts-ignore
-      editorinchief.editor(NOTEBOOK_EDITOR_ID)
-    ),
-  };
+  return { notebook: editorinchief_to_notebook(editorinchief) };
 };
 
 function App() {
@@ -123,8 +123,26 @@ function App() {
   }
 
   return (
-    <AppStyle>
-      <Header>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "stretch",
+      }}
+    >
+      <div
+        style={{
+          height: 50,
+          position: "sticky",
+          top: 0,
+          backgroundColor: "black",
+          zIndex: 1,
+
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "stretch",
+        }}
+      >
         {Object.keys(workspace.files).map((filename) => (
           <ContextMenuWrapper
             key={filename}
@@ -160,10 +178,8 @@ function App() {
             ]}
           >
             <FileTab
-              aria-current={filename === open_file ? "page" : false}
-              href={`/${filename}`}
-              onClick={(event) => {
-                event.preventDefault();
+              aria-selected={filename === open_file}
+              onClick={() => {
                 set_url(`/${filename}`);
               }}
             >
@@ -171,9 +187,9 @@ function App() {
             </FileTab>
           </ContextMenuWrapper>
         ))}
-      </Header>
+      </div>
 
-      <ProjectView
+      <IndependentNotebook
         key={open_file}
         filename={open_file}
         environment={environment}
@@ -186,69 +202,7 @@ function App() {
           );
         }}
       />
-    </AppStyle>
+    </div>
   );
 }
 export default App;
-
-let AppStyle = styled.div`
-  /* --header-height: 30px; */
-  --header-height: 0px;
-  --sidebar-width: 500px;
-
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-`;
-
-export let Header = styled.header`
-  position: sticky;
-  top: 0;
-  left: 0;
-  height: var(--header-height);
-  width: 100vw;
-
-  overflow: hidden;
-
-  background-color: black;
-
-  body:has(.tab-logs) & {
-    background-color: #090718;
-  }
-  body:has(.tab-notebook) & {
-    background-color: rgb(4 33 22);
-  }
-
-  z-index: 1;
-
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-`;
-
-// @ts-ignore
-let FileTab = styled.a`
-  background: none;
-  border: none;
-  color: #ffffff4f;
-
-  padding-top: 2px;
-  padding-left: 24px;
-  padding-right: 24px;
-
-  &[aria-current="page"] {
-    /* background: #ffffffad; */
-    /* color: black; */
-    color: white;
-    cursor: default;
-    user-select: none;
-  }
-  &:not([aria-current="page"]):hover {
-    background: #00000061;
-    color: white;
-    /* text-decoration: underline;
-    text-decoration-thickness: 3px;
-    text-decoration-skip-ink: none; */
-    /* text-underline-position: under; */
-  }
-`;

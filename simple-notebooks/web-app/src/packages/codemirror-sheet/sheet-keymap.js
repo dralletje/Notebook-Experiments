@@ -102,9 +102,9 @@ export let cell_keymap = [
   ),
   EditorView.domEventHandlers({
     blur: (event, view) => {
-      // view.dispatch({
-      //   effects: [...save_and_run(view.state)],
-      // });
+      view.dispatch({
+        effects: [...save_and_run(view.state)],
+      });
     },
   }),
 ];

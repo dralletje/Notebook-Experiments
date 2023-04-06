@@ -27,7 +27,6 @@ export class SheetPosition {
           (acc, letter) => acc * ALPHABET.length + ALPHABET.indexOf(letter) + 1,
           0
         );
-      console.log(`column_index:`, column_index);
       return new SheetPosition(
         {
           column: column_index,

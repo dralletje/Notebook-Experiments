@@ -35,25 +35,34 @@ import { SheetSizeField } from "../packages/codemirror-sheet/sheet-layout";
 import { sheet_movement } from "../packages/codemirror-sheet/sheet-movement";
 import { EditorInChiefTransactionSpec } from "../packages/codemirror-editor-in-chief/wrap/transaction";
 import { SheetPosition } from "../packages/codemirror-sheet/sheet-position";
+import { mapValues } from "lodash";
+
+type SheetCell = {
+  id: EditorId;
+  code: string;
+};
+export type SheetSerialized = {
+  cells: {
+    [id: EditorId]: SheetCell;
+  };
+  size: { columns: number; rows: number };
+};
 
 export let editorinchief_to_sheet = (
   state: EditorInChief<EditorState>
-): Notebook => {
+): SheetSerialized => {
   let cell_editor_states = state.editors;
   return {
-    cell_order: state.field(CellOrderField),
+    size: {
+      columns: state.field(SheetSizeField).columns,
+      rows: state.field(SheetSizeField).rows,
+    },
     cells: Object.fromEntries(
       cell_editor_states.mapValues((cell_state) => {
-        let type = cell_state.facet(CellTypeFacet);
+        let meta = cell_state.field(CellMetaField);
         return {
           id: cell_state.facet(EditorIdFacet),
-          unsaved_code: cell_state.doc.toString(),
-          ...cell_state.field(CellMetaField),
-          type: type,
-
-          // This autosaves the text cells
-          // TODO? Do we want this?
-          ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
+          code: meta.code,
         };
       })
     ),
@@ -62,13 +71,12 @@ export let editorinchief_to_sheet = (
 
 export let sheetcell_to_editorstate = (
   editorinchief: EditorInChief<EditorState>,
-  cell: any
+  cell: SheetCell
 ) => {
   return editorinchief.create_section_editor({
     editor_id: cell.id as EditorId,
-    doc: cell.unsaved_code ?? cell.code,
+    doc: cell.code,
     extensions: [
-      // @ts-ignore
       EditorIdFacet.of(cell.id),
       CellMetaField.init(() => ({
         code: cell.code,
@@ -83,15 +91,15 @@ export let sheetcell_to_editorstate = (
 };
 
 export let sheet_to_editorinchief = (
-  notebook: NotebookSerialized,
+  sheet: SheetSerialized,
   extensions = []
 ) => {
   // Take cell-id from the URL hash!
   let initial_selected_cell = null;
 
   let size = {
-    columns: 26,
-    rows: 30,
+    columns: sheet?.size?.columns ?? 26,
+    rows: sheet?.size?.rows ?? 30,
     // columns: 1,
     // rows: 1,
   };
@@ -105,7 +113,9 @@ export let sheet_to_editorinchief = (
 
   return EditorInChief.create({
     editors: (editorstate) => {
-      return {};
+      return mapValues(sheet?.cells, (cell, id) =>
+        sheetcell_to_editorstate(editorstate, cell)
+      );
     },
     extensions: [
       extensions,

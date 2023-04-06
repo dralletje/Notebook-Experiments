@@ -3,7 +3,7 @@
   background-color: transparent !important;
 
   .inspector-container {
-    background-color: transparent !important;
+    background-color: #01412e !important;
   }
 
   &.error::before {
