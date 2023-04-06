@@ -126,7 +126,7 @@ export function ProjectView({
 
   return (
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
-      <main style={{ overflow: "auto", flex: 1 }}>
+      <main style={{ flex: 1 }}>
         <Excell viewupdate={sheet_viewupdate} engine={engine} />
       </main>
 
@@ -172,19 +172,23 @@ export function ProjectView({
 }
 
 let Sidebar = styled.div`
+  position: sticky;
+  top: var(--header-height);
+  right: 0px;
+
+  z-index: 10;
+
   min-width: 400px;
   width: 500px;
+  height: calc(100vh - var(--header-height));
 
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  height: calc(100vh - 30px);
-  position: sticky;
-  top: 50px;
   overflow-y: auto;
   background-color: black;
 
-  /* border-top: 5px solid white; */
+  border-top: 5px solid white;
   border-left: 5px solid white;
   border-right: 5px solid white;
 

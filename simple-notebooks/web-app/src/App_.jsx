@@ -124,13 +124,7 @@ function App() {
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "stretch",
-      }}
-    >
+    <AppStyle>
       <Header>
         {Object.keys(workspace.files).map((filename) => (
           <ContextMenuWrapper
@@ -193,15 +187,29 @@ function App() {
           );
         }}
       />
-    </div>
+    </AppStyle>
   );
 }
 export default App;
 
+let AppStyle = styled.div`
+  /* --header-height: 30px; */
+  --header-height: 0px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+`;
+
 export let Header = styled.header`
-  height: 30px;
   position: sticky;
   top: 0;
+  left: 0;
+  height: var(--header-height);
+  width: 100vw;
+
+  overflow: hidden;
+
   background-color: black;
 
   body:has(.tab-logs) & {
@@ -222,14 +230,16 @@ export let Header = styled.header`
 let FileTab = styled.a`
   background: none;
   border: none;
+  color: #ffffff4f;
 
   padding-top: 2px;
   padding-left: 24px;
   padding-right: 24px;
 
   &[aria-current="page"] {
-    background: #ffffffad;
-    color: black;
+    /* background: #ffffffad; */
+    /* color: black; */
+    color: white;
     cursor: default;
     user-select: none;
   }

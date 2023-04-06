@@ -14,6 +14,7 @@
 html {
   background-color: var(--background-color, rgb(var(--background-color-rgb)));
   color: white;
+  min-width: fit-content;
 }
 
 body {

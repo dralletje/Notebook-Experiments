@@ -3,6 +3,8 @@ import { produce } from "immer";
 import { chunk, compact, range } from "lodash";
 import styled from "styled-components";
 import {
+  CellMetaField,
+  CylinderShadow,
   EngineShadow,
   MutateCellMetaEffect,
 } from "./packages/codemirror-notebook/cell";
@@ -50,165 +52,309 @@ export function Excell({
 }) {
   let selected_cell = viewupdate.state.field(SelectedCellField, false);
 
+  let COLUMNS = viewupdate.state.field(SheetSizeField).columns;
+  let ROWS = viewupdate.state.field(SheetSizeField).rows;
+
   return (
     <React.Fragment>
+      {/* These "are part of" the cell (more specifically, the observable inspector)
+          but having them located there made updating them reeeeaallly slow
+          (and there are a lot fo them) */}
       <AdoptStylesheet stylesheet={observable_inspector_sheet} />
       <AdoptStylesheet stylesheet={inspector_css_sheet} />
-      <Table>
-        <thead>
-          <tr>
-            <td />
-            {ALPHABET.split("").map((letter) => (
-              <th key={letter}>{letter}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {range(1, 2).map((row) => (
-            <tr key={row}>
-              <th>{row}</th>
-              {range(1, ALPHABET.length).map((column) => {
-                let cell_id = `${ALPHABET[column]}${row}` as EditorId;
+
+      <Grid
+        style={{
+          gridTemplateColumns: `70px repeat(${COLUMNS - 1}, 100px)`,
+        }}
+      >
+        <React.Fragment key="header">
+          <div className="corner-stone" />
+
+          {range(1, COLUMNS).map((column) => (
+            <div
+              key={column}
+              className={[
+                "horizontal-header",
+                selected_cell?.column === column && "active-header",
+              ].join(" ")}
+            >
+              {ALPHABET[column - 1]}
+            </div>
+          ))}
+        </React.Fragment>
+
+        <React.Fragment key="body">
+          {range(1, ROWS).map((row) => (
+            <React.Fragment key={row}>
+              <div
+                className={[
+                  "vertical-header",
+                  selected_cell?.row === row && "active-header",
+                ].join(" ")}
+                onClick={() => {
+                  viewupdate.view.dispatch({
+                    effects: [SelectedCellEffect.of({ row, column: null })],
+                  });
+                }}
+              >
+                {row}
+              </div>
+
+              {range(1, COLUMNS).map((column) => {
                 return (
-                  <CellMemo
-                    key={cell_id}
-                    viewupdate={extract_nested_viewupdate(viewupdate, cell_id)}
-                    cylinder={engine.cylinders[cell_id]}
-                    has_normal_focus={
-                      selected_cell?.row == row &&
-                      selected_cell?.column == column
-                    }
-                    onClick={(event) => {
-                      event.preventDefault();
-                      viewupdate.view.dispatch({
-                        effects: [
-                          SelectedCellEffect.of({
-                            row,
-                            column,
-                          }),
-                        ],
-                      });
-                      // cell_viewupdate.view.dispatch({
-                      //   selection: EditorSelection.create([
-                      //     EditorSelection.cursor(
-                      //       cell_viewupdate.state.doc.length
-                      //     ),
-                      //   ]),
-                      // });
-                    }}
+                  <CellWrapper
+                    key={column}
+                    row={row}
+                    column={column}
+                    selected_cell={selected_cell}
+                    viewupdate={viewupdate}
+                    cylinder={engine.cylinders[`${ALPHABET[column - 1]}${row}`]}
                   />
                 );
               })}
-            </tr>
+            </React.Fragment>
           ))}
-        </tbody>
-      </Table>
-
-      {/* <Grid>
-        <div className="corner" />
-        {ALPHABET.split("").map((letter) => (
-          <div key={letter} className="horizontal-header">
-            {letter}
-          </div>
-        ))}
-        {chunk(EXCEL_CELLS, ALPHABET.length).map((row, i) => (
-          <React.Fragment key={i}>
-            <div className="vertical-header">{i + 1}</div>
-            {row.map((cell_id) => (
-              <CellMemo
-                key={cell_id}
-                viewupdate={extract_nested_viewupdate(viewupdate, cell_id)}
-                cylinder={engine.cylinders[cell_id]}
-              />
-            ))}
-          </React.Fragment>
-        ))}
-      </Grid> */}
+        </React.Fragment>
+      </Grid>
     </React.Fragment>
   );
 }
 
+let CellWrapper = ({
+  column,
+  row,
+  selected_cell,
+  viewupdate,
+  cylinder,
+}: {
+  column: number;
+  row: number;
+  selected_cell: { row: number; column: number };
+  viewupdate: GenericViewUpdate<EditorInChief<EditorState>>;
+  cylinder: CylinderShadow;
+}) => {
+  let cell_id = `${ALPHABET[column - 1]}${row}` as EditorId;
+  // `has_normal_focus` should be replaced with actual browser focus
+  let has_normal_focus =
+    selected_cell?.row == row && selected_cell?.column == column;
+
+  let cell_ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (has_normal_focus) {
+      cell_ref.current?.focus();
+    } else {
+      cell_ref.current?.blur();
+    }
+  }, [has_normal_focus]);
+
+  return (
+    <div
+      key={cell_id}
+      tabIndex={0}
+      ref={cell_ref}
+      className={compact([
+        "sheet-cell",
+        selected_cell?.row == row && "active-row",
+        selected_cell?.column == column && "active-column",
+        has_normal_focus && "has-normal-focus",
+        // has_hyper_focus && "has-hyper-focus",
+      ]).join(" ")}
+      onFocus={() => {
+        viewupdate.view.dispatch({
+          effects: [SelectedCellEffect.of({ row, column })],
+        });
+      }}
+      onClick={(event) => {
+        event.preventDefault();
+        viewupdate.view.dispatch({
+          effects: [
+            SelectedCellEffect.of({
+              row,
+              column,
+            }),
+          ],
+        });
+      }}
+      onDoubleClick={(event) => {
+        if (event.defaultPrevented) return;
+        // if (has_hyper_focus) return;
+
+        event.preventDefault();
+        let cell_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
+        cell_viewupdate.view.dispatch({
+          selection: EditorSelection.create([
+            EditorSelection.cursor(cell_viewupdate.state.doc.length),
+          ]),
+        });
+      }}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.defaultPrevented) return;
+        // if (has_hyper_focus) return;
+        if (event.metaKey) return;
+
+        if (event.key === "Enter") {
+          event.preventDefault();
+          let cell_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
+          cell_viewupdate.view.dispatch({
+            selection: EditorSelection.create([
+              EditorSelection.cursor(cell_viewupdate.state.doc.length),
+            ]),
+          });
+        } else if (event.key.length === 1) {
+          event.preventDefault();
+          let cell_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
+          cell_viewupdate.view.dispatch({
+            selection: EditorSelection.create([EditorSelection.cursor(1)]),
+            changes: {
+              from: 0,
+              to: cell_viewupdate.state.doc.length,
+              insert: event.key,
+            },
+          });
+        } else if (event.key === "Backspace") {
+          event.preventDefault();
+          let cell_viewupdate = extract_nested_viewupdate(viewupdate, cell_id);
+          cell_viewupdate.view.dispatch({
+            changes: {
+              from: 0,
+              to: cell_viewupdate.state.doc.length,
+              insert: "",
+            },
+            effects: [
+              MutateCellMetaEffect.of((cell) => {
+                cell.code = "";
+                cell.requested_run_time = Date.now();
+              }),
+            ],
+          });
+        } else if (event.key === "ArrowUp") {
+          event.preventDefault();
+          viewupdate.view.dispatch({
+            effects: [
+              SelectedCellEffect.of({
+                row: Math.max(row - 1, 0),
+                column,
+              }),
+            ],
+          });
+        } else if (event.key === "ArrowDown") {
+          event.preventDefault();
+          viewupdate.view.dispatch({
+            effects: [
+              SelectedCellEffect.of({
+                row: row + 1,
+                column,
+              }),
+            ],
+          });
+        } else if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          viewupdate.view.dispatch({
+            effects: [
+              SelectedCellEffect.of({
+                row,
+                column: Math.max(column - 1, 0),
+              }),
+            ],
+          });
+        } else if (event.key === "ArrowRight") {
+          event.preventDefault();
+          viewupdate.view.dispatch({
+            effects: [
+              SelectedCellEffect.of({
+                row,
+                column: column + 1,
+              }),
+            ],
+          });
+        }
+      }}
+    >
+      <CellMemo
+        viewupdate={extract_nested_viewupdate(viewupdate, cell_id)}
+        cylinder={cylinder}
+      />
+    </div>
+  );
+};
+
 let Grid = styled.div`
   display: grid;
 
-  // Grid with 27 columns,
-  // the first one 50 pixels wide, the rest 100 pixels wide
-  grid-template-columns: 50px repeat(26, 100px);
+  grid-template-rows: 35px repeat(auto-fit, 35px);
+
+  background: #232204;
+  color: #ffffffcf;
+  align-self: flex-start;
+  flex: 1;
+
+  width: fit-content;
+
+  .horizontal-header,
+  .vertical-header,
+  .corner-stone {
+    /* outline: rgb(238 238 238 / 68%) solid 1px;
+    outline-offset: -1px; */
+
+    background-color: rgb(29 29 29);
+    border: 1px solid rgb(157 157 157 / 21%);
+
+    z-index: 1;
+
+    padding: 4px 0;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+
+    user-select: none;
+  }
+
+  .active-header {
+    background-color: rgb(19 60 94);
+    outline: solid 1px rgb(25 81 128);
+    outline-offset: -1px;
+    z-index: 2;
+  }
 
   .horizontal-header {
     position: sticky;
-    top: 0;
+    top: var(--header-height);
+    border-left: none;
   }
   .vertical-header {
     position: sticky;
     left: 0;
+    border-top: none;
   }
-  .corner {
+  .corner-stone {
+    z-index: 10;
     position: sticky;
-    top: 0;
+    top: var(--header-height);
     left: 0;
   }
 
-  .horizontal-header,
-  .vertical-header,
-  .corner {
-    outline: rgb(238 238 238 / 68%) solid 1px;
-    outline-offset: -1px;
-
-    min-width: 25px;
-    background-color: #1c1b04;
-    z-index: 1;
-  }
-  .corner {
-    z-index: 2;
-  }
-`;
-
-let Table = styled.table`
-  padding: 10px;
-  background: #232204;
-  color: #ffffffcf;
-  height: auto;
-  align-self: flex-start;
-  flex: 1;
-
-  th,
-  thead td {
-    outline: rgb(238 238 238 / 68%) solid 1px;
-    outline-offset: -1px;
-
-    min-width: 25px;
-    background-color: #1c1b04;
-    z-index: 1;
-    position: sticky;
-  }
-  thead {
-    td {
-      z-index: 2;
-      left: 0;
-      top: 0;
-    }
-    th {
-      top: 0;
-    }
-  }
-  tbody {
-    th {
-      left: 0;
-    }
-  }
-
-  td {
-    border: 1px solid rgb(238 238 238 / 17%);
-    width: calc(100% / ${ALPHABET.length});
-    min-width: 50px;
-    max-width: 200px;
+  .sheet-cell {
+    border: 1px solid rgb(238 238 238 / 9%);
+    border-width: 0 1px 1px 0;
     overflow: hidden;
+
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 35px;
 
     &.has-normal-focus {
       outline: #1a99ff solid 3px;
       outline-offset: -2px;
     }
+    /* &.active-row,
+    &.active-column {
+      background-color: #1a99ff1a;
+    } */
 
     .cm-editor {
       .cm-content {
@@ -231,9 +377,11 @@ let Table = styled.table`
       }
     }
     .sheet-inspector {
+      max-height: 100%;
+
       pointer-events: none;
       user-select: none;
-      overflow: auto;
+      overflow: hidden;
       font-size: 17px;
       margin-left: 6px;
     }
@@ -256,7 +404,9 @@ import {
   EXCEL_CELLS,
   SelectedCellEffect,
   SelectedCellField,
+  SheetSizeField,
 } from "./Sheet/sheet-utils";
+import { default_cylinder } from "./environment/use-engine";
 
 let observable_inspector_sheet = new CSSish(observable_inspector);
 let inspector_css_sheet = new CSSish(inspector_css);
@@ -281,110 +431,37 @@ let Value = ({ result }) => {
 };
 
 let Cell = ({
-  has_normal_focus,
-  onClick,
   viewupdate,
-  cylinder,
+  cylinder = default_cylinder(),
 }: {
   viewupdate: GenericViewUpdate<EditorState>;
   cylinder: import("./packages/codemirror-notebook/cell").CylinderShadow;
-  has_normal_focus: boolean;
-  onClick: (
-    event: React.MouseEvent<HTMLTableDataCellElement, MouseEvent>
-  ) => void;
 }) => {
-  let has_hyper_focus = viewupdate.state.field(HyperfocusField, false);
+  let has_hyper_focus =
+    viewupdate?.state?.field(EditorHasSelectionField) ||
+    cylinder.running ||
+    cylinder.waiting ||
+    cylinder.last_run !=
+      viewupdate.state?.field(CellMetaField)?.requested_run_time;
 
-  console.log(`has_normal_focus:`, has_normal_focus);
-
-  return (
-    <td
-      tabIndex={0}
-      className={compact([
-        "excell",
-        has_normal_focus && "has-normal-focus",
-        has_hyper_focus && "has-hyper-focus",
-      ]).join(" ")}
-      onClick={(event) => {
-        if (event.defaultPrevented) return;
-        if (has_hyper_focus) return;
-
-        onClick?.(event);
-      }}
-      onDoubleClick={(event) => {
-        if (event.defaultPrevented) return;
-        if (has_hyper_focus) return;
-
-        event.preventDefault();
-        viewupdate.view.dispatch({
-          selection: EditorSelection.create([
-            EditorSelection.cursor(viewupdate.state.doc.length),
-          ]),
-          effects: [HyperfocusEffect.of(true)],
-        });
-      }}
-      onKeyDown={(event) => {
-        if (event.defaultPrevented) return;
-        if (has_hyper_focus) return;
-        if (event.metaKey) return;
-
-        if (event.key === "Enter") {
-          event.preventDefault();
-          viewupdate.view.dispatch({
-            selection: EditorSelection.create([
-              EditorSelection.cursor(viewupdate.state.doc.length),
-            ]),
-            effects: [HyperfocusEffect.of(true)],
-          });
-        } else if (event.key.length === 1) {
-          event.preventDefault();
-          viewupdate.view.dispatch({
-            selection: EditorSelection.create([EditorSelection.cursor(1)]),
-            changes: {
-              from: 0,
-              to: viewupdate.state.doc.length,
-              insert: event.key,
-            },
-            effects: [HyperfocusEffect.of(true)],
-          });
-        } else if (event.key === "Backspace") {
-          event.preventDefault();
-          viewupdate.view.dispatch({
-            selection: EditorSelection.create([EditorSelection.cursor(0)]),
-            changes: {
-              from: 0,
-              to: viewupdate.state.doc.length,
-              insert: "",
-            },
-            effects: [
-              MutateCellMetaEffect.of((cell) => {
-                cell.code = "";
-                cell.requested_run_time = Date.now();
-              }),
-            ],
-          });
-        }
-      }}
-    >
-      <div style={{ height: 25, width: 150 }}>
-        {has_hyper_focus ? (
-          <CodemirrorFromViewUpdate viewupdate={viewupdate}>
-            <Extension extension={basic_sheet_setup} />
-          </CodemirrorFromViewUpdate>
-        ) : (
-          <div className="sheet-inspector">
-            <Value result={cylinder?.result} />
-          </div>
-        )}
+  if (has_hyper_focus) {
+    return (
+      <CodemirrorFromViewUpdate viewupdate={viewupdate}>
+        <Extension extension={basic_sheet_setup} />
+      </CodemirrorFromViewUpdate>
+    );
+  } else {
+    return (
+      <div className="sheet-inspector">
+        <Value result={cylinder?.result} />
       </div>
-    </td>
-  );
+    );
+  }
 };
 
 let CellMemo = React.memo(Cell, (prev, next) => {
   return (
     prev.viewupdate.state === next.viewupdate.state &&
-    prev.cylinder === next.cylinder &&
-    prev.has_normal_focus === next.has_normal_focus
+    prev.cylinder === next.cylinder
   );
 });

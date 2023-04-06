@@ -132,3 +132,14 @@ export let useEngine = (notebook, environment) => {
 
   return [state.engine, state.logs];
 };
+
+/** @returns {import("../packages/codemirror-notebook/cell").CylinderShadow} */
+export let default_cylinder = () => {
+  return {
+    last_run: -Infinity,
+    last_internal_run: 0,
+    result: { type: "return", value: { 0: { type: "undefined", value: "" } } },
+    running: false,
+    waiting: false,
+  };
+};

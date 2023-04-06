@@ -18,6 +18,7 @@ import {
   CellTypeFacet,
   NudgeCell,
 } from "../packages/codemirror-notebook/cell";
+import { default_cylinder } from "../environment/use-engine.js";
 
 let InspectorContainer = styled.div`
   /* padding-left: calc(16px + 4px);
@@ -206,17 +207,6 @@ let local_style = EditorView.theme({
     color: "unset",
   },
 });
-
-/** @returns {import("../packages/codemirror-notebook/cell").CylinderShadow} */
-let default_cylinder = () => {
-  return {
-    last_run: -Infinity,
-    last_internal_run: 0,
-    result: { type: "return", value: { 0: { type: "undefined", value: "" } } },
-    running: false,
-    waiting: false,
-  };
-};
 
 /** @param {Selection | null} selection */
 function* ranges(selection) {

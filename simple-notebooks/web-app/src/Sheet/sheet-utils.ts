@@ -70,6 +70,24 @@ export let sheetcell_to_editorstate = (
   });
 };
 
+// export const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+export const ALPHABET = "ABCDEFGHIJKLMNOP";
+export const SheetSizeField = EditorInChiefStateField.define<{
+  rows: number;
+  columns: number;
+}>({
+  create(state) {
+    return {
+      rows: 30,
+      columns: ALPHABET.length,
+    };
+  },
+  update(value, tr) {
+    // Nothing... yet!
+    return value;
+  },
+});
+
 type SelectedCell = { column: number; row: number };
 export const SelectedCellEffect = StateEffect.define<SelectedCell | null>();
 export const SelectedCellField =
@@ -80,20 +98,27 @@ export const SelectedCellField =
     update(value, tr) {
       for (let effect of tr.effects) {
         if (effect.is(SelectedCellEffect)) {
+          let sheet_size = tr.state.field(SheetSizeField);
+          if (
+            effect.value.column < 1 ||
+            sheet_size.columns < effect.value.column ||
+            effect.value.row < 1 ||
+            sheet_size.row < effect.value.row
+          )
+            continue;
           value = effect.value;
         }
       }
+      console.log(`value:`, value);
       return value;
     },
   });
 
-// export const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-export const ALPHABET = "ABCDEFGH";
 // @ts-ignore
 export let EXCEL_CELLS =
   /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId[]} */ range(
     1,
-    30
+    10
   ).flatMap((i) => ALPHABET.split("").map((j) => `${j}${i}` as EditorId));
 
 export let sheet_to_editorinchief = (
@@ -116,6 +141,7 @@ export let sheet_to_editorinchief = (
     extensions: [
       extensions,
       SelectedCellField,
+      SheetSizeField,
       // This works so smooth omg
       [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
     ],

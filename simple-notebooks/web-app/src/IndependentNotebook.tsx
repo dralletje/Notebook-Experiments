@@ -139,7 +139,7 @@ let Sidebar = styled.div`
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  height: calc(100vh - 30px);
+  height: calc(100vh - var(--header-height));
   position: sticky;
   top: 50px;
   overflow-y: auto;
