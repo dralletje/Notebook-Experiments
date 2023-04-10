@@ -216,7 +216,9 @@ export let sheet_instant_edits = [
       });
     },
     dblclick: (event, { state, dispatch }, position) => {
-      // if (has_hyper_focus) return;
+      let has_hyper_focus =
+        state.editors.get(position.id)?.field(EditorHasSelectionField) ?? false;
+      if (has_hyper_focus) return;
 
       dispatch(
         ...cell_upsert(state, position.id, (cell_state) => ({

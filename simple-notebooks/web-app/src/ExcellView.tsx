@@ -2,6 +2,7 @@ import React from "react";
 import { compact, range } from "lodash";
 import styled from "styled-components";
 import {
+  CellMetaField,
   CylinderShadow,
   EngineShadow,
 } from "./packages/codemirror-notebook/cell";
@@ -289,10 +290,6 @@ let Grid = styled.div`
     /* TODO NOT WORKING */
     scroll-margin: var(--header-height) var(--sidebar-width) 0 0;
 
-    &:focus-within {
-      outline: #147ace solid 2px;
-      outline-offset: -1px;
-    }
     &:focus,
     &.has-normal-focus {
       outline: #1a99ff solid 3px;
@@ -335,9 +332,10 @@ let Grid = styled.div`
       user-select: none;
       overflow: hidden;
       font-size: 17px;
+      font-family: Menlo;
       /* margin-left: 6px; */
-      margin-inline: 6px;
-      margin-block: 5px;
+      padding-inline: 6px;
+      padding-block: 5px;
     }
   }
 `;
@@ -347,9 +345,9 @@ import inspector_css from "./yuck/Inspector.css?inline";
 // @ts-ignore
 import observable_inspector from "@observablehq/inspector/src/style.css?inline";
 import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
-import { EditorSelection, EditorState } from "@codemirror/state";
+import { EditorSelection, EditorState, Facet } from "@codemirror/state";
 import { basic_sheet_setup } from "./codemirror-javascript-sheet/sheet-basics.js";
-import { EditorView, runScopeHandlers } from "@codemirror/view";
+import { EditorView, ViewPlugin, runScopeHandlers } from "@codemirror/view";
 import {
   SelectedCellEffect,
   SelectedCellField,
@@ -364,18 +362,10 @@ let inspector_css_sheet = new CSSish(inspector_css);
 
 let StringValue = styled.span`
   color: white;
-  font-size: 17px;
-  font-family: Menlo;
-  padding-left: 6px;
-  user-select: none;
 `;
 
 let NumberValue = styled.span`
   color: #00a7ca;
-  font-size: 17px;
-  font-family: Menlo;
-  padding-inline: 6px;
-  user-select: none;
   text-align: right;
   width: 100%;
 `;
@@ -418,13 +408,49 @@ let Value = ({ result }) => {
 let cell_expands_when_focused = EditorView.baseTheme({
   "&": {
     "background-color": "rgb(33, 33, 33)",
-    "padding-block": "4px",
+    "padding-block": "5px",
     outline: "rgb(26, 153, 255) solid 3px !important",
+    "outline-offset": "-2px",
+
     "z-index": "3",
     height: "fit-content",
     "min-width": "fit-content",
     width: "100%",
   },
+});
+
+let editor_number_styles = [
+  EditorView.baseTheme({
+    "&.was-number .cm-content": {
+      "text-align": "right",
+    },
+    "&.was-number .cm-line": {
+      "padding-inline": "6px",
+    },
+  }),
+  ViewPlugin.define((view) => {
+    let was_number = view.state.facet(WasNumberFacet);
+    console.log(`#1 was_number:`, was_number);
+    if (was_number) {
+      view.dom.classList.add("was-number");
+    } else {
+      view.dom.classList.remove("was-number");
+    }
+
+    return {
+      update(update) {
+        let was_number = update.state.facet(WasNumberFacet);
+        if (was_number) {
+          view.dom.classList.add("was-number");
+        } else {
+          view.dom.classList.remove("was-number");
+        }
+      },
+    };
+  }),
+];
+let WasNumberFacet = Facet.define<boolean, boolean>({
+  combine: (value) => value[0],
 });
 
 let Cell = ({
@@ -440,11 +466,24 @@ let Cell = ({
   // cylinder.last_run !=
   //   viewupdate.state?.field(CellMetaField)?.requested_run_time;
 
+  let code = viewupdate.state?.field(CellMetaField).code;
+
   if (has_hyper_focus) {
+    let was_number = code !== "" && !Number.isNaN(Number(code));
+    let was_number_extension = React.useMemo(() => {
+      console.log(`was_number:`, was_number);
+      return WasNumberFacet.of(was_number);
+    }, [was_number]);
+
     return (
-      <CodemirrorFromViewUpdate viewupdate={viewupdate}>
+      <CodemirrorFromViewUpdate
+        viewupdate={viewupdate}
+        className={was_number ? "was-number" : ""}
+      >
         <Extension extension={basic_sheet_setup} />
         <Extension extension={cell_expands_when_focused} />
+        <Extension extension={was_number_extension} />
+        <Extension extension={editor_number_styles} />
       </CodemirrorFromViewUpdate>
     );
   } else {
