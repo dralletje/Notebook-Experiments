@@ -980,6 +980,7 @@ __metadata:
     codemirror-debug-syntax-plugin: "workspace:^"
     codemirror-x-react: "workspace:^"
     dral-lezer-helpers: "workspace:^"
+    excel-formula-parser: ^1.1.0
     htl: ^0.3.1
     immer: ^9.0.21
     inspector-x-react: "workspace:^"
@@ -3089,6 +3090,30 @@ __metadata:
   version: 3.3.0
   resolution: "events@npm:3.3.0"
   checksum: f6f487ad2198aa41d878fa31452f1a3c00958f46e9019286ff4787c84aac329332ab45c9cdc8c445928fc6d7ded294b9e005a7fce9426488518017831b272780
+  languageName: node
+  linkType: hard
+
+"excel-formula-ast@npm:^1.0.0":
+  version: 1.1.1
+  resolution: "excel-formula-ast@npm:1.1.1"
+  checksum: a6a3425510dfd3baad91af1c716e3884de9d42c8e788f309e077982833fae447a5af2c40ed52f3ab035d421b0e4f3529a3e3d109d509a35ffc1d576343540aa6
+  languageName: node
+  linkType: hard
+
+"excel-formula-parser@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "excel-formula-parser@npm:1.1.0"
+  dependencies:
+    excel-formula-ast: ^1.0.0
+    excel-formula-tokenizer: ^2.3.1
+  checksum: 032c181699f748ab157d3c42279aa37a5f6c0f56aa82c47154e2c2652bcb71ce65a416d9623859db5c11dd145eb54da4ef2c3e72d384a811557338e3726215d6
+  languageName: node
+  linkType: hard
+
+"excel-formula-tokenizer@npm:^2.3.1":
+  version: 2.4.0
+  resolution: "excel-formula-tokenizer@npm:2.4.0"
+  checksum: 1a063760b7a3cf1181be61415ccfa7858d8dfdaf5213d4e728ac812cb812a67968b5492be4f3bde10ca8f7cce644a8b4948bd80e8356b16ffbd66094f5d71af6
   languageName: node
   linkType: hard
 

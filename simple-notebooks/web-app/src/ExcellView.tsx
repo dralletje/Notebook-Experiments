@@ -279,11 +279,11 @@ let Grid = styled.div`
   .sheet-cell {
     border: 1px solid rgb(238 238 238 / 9%);
     border-width: 0 1px 1px 0;
-    overflow: hidden;
+    /* overflow: hidden; */
 
     display: flex;
     flex-direction: row;
-    align-items: center;
+    /* align-items: center; */
     height: 35px;
 
     /* TODO NOT WORKING */
@@ -335,7 +335,9 @@ let Grid = styled.div`
       user-select: none;
       overflow: hidden;
       font-size: 17px;
-      margin-left: 6px;
+      /* margin-left: 6px; */
+      margin-inline: 6px;
+      margin-block: 5px;
     }
   }
 `;
@@ -347,7 +349,7 @@ import observable_inspector from "@observablehq/inspector/src/style.css?inline";
 import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { basic_sheet_setup } from "./codemirror-javascript-sheet/sheet-basics.js";
-import { runScopeHandlers } from "@codemirror/view";
+import { EditorView, runScopeHandlers } from "@codemirror/view";
 import {
   SelectedCellEffect,
   SelectedCellField,
@@ -359,6 +361,24 @@ import { SheetPosition } from "./packages/codemirror-sheet/sheet-position";
 
 let observable_inspector_sheet = new CSSish(observable_inspector);
 let inspector_css_sheet = new CSSish(inspector_css);
+
+let StringValue = styled.span`
+  color: white;
+  font-size: 17px;
+  font-family: Menlo;
+  padding-left: 6px;
+  user-select: none;
+`;
+
+let NumberValue = styled.span`
+  color: #00a7ca;
+  font-size: 17px;
+  font-family: Menlo;
+  padding-inline: 6px;
+  user-select: none;
+  text-align: right;
+  width: 100%;
+`;
 
 let Value = ({ result }) => {
   if (result == null) return <div />;
@@ -373,6 +393,16 @@ let Value = ({ result }) => {
   let value = deserialize(0, result.value);
   if (value == null) return null;
 
+  if (typeof value === "string") {
+    return <StringValue className="sheet-inspector">{value}</StringValue>;
+  }
+
+  if (typeof value === "number") {
+    return (
+      <NumberValue className="sheet-inspector">{String(value)}</NumberValue>
+    );
+  }
+
   return (
     <div className="sheet-inspector">
       <Inspector
@@ -384,6 +414,18 @@ let Value = ({ result }) => {
     </div>
   );
 };
+
+let cell_expands_when_focused = EditorView.baseTheme({
+  "&": {
+    "background-color": "rgb(33, 33, 33)",
+    "padding-block": "4px",
+    outline: "rgb(26, 153, 255) solid 3px !important",
+    "z-index": "3",
+    height: "fit-content",
+    "min-width": "fit-content",
+    width: "100%",
+  },
+});
 
 let Cell = ({
   viewupdate,
@@ -402,6 +444,7 @@ let Cell = ({
     return (
       <CodemirrorFromViewUpdate viewupdate={viewupdate}>
         <Extension extension={basic_sheet_setup} />
+        <Extension extension={cell_expands_when_focused} />
       </CodemirrorFromViewUpdate>
     );
   } else {

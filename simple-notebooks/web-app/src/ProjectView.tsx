@@ -43,9 +43,57 @@ import shadow_notebook_css from "./yuck/shadow-notebook.css?inline";
 import { EditorState } from "@codemirror/state";
 import { SelectedCellField } from "./packages/codemirror-sheet/sheet-selected-cell";
 
+import { parse } from "excel-formula-parser";
+
+let tree_to_js = (tree: ReturnType<typeof parse>) => {
+  if (tree.type === "function") {
+    return `${tree.name}(${tree.arguments.map(tree_to_js).join(", ")})`;
+  }
+  if (tree.type === "cell") {
+    return `${tree.key}`.replaceAll(/\$/g, "");
+  }
+  if (tree.type === "text") {
+    return `\`${tree.value}\``;
+  }
+  if (tree.type === "number") {
+    return `${tree.value}`;
+  }
+  if (tree.type === "binary-expression") {
+    // prettier-ignore
+    return `${tree_to_js(tree.left)} ${tree.operator} ${tree_to_js(tree.right)}`;
+  }
+  console.log(`tree:`, tree);
+  throw new Error(`Unknown tree type: ${tree.type}`);
+};
+let convert_formula_to_js = (formula: string) => {
+  formula = formula.trim();
+  if (formula.startsWith("=")) {
+    const tree = parse(formula.slice(1));
+    return tree_to_js(tree);
+  } else {
+    if (formula === "") {
+      return "undefined";
+    }
+    let number = Number(formula);
+    if (!Number.isNaN(number)) {
+      return `${number}`;
+    }
+    return `"${formula}"`;
+  }
+};
+
 let shadow_notebook = new CSSish(shadow_notebook_css);
 
 let Sheet = () => {};
+
+// type Executable = {
+//   id: string;
+//   scope: "global" | "cell";
+//   code: string;
+// }
+// type SimpleExecutables = {
+//   order: string[];
+// }
 
 export function ProjectView({
   filename,
@@ -98,13 +146,15 @@ export function ProjectView({
         }),
         ...sheet_cell_order.map((cell_id) => {
           let cell_state = sheet_editorstates.get(cell_id);
+          let { code, requested_run_time } = cell_state.field(CellMetaField);
           return [
             cell_id,
             {
               id: cell_state.facet(EditorIdFacet),
               unsaved_code: cell_state.doc.toString(),
-              ...cell_state.field(CellMetaField),
               type: "code",
+              code: convert_formula_to_js(code),
+              requested_run_time: requested_run_time,
             },
           ];
         }),
