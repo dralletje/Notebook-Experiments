@@ -46,7 +46,7 @@ let Interact = ({ onHover, children }) => {
  *  code: string,
  * }} props
  */
-let InlineCell = ({ cell_id, cylinder, code }) => {
+export let InlineCell = ({ cell_id, cylinder, code }) => {
   let initial_editor_state = React.useMemo(() => {
     return EditorState.create({
       doc: code,
@@ -81,7 +81,7 @@ let InlineCell = ({ cell_id, cylinder, code }) => {
           ...cylinder,
           // @ts-ignore
           result: {
-            ...cylinder.result,
+            ...cylinder?.result,
             // @ts-ignore
             name: undefined,
           },

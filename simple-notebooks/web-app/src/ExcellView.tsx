@@ -20,26 +20,6 @@ import { Extension } from "codemirror-x-react";
 import { Inspector } from "inspector-x-react";
 import { deserialize } from "./yuck/deserialize-value-to-show.js";
 
-/**
- * @typedef Workspace
- * @property {string} id
- * @property {{
- *  [filename: string]: {
- *    filename: string,
- *    state: EditorInChief,
- *  }
- * }} files
- */
-
-/**
- * @typedef Excell
- * @type {{
- *  id: string,
- *  code: string,
- *  unsaved_code: string
- * }}
- */
-
 export function Excell({
   viewupdate,
   engine,
@@ -48,10 +28,7 @@ export function Excell({
   engine: EngineShadow;
 }) {
   let selected_cell = viewupdate.state.field(SelectedCellField, false);
-
   let sheet_size = viewupdate.state.field(SheetSizeField);
-  let COLUMNS = sheet_size.columns;
-  let ROWS = sheet_size.rows;
 
   return (
     <React.Fragment>
@@ -63,13 +40,13 @@ export function Excell({
 
       <Grid
         style={{
-          gridTemplateColumns: `70px repeat(${COLUMNS}, 100px)`,
+          gridTemplateColumns: `70px repeat(${sheet_size.columns}, 100px)`,
         }}
       >
         <React.Fragment key="header">
           <div className="corner-stone" />
 
-          {range(1, COLUMNS + 1).map((column) => (
+          {range(1, sheet_size.columns + 1).map((column) => (
             <div
               key={column}
               className={[
@@ -83,7 +60,7 @@ export function Excell({
         </React.Fragment>
 
         <React.Fragment key="body">
-          {range(1, ROWS + 1).map((row) => (
+          {range(1, sheet_size.rows + 1).map((row) => (
             <React.Fragment key={row}>
               <div
                 className={[
@@ -99,7 +76,7 @@ export function Excell({
                 {row}
               </div>
 
-              {range(1, COLUMNS + 1).map((column) => {
+              {range(1, sheet_size.columns + 1).map((column) => {
                 return (
                   <CellWrapper
                     key={column}
@@ -346,7 +323,11 @@ import inspector_css from "./yuck/Inspector.css?inline";
 import observable_inspector from "@observablehq/inspector/src/style.css?inline";
 import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 import { EditorSelection, EditorState, Facet } from "@codemirror/state";
-import { basic_sheet_setup } from "./codemirror-javascript-sheet/sheet-basics.js";
+import {
+  basic_sheet_setup,
+  javascript_sheet_extensions,
+  text_sheet_extensions,
+} from "./codemirror-javascript-sheet/sheet-basics.js";
 import { EditorView, ViewPlugin, runScopeHandlers } from "@codemirror/view";
 import {
   SelectedCellEffect,
@@ -362,12 +343,14 @@ let inspector_css_sheet = new CSSish(inspector_css);
 
 let StringValue = styled.span`
   color: white;
+  white-space: pre;
 `;
 
 let NumberValue = styled.span`
   color: #00a7ca;
   text-align: right;
   width: 100%;
+  white-space: pre;
 `;
 
 let Value = ({ result }) => {
@@ -384,6 +367,7 @@ let Value = ({ result }) => {
   if (value == null) return null;
 
   if (typeof value === "string") {
+    console.log(`value:`, value);
     return <StringValue className="sheet-inspector">{value}</StringValue>;
   }
 
@@ -430,7 +414,6 @@ let editor_number_styles = [
   }),
   ViewPlugin.define((view) => {
     let was_number = view.state.facet(WasNumberFacet);
-    console.log(`#1 was_number:`, was_number);
     if (was_number) {
       view.dom.classList.add("was-number");
     } else {
@@ -468,19 +451,24 @@ let Cell = ({
 
   let code = viewupdate.state?.field(CellMetaField).code;
 
-  if (has_hyper_focus) {
-    let was_number = code !== "" && !Number.isNaN(Number(code));
-    let was_number_extension = React.useMemo(() => {
-      console.log(`was_number:`, was_number);
-      return WasNumberFacet.of(was_number);
-    }, [was_number]);
+  let was_number = code !== "" && !Number.isNaN(Number(code));
+  let was_number_extension = React.useMemo(() => {
+    return WasNumberFacet.of(was_number);
+  }, [was_number]);
 
+  let language_extension = React.useMemo(() => {
+    if (viewupdate?.state?.sliceDoc(0, 1) === "=") {
+      return javascript_sheet_extensions;
+    } else {
+      return text_sheet_extensions;
+    }
+  }, [viewupdate?.state?.sliceDoc(0, 1)]);
+
+  if (has_hyper_focus) {
     return (
-      <CodemirrorFromViewUpdate
-        viewupdate={viewupdate}
-        className={was_number ? "was-number" : ""}
-      >
+      <CodemirrorFromViewUpdate viewupdate={viewupdate}>
         <Extension extension={basic_sheet_setup} />
+        <Extension extension={language_extension} />
         <Extension extension={cell_expands_when_focused} />
         <Extension extension={was_number_extension} />
         <Extension extension={editor_number_styles} />

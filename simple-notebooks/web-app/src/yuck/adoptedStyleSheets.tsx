@@ -27,7 +27,7 @@ export class CSSish {
   }
 }
 
-export let AdoptStylesheet = ({ stylesheet }: { stylesheet: CSSish }) => {
+let AdoptStylesheetNoMemo = ({ stylesheet }: { stylesheet: CSSish }) => {
   let ref = React.useRef(null as HTMLStyleElement | null);
   React.useLayoutEffect(() => {
     if (ref.current == null) return;
@@ -61,3 +61,4 @@ export let AdoptStylesheet = ({ stylesheet }: { stylesheet: CSSish }) => {
   }, []);
   return <style ref={ref} />;
 };
+export let AdoptStylesheet = React.memo(AdoptStylesheetNoMemo);

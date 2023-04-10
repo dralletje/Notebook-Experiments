@@ -3,28 +3,32 @@
  * So no links to the notebooks state, no fancy facets, just the basics.
  */
 
-import { indentUnit, bracketMatching } from "@codemirror/language";
+import { bracketMatching } from "@codemirror/language";
 
-import { EditorSelection, EditorState, Prec } from "@codemirror/state";
-import { drawSelection, EditorView, keymap } from "@codemirror/view";
-import { defaultKeymap, indentLess, indentMore } from "@codemirror/commands";
-import { awesome_line_wrapping } from "codemirror-awesome-line-wrapping";
+import { EditorState } from "@codemirror/state";
+import { EditorView, drawSelection, keymap } from "@codemirror/view";
+import { defaultKeymap } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
-import {
-  highlightSelectionMatches,
-  selectNextOccurrence,
-} from "@codemirror/search";
 import {
   javascript_syntax_highlighting,
   my_javascript_parser,
 } from "../codemirror-javascript/syntax-highlighting.js";
 
-export let basic_sheet_setup = [
+export let javascript_sheet_extensions = [
   my_javascript_parser,
   javascript_syntax_highlighting,
+];
 
+export let text_sheet_extensions = [
+  EditorView.baseTheme({
+    "&": {
+      color: "white",
+    },
+  }),
+];
+
+export let basic_sheet_setup = [
   EditorState.tabSize.of(2),
-  // indentUnit.of("\t"),
   bracketMatching({}),
   closeBrackets(),
   keymap.of(defaultKeymap),

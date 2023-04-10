@@ -22,14 +22,12 @@ import {
 import {
   CellMetaField,
   CellTypeFacet,
+  EngineShadow,
 } from "./packages/codemirror-notebook/cell";
 import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
 
-import { ContextMenuItem } from "./packages/react-contextmenu/react-contextmenu";
-import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
-
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
-import { Logs } from "./Sidebar/Logs/Logs.jsx";
+import { InlineCell, Logs } from "./Sidebar/Logs/Logs.jsx";
 import { useEngine } from "./environment/use-engine.js";
 import { Environment } from "./environment/Environment";
 import { Excell } from "./ExcellView";
@@ -44,6 +42,8 @@ import { EditorState } from "@codemirror/state";
 import { SelectedCellField } from "./packages/codemirror-sheet/sheet-selected-cell";
 
 import { parse } from "excel-formula-parser";
+import { SheetPosition } from "./packages/codemirror-sheet/sheet-position";
+import { Cell } from "./Notebook/Cell";
 
 let tree_to_js = (tree: ReturnType<typeof parse>) => {
   if (tree.type === "function") {
@@ -53,7 +53,7 @@ let tree_to_js = (tree: ReturnType<typeof parse>) => {
     return `${tree.key}`.replaceAll(/\$/g, "");
   }
   if (tree.type === "text") {
-    return `\`${tree.value}\``;
+    return JSON.stringify(tree.value);
   }
   if (tree.type === "number") {
     return `${tree.value}`;
@@ -68,8 +68,12 @@ let tree_to_js = (tree: ReturnType<typeof parse>) => {
 let convert_formula_to_js = (formula: string) => {
   formula = formula.trim();
   if (formula.startsWith("=")) {
-    const tree = parse(formula.slice(1));
-    return tree_to_js(tree);
+    try {
+      const tree = parse(formula.slice(1));
+      return tree_to_js(tree);
+    } catch {
+      return `throw new Error("Invalid formula: ${formula}")`;
+    }
   } else {
     if (formula === "") {
       return "undefined";
@@ -78,7 +82,7 @@ let convert_formula_to_js = (formula: string) => {
     if (!Number.isNaN(number)) {
       return `${number}`;
     }
-    return `"${formula}"`;
+    return `\`${formula.replaceAll(/`/g, "\\`")}\``;
   }
 };
 
@@ -106,14 +110,14 @@ export function ProjectView({
   onChange: (state: any) => void;
   environment: Environment;
 }) {
-  let _viewupdate = useViewUpdate(_state, onChange);
+  let viewupdate = useViewUpdate(_state, onChange);
 
   let sheet_viewupdate = extract_nested_viewupdate(
-    _viewupdate,
+    viewupdate,
     "sheet" as EditorId
   ) as any as GenericViewUpdate<EditorInChief<EditorState>>;
   let notebook_viewupdate = extract_nested_viewupdate(
-    _viewupdate,
+    viewupdate,
     "notebook" as EditorId
   ) as any as GenericViewUpdate<EditorInChief<EditorState>>;
 
@@ -134,13 +138,10 @@ export function ProjectView({
             cell_id,
             {
               id: cell_state.facet(EditorIdFacet),
-              unsaved_code: cell_state.doc.toString(),
-              ...cell_state.field(CellMetaField),
               type: type,
-
-              // This autosaves the text cells
-              // TODO? Do we want this?
-              ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
+              code: cell_state.field(CellMetaField).code,
+              requested_run_time:
+                cell_state.field(CellMetaField).requested_run_time,
             },
           ];
         }),
@@ -151,7 +152,6 @@ export function ProjectView({
             cell_id,
             {
               id: cell_state.facet(EditorIdFacet),
-              unsaved_code: cell_state.doc.toString(),
               type: "code",
               code: convert_formula_to_js(code),
               requested_run_time: requested_run_time,
@@ -198,7 +198,18 @@ export function ProjectView({
       <Sidebar className={`tab-${tab}`}>
         <nav>
           <a
-            href="#notebook"
+            href={"?tab=details" + window.location.hash}
+            aria-current={tab === "details" ? "page" : undefined}
+            onClick={(e) => {
+              e.preventDefault();
+              set_tab("details");
+            }}
+          >
+            Details
+          </a>
+
+          <a
+            href={"?tab=notebook" + window.location.hash}
             aria-current={tab === "notebook" ? "page" : undefined}
             onClick={(e) => {
               e.preventDefault();
@@ -208,7 +219,7 @@ export function ProjectView({
             Notebook
           </a>
           <a
-            href="#logs"
+            href={"?tab=logs" + window.location.hash}
             aria-current={tab === "logs" ? "page" : undefined}
             className={tab === "logs" ? "active" : ""}
             onClick={(e) => {
@@ -230,11 +241,45 @@ export function ProjectView({
               <NotebookView engine={engine} viewupdate={notebook_viewupdate} />
             </shadow.div>
           )}
+          {tab === "details" && (
+            <SidebarDetails
+              selected_cell={selected_cell}
+              viewupdate={viewupdate}
+              engine={engine}
+            />
+          )}
         </section>
       </Sidebar>
     </div>
   );
 }
+
+let SidebarDetails = ({
+  selected_cell,
+  viewupdate,
+  engine,
+}: {
+  selected_cell: SheetPosition;
+  viewupdate: GenericViewUpdate<any>;
+  engine: EngineShadow;
+}) => {
+  let cell_viewupdate = extract_nested_viewupdate(
+    extract_nested_viewupdate(viewupdate, "sheet"),
+    selected_cell.id
+  );
+  let code = cell_viewupdate.state?.doc?.toString() ?? "";
+
+  return (
+    <div>
+      <InlineCell
+        key={selected_cell.id}
+        cell_id={selected_cell.id}
+        cylinder={engine.cylinders[selected_cell.id]}
+        code={code}
+      />
+    </div>
+  );
+};
 
 let Sidebar = styled.div`
   position: sticky;
@@ -259,34 +304,32 @@ let Sidebar = styled.div`
   border-right: 5px solid white;
   border-bottom: 5px solid white;
 
+  border-color: rgba(0, 0, 0, 0.5);
+
+  &.tab-details {
+    background-color: rgb(68 22 22);
+  }
   &.tab-notebook {
     background-color: #01412d;
-    border-color: rgb(4 33 22);
-    nav {
-      background: #01412d;
-    }
   }
   &.tab-logs {
     background-color: rgb(19, 14, 48);
-    border-color: rgb(9 7 24);
-    nav {
-      background: rgb(19, 14, 48);
-    }
   }
 
   nav {
-    background: , black;
     display: flex;
     flex-direction: row;
 
     position: sticky;
     top: 0;
     z-index: 1;
+    background-color: inherit;
+    padding-bottom: 5px;
 
     a {
       flex: 1;
       text-align: center;
-      padding: 5px 10px;
+      padding: 2px 10px;
       font-weight: bold;
       user-select: none;
 
