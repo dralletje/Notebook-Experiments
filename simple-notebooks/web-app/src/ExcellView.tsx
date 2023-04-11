@@ -367,7 +367,6 @@ let Value = ({ result }) => {
   if (value == null) return null;
 
   if (typeof value === "string") {
-    console.log(`value:`, value);
     return <StringValue className="sheet-inspector">{value}</StringValue>;
   }
 

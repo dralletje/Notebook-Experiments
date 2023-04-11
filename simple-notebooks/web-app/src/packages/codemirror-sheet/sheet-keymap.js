@@ -43,7 +43,7 @@ export let cell_keymap = [
         },
       },
       {
-        // Enter saves the cell and focusses on the cell to the bototm
+        // Enter saves the cell and focusses on the cell to the bottom
         key: "Enter",
         run: ({ state, dispatch }) => {
           dispatch({
@@ -52,6 +52,22 @@ export let cell_keymap = [
               EditorInChiefEffect.of((state) => {
                 let { column, row } = state.field(SelectedCellField);
                 return SelectedCellEffect.of({ column: column, row: row + 1 });
+              }),
+            ],
+          });
+          return true;
+        },
+      },
+      {
+        // Enter saves the cell and focusses on the cell to the right
+        key: "Tab",
+        run: ({ state, dispatch }) => {
+          dispatch({
+            effects: [
+              ...save_and_run(state),
+              EditorInChiefEffect.of((state) => {
+                let { column, row } = state.field(SelectedCellField);
+                return SelectedCellEffect.of({ column: column + 1, row: row });
               }),
             ],
           });
