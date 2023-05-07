@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "module": "ES2022",
+    "target": "ES2022",
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "declaration": true,
+    "strict": false,
+    "outDir": "dist",
+    "skipLibCheck": true
+  }
+}
