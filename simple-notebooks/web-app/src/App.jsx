@@ -130,55 +130,6 @@ function App() {
 
   return (
     <AppStyle>
-      <Header>
-        {Object.keys(workspace.files).map((filename) => (
-          <ContextMenuWrapper
-            key={filename}
-            options={[
-              {
-                title: "Remove",
-                onClick: () => {
-                  if (confirm("Are you sure you want to remove this note?")) {
-                    set_workspace(
-                      produce(workspace, (workspace) => {
-                        delete workspace.files[filename];
-                      })
-                    );
-                  }
-                  set_url(`/`);
-                },
-              },
-              {
-                title: "Rename",
-                onClick: () => {
-                  let new_filename = prompt("New note name", filename);
-                  if (new_filename == null) return;
-                  set_workspace(
-                    produce(workspace, (workspace) => {
-                      // @ts-ignore
-                      workspace[new_filename] = workspace.files[filename];
-                      delete workspace.files[filename];
-                    })
-                  );
-                  set_url(`/${new_filename}`);
-                },
-              },
-            ]}
-          >
-            <FileTab
-              aria-current={filename === open_file ? "page" : false}
-              href={`/${filename}`}
-              onClick={(event) => {
-                event.preventDefault();
-                set_url(`/${filename}`);
-              }}
-            >
-              {filename}
-            </FileTab>
-          </ContextMenuWrapper>
-        ))}
-      </Header>
-
       <ProjectView
         key={open_file}
         filename={open_file}
@@ -205,56 +156,4 @@ let AppStyle = styled.div`
   display: flex;
   flex-direction: column;
   align-items: stretch;
-`;
-
-export let Header = styled.header`
-  position: sticky;
-  top: 0;
-  left: 0;
-  height: var(--header-height);
-  width: 100vw;
-
-  overflow: hidden;
-
-  background-color: black;
-
-  body:has(.tab-logs) & {
-    background-color: #090718;
-  }
-  body:has(.tab-notebook) & {
-    background-color: rgb(4 33 22);
-  }
-
-  z-index: 1;
-
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-`;
-
-// @ts-ignore
-let FileTab = styled.a`
-  background: none;
-  border: none;
-  color: #ffffff4f;
-
-  padding-top: 2px;
-  padding-left: 24px;
-  padding-right: 24px;
-
-  &[aria-current="page"] {
-    /* background: #ffffffad; */
-    /* color: black; */
-    color: white;
-    cursor: default;
-    user-select: none;
-  }
-  &:not([aria-current="page"]):hover {
-    background: #00000061;
-    color: white;
-    /* text-decoration: underline;
-    text-decoration-thickness: 3px;
-    text-decoration-skip-ink: none; */
-    /* text-underline-position: under; */
-  }
 `;

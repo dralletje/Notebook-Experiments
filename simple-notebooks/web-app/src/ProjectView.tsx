@@ -44,6 +44,7 @@ import { SelectedCellField } from "./packages/codemirror-sheet/sheet-selected-ce
 import { parse } from "excel-formula-parser";
 import { SheetPosition } from "./packages/codemirror-sheet/sheet-position";
 import { Cell } from "./Notebook/Cell";
+import { SidebarData } from "./Sidebar/Data/Data";
 
 let tree_to_js = (tree: ReturnType<typeof parse>) => {
   if (tree.type === "function") {
@@ -198,6 +199,17 @@ export function ProjectView({
       <Sidebar className={`tab-${tab}`}>
         <nav>
           <a
+            href={"?tab=data" + window.location.hash}
+            aria-current={tab === "data" ? "page" : undefined}
+            onClick={(e) => {
+              e.preventDefault();
+              set_tab("data");
+            }}
+          >
+            Data
+          </a>
+
+          <a
             href={"?tab=details" + window.location.hash}
             aria-current={tab === "details" ? "page" : undefined}
             onClick={(e) => {
@@ -248,6 +260,13 @@ export function ProjectView({
               engine={engine}
             />
           )}
+          {tab === "data" && (
+            <SidebarData
+              selected_cell={selected_cell}
+              viewupdate={viewupdate}
+              engine={engine}
+            />
+          )}
         </section>
       </Sidebar>
     </div>
@@ -264,6 +283,7 @@ let SidebarDetails = ({
   engine: EngineShadow;
 }) => {
   let cell_viewupdate = extract_nested_viewupdate(
+    // @ts-ignore
     extract_nested_viewupdate(viewupdate, "sheet"),
     selected_cell.id
   );
@@ -288,6 +308,9 @@ let Sidebar = styled.div`
 
   z-index: 10;
 
+  /* Not sure but just need a bit more space ugh */
+  font-size: 0.8em;
+
   width: var(--sidebar-width);
   height: calc(100vh - var(--header-height));
 
@@ -308,6 +331,9 @@ let Sidebar = styled.div`
 
   &.tab-details {
     background-color: rgb(68 22 22);
+  }
+  &.tab-data {
+    background-color: rgb(111, 151, 0);
   }
   &.tab-notebook {
     background-color: #01412d;
