@@ -30,7 +30,7 @@ svg {
 .observablehq--inspect {
   /* Makes the whole inspector flow like text */
   display: inline;
-  font-size: 16px;
+  font-size: 1em;
 }
 /* Add a gimmicky javascript logo */
 .observablehq--inspect.observablehq--collapsed > a::before,

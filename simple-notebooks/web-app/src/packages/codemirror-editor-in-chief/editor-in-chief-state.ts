@@ -1,16 +1,20 @@
 import {
   EditorSelection,
   EditorState,
+  EditorStateConfig,
   Facet,
   StateField,
 } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { ModernMap } from "@dral/modern-map";
+import { EditorState as GenericEditorState } from "codemirror-x-react/viewupdate";
 
 import {
   EditorsField,
   expand_cell_effects_that_are_actually_meant_for_the_nexus,
   EditorId,
+  EditorIdFacet,
+  EditorExtension,
 } from "./logic";
 import {
   EditorInChiefRange,
@@ -26,6 +30,7 @@ import {
   EditorInChiefTransaction,
   EditorInChiefTransactionSpec,
 } from "./wrap/transaction";
+import { editor_has_selection_extension } from "./editor-has-selection-extension";
 
 export class EditorInChiefView {
   constructor(private view: EditorView) {
@@ -52,9 +57,11 @@ export class EditorInChiefView {
   };
 }
 
-let EditorInChiefCache = new WeakMap<EditorState, EditorInChief>();
+export type MinimalEditorState = EditorState;
 
-export class EditorInChief {
+let EditorInChiefCache = new WeakMap<EditorState, EditorInChief<any>>();
+
+export class EditorInChief<SectionEditor extends MinimalEditorState> {
   constructor(public editorstate: EditorState) {
     this.editorstate = editorstate;
 
@@ -94,6 +101,31 @@ export class EditorInChief {
     }
   }
 
+  section_editor_extensions(editor_id: EditorId) {
+    return [
+      EditorIdFacet.of(editor_id),
+      editor_has_selection_extension,
+      this.facet(EditorExtension) ?? [],
+    ];
+  }
+  create_section_editor({
+    editor_id,
+    doc,
+    extensions,
+    selection,
+  }: {
+    editor_id: EditorId;
+    doc?: EditorStateConfig["doc"];
+    extensions?: EditorStateConfig["extensions"];
+    selection?: EditorStateConfig["selection"];
+  }) {
+    return EditorState.create({
+      doc: doc,
+      selection: selection,
+      extensions: [this.section_editor_extensions(editor_id), extensions ?? []],
+    });
+  }
+
   update(...specs: EditorInChiefTransactionSpec[]) {
     // Instead of `expand_cell_effects_that_are_actually_meant_for_the_nexus` transactionExtender,
     // I would like to "extend" the transaction here. This makes it possible to keep the order of effects right.
@@ -106,11 +138,12 @@ export class EditorInChief {
   get editors() {
     return new ModernMap(
       Object.entries(this.editorstate.field(EditorsField).cells)
-    ) as ModernMap<EditorId, EditorState>;
+    ) as any as ModernMap<EditorId, SectionEditor>;
   }
 
-  editor(editor_id: EditorId): EditorState;
-  editor(editor_id: EditorId, required?: false): EditorState | undefined {
+  editor(editor_id: EditorId): SectionEditor;
+  editor(editor_id: EditorId, required: false): SectionEditor | undefined;
+  editor(editor_id: EditorId, required?: false): SectionEditor | undefined {
     if (required !== false && !this.editors.has(editor_id)) {
       throw new Error(`Editor with id ${editor_id} not found`);
     }
@@ -125,6 +158,7 @@ export class EditorInChief {
       return new EditorInChiefSelection([
         new EditorInChiefRange(
           cell_with_current_selection,
+          // @ts-ignore Need to make editor EVEN MORE GENERIC
           this.editor(cell_with_current_selection).selection.main
         ),
       ]);
@@ -136,17 +170,20 @@ export class EditorInChief {
     }
   }
   get doc(): EditorInChiefText {
+    // @ts-ignore Need to make editor EVEN MORE GENERIC
     return this.editors.mapValues((x) => x.doc);
   }
 
   static editors(editorstate: EditorState) {
     return new EditorInChief(editorstate).editors;
   }
-  static create({
+  static create<SectionEditor extends MinimalEditorState>({
     editors,
     extensions = [],
   }: {
-    editors: (editorstate: EditorInChief) => { [key: EditorId]: EditorState };
+    editors: (editorstate: EditorInChief<SectionEditor>) => {
+      [key: EditorId]: EditorState;
+    };
     extensions?: EditorInChiefExtension[];
   }) {
     let extensions_with_state_fields =

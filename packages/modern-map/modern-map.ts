@@ -24,6 +24,15 @@ class ModernIterableIterator<T> implements Iterable<T> {
     });
   }
 
+  flatMap<V>(fn: (entry: T, map: this) => Iterable<V>) {
+    let _this = this;
+    return ModernIterableIterator.from(function* () {
+      for (let entry of _this) {
+        yield* fn(entry, _this);
+      }
+    });
+  }
+
   filter(fn: (entry: T, map: this) => boolean): ModernIterableIterator<T> {
     let _this = this;
     return ModernIterableIterator.from(function* () {

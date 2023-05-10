@@ -27,6 +27,7 @@
     "codemirror-debug-syntax-plugin": "workspace:^",
     "codemirror-x-react": "workspace:^",
     "dral-lezer-helpers": "workspace:^",
+    "excel-formula-parser": "^1.1.0",
     "htl": "^0.3.1",
     "immer": "^9.0.21",
     "inspector-x-react": "workspace:^",
@@ -77,6 +78,7 @@
     ]
   },
   "devDependencies": {
+    "@types/lodash": "^4.14.192",
     "@types/react": "^18.0.32",
     "@types/serviceworker": "^0.0.67",
     "@vitejs/plugin-react": "^3.1.0",

@@ -83,33 +83,9 @@ export let expand_cell_effects_that_are_actually_meant_for_the_nexus =
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 
-export let create_nested_editor_state = ({
-  parent,
-  editor_id,
-  doc,
-  extensions,
-  selection,
-}: {
-  parent: EditorState;
-  editor_id: EditorId;
-
-  doc?: EditorStateConfig["doc"];
-  extensions?: EditorStateConfig["extensions"];
-  selection?: EditorStateConfig["selection"];
-}) => {
-  return EditorState.create({
-    doc: doc,
-    selection: selection,
-    extensions: [
-      EditorIdFacet.of(editor_id),
-      editor_has_selection_extension,
-      parent.facet(EditorExtension) ?? [],
-      extensions ?? [],
-    ],
-  });
-};
-
-export let BlurEditorInChiefEffect = StateEffect.define<void>();
+export let BlurEditorInChiefEffect = StateEffect.define<void>({
+  map: () => null, // Needs `null` or codemirror will throw it out
+});
 
 export let EditorDispatchEffect = StateEffect.define<{
   editor_id: EditorId;
@@ -118,7 +94,7 @@ export let EditorDispatchEffect = StateEffect.define<{
 
 export let EditorInChiefEffect = StateEffect.define<
   | ((
-      state: EditorInChief,
+      state: EditorInChief<any>,
       editor_id: EditorId
     ) => StateEffect<any>[] | StateEffect<any>)
   | StateEffect<any>[]
@@ -246,7 +222,9 @@ export let EditorsField = StateField.define<{
       });
     } catch (error) {
       console.error(error);
-      throw new Error(`Error while updating EditorsField: ${error}`);
+      throw new Error(`Error while updating EditorsField: ${error}`, {
+        cause: error,
+      });
     }
   },
 });

@@ -81,6 +81,12 @@ export let useEngine = (notebook, environment) => {
           immer((x) => {
             // @ts-ignore
             let previous_log = x.logs.at(-1);
+
+            if (x.engine.cylinders[log.cell_id] == null) {
+              console.warn(`Log came back with cylinder ID we don't have yet`);
+              return;
+            }
+
             let actual_cylinder =
               /** @type {import("../packages/codemirror-notebook/cell.js").CylinderShadow} */ (
                 original(x.engine.cylinders[log.cell_id])
@@ -114,7 +120,7 @@ export let useEngine = (notebook, environment) => {
                 time: new Date(),
                 repeat: 1,
               },
-            ];
+            ].slice(-50, undefined);
           })
         );
       },
@@ -131,4 +137,15 @@ export let useEngine = (notebook, environment) => {
   }, [notebook]);
 
   return [state.engine, state.logs];
+};
+
+/** @returns {import("../packages/codemirror-notebook/cell").CylinderShadow} */
+export let default_cylinder = () => {
+  return {
+    last_run: -Infinity,
+    last_internal_run: 0,
+    result: { type: "return", value: { 0: { type: "undefined", value: "" } } },
+    running: false,
+    waiting: false,
+  };
 };

@@ -76,6 +76,7 @@ export const SelectionArea = ({ on_selection, children }) => {
         ?.canStartSelection !== "false"
     ) {
       e.preventDefault();
+      target.closest("[tabindex]")?.focus();
       on_selection([]);
       set_selection({
         start: { x: e.pageX, y: e.pageY },
@@ -115,7 +116,7 @@ export const SelectionArea = ({ on_selection, children }) => {
 
       /** @type {HTMLElement[]} */
       const cell_nodes = Array.from(
-        document.querySelectorAll("[data-cell-id]")
+        element_ref.current.querySelectorAll("[data-cell-id]")
       );
 
       let A = {
@@ -208,6 +209,7 @@ export const SelectionArea = ({ on_selection, children }) => {
     <selection-area-wrapper
       style={{ display: "contents" }}
       ref={element_ref}
+      // @ts-ignore
       onMouseDown={onmousedown}
     >
       <SimpleDialog open={selection != null}>
@@ -274,10 +276,16 @@ let SimpleDialog = ({ open, children }) => {
       }
     } else {
       ref.current.close();
+
       // Dialog.close() wants to move focus back to whatever had focus before,
-      // but I don't want that!!
+      // which is fine-ish, but it also wants to set focusVisible to true,
+      // which is not fine, so we blur and focus quickly to get rid of that.
+      // TODO THIS DOESN'T WORK SADLY
+      /** @type {HTMLElement} */
       // @ts-ignore
-      document.activeElement?.blur?.();
+      let element = ref.current.getRootNode().activeElement;
+      element?.blur();
+      element?.focus();
     }
   }, [open]);
 

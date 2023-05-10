@@ -116,9 +116,10 @@ export let useViewUpdate = (state, on_change) => {
 
 export let CodemirrorFromViewUpdate = React.forwardRef(
   (
-    /** @type {{ viewupdate: GenericViewUpdate, children: React.ReactNode }} */ {
+    /** @type {{ viewupdate: GenericViewUpdate, children: React.ReactNode } & import("react").HtmlHTMLAttributes<"div">} */ {
       viewupdate,
       children,
+      ...props
     },
     /** @type {import("react").ForwardedRef<EditorView>} */ _ref
   ) => {
@@ -172,6 +173,7 @@ export let CodemirrorFromViewUpdate = React.forwardRef(
         dispatch: (transactions, editorview) => {
           viewupdate.view.dispatch(...transactions);
         },
+        ...props,
       },
       children
     );

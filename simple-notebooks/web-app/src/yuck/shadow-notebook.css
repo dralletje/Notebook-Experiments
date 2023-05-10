@@ -1,0 +1,43 @@
+.cell {
+  /* border: solid 1px #ffffff36; */
+  background-color: transparent !important;
+
+  .inspector-container {
+    background-color: #01412e !important;
+  }
+
+  &.error::before {
+    background-color: rgb(242 0 13);
+  }
+  .cell-editor {
+    border-radius: 5px;
+    background-color: rgb(0 27 8 / 27%) !important;
+    .modified & {
+      background-color: rgb(5 71 92) !important;
+    }
+  }
+  /* .cell-editor:not(:focus-within) {
+    max-height: 85px;
+  } */
+
+  .cell-editor .cm-content {
+    margin: 8px 16px 8px 16px;
+  }
+}
+
+/* Disable "lift on hover" effect, because there is no dragging (yet?) */
+.text-cell-editor {
+  transform: unset !important;
+
+  &::before {
+    content: unset !important;
+  }
+}
+.cell {
+  transform: unset !important;
+  outline: unset !important;
+}
+
+/* :focus-visible {
+  outline: none;
+} */

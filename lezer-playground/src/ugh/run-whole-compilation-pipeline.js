@@ -136,7 +136,7 @@ export let useLezerCompiled = ({ do_run, parser_code }) => {
             if (cursor.firstChild()) {
               try {
                 do {
-                  if (/^[A-Z0-9][A-Z0-9a-z]*$/.test(cursor.name)) {
+                  if (/^[A-Z0-9@⚠][A-Z0-9a-z]*$/.test(cursor.name)) {
                     has_a_child = true;
                   }
                 } while (cursor.nextSibling());
@@ -144,7 +144,12 @@ export let useLezerCompiled = ({ do_run, parser_code }) => {
                 cursor.parent();
               }
               if (!has_a_child) {
-                throw new Error(`Empty Body (add line:col here)`);
+                let lines_till_error = parser_code
+                  .slice(0, cursor.from)
+                  .split("\n");
+                let line = lines_till_error.length;
+                let col = lines_till_error[line - 1].length;
+                throw new Error(`Empty Body ${line}:${col}`);
               }
             } else {
               throw new Error(`Empty Body (add line:col here)`);

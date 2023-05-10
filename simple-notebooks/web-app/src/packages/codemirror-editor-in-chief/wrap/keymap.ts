@@ -5,7 +5,7 @@ import { editor_state_extension } from "./extension";
 import { EditorInChiefTransactionSpec } from "./transaction";
 
 export type EditorInChiefCommand = (view: {
-  state: EditorInChief;
+  state: EditorInChief<any>;
   dispatch: (...specs: EditorInChiefTransactionSpec[]) => void;
 }) => boolean;
 
