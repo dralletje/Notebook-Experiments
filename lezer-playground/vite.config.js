@@ -12,6 +12,12 @@ export default defineConfig({
       allow: [".."],
     },
   },
+  resolve: {
+    alias: {
+      "node:os": "os",
+      "node:path": "path",
+    },
+  },
   build: {
     rollupOptions: {
       plugins: [

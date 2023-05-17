@@ -23,7 +23,7 @@
     "@lezer/common": "^1.0.2",
     "@types/node": "^18.16.12",
     "@typescript/vfs": "^1.4.0",
-    "@vitejs/plugin-react-swc": "^3.2.0",
+    "@vitejs/plugin-react-swc": "^3.3.1",
     "codemirror-awesome-line-wrapping": "workspace:^",
     "codemirror-debug-syntax-plugin": "workspace:^",
     "codemirror-x-react": "workspace:^",
@@ -82,12 +82,12 @@
     "@types/lodash": "^4.14.194",
     "@types/react": "^18.2.6",
     "@types/serviceworker": "^0.0.67",
-    "@vitejs/plugin-react": "^3.1.0",
+    "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.23",
     "postcss-nesting": "^11.2.2",
     "rollup-plugin-visualizer": "^5.9.0",
     "tailwindcss": "^3.3.2",
-    "vite": "^3.1.0"
+    "vite": "^4.3.7"
   }
 }

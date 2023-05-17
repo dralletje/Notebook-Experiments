@@ -161,7 +161,9 @@ export let useLezerCompiled = ({ do_run, parser_code }) => {
       // Build the parser file first
       let start = Date.now();
       try {
-        let parser = await get_lezer_worker(signal).request("build-parser", {
+        let worker = get_lezer_worker(signal);
+        console.log(`worker:`, worker);
+        let parser = await worker.request("build-parser", {
           code: parser_code,
         });
         console.log(`parser:`, parser);

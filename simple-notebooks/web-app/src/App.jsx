@@ -13,7 +13,7 @@ import {
 } from "./packages/codemirror-editor-in-chief/editor-in-chief";
 
 // import { SocketEnvironment } from "./environment/SocketEnvironment";
-// import { WorkerEnvironment } from "./environment/WorkerEnvironment";
+import { WorkerEnvironment } from "./environment/WorkerEnvironment";
 import { InpageEnvironment } from "./environment/InpageEnvironment.js";
 import { useWorkerStorage, useSocketStorage } from "./use/use-storage";
 import { useUrl } from "./packages/use-url/use-url.js";
@@ -106,7 +106,7 @@ function App() {
     deserialize: project_to_editorinchief,
     serialize: editorinchief_to_project,
   });
-  let environment = React.useRef(InpageEnvironment).current;
+  let environment = React.useRef(WorkerEnvironment).current;
 
   //////////////////////////////////////////////////////////////
 
