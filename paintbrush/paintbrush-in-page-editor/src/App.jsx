@@ -186,6 +186,29 @@ let post_command = (message) => {
   window.parent.postMessage(message, "*");
 };
 
+let code_tab = keymap.of([
+  {
+    key: "Tab",
+    run: indentMore,
+    shift: indentLess,
+  },
+]);
+
+let send_selector_to_highlight_extension = EditorView.updateListener.of(
+  (update) => {
+    if (
+      update.state.field(ActiveSelector, false) !==
+      update.startState.field(ActiveSelector, false)
+    ) {
+      let cool = update.state.field(ActiveSelector, false);
+      post_command({
+        type: "highlight_selector",
+        selector: cool?.selector,
+      });
+    }
+  }
+);
+
 /**
  * @param {{
  *   viewupdate: GenericViewUpdate<EditorInChief<EditorState>>,
@@ -224,70 +247,12 @@ function Editor({ viewupdate }) {
   //           return true;
   //         },
   //       },
-  //       {
-  //         key: "Ctrl-Enter",
-  //         mac: "Cmd-Enter",
-  //         run: () => {
-  //           // Add a new cell below
-  //           // on_submit();
-  //           console.log("Submit and add cell below");
-  //           return true;
-  //         },
-  //       },
-  //       {
-  //         key: "Tab",
-  //         run: indentMore,
-  //         shift: indentLess,
-  //       },
-  //       {
-  //         key: "Ctrl-s",
-  //         mac: "Cmd-s",
-  //         run: () => {
-  //           set_currently_saved_cells(cells);
-  //           return true;
-  //         },
-  //       },
   //     ])
   //   );
   // }, [set_currently_saved_cells, cells]);
 
-  let send_selector_to_highlight_extension = React.useMemo(() => {
-    return EditorView.updateListener.of((update) => {
-      if (
-        update.state.field(ActiveSelector, false) !==
-        update.startState.field(ActiveSelector, false)
-      ) {
-        let cool = update.state.field(ActiveSelector, false);
-        post_command({
-          type: "highlight_selector",
-          selector: cool?.selector,
-        });
-      }
-    });
-  }, []);
-
   return (
-    <div
-      onKeyDown={(event) => {
-        // if (event.key === "s" && event.metaKey) {
-        //   event.preventDefault();
-        //   set_currently_saved_cells(cells);
-        // }
-        // TODO Send keypress to editor in chief
-      }}
-    >
-      <NotebookHeader>
-        <h1>Paintbrush</h1>
-
-        <button
-          onClick={() => {
-            post_command({ type: "toggle-horizontal-position" });
-          }}
-        >
-          s
-        </button>
-      </NotebookHeader>
-
+    <div>
       {viewupdate.state.editors
         .mapValues((_, cell_index) => {
           let cell_update = extract_nested_viewupdate(viewupdate, cell_index);
@@ -315,7 +280,6 @@ function Editor({ viewupdate }) {
                     placeholder="my browser, my style"
                     value={name}
                     onChange={({ target: { value } }) => {
-                      // @ts-ignore
                       cell_update.view.dispatch({
                         effects: [
                           MutateCellMetaEffect.of((meta) => {
@@ -323,26 +287,24 @@ function Editor({ viewupdate }) {
                           }),
                         ],
                       });
-                      // set_cells(
-                      //   cells.map((x, i) =>
-                      //     i === cell_index ? { ...x, name: value } : x
-                      //   )
-                      // );
                     }}
                   />
-                  {/* <CellHeaderButton
+                  <CellHeaderButton
                     style={{
                       color: disabled ? "red" : "rgba(255,255,255,.5)",
                     }}
                     onClick={() => {
-                      let new_cells = cells.map((x, i) =>
-                        i === cell_index ? { ...x, disabled: !x.disabled } : x
-                      );
-                      set_cells(new_cells);
+                      cell_update.view.dispatch({
+                        effects: [
+                          MutateCellMetaEffect.of((meta) => {
+                            meta.enabled = !meta.enabled;
+                          }),
+                        ],
+                      });
                     }}
                   >
                     {disabled ? "disabled" : "active"}
-                  </CellHeaderButton> */}
+                  </CellHeaderButton>
                   <CellHeaderButton
                     style={{
                       color: collapsed
@@ -350,7 +312,6 @@ function Editor({ viewupdate }) {
                         : "rgba(255,255,255,.5)",
                     }}
                     onClick={() => {
-                      // @ts-ignore
                       cell_update.view.dispatch({
                         effects: [
                           MutateCellMetaEffect.of((meta) => {
@@ -367,16 +328,16 @@ function Editor({ viewupdate }) {
 
                 <div style={{ display: collapsed ? "none" : "block" }}>
                   <CodemirrorFromViewUpdate viewupdate={cell_update}>
+                    <Extension key="basic" extension={basic_css_extensions} />
                     <Extension
                       extension={placeholder("Style away!")}
                       deps={[]}
                     />
-                    {/* <Extension extension={cell_keymap} /> */}
+                    <Extension extension={code_tab} />
                     <Extension extension={pkgBubblePlugin()} deps={[]} />
                     <Extension
                       extension={send_selector_to_highlight_extension}
                     />
-                    <Extension key="basic" extension={basic_css_extensions} />
                   </CodemirrorFromViewUpdate>
                 </div>
               </Cell>
@@ -575,6 +536,18 @@ let AppWhenLoaded = ({ state, set_state }) => {
 
   return (
     <EditorBox>
+      <NotebookHeader>
+        <h1>Paintbrush</h1>
+
+        <button
+          onClick={() => {
+            post_command({ type: "toggle-horizontal-position" });
+          }}
+        >
+          s
+        </button>
+      </NotebookHeader>
+
       <Editor viewupdate={viewupdate} />
     </EditorBox>
   );

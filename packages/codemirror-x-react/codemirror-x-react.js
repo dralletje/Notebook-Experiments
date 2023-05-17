@@ -117,8 +117,6 @@ export let CodeMirror = React.forwardRef(
     );
 
     React.useLayoutEffect(() => {
-      console.log(`editorview_ref:`, editorview_ref);
-      console.log(`editorview_ref:`, editorview_ref.current);
       let editorview = editorview_ref.current;
 
       // Apply effects we have collected before this mount (dispatches from child <Extension /> components)
@@ -142,7 +140,6 @@ export let CodeMirror = React.forwardRef(
       // I create the edtorview here, because I need `editorview_ref.current` to be set ASAP,
       // not sure why, but running it in the `useLayoutEffect` above doesn't make it work with `useImperativeHandle` quick enough.
       if (editorview_ref.current == null) {
-        console.log("AAAAAAA");
         try {
           let editorview = new EditorView({
             state: state,
