@@ -83,7 +83,6 @@
     "@types/lodash": "^4.14.194",
     "@types/react": "^18.2.6",
     "@types/serviceworker": "^0.0.67",
-    "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.23",
     "postcss-nesting": "^11.2.2",
