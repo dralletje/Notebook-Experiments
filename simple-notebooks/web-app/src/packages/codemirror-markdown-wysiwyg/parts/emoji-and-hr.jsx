@@ -42,7 +42,7 @@ export let markdown_emoji_and_hr = [
 
     if (cursor.name === "Emoji") {
       let text = doc.sliceString(cursor.from, cursor.to);
-      if (emoji.hasEmoji(text)) {
+      if (emoji.has(text)) {
         let emoji_text = emoji.get(text);
         decorations.push(
           Decoration.replace({
@@ -71,7 +71,7 @@ export let markdown_emoji_and_hr = [
 
         if (cursor.name === "Emoji") {
           let text = doc.sliceString(cursor.from, cursor.to);
-          if (emoji.hasEmoji(text)) {
+          if (emoji.has(text)) {
             ranges.add(cursor.from, cursor.to, new EZRange());
           }
         }
