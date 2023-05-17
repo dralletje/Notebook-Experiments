@@ -17,7 +17,10 @@
         "main.wasm",
         "main.wasm.o",
         "zig-cache",
-        "zig-out"
+        "zig-out",
+
+        // For paintbrush.. why can't I do this per package???
+        "in-page-editor-build"
       ],
       "inputs": [
         "src/**",

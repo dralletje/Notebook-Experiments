@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "Paintbrush",
+  "version": "1",
+  "description": "Style your pages",
+
+  "background": {
+    "type": "module",
+    "service_worker": "Background/Background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["Vendor/browser-polyfill.min.js", "Contentscripts/apply-css.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+
+  "action": {
+    "browser_style": true,
+    "chrome_style": true,
+    "default_icon": {
+      "32": "Images/Brush.png",
+      "64": "Images/Brush@2x.png",
+      "128": "Images/Brush@4x.png"
+    },
+    "default_title": "Brush",
+    "default_popup": "Popup/index.html"
+  },
+
+  "icons": {
+    "32": "Images/Brush.png",
+    "64": "Images/Brush@2x.png",
+    "128": "Images/Brush@4x.png"
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["in-page-editor-build/*", "BrowserAction/Images/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "host_permissions": ["*://*/*"],
+  "permissions": [
+    "tabs",
+    "contextMenus",
+    "storage",
+    "unlimitedStorage",
+    "scripting",
+    "<all_urls>"
+  ]
+}

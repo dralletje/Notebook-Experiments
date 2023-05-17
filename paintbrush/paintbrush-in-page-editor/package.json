@@ -1,0 +1,50 @@
+{
+  "name": "paintbrush-in-page-editor",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.7.1",
+    "@codemirror/collab": "^6.0.0",
+    "@codemirror/commands": "^6.2.4",
+    "@codemirror/lang-css": "^6.2.0",
+    "@codemirror/language": "^6.6.0",
+    "@codemirror/lint": "^6.2.1",
+    "@codemirror/search": "^6.4.0",
+    "@codemirror/state": "^6.2.0",
+    "@codemirror/view": "^6.11.3",
+    "@lezer/common": "^1.0.2",
+    "@lezer/highlight": "^1.1.4",
+    "@lezer/markdown": "^1.0.2",
+    "codemirror-x-react": "workspace:^",
+    "htm": "^3.1.1",
+    "immer": "^9.0.14",
+    "lodash": "^4.17.21",
+    "react": "^18.1.0",
+    "react-dom": "^18.1.0",
+    "react-is": "^18.2.0",
+    "styled-components": "^5.3.5",
+    "uuid": "^8.3.2"
+  },
+  "scripts": {
+    "start": "vite",
+    "build": "vite build"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "homepage": "./",
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

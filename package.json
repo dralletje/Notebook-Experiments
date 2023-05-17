@@ -8,7 +8,9 @@
     "simple-notebooks/packages/*",
     "lezer-playground",
     "lezer-playground/packages/*",
-    "packages/*"
+    "packages/*",
+    "paintbrush/extension",
+    "paintbrush/paintbrush-in-page-editor"
   ],
   "version": "1.0.0",
   "description": "",

@@ -117,6 +117,8 @@ export let CodeMirror = React.forwardRef(
     );
 
     React.useLayoutEffect(() => {
+      console.log(`editorview_ref:`, editorview_ref);
+      console.log(`editorview_ref:`, editorview_ref.current);
       let editorview = editorview_ref.current;
 
       // Apply effects we have collected before this mount (dispatches from child <Extension /> components)
@@ -140,21 +142,26 @@ export let CodeMirror = React.forwardRef(
       // I create the edtorview here, because I need `editorview_ref.current` to be set ASAP,
       // not sure why, but running it in the `useLayoutEffect` above doesn't make it work with `useImperativeHandle` quick enough.
       if (editorview_ref.current == null) {
-        let editorview = new EditorView({
-          state: state,
-          parent: ref,
-        });
-        // NOTE: HACKY
-        // Overrides the dispatch method, because I need access to the dispatched TransactionSpec's,
-        // instead of getting the spec already applied to the current state in the form of a Transaction.
-        // The reason is that I don't update the state immediately (I stay in sync with React),
-        // but `view.dispatch` will update the state immediately...
-        // I hope this doesn't break anything? Hehehe
-        /** @param {import("@codemirror/state").TransactionSpec[] | [import("@codemirror/state").Transaction]} transactions */
-        editorview.dispatch = (...transactions) => {
-          dispatch_proxy(transactions, editorview);
-        };
-        editorview_ref.current = editorview;
+        console.log("AAAAAAA");
+        try {
+          let editorview = new EditorView({
+            state: state,
+            parent: ref,
+          });
+          // NOTE: HACKY
+          // Overrides the dispatch method, because I need access to the dispatched TransactionSpec's,
+          // instead of getting the spec already applied to the current state in the form of a Transaction.
+          // The reason is that I don't update the state immediately (I stay in sync with React),
+          // but `view.dispatch` will update the state immediately...
+          // I hope this doesn't break anything? Hehehe
+          /** @param {import("@codemirror/state").TransactionSpec[] | [import("@codemirror/state").Transaction]} transactions */
+          editorview.dispatch = (...transactions) => {
+            dispatch_proxy(transactions, editorview);
+          };
+          editorview_ref.current = editorview;
+        } catch (error) {
+          console.error("COULDN'T CREATE EDITORVIEW", error.stack);
+        }
       }
     };
 

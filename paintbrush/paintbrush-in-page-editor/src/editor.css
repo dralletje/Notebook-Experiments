@@ -1,0 +1,136 @@
+@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i,500,700&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/500.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
+
+@import url("./dark_color.css");
+
+/* VARIABLES */
+
+:root {
+  --pluto-cell-spacing: 17px;
+  /* use the value "contextual" to enable contextual ligatures `document.documentElement.style.setProperty('--pluto-operator-ligatures', 'contextual');`
+        for julia mono see here: https://cormullion.github.io/pages/2020-07-26-JuliaMono/#contextual_and_stylistic_alternates_and_ligatures */
+  --pluto-operator-ligatures: none;
+  --julia-mono-font-stack: JuliaMono, Menlo, "Roboto Mono",
+    "Lucida Sans Typewriter", "Source Code Pro", monospace;
+  --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
+
+  /* color-scheme: light dark; */
+}
+
+/* GENERAL PAGE LAYOUT */
+/* html {
+  font-size: 17px;
+} */
+
+* {
+  box-sizing: border-box;
+}
+
+/* CELL INPUT */
+
+pluto-input .cm-editor {
+  z-index: 20;
+  border-bottom-right-radius: 4px;
+  border: 1px solid var(--normal-cell-color);
+  border-left: none;
+  transition: border-color 0.15s ease-in-out;
+
+  /* Make sure that scrolling an editor into view gives some breathing room */
+  scroll-margin-block: 20vh;
+  min-height: 25px;
+}
+pluto-input:focus-within .cm-editor {
+  /* z-index increased by 1 to make sure that the autocomplete window shows above all other editors, see https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context */
+  z-index: 21;
+}
+
+pluto-input .cm-editor .cm-line {
+  transition: background-color 0.15s ease-in-out;
+}
+
+pluto-input .cm-editor .cm-line.cm-highlighted-line {
+  background-color: #bdbdbd68;
+  border-radius: 3px;
+}
+
+@keyframes 👀 {
+  0%,
+  80%,
+  100% {
+    transform: scale(1);
+    opacity: 50%;
+  }
+  90% {
+    transform: scale(1.2);
+    opacity: 100%;
+  }
+}
+
+.cm-tooltip.cm-tooltip-autocomplete {
+  padding: 0;
+  margin-left: -1.5em;
+  background: var(--autocomplete-menu-bg-color);
+}
+
+pluto-input .cm-editor .cm-content,
+pluto-input .cm-editor .cm-scroller,
+.cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
+  font-family: var(--julia-mono-font-stack) !important;
+  font-variant-ligatures: none;
+  font-size: 0.75rem;
+  font-size: 16px;
+}
+
+pluto-input .cm-editor .cm-content {
+  padding: 2px 0px;
+}
+
+.cm-editor .cm-selectionBackground {
+  background: var(--cm-selection-background-blurred);
+}
+.cm-editor.cm-focused .cm-selectionBackground {
+  background: var(--cm-selection-background);
+}
+
+.cm-editor {
+  background: var(--code-background);
+  color: var(--cm-editor-text-color);
+}
+.cm-editor.cm-focused:not(.__) {
+  outline: unset;
+}
+
+@media (prefers-color-scheme: dark) {
+  .cm-selectionMatch {
+    background: none !important;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+  }
+}
+
+.cm-editor .cm-matchingBracket,
+.cm-editor .cm-nonmatchingBracket {
+  background-color: unset;
+  color: unset;
+}
+pluto-input:focus-within .cm-editor .cm-matchingBracket {
+  color: var(--cm-matchingBracket-color) !important;
+  font-weight: 700;
+  background-color: var(--cm-matchingBracket-bg-color);
+  border-radius: 2px;
+}
+
+.cm-editor .cm-placeholder {
+  color: var(--cm-placeholder-text-color);
+  font-style: italic;
+}
+
+.cm-completionMatchedText {
+  text-decoration: unset !important;
+}

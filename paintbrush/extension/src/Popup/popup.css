@@ -1,0 +1,65 @@
+html,
+body {
+  background: transparent;
+  box-sizing: border-box;
+  color: #222426;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  font: caption;
+  margin: 0;
+  padding: 0;
+  -moz-user-select: none;
+
+  boder-radius: 4px;
+}
+
+body * {
+  box-sizing: border-box;
+  text-align: start;
+}
+
+body {
+  min-width: 250px;
+  /* font-family: 'Lucida Grande', Helvetica, Arial, sans-serif; */
+  /* font-family: "Lucida Grande", caption; */
+  font-family: Roboto, system-ui, sans-serif;
+  /* font-size: 13px; */
+  /* max-height: 300px */
+}
+
+/* .mi-casa {
+  padding: 16px;
+  font-size: 24px;
+} */
+
+.menu {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.menu > a {
+  text-decoration: none;
+  display: block;
+  padding: 6px;
+  padding-left: 12px;
+  padding-right: 12px;
+
+  outline: 0 !important;
+}
+.menu > a:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: rgb(70, 70, 70);
+    color: white;
+  }
+  .menu > a {
+    color: white;
+  }
+  .menu > a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}
