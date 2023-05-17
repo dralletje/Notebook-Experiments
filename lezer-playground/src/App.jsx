@@ -263,18 +263,22 @@ let Editor = ({ project_name }) => {
     do_run,
     parser_code,
   });
+  // let generated_parser_code = new Failure(new Error("Not implemented"));
+  // let generated_parser_time = new Failure(new Error("Not implemented"));
+  let parser_not_configured = new Failure(new Error("Not implemented"));
+  let javascript_result = new Failure(new Error("Not implemented"));
 
-  let { javascript_result } = useJavascriptResult({
-    do_run,
-    generated_parser_code,
-    javascript_stuff,
-  });
+  // let { javascript_result } = useJavascriptResult({
+  //   do_run,
+  //   generated_parser_code,
+  //   javascript_stuff,
+  // });
 
-  let { parser_not_configured } = useLezerInstantiated({
-    do_run,
-    generated_parser_code,
-    javascript_result,
-  });
+  // let { parser_not_configured } = useLezerInstantiated({
+  //   do_run,
+  //   generated_parser_code,
+  //   javascript_result,
+  // });
 
   let [dialect, set_dialect] = useSearchParamState("dialect");
 

@@ -1,5 +1,5 @@
 import React from "react";
-import immer, { original } from "immer";
+import { produce as immer, original } from "immer";
 import { isEqual } from "lodash";
 import { AddLogEvent, Engine, UpdateEngineEvent } from "./Environment";
 

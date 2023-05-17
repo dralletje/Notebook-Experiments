@@ -20,7 +20,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "turbo": "^1.8.8",
+    "turbo": "^1.9.6",
     "typescript": "^5.0.4"
   }
 }

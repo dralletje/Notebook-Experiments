@@ -11,7 +11,7 @@
   "author": "Michiel Dral <m.c.dral@gmail.com>",
   "license": "ISC",
   "devDependencies": {
-    "typescript": "^5.0.3"
+    "typescript": "^5.0.4"
   },
   "dependencies": {
     "@dral/dralbook-transform-javascript": "workspace:^",

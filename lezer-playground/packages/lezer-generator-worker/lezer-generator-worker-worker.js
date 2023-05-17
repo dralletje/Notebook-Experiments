@@ -1,5 +1,7 @@
-import "./setup-env.js";
-import { handleCalls } from "@dral/worker-typescript-magic/import-in-worker.js";
+await import("./setup-env.js");
+let { handleCalls } = await import(
+  "@dral/worker-typescript-magic/import-in-worker.js"
+);
 
 import { buildParserFile } from "@lezer/generator";
 

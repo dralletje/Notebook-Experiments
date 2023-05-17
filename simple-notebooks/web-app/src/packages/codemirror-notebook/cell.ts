@@ -1,6 +1,6 @@
 import { invertedEffects } from "@codemirror/commands";
 import { Annotation, Facet, StateEffect, StateField } from "@codemirror/state";
-import immer from "immer";
+import { produce as immer } from "immer";
 import { v4 as uuidv4 } from "uuid";
 import { EditorId } from "../codemirror-editor-in-chief/logic";
 

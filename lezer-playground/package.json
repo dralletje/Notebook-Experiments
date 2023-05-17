@@ -27,7 +27,7 @@
     "codemirror-awesome-line-wrapping": "workspace:^",
     "codemirror-x-react": "workspace:^",
     "dral-lezer-helpers": "workspace:^",
-    "immer": "^9.0.21",
+    "immer": "^10.0.2",
     "lodash-es": "^4.17.21",
     "process": "^0.11.10",
     "react": "^18.2.0",
@@ -69,10 +69,10 @@
     "@types/styled-components": "^5.1.26",
     "@vitejs/plugin-react-swc": "^3.2.0",
     "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.21",
+    "postcss": "^8.4.23",
     "rollup-plugin-analyzer": "^4.0.0",
     "rollup-plugin-visualizer": "^5.9.0",
-    "tailwindcss": "^3.3.1",
+    "tailwindcss": "^3.3.2",
     "vite": "^3.1.0"
   }
 }

@@ -9,7 +9,7 @@ import {
   StateEffectType,
   EditorStateConfig,
 } from "@codemirror/state";
-import immer from "immer";
+import { produce as immer } from "immer";
 import { EditorInChief } from "./editor-in-chief";
 import {
   EditorHasSelectionEffect,

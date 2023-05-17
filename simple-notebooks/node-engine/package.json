@@ -18,7 +18,7 @@
     "chalk": "^5.2.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "immer": "^9.0.21",
+    "immer": "^10.0.2",
     "lodash-es": "^4.17.21",
     "node-fetch": "^3.3.1",
     "react": "^18.2.0",
@@ -28,7 +28,7 @@
     "stacktrace-js": "^2.0.2",
     "stacktrace-parser": "^0.1.10",
     "strip-color": "^0.1.0",
-    "write-file-atomic": "^5.0.0"
+    "write-file-atomic": "^5.0.1"
   },
   "devDependencies": {
     "@types/lodash-es": "^4.17.7",

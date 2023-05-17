@@ -9,6 +9,6 @@
     "@codemirror/state": "^6.2.0",
     "@lezer/common": "^1.0.2",
     "lodash": "^4.17.21",
-    "many-keys-weakmap": "^1.0.0"
+    "many-keys-weakmap": "^2.0.0"
   }
 }

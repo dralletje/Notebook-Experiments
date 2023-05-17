@@ -152,12 +152,14 @@ export class ColorPickerWidget extends ReactWidget {
   constructor(from, to, color) {
     super(
       (function () {
-        <SubtleColorPicker
-          key="subtle-color-picker"
-          from={from}
-          to={to}
-          color={color}
-        />;
+        return (
+          <SubtleColorPicker
+            key="subtle-color-picker"
+            from={from}
+            to={to}
+            color={color}
+          />
+        );
       })()
     );
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { syntaxTree } from "@codemirror/language";
 import { Decoration, EditorView } from "@codemirror/view";
-import emoji from "node-emoji";
+import * as emoji from "node-emoji";
 import { iterate_with_cursor } from "dral-lezer-helpers";
 import { ReactWidget } from "react-codemirror-widget";
 import { RangeSetBuilder, RangeValue } from "@codemirror/state";

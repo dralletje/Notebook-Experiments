@@ -1,10 +1,5 @@
 import React from "react";
-import produce, {
-  setAutoFreeze,
-  enableMapSet,
-  enablePatches,
-  current,
-} from "immer";
+import { produce, setAutoFreeze, enableMapSet } from "immer";
 // For some reason `mem` doesn't play nicely with the workspaces stuff,
 // and this fixes it...........
 import mem from "mem";
