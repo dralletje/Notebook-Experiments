@@ -11,6 +11,6 @@
   "license": "ISC",
   "dependencies": {
     "@dral/worker-typescript-magic": "workspace:^",
-    "@lezer/generator": "^1.2.2"
+    "@lezer/generator": "^1.2.3"
   }
 }

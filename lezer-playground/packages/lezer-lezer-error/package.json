@@ -13,14 +13,14 @@
   "author": "Michiel Dral <m.c.dral@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "@lezer/generator": "^1.2.2",
+    "@lezer/generator": "^1.2.3",
     "@rollup/plugin-node-resolve": "^9.0.0",
     "mocha": "^9.0.1",
     "rollup": "^2.52.2"
   },
   "dependencies": {
-    "@lezer/highlight": "^1.0.0",
-    "@lezer/lr": "^1.3.3"
+    "@lezer/highlight": "^1.1.4",
+    "@lezer/lr": "^1.3.4"
   },
   "scripts": {
     "build": "lezer-generator src/lezer-error.grammar -o src/parser && rollup -c",
