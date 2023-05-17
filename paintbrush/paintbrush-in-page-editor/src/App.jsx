@@ -10,10 +10,16 @@ import { produce as immer } from "immer";
 import { v4 as uuidv4 } from "uuid";
 
 import { EditorState } from "@codemirror/state";
-import { indentLess, indentMore } from "@codemirror/commands";
-import { Facet, Prec } from "@codemirror/state";
+import { indentLess, indentMore, invertedEffects } from "@codemirror/commands";
+import {
+  Facet,
+  Prec,
+  StateField,
+  StateEffect,
+  StateEffectType,
+} from "@codemirror/state";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
-import { groupBy, isEqual } from "lodash";
+import { groupBy, isEqual, mapValues } from "lodash";
 
 import "./App.css";
 import "./editor.css";
@@ -22,6 +28,7 @@ import {
   ActiveSelector,
   pkgBubblePlugin,
 } from "./Codemirror/CssSelectorHighlight";
+import { EditorInChief } from "./codemirror-editor-in-chief/editor-in-chief-state";
 
 let Cell = styled.div`
   &.modified {
@@ -409,11 +416,93 @@ let send_cells = (cells) => {
   });
 };
 
+/**
+ * @typedef CellMeta
+ * @type {{
+ *  code: string,
+ *  folded: boolean,
+ *  enabled: boolean,
+ * }}
+ */
+
+/** @type {StateEffectType<(value: CellMeta) => void>} */
+let MutateCellMetaEffect = StateEffect.define();
+let invert_fold = invertedEffects.of((tr) => {
+  let was = tr.startState.field(CellMetaField).folded;
+  let is = tr.state.field(CellMetaField).folded;
+  if (was !== is) {
+    return [
+      MutateCellMetaEffect.of((meta) => {
+        meta.folded = was;
+      }),
+    ];
+  } else {
+    return [];
+  }
+});
+let CellMetaField = StateField.define({
+  create() {
+    return /** @type {CellMeta} */ ({
+      code: "",
+      enabled: true,
+      folded: false,
+    });
+  },
+  update(value, transaction) {
+    return immer(value, (value) => {
+      for (let effect of transaction.effects) {
+        if (effect.is(MutateCellMetaEffect)) {
+          // @ts-ignore
+          effect.value(value);
+        }
+      }
+    });
+  },
+  provide: () => invert_fold,
+});
+
+let create_cell_state = (
+  /** @type {EditorInChief<EditorState>} */ editorstate,
+  /** @type {Cell} */ cell
+) => {
+  return editorstate.create_section_editor({
+    editor_id: /** @type {any} */ (cell.id),
+    doc: cell.code,
+    extensions: [
+      CellMetaField.init(() => ({
+        code: cell.code,
+        folded: !!cell.collapsed,
+        enabled: !cell.disabled,
+      })),
+    ],
+  });
+};
+let notebook_to_editorinchief = (
+  /** @type {Cell[]} */ cells,
+  extensions = []
+) => {
+  return EditorInChief.create({
+    editors: (editorstate) => {
+      return Object.fromEntries(
+        cells.map((cell) => [cell.id, create_cell_state(editorstate, cell)])
+      );
+    },
+    extensions: [
+      extensions,
+      // create_codemirror_notebook(notebook),
+      // This works so smooth omg
+      // [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
+    ],
+  });
+};
+
 let App = () => {
   let [currently_saved_cells, set_currently_saved_cells] = React.useState(
     /** @type {Array<Cell>?} */ (null)
   );
   let [cells, set_cells] = React.useState(/** @type {Array<Cell>?} */ (null));
+
+  let [state, set_state] = React.useState(/** @type {any} */ (null));
 
   React.useEffect(() => {
     post_command({ type: "load" });
@@ -426,6 +515,7 @@ let App = () => {
 
         set_currently_saved_cells(cells);
         set_cells(cells);
+        set_state(notebook_to_editorinchief(cells));
       }
     });
   }, []);
@@ -441,15 +531,16 @@ let App = () => {
   let set_currently_saved_cells_and_send = React.useCallback(
     (/** @type {Array<Cell>} */ cells) => {
       set_currently_saved_cells(cells);
-      set_cells_and_send(cells);
       post_command({ type: "save", cells });
     },
     [set_currently_saved_cells]
   );
 
-  if (cells == null || currently_saved_cells == null) {
+  if (cells == null || currently_saved_cells == null || state == null) {
     return null;
   }
+
+  console.log(`state:`, state);
 
   return (
     <EditorBox>
