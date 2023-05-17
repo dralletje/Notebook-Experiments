@@ -11,7 +11,7 @@
     "@codemirror/language": "^6.6.0",
     "@codemirror/search": "^6.3.0",
     "@codemirror/state": "^6.2.0",
-    "@codemirror/view": "^6.9.1",
+    "@codemirror/view": "^6.11.3",
     "@dral/all-folds-zig": "workspace:*",
     "@dral/codemirror-helpers": "workspace:^",
     "@dral/codemirror-subtle-color-picker": "workspace:^",
@@ -35,7 +35,7 @@
     "react-dom": "^18.2.0",
     "react-icons": "^4.8.0",
     "react-use-path": "^0.3.1",
-    "style-mod": "^4.0.2",
+    "style-mod": "^4.0.3",
     "styled-components": "^5.3.9"
   },
   "workspaces": [

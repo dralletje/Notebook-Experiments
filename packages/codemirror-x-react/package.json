@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@codemirror/state": "^6.2.0",
-    "@codemirror/view": "^6.9.1",
+    "@codemirror/view": "^6.11.3",
     "lodash-es": "^4.17.21"
   }
 }

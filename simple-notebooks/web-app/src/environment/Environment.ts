@@ -1,6 +1,6 @@
 import type { Notebook } from "@dral/javascript-notebook-runner";
 import { EngineShadow } from "../packages/codemirror-notebook/cell";
-import { TypedEventTarget } from "./typed-event-target";
+import { TypedEventTarget } from "@dral/typed-event-target";
 
 export type EngineLog = {
   id: string;

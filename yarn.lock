@@ -739,7 +739,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@codemirror/view@npm:^6.0.0, @codemirror/view@npm:^6.2.2, @codemirror/view@npm:^6.6.0, @codemirror/view@npm:^6.9.1":
+"@codemirror/view@npm:^6.0.0, @codemirror/view@npm:^6.2.2, @codemirror/view@npm:^6.6.0":
   version: 6.9.1
   resolution: "@codemirror/view@npm:6.9.1"
   dependencies:
@@ -750,14 +750,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@codemirror/view@npm:^6.9.3":
-  version: 6.9.3
-  resolution: "@codemirror/view@npm:6.9.3"
+"@codemirror/view@npm:^6.11.3":
+  version: 6.11.3
+  resolution: "@codemirror/view@npm:6.11.3"
   dependencies:
     "@codemirror/state": ^6.1.4
     style-mod: ^4.0.0
     w3c-keyname: ^2.2.4
-  checksum: 718ecbb021ca75eb89003f73c846a07d36a708dcfec8345f0f0dbcfc0d0df5ea6f114918694b2730a6d49e5e50502bcce79ce7ff94ce55748e068e5a35073755
+  checksum: 6bd38a3a55933a71a092db487d1fa8fcc0dc12c8de0edd1827e73144645ff80a0a86fb8d590a3cfe39bffd7550f19546a3c4ee6811e7baa3a400e92322c60cd4
   languageName: node
   linkType: hard
 
@@ -798,7 +798,7 @@ __metadata:
   resolution: "@dral/codemirror-subtle-color-picker@workspace:packages/codemirror-subtle-color-picker"
   dependencies:
     "@codemirror/state": ^6.2.0
-    "@codemirror/view": ^6.9.3
+    "@codemirror/view": ^6.11.3
     react: ^18.2.0
     react-color: ^2.19.3
   languageName: unknown
@@ -900,7 +900,7 @@ __metadata:
     "@codemirror/language": ^6.6.0
     "@codemirror/search": ^6.3.0
     "@codemirror/state": ^6.2.0
-    "@codemirror/view": ^6.9.1
+    "@codemirror/view": ^6.11.3
     "@dral/all-folds-zig": "workspace:*"
     "@dral/codemirror-helpers": "workspace:^"
     "@dral/codemirror-subtle-color-picker": "workspace:^"
@@ -932,7 +932,7 @@ __metadata:
     react-use-path: ^0.3.1
     rollup-plugin-analyzer: ^4.0.0
     rollup-plugin-visualizer: ^5.9.0
-    style-mod: ^4.0.2
+    style-mod: ^4.0.3
     styled-components: ^5.3.9
     tailwindcss: ^3.3.1
     vite: ^3.1.0
@@ -960,12 +960,13 @@ __metadata:
     "@codemirror/language": ^6.6.0
     "@codemirror/search": ^6.3.0
     "@codemirror/state": ^6.2.0
-    "@codemirror/view": ^6.9.1
+    "@codemirror/view": ^6.11.3
     "@dral/codemirror-helpers": "workspace:^"
     "@dral/dralbook-transform-javascript": "workspace:^"
     "@dral/javascript-basic-serialize": "workspace:^"
     "@dral/javascript-notebook-runner": "workspace:^"
     "@dral/modern-map": "workspace:^"
+    "@dral/typed-event-target": "workspace:^"
     "@ionic/react": ^7.0.0
     "@lezer/common": ^1.0.2
     "@types/lodash": ^4.14.192
@@ -1040,6 +1041,12 @@ __metadata:
     strip-color: ^0.1.0
     ts-node: ^10.9.1
     write-file-atomic: ^5.0.0
+  languageName: unknown
+  linkType: soft
+
+"@dral/typed-event-target@workspace:^, @dral/typed-event-target@workspace:packages/typed-event-target":
+  version: 0.0.0-use.local
+  resolution: "@dral/typed-event-target@workspace:packages/typed-event-target"
   languageName: unknown
   linkType: soft
 
@@ -2348,7 +2355,7 @@ __metadata:
   resolution: "codemirror-x-react@workspace:packages/codemirror-x-react"
   dependencies:
     "@codemirror/state": ^6.2.0
-    "@codemirror/view": ^6.9.1
+    "@codemirror/view": ^6.11.3
     lodash-es: ^4.17.21
   languageName: unknown
   linkType: soft
@@ -5749,9 +5756,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "statebasednotebook@workspace:."
   dependencies:
-    react: ^18.2.0
-    react-dom: ^18.2.0
     turbo: ^1.8.8
+    typescript: ^5.0.4
   languageName: unknown
   linkType: soft
 
@@ -5805,17 +5811,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"style-mod@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "style-mod@npm:4.0.0"
-  checksum: c19f73d660a94244f0715180a6141bf75d05e5b156cc956ba11970b83cd303c3f7edafe5fb61a3192da6186cc008bdcdd803a979070f9b64e13046463644043c
-  languageName: node
-  linkType: hard
-
-"style-mod@npm:^4.0.2":
-  version: 4.0.2
-  resolution: "style-mod@npm:4.0.2"
-  checksum: 4bac8877e039c61481fc729981378791979c3ebb2f827a54240e95ccca5bca92a6d660566cacb87a8d7cc1ffb26bcd5eafa10c697e131adb5ca9541f3a9cbff6
+"style-mod@npm:^4.0.0, style-mod@npm:^4.0.3":
+  version: 4.0.3
+  resolution: "style-mod@npm:4.0.3"
+  checksum: 934556e720bd29026ff8fef43a1a35b58957813025b91f996d886e9405acf934ddb1934def4400b174bd7784c9263eb9c71f07ae83925af9271b7d921d546854
   languageName: node
   linkType: hard
 
@@ -6194,6 +6193,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"typescript@npm:^5.0.4":
+  version: 5.0.4
+  resolution: "typescript@npm:5.0.4"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 82b94da3f4604a8946da585f7d6c3025fff8410779e5bde2855ab130d05e4fd08938b9e593b6ebed165bda6ad9292b230984f10952cf82f0a0ca07bbeaa08172
+  languageName: node
+  linkType: hard
+
 "typescript@patch:typescript@^5.0.3#~builtin<compat/typescript>":
   version: 5.0.3
   resolution: "typescript@patch:typescript@npm%3A5.0.3#~builtin<compat/typescript>::version=5.0.3&hash=d73830"
@@ -6201,6 +6210,16 @@ __metadata:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: 9ec0a8eed38d46cc2c8794555b7674e413604c56c159f71b8ff21ce7f17334a44127a68724cb2ef8221ff3b19369f8f05654e8a5266621d7d962aeed889bd630
+  languageName: node
+  linkType: hard
+
+"typescript@patch:typescript@^5.0.4#~builtin<compat/typescript>":
+  version: 5.0.4
+  resolution: "typescript@patch:typescript@npm%3A5.0.4#~builtin<compat/typescript>::version=5.0.4&hash=d73830"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 6a1fe9a77bb9c5176ead919cc4a1499ee63e46b4e05bf667079f11bf3a8f7887f135aa72460a4c3b016e6e6bb65a822cb8689a6d86cbfe92d22cc9f501f09213
   languageName: node
   linkType: hard
 
