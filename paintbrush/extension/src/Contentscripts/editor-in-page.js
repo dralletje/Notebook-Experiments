@@ -126,7 +126,7 @@
               height: 100vh;
               width: 100vw;
               z-index: 10;
-              color-scheme: dark;
+              color-scheme: light;
 
               opacity: 0;
               transition: opacity 0.2s ease-in-out;

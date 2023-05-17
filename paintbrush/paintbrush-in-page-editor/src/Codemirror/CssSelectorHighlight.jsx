@@ -15,7 +15,7 @@ import {
   ViewUpdate,
 } from "@codemirror/view";
 import { iterate_with_cursor } from "dral-lezer-helpers";
-import { ContextMenu } from "../ContextMenu";
+import { ContextMenu } from "../stuff/ContextMenu";
 
 /**
  * @typedef SelectorSpec

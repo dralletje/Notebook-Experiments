@@ -23,7 +23,15 @@ export class GenericViewUpdate<S extends EditorState> {
   startState: S;
 }
 
-export let CodemirrorFromViewUpdate: any;
+export let CodemirrorFromViewUpdate: ({
+  viewupdate,
+  children,
+  ...props
+}: {
+  viewupdate: GenericViewUpdate;
+  children: React.ReactNode;
+  as?: string;
+} & import("react").HtmlHTMLAttributes<"div">) => JSX.Element;
 
 export let useViewUpdate: <TState extends EditorState>(
   state: TState,

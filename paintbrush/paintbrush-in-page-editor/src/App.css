@@ -1,9 +1,32 @@
 body {
   padding-bottom: 16px;
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  background: none transparent;
+  color: white;
+}
+
+paintbrush-cm-selector {
+  /* background-color: black; */
+  transition: text-shadow 0.1s;
+}
+paintbrush-cm-selector:hover {
+  text-shadow: 0 0 20px white;
 }
 
 * {
   margin: 0;
+  box-sizing: border-box;
 }
 
 .cm-cursor {
