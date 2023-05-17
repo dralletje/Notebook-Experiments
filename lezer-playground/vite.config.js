@@ -12,13 +12,6 @@ export default defineConfig({
       allow: [".."],
     },
   },
-  // Babel
-  resolve: {
-    alias: {
-      "node:os": "os",
-      "node:path": "path",
-    },
-  },
   build: {
     rollupOptions: {
       plugins: [

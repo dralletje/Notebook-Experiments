@@ -5241,7 +5241,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"recast@npm:^0.23.2":
+"recast@npm:0.23.2":
   version: 0.23.2
   resolution: "recast@npm:0.23.2"
   dependencies:
@@ -5251,6 +5251,19 @@ __metadata:
     source-map: ~0.6.1
     tslib: ^2.0.1
   checksum: 04c2617cb04c4d02a5c9e1bb75b8e7afc21d1ba7babce25303732f035c3d4b2f945d727f34c3976223d800592ea31e6641cfd33700a8699c02025040174af0b6
+  languageName: node
+  linkType: hard
+
+"recast@patch:recast@npm%3A0.23.2#./.yarn/patches/recast-npm-0.23.2-a2d4acb9d1.patch::locator=statebasednotebook%40workspace%3A.":
+  version: 0.23.2
+  resolution: "recast@patch:recast@npm%3A0.23.2#./.yarn/patches/recast-npm-0.23.2-a2d4acb9d1.patch::version=0.23.2&hash=8a1ee6&locator=statebasednotebook%40workspace%3A."
+  dependencies:
+    assert: ^2.0.0
+    ast-types: ^0.16.1
+    esprima: ~4.0.0
+    source-map: ~0.6.1
+    tslib: ^2.0.1
+  checksum: 81ba25af384f2345b1ebde1cdd45f79651882f6476efc51fc1b398e778ff820c84a93469f9007db4378ba03bb21a581ecf015eff9ca76144e774cccb93c70202
   languageName: node
   linkType: hard
 

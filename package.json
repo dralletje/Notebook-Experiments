@@ -22,5 +22,8 @@
   "devDependencies": {
     "turbo": "^1.9.6",
     "typescript": "^5.0.4"
+  },
+  "resolutions": {
+    "recast@^0.23.2": "patch:recast@npm%3A0.23.2#./.yarn/patches/recast-npm-0.23.2-a2d4acb9d1.patch"
   }
 }
