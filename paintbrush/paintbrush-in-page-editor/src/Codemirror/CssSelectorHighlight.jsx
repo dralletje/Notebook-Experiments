@@ -15,7 +15,7 @@ import {
   ViewUpdate,
 } from "@codemirror/view";
 import { iterate_with_cursor } from "dral-lezer-helpers";
-import { ContextMenu } from "../stuff/ContextMenu";
+import { compact } from "lodash";
 
 /**
  * @typedef SelectorSpec
@@ -86,15 +86,6 @@ export const ActiveSelector = StateField.define({
 
       let selector_nodes = x.filter((x) => x.type === "selector");
       if (selector_nodes.length > 0) {
-        console.log(`selector_nodes:`, selector_nodes);
-        console.log(
-          `selector_nodes.map((selector_node) =>
-              tr.state.sliceDoc(selector_node.node.from, selector_node.node.to)
-            ):`,
-          selector_nodes.map((selector_node) =>
-            tr.state.sliceDoc(selector_node.node.from, selector_node.node.to)
-          )
-        );
         return {
           selector: selector_nodes
             .map((selector_node) =>
@@ -164,23 +155,19 @@ export function find_css_selector({ doc, tree, from, to }) {
  * @param {EditorView} view
  */
 function pkg_decorations(view) {
-  let seen_packages = new Set();
-
-  let widgets = view.visibleRanges
-    .flatMap(({ from, to }) => {
+  let widgets = compact(
+    view.visibleRanges.flatMap(({ from, to }) => {
       let things_to_mark = find_css_selector({
         doc: view.state.doc,
         tree: syntaxTree(view.state),
         from: from,
         to: to,
       });
-      console.log(`things_to_mark:`, things_to_mark);
 
       return things_to_mark.map((thing) => {
         if (thing.type === "selector") {
           let { node } = thing;
           let text = view.state.doc.sliceString(node.from, node.to);
-          console.log(`SELECTOR:`, text);
           return Decoration.mark({
             tagName: "paintbrush-cm-selector",
             attributes: {
@@ -199,10 +186,8 @@ function pkg_decorations(view) {
         }
       });
     })
-    .filter((x) => x != null);
+  );
 
-  console.log(`widgets:`, widgets);
-  // @ts-ignore
   return Decoration.set(widgets, true);
 }
 
@@ -229,104 +214,11 @@ let DecorateSelectors = ViewPlugin.fromClass(
     decorations: (v) => v.decorations,
     eventHandlers: {
       contextmenu: (event, view) => {
-        let state = view.state;
-        let target = /** @type {HTMLDivElement} */ (
-          // @ts-ignore
-          event.target.closest("paintbrush-cm-selector")
-        );
-
-        if (target == null) return false;
-
-        view.dispatch({
-          selection: {
-            anchor: Number(target.dataset.from),
-            head: Number(target.dataset.to),
-          },
-        });
-
-        let x = find_css_selector({
-          doc: state.doc,
-          tree: syntaxTree(state),
-          from: state.selection.main.from,
-          to: state.selection.main.to,
-        });
-
-        let div = document.createElement("div");
-        ReactDOM.render(
-          <ContextMenu
-            pageX={event.pageX}
-            pageY={event.pageY}
-            // @ts-ignore
-            onBlur={() => {
-              div.remove();
-            }}
-            options={[
-              {
-                title: "Scroll into view",
-                onClick: () => {
-                  window.parent.postMessage(
-                    {
-                      type: "scroll-into-view",
-                      selector: target.innerText,
-                    },
-                    "*"
-                  );
-                  console.log("Scroll into view");
-                },
-              },
-            ]}
-          />,
-          div
-        );
-        document.body.appendChild(div);
-
-        return true;
-
-        // let selector = target.textContent;
-        // if (view.state.field(ActiveSelector, false)?.selector != selector) {
-        //   view.dispatch({
-        //     effects: [
-        //       SetActiveSelector.of({
-        //         selector: selector,
-        //       }),
-        //     ],
-        //   });
-        // }
+        // Eventually show a context menu with "scroll into view"
+        // ... but for some reason it stopped working....
+        // so you can try again later if you dare!!
       },
     },
-    // eventHandlers: {
-    //   pointerover: (e, view) => {
-    //     // @ts-ignore
-    //     let target = /** @type {HTMLDivElement} */ (
-    //       e.target.closest("paintbrush-cm-selector")
-    //     );
-    //     if (target?.textContent != null) {
-    //       let selector = target.textContent;
-    //       if (view.state.field(ActiveSelector, false)?.selector != selector) {
-    //         view.dispatch({
-    //           effects: [
-    //             SetActiveSelector.of({
-    //               selector: selector,
-    //             }),
-    //           ],
-    //         });
-    //       }
-    //     } else {
-    //       if (view.state.field(ActiveSelector, false) != null) {
-    //         view.dispatch({
-    //           effects: [SetActiveSelector.of(null)],
-    //         });
-    //       }
-    //     }
-    //   },
-    //   pointerleave: (event, view) => {
-    //     if (view.state.field(ActiveSelector, false) != null) {
-    //       view.dispatch({
-    //         effects: [SetActiveSelector.of(null)],
-    //       });
-    //     }
-    //   },
-    // },
   }
 );
 

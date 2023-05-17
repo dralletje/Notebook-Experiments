@@ -15,9 +15,8 @@ import { Facet, Prec } from "@codemirror/state";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { groupBy, isEqual } from "lodash";
 
-import "./editor.css";
-import "./dark_color.css";
 import "./App.css";
+import "./editor.css";
 
 import {
   ActiveSelector,
@@ -92,7 +91,6 @@ export const CellInput = ({ initial_code, children }) => {
   let initial_state = React.useMemo(() => {
     return EditorState.create({
       doc: initial_code,
-      extensions: basic_css_extensions,
     });
   }, []);
 
@@ -103,6 +101,7 @@ export const CellInput = ({ initial_code, children }) => {
   return (
     <CodemirrorFromViewUpdate as="pluto-input" viewupdate={viewupdate}>
       {children}
+      <Extension key="basic" extension={basic_css_extensions} />
     </CodemirrorFromViewUpdate>
   );
 };
@@ -472,7 +471,7 @@ let EditorBox = styled.div`
   width: max(20vw, 400px);
   overflow: "auto";
 
-  background-color: black;
+  background-color: rgb(24 24 24);
   outline: solid 1px #ffffff33;
   border-radius: 10px 10px 0 0;
   /* transform: translateX(calc(100% + 16px)); */

@@ -18,46 +18,79 @@ import { highlightSelectionMatches } from "@codemirror/search";
 import { css, cssLanguage } from "@codemirror/lang-css";
 import { closeBrackets, autocompletion } from "@codemirror/autocomplete";
 
-export const css_colors = HighlightStyle.define(
+let syntax_classes = EditorView.theme({
+  // Default font color:
+  ".cm-content": {
+    color: "#655d8d",
+  },
+
+  // Repeated so specificity is increased...
+  // I need this to show the colors in the selected autocomplete...
+  // TODO Ideally I'd just do a custom render or something on the autocomplete
+  ".boring.boring.boring": {
+    color: "#655d8d",
+  },
+  ".very-important.very-important.very-important": {
+    color: "#f3f1f1",
+    fontWeight: 700,
+  },
+  ".important.important.important": {
+    color: "#f3f1f1",
+  },
+  ".property.property.property": {
+    color: "#cb00d7",
+  },
+  ".variable.variable.variable": {
+    color: "#a16fff",
+  },
+  ".literal.literal.literal": {
+    color: "#00a7ca",
+  },
+  ".comment.comment.comment": {
+    color: "#747474",
+    fontStyle: "italic",
+  },
+});
+
+const css_colors = HighlightStyle.define(
   [
     {
       tag: tags.propertyName,
-      color: "var(--cm-css-accent-color)",
-      fontWeight: 700,
+      class: "property",
     },
     {
       tag: tags.variableName,
-      color: "var(--cm-css-accent-color)",
-      fontWeight: 700,
+      class: "variable",
     },
-    { tag: tags.definitionOperator, color: "var(--cm-css-color)" },
-    { tag: tags.keyword, color: "var(--cm-css-color)" },
-    { tag: tags.modifier, color: "var(--cm-css-accent-color)" },
-    { tag: tags.punctuation, opacity: 0.5 },
-    { tag: tags.literal, color: "var(--cm-css-color)" },
-    // { tag: tags.unit, color: "var(--cm-css-accent-color)" },
-    { tag: tags.tagName, color: "var(--cm-css-color)", fontWeight: 700 },
+    { tag: tags.modifier, class: "important" },
+    { tag: tags.operatorKeyword, class: "important" },
+    { tag: tags.punctuation, class: "boring" },
+    { tag: tags.literal, class: "literal" },
+    { tag: tags.unit, class: "literal" },
+    { tag: tags.atom, class: "literal" },
+
+    { tag: tags.tagName, class: "very-important" },
     {
       tag: tags.className,
       color: "red",
     },
     {
       tag: tags.constant(tags.className),
-      color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)",
+      class: "very-important",
     },
     {
       tag: tags.comment,
-      color: "var(--cm-comment-color)",
-      fontStyle: "italic",
+      class: "comment",
     },
   ],
   {
     scope: cssLanguage,
-    all: { color: "var(--cm-css-color)" },
   }
 );
 
 export let basic_css_extensions = [
+  syntax_classes,
+
   EditorState.tabSize.of(2),
   indentUnit.of("\t"),
   highlightSpecialChars(),
@@ -70,10 +103,10 @@ export let basic_css_extensions = [
     (event) => event.altKey && !event.shiftKey
   ),
 
+  EditorView.theme({}, { dark: true }),
   history(),
   indentOnInput(),
   closeBrackets(),
-  highlightSelectionMatches(),
   bracketMatching(),
   autocompletion({}),
   keymap.of([...defaultKeymap, ...historyKeymap]),

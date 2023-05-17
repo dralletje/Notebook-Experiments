@@ -28,14 +28,3 @@ paintbrush-cm-selector:hover {
   margin: 0;
   box-sizing: border-box;
 }
-
-.cm-cursor {
-  border-left: 1.2px solid var(--cursor-color) !important;
-}
-
-.cm-editor {
-  background-color: rgba(40, 40, 80, 0.2) !important;
-}
-.cm-scroller {
-  padding: 8px !important;
-}

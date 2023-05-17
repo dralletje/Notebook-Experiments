@@ -4,82 +4,38 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/500.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
 
-@import url("./dark_color.css");
-
-:root {
-  --julia-mono-font-stack: JuliaMono, Menlo, "Roboto Mono",
-    "Lucida Sans Typewriter", "Source Code Pro", monospace;
-}
-
-pluto-input .cm-editor {
-  border-bottom-right-radius: 4px;
-  border: 1px solid var(--normal-cell-color);
-  border-left: none;
-  transition: border-color 0.15s ease-in-out;
-}
-
-pluto-input .cm-editor .cm-line {
-  transition: background-color 0.15s ease-in-out;
-}
-
-pluto-input .cm-editor .cm-line.cm-highlighted-line {
-  background-color: #bdbdbd68;
-  border-radius: 3px;
-}
-
-pluto-input .cm-editor .cm-content,
-pluto-input .cm-editor .cm-scroller {
-  font-family: var(--julia-mono-font-stack) !important;
-  font-variant-ligatures: none;
+.cm-editor .cm-content,
+.cm-editor .cm-scroller {
+  font-family: Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro",
+    monospace !important;
   font-size: 0.75rem;
   font-size: 16px;
 }
 
-pluto-input .cm-editor .cm-content {
-  padding: 2px 0px;
-}
-
-.cm-editor .cm-selectionBackground {
-  background: var(--cm-selection-background-blurred);
-}
-.cm-editor.cm-focused .cm-selectionBackground {
-  background: var(--cm-selection-background);
-}
-
 .cm-editor {
-  background: var(--code-background);
-  color: var(--cm-editor-text-color);
-}
-.cm-editor.cm-focused {
-  outline: unset;
+  background-color: #202124 !important;
 }
 
 .cm-tooltip {
   z-index: 10;
 }
 
-.cm-selectionMatch {
-  background: none !important;
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-}
-
-.cm-editor .cm-matchingBracket,
-.cm-editor .cm-nonmatchingBracket {
-  background-color: unset;
-  color: unset;
-}
-pluto-input:focus-within .cm-editor .cm-matchingBracket {
-  color: var(--cm-matchingBracket-color) !important;
+.cm-editor:focus-within .cm-matchingBracket {
+  color: white !important;
   font-weight: 700;
-  background-color: var(--cm-matchingBracket-bg-color);
+  background-color: #c58c237a;
   border-radius: 2px;
 }
 
 .cm-editor .cm-placeholder {
-  color: var(--cm-placeholder-text-color);
+  color: rgb(255 255 255 / 20%);
   font-style: italic;
 }
 
-.cm-completionMatchedText {
-  text-decoration: unset !important;
+.cm-cursor {
+  border-left: 1.2px solid white !important;
+}
+
+.cm-scroller {
+  padding: 8px !important;
 }
