@@ -257,8 +257,6 @@
               shadow_root.appendChild(injection);
             }
 
-            console.log(`outside_of_the_viewport:`, outside_of_the_viewport);
-
             if (outside_of_the_viewport.top.length !== 0) {
               // AAAAGHHHH,
               // is there a way to know what scroll container to show the "there is more content" message in?

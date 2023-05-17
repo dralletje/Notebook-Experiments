@@ -104,12 +104,12 @@ export let basic_css_extensions = [
   ),
 
   EditorView.theme({}, { dark: true }),
-  history(),
+  // history(),
   indentOnInput(),
   closeBrackets(),
   bracketMatching(),
   autocompletion({}),
-  keymap.of([...defaultKeymap, ...historyKeymap]),
+  keymap.of([...defaultKeymap]),
 
   css(),
   syntaxHighlighting(css_colors),
