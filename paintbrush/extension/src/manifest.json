@@ -45,6 +45,7 @@
 
   "host_permissions": ["*://*/*"],
   "permissions": [
+    "debugger",
     "tabs",
     "contextMenus",
     "storage",

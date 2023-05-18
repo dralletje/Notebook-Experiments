@@ -4,16 +4,49 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/500.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
 
-.cm-editor .cm-content,
-.cm-editor .cm-scroller {
+.cm-editor {
   font-family: Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro",
     monospace !important;
   font-size: 0.75rem;
   font-size: 16px;
 }
+.cm-editor .cm-scroller {
+  font: inherit;
+}
 
 .cm-editor {
   background-color: #ffffff08 !important;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul {
+  font: inherit;
+  max-width: 400px;
+}
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  display: flex;
+}
+.cm-editor .cm-completionLabel {
+  color: #a16fff;
+}
+.cm-editor .cm-completionDetail {
+  vertical-align: bottom;
+  align-self: flex-end;
+  display: inline-block;
+  flex: 1;
+  font-size: 0.75em;
+  overflow: hidden;
+  padding-right: 1em;
+  text-overflow: ellipsis;
+  margin-left: 2.5em;
+  text-align: right;
+  color: #00a7ca;
+}
+
+.cm-editor .cm-selectionBackground {
+  background: #7ff0ff11;
+}
+.cm-editor.cm-focused .cm-selectionBackground {
+  background: #7ff0ff2b !important;
 }
 
 .cm-tooltip {

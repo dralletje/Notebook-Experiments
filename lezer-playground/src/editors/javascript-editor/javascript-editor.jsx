@@ -7,7 +7,6 @@ import { Extension } from "codemirror-x-react";
 import {
   ask_css_to_sanitize_color,
   ColorPickerWidget,
-  // @ts-ignore
 } from "@dral/codemirror-subtle-color-picker";
 import { base_extensions } from "../shared.js";
 import { basic_javascript_setup } from "../../should-be-shared/codemirror-javascript-setup.js";

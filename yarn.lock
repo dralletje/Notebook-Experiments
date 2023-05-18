@@ -4725,6 +4725,8 @@ __metadata:
     "@codemirror/search": ^6.4.0
     "@codemirror/state": ^6.2.0
     "@codemirror/view": ^6.11.3
+    "@dral/codemirror-helpers": "workspace:^"
+    "@dral/codemirror-subtle-color-picker": "workspace:^"
     "@lezer/common": ^1.0.2
     "@lezer/highlight": ^1.1.4
     "@lezer/markdown": ^1.0.2
@@ -4735,6 +4737,7 @@ __metadata:
     react: ^18.1.0
     react-dom: ^18.1.0
     react-is: ^18.2.0
+    string-dedent: ^3.0.1
     styled-components: ^5.3.5
     uuid: ^8.3.2
   languageName: unknown
@@ -5901,6 +5904,13 @@ __metadata:
   version: 2.0.1
   resolution: "statuses@npm:2.0.1"
   checksum: 18c7623fdb8f646fb213ca4051be4df7efb3484d4ab662937ca6fbef7ced9b9e12842709872eb3020cc3504b93bde88935c9f6417489627a7786f24f8031cbcb
+  languageName: node
+  linkType: hard
+
+"string-dedent@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "string-dedent@npm:3.0.1"
+  checksum: b82b25649f04fc0637e8a98be2439e86265e60f5cab1008edd19dced71e3cfaf4184e0df4877d63dd3d80e9cd5ee81f522c6ff63b5c5d6a44fe909755e01e5be
   languageName: node
   linkType: hard
 

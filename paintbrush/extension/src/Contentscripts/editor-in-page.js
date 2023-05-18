@@ -166,10 +166,8 @@
       //   overlay.style.height = `${rect.height + 8}px`;
       // }, 100);
 
-      window.addEventListener("message", (message) => {
-        if (message.source !== contentWindow) return;
-
-        if (message.data?.type === "css") {
+      let receive_message = async (data) => {
+        if (data.type === "css") {
           let styletag = /** @type {HTMLStyleElement} */ (
             document.querySelector(`[data-dral-styled]`)
           );
@@ -178,21 +176,22 @@
             styletag.dataset.dralStyled = "true";
             document.head.appendChild(styletag);
           }
-          styletag.innerHTML = message.data?.code;
-        } else if (message.data?.type === "ready") {
+          styletag.innerHTML = data.code;
+        } else if (data.type === "ready") {
           console.debug("MESSAGE FROM EDITOR:", "ready");
           injection.style.opacity = `1`;
-        } else if (message.data?.type === "save") {
+        } else if (data.type === "save") {
           console.debug("MESSAGE FROM EDITOR:", "save");
           let host = window.location.host;
-          browser.storage.local.set({ [host]: message.data?.cells });
-        } else if (message.data?.type === "load") {
+          browser.storage.local.set({ [host]: data.cells });
+        } else if (data.type === "load") {
           console.debug("MESSAGE FROM EDITOR:", "load");
           let host = window.location.host;
-          browser.storage.local.get([host]).then(({ [host]: cells }) => {
+          return browser.storage.local.get([host]).then(({ [host]: cells }) => {
             contentWindow.postMessage({ type: "load", cells }, "*");
+            return cells;
           });
-        } else if (message.data?.type === "toggle-horizontal-position") {
+        } else if (data.type === "toggle-horizontal-position") {
           console.debug("MESSAGE FROM EDITOR:", "toggle-horizontal-position");
           if (injection.style.right !== "") {
             injection.style.right = "";
@@ -201,8 +200,8 @@
             injection.style.right = "16px";
             injection.style.left = "";
           }
-        } else if (message.data?.type === "highlight_selector") {
-          let { selector } = message.data;
+        } else if (data.type === "highlight_selector") {
+          let { selector } = data;
           console.debug("MESSAGE FROM EDITOR:", "highlight_selector", selector);
 
           // prettier-ignore
@@ -276,15 +275,41 @@
               // `));
             }
           }
-        } else if (message.data?.type === "disable me!") {
+        } else if (data.type === "disable me!") {
           console.debug("MESSAGE FROM EDITOR:", "disable me!");
           injection.style.pointerEvents = "none";
-        } else if (message.data?.type === "enable me!") {
+        } else if (data.type === "get-css-variables") {
+          // TODO? Upgrade to some chrome debugger API stuff
+          // ..... So I can _actually_ get all the CSS variables?
+          let variables = Array.from(document.styleSheets)
+            .filter((styleSheet) => {
+              try {
+                return styleSheet.cssRules;
+              } catch (e) {
+                console.warn(e);
+              }
+            })
+            .map((styleSheet) => Array.from(styleSheet.cssRules))
+            .flat()
+            // @ts-ignore
+            .filter((cssRule) => cssRule.selectorText === ":root")
+            .map((cssRule) =>
+              cssRule.cssText.split("{")[1].split("}")[0].trim().split(";")
+            )
+            .flat()
+            .filter((text) => text !== "")
+            .map((text) => text.split(":"))
+            .map((parts) => ({
+              key: parts[0].trim(),
+              value: parts[1].trim(),
+            }));
+          return { variables };
+        } else if (data.type === "enable me!") {
           console.debug("MESSAGE FROM EDITOR:", "enable me!");
           injection.style.pointerEvents = "auto";
-        } else if (message.data?.type === "scroll-into-view") {
+        } else if (data.type === "scroll-into-view") {
           console.debug("MESSAGE FROM EDITOR:", "scroll-into-view");
-          let { selector } = message.data;
+          let { selector } = data;
           let elements = document.querySelectorAll(selector);
 
           if (elements.length === 0) {
@@ -294,16 +319,6 @@
           let element_closest_to_viewport = elements[0];
           for (let element of elements) {
             // If element is inside the viewport
-            console.log(
-              `element.getBoundingClientRect().top < window.innerHeight:`,
-              element.getBoundingClientRect().top,
-              window.innerHeight
-            );
-            console.log(
-              `element.getBoundingClientRect().bottom > 0:`,
-              element.getBoundingClientRect().bottom,
-              0
-            );
             if (
               element.getBoundingClientRect().top < window.innerHeight &&
               element.getBoundingClientRect().bottom > 0
@@ -330,10 +345,21 @@
           });
         } else {
           console.warn("MESSAGE FROM EDITOR:", "Unknown type:", {
-            data: message.data,
-            message: message,
+            data: data,
           });
         }
+      };
+
+      window.addEventListener("message", async (message) => {
+        if (message.source !== contentWindow) return;
+        if (message.data == null) return;
+
+        let { message_id } = message.data;
+        let result = await receive_message(message.data);
+        contentWindow.postMessage(
+          { type: "response", message_id, result },
+          "*"
+        );
       });
       console.log("Injected!");
     });

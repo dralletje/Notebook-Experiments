@@ -37,9 +37,21 @@ import {
 } from "./codemirror-editor-in-chief/codemirror-shared-history";
 import {
   EditorDispatchEffect,
+  EditorExtension,
   EditorInChiefKeymap,
 } from "./codemirror-editor-in-chief/editor-in-chief";
 import { isEqual } from "lodash";
+import { decorate_colors } from "./Codemirror/ColorHighlight";
+import dedent from "string-dedent";
+import {
+  css_variable_completions,
+  css_variables_facet,
+} from "./Codemirror/css-variable-completions";
+
+import { CellOrderField } from "./codemirror-notebook/cell-order";
+import { cell_movement_extension } from "./codemirror-notebook/cell-movement";
+import { cell_keymap } from "./codemirror-notebook/add-move-and-run-cells";
+import { create_empty_cell_facet } from "./codemirror-notebook/config";
 
 let Cell = styled.div`
   &.modified {
@@ -52,40 +64,6 @@ let Cell = styled.div`
     filter: contrast(0.4);
   }
 `;
-
-let AddCellButtonStyle = styled.button`
-  all: unset;
-
-  padding-bottom: 3px;
-  padding-left: 12px;
-  padding-right: 12px;
-  margin: 3px;
-
-  cursor: pointer;
-  border-radius: 8px;
-  background-color: transparent;
-  transition: background-color 0.2s;
-
-  & .hidden-till-hover {
-    font-size: 0.9rem;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-  &:hover .hidden-till-hover {
-    opacity: 1;
-  }
-
-  &:hover {
-    background-color: #ffffff1f;
-  }
-`;
-let AddCellButton = ({ onClick }) => {
-  return (
-    <AddCellButtonStyle onClick={onClick}>
-      + <span className="hidden-till-hover">add cell</span>
-    </AddCellButtonStyle>
-  );
-};
 
 /** @type {Facet<string, string>} */
 let CellIdFacet = Facet.define({
@@ -107,8 +85,6 @@ let NotebookHeader = styled.div`
   /* position: sticky; */
   top: 0;
   z-index: 1;
-  background-color: var(--main-bg-color);
-
   border-radius: 10px 10px 0 0;
 `;
 
@@ -119,8 +95,10 @@ let CellHeader = styled.div`
   /* padding-top: 8px; */
   position: sticky;
   top: 0;
-  background-color: var(--main-bg-color);
+
   z-index: 2;
+  backdrop-filter: blur(10px);
+  border-bottom: solid 1px #ffffff12;
 `;
 
 /**
@@ -165,25 +143,61 @@ let classes = (obj) => {
 };
 
 /**
- * @typedef PaintbrushIframeCommand
- * @type {never
- *  | { type: "highlight_selector", selector: string | undefined }
- *  | { type: "save", cells: Cell[] }
- *  | { type: "toggle-horizontal-position" }
- *  | { type: 'css', code: string }
- *  | { type: "load" }
- *  | { type: "ready" }
- * }
+ * @typedef PaintbrushIframeCommandMap
+ * @type {{
+ *  highlight_selector: {
+ *    "input": { selector: string | undefined },
+ *  },
+ *  save: {
+ *    "input": { cells: Cell[] },
+ *  },
+ *  "toggle-horizontal-position": { "input": void },
+ *  css: {
+ *    "input": { code: string },
+ *  },
+ *  load: {
+ *    "input": void,
+ *    "output": Cell[],
+ *  },
+ *  ready: { "input": void },
+ *  "get-css-variables": { "input": {}, "output": { variables: { key: string, value: string }[] } },
+ * }}
  */
+
+let message_counter = 1;
 
 /**
  * `window.parent.postMessage` but with types so
  * I know I am not screwing things up too much.
  *
- * @param {PaintbrushIframeCommand} message
+ * @template {keyof PaintbrushIframeCommandMap} K
+ * @param {K} type
+ * @param {PaintbrushIframeCommandMap[K]["input"]} [argument]
+ * @returns {Promise<PaintbrushIframeCommandMap[K]["output"]>}
  */
-let post_command = (message) => {
-  window.parent.postMessage(message, "*");
+let call_extension = (type, argument) => {
+  let message_id = message_counter++;
+  window.parent.postMessage(
+    {
+      ...argument,
+      type: type,
+      message_id: message_id,
+    },
+    "*"
+  );
+
+  return new Promise((resolve) => {
+    window.addEventListener("message", function listener(event) {
+      if (event.source !== window.parent) return;
+      if (
+        event.data.type === "response" &&
+        event.data.message_id === message_id
+      ) {
+        window.removeEventListener("message", listener);
+        resolve(event.data.result);
+      }
+    });
+  });
 };
 
 let code_tab = keymap.of([
@@ -201,13 +215,24 @@ let send_selector_to_highlight_extension = EditorView.updateListener.of(
       update.startState.field(ActiveSelector, false)
     ) {
       let cool = update.state.field(ActiveSelector, false);
-      post_command({
-        type: "highlight_selector",
+      call_extension("highlight_selector", {
         selector: cool?.selector,
       });
     }
   }
 );
+
+let useCssVariables = () => {
+  let [variables, set_variables] = React.useState(
+    /** @type {{ key: String, value: string }[]} */ ([])
+  );
+  React.useEffect(() => {
+    call_extension("get-css-variables", {}).then((x) => {
+      set_variables(x.variables);
+    });
+  }, []);
+  return variables;
+};
 
 /**
  * @param {{
@@ -216,145 +241,106 @@ let send_selector_to_highlight_extension = EditorView.updateListener.of(
  */
 function Editor({ viewupdate }) {
   React.useEffect(() => {
-    post_command({ type: "ready" });
+    call_extension("ready");
   }, []);
 
   useCodemirrorKeyhandler(viewupdate);
+  let variables = useCssVariables();
 
-  // let cell_keymap = React.useMemo(() => {
-  //   return Prec.high(
-  //     keymap.of([
-  //       {
-  //         key: "Backspace",
-  //         run: (view) => {
-  //           // If cell is empty, remove it
-  //           if (view.state.doc.toString() === "") {
-  //             let current_cell_id = view.state.facet(CellIdFacet);
-  //             let new_cells = cells.filter(
-  //               (cell) => cell.id !== current_cell_id
-  //             );
-  //             set_currently_saved_cells(new_cells);
-  //             return true;
-  //           }
-  //           return false;
-  //         },
-  //       },
-  //       {
-  //         key: "Shift-Enter",
-  //         run: () => {
-  //           // on_submit();
-  //           console.log("Submit");
-  //           return true;
-  //         },
-  //       },
-  //     ])
-  //   );
-  // }, [set_currently_saved_cells, cells]);
+  let css_variables_facet_value = React.useMemo(() => {
+    return css_variables_facet.of(variables);
+  }, [variables]);
 
   return (
     <div>
-      {viewupdate.state.editors
-        .mapValues((_, cell_index) => {
-          let cell_update = extract_nested_viewupdate(viewupdate, cell_index);
-          let cell = cell_update.state;
+      {viewupdate.state.field(CellOrderField).map((cell_id) => {
+        let cell_update = extract_nested_viewupdate(viewupdate, cell_id);
+        let cell = cell_update.state;
 
-          let {
-            code,
-            name = "",
-            enabled,
-            folded: collapsed = false,
-          } = cell.field(CellMetaField);
-          let id = cell.facet(CellIdFacet);
-          let disabled = !enabled;
+        let {
+          code,
+          name = "",
+          enabled,
+          folded: collapsed = false,
+        } = cell.field(CellMetaField);
+        let id = cell.facet(CellIdFacet);
+        let disabled = !enabled;
 
-          return (
-            <React.Fragment key={id}>
-              <Cell
-                className={classes({
-                  modified: cell.doc.toString() !== code,
-                  disabled: disabled,
-                })}
-              >
-                <CellHeader>
-                  <NameInput
-                    placeholder="my browser, my style"
-                    value={name}
-                    onChange={({ target: { value } }) => {
-                      cell_update.view.dispatch({
-                        effects: [
-                          MutateCellMetaEffect.of((meta) => {
-                            meta.name = value;
-                          }),
-                        ],
-                      });
-                    }}
-                  />
-                  <CellHeaderButton
-                    style={{
-                      color: disabled ? "red" : "rgba(255,255,255,.5)",
-                    }}
-                    onClick={() => {
-                      cell_update.view.dispatch({
-                        effects: [
-                          MutateCellMetaEffect.of((meta) => {
-                            meta.enabled = !meta.enabled;
-                          }),
-                        ],
-                      });
-                    }}
-                  >
-                    {disabled ? "disabled" : "active"}
-                  </CellHeaderButton>
-                  <CellHeaderButton
-                    style={{
-                      color: collapsed
-                        ? "rgba(255,255,255,1)"
-                        : "rgba(255,255,255,.5)",
-                    }}
-                    onClick={() => {
-                      cell_update.view.dispatch({
-                        effects: [
-                          MutateCellMetaEffect.of((meta) => {
-                            meta.folded = !meta.folded;
-                          }),
-                        ],
-                      });
-                    }}
-                  >
-                    {collapsed ? "open" : "close"}
-                  </CellHeaderButton>
-                  <div style={{ width: 8 }} />
-                </CellHeader>
+        return (
+          <React.Fragment key={id}>
+            <Cell
+              className={classes({
+                modified: cell.doc.toString() !== code,
+                disabled: disabled,
+              })}
+            >
+              <CellHeader>
+                <NameInput
+                  placeholder="my browser, my style"
+                  value={name}
+                  onChange={({ target: { value } }) => {
+                    cell_update.view.dispatch({
+                      effects: [
+                        MutateCellMetaEffect.of((meta) => {
+                          meta.name = value;
+                        }),
+                      ],
+                    });
+                  }}
+                />
+                <CellHeaderButton
+                  style={{
+                    color: disabled ? "red" : "rgba(255,255,255,.5)",
+                  }}
+                  onClick={() => {
+                    cell_update.view.dispatch({
+                      effects: [
+                        MutateCellMetaEffect.of((meta) => {
+                          meta.enabled = !meta.enabled;
+                        }),
+                      ],
+                    });
+                  }}
+                >
+                  {disabled ? "disabled" : "active"}
+                </CellHeaderButton>
+                <CellHeaderButton
+                  style={{
+                    color: collapsed
+                      ? "rgba(255,255,255,1)"
+                      : "rgba(255,255,255,.5)",
+                  }}
+                  onClick={() => {
+                    cell_update.view.dispatch({
+                      effects: [
+                        MutateCellMetaEffect.of((meta) => {
+                          meta.folded = !meta.folded;
+                        }),
+                      ],
+                    });
+                  }}
+                >
+                  {collapsed ? "open" : "close"}
+                </CellHeaderButton>
+                <div style={{ width: 8 }} />
+              </CellHeader>
 
-                <div style={{ display: collapsed ? "none" : "block" }}>
-                  <CodemirrorFromViewUpdate viewupdate={cell_update}>
-                    <Extension key="basic" extension={basic_css_extensions} />
-                    <Extension
-                      extension={placeholder("Style away!")}
-                      deps={[]}
-                    />
-                    <Extension extension={code_tab} />
-                    <Extension extension={pkgBubblePlugin()} deps={[]} />
-                    <Extension
-                      extension={send_selector_to_highlight_extension}
-                    />
-                  </CodemirrorFromViewUpdate>
-                </div>
-              </Cell>
-              {/* <AddCellButton
-                onClick={() => {
-                  set_currently_saved_cells([
-                    ...cells.slice(0, cell_index + 1),
-                    empty_cell(),
-                    ...cells.slice(cell_index + 1),
-                  ]);
-                }}
-              /> */}
-            </React.Fragment>
-          );
-        })
-        .values()
-        .toArray()}
+              <div style={{ display: collapsed ? "none" : "block" }}>
+                <CodemirrorFromViewUpdate viewupdate={cell_update}>
+                  <Extension key="basic" extension={basic_css_extensions} />
+                  <Extension extension={placeholder("Style away!")} deps={[]} />
+                  <Extension extension={decorate_colors} />
+                  <Extension extension={code_tab} />
+                  <Extension extension={pkgBubblePlugin()} deps={[]} />
+                  <Extension extension={send_selector_to_highlight_extension} />
+                  <Extension extension={css_variables_facet_value} />
+                  <Extension extension={css_variable_completions} />
+                </CodemirrorFromViewUpdate>
+              </div>
+            </Cell>
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 }
@@ -467,6 +453,18 @@ let notebook_to_editorinchief = (
 
       save_on_save,
 
+      CellOrderField.init(() => cells.map((x) => /** @type {any} */ (x.id))),
+      cell_movement_extension,
+      EditorExtension.of(cell_keymap),
+      create_empty_cell_facet.of((editor_in_chief, code) => {
+        return create_cell_state(editor_in_chief, {
+          id: uuidv4(),
+          code,
+          collapsed: false,
+          disabled: false,
+          name: "",
+        });
+      }),
       // create_codemirror_notebook(notebook),
       // This works so smooth omg
       [shared_history(), EditorInChiefKeymap.of(historyKeymap)],
@@ -518,10 +516,7 @@ let AppWhenLoaded = ({ state, set_state }) => {
     let code_prev = editorinchief_to_css(viewupdate.startState);
 
     if (code_now !== code_prev) {
-      post_command({
-        type: "css",
-        code: code_now,
-      });
+      call_extension("css", { code: code_now });
     }
   }, [viewupdate]);
 
@@ -530,7 +525,7 @@ let AppWhenLoaded = ({ state, set_state }) => {
     let cells_prev = editorinchief_to_serialized(viewupdate.startState);
 
     if (!isEqual(cells_now, cells_prev)) {
-      post_command({ type: "save", cells: cells_now });
+      call_extension("save", { cells: cells_now });
     }
   }, [viewupdate]);
 
@@ -541,7 +536,7 @@ let AppWhenLoaded = ({ state, set_state }) => {
 
         <button
           onClick={() => {
-            post_command({ type: "toggle-horizontal-position" });
+            call_extension("toggle-horizontal-position");
           }}
         >
           s
@@ -556,16 +551,12 @@ let AppWhenLoaded = ({ state, set_state }) => {
 let App = () => {
   let [state, set_state] = React.useState(/** @type {any} */ (null));
   React.useEffect(() => {
-    post_command({ type: "load" });
-    window.addEventListener("message", (message) => {
-      if (message.source !== window.parent) return;
-      if (message.data?.type === "load") {
-        let cells_we_got_back = message.data.cells ?? [];
-        let cells =
-          cells_we_got_back.length === 0 ? [empty_cell()] : cells_we_got_back;
-
-        set_state(notebook_to_editorinchief(cells));
-      }
+    call_extension("load").then((cells) => {
+      set_state(
+        notebook_to_editorinchief(
+          (cells ?? []).length === 0 ? [empty_cell()] : cells
+        )
+      );
     });
   }, []);
 
@@ -581,7 +572,7 @@ let EditorBox = styled.div`
   bottom: 0px;
   height: max(60vh, min(500px, 100vh));
   width: max(20vw, 400px);
-  overflow: "auto";
+  overflow: auto;
 
   background-color: rgb(24 24 24);
   outline: solid 1px #ffffff33;

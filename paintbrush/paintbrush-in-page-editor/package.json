@@ -12,6 +12,8 @@
     "@codemirror/search": "^6.4.0",
     "@codemirror/state": "^6.2.0",
     "@codemirror/view": "^6.11.3",
+    "@dral/codemirror-helpers": "workspace:^",
+    "@dral/codemirror-subtle-color-picker": "workspace:^",
     "@lezer/common": "^1.0.2",
     "@lezer/highlight": "^1.1.4",
     "@lezer/markdown": "^1.0.2",
@@ -22,6 +24,7 @@
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
     "react-is": "^18.2.0",
+    "string-dedent": "^3.0.1",
     "styled-components": "^5.3.5",
     "uuid": "^8.3.2"
   },

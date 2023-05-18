@@ -77,14 +77,18 @@ export const ActiveSelector = StateField.define({
       did_set_explicitly ||
       tr.startState.field(HasFocus, false) !== tr.state.field(HasFocus, false)
     ) {
+      let from = tr.state.selection.main.from;
+      let to = tr.state.selection.main.to;
       let x = find_css_selector({
         doc: tr.state.doc,
         tree: syntaxTree(tr.state),
-        from: tr.state.selection.main.from,
-        to: tr.state.selection.main.to,
+        from: from,
+        to: to,
       });
 
-      let selector_nodes = x.filter((x) => x.type === "selector");
+      let selector_nodes = x.filter(
+        (x) => x.type === "selector" && x.node.from <= from && to <= x.node.to
+      );
       if (selector_nodes.length > 0) {
         return {
           selector: selector_nodes
