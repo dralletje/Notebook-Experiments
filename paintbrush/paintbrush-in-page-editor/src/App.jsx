@@ -16,7 +16,7 @@ import { EditorView, keymap, placeholder } from "@codemirror/view";
 import {
   ActiveSelector,
   pkgBubblePlugin,
-} from "./Codemirror/CssSelectorHighlight";
+} from "./codemirror-css/CssSelectorHighlight";
 import { EditorInChief } from "./codemirror-editor-in-chief/editor-in-chief-state";
 import { extract_nested_viewupdate } from "./codemirror-editor-in-chief/extract-nested-viewupdate";
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler";
@@ -34,32 +34,37 @@ import {
   EditorInChiefKeymap,
 } from "./codemirror-editor-in-chief/editor-in-chief";
 import { isEqual } from "lodash";
-import { decorate_colors } from "./Codemirror/ColorHighlight";
+import { decorate_colors } from "./codemirror-css/ColorHighlight";
 import dedent from "string-dedent";
 import {
   css_variable_completions,
   css_variables_facet,
-} from "./Codemirror/css-variable-completions";
+} from "./codemirror-css/css-variable-completions";
 
 import { CellOrderField } from "./codemirror-notebook/cell-order";
 import { cell_movement_extension } from "./codemirror-notebook/cell-movement";
 import { cell_keymap } from "./codemirror-notebook/add-move-and-run-cells";
 import { create_empty_cell_facet } from "./codemirror-notebook/config";
 import { CellMetaField, MutateCellMetaEffect } from "./cell-meta";
+import { add_single_cell_when_all_cells_are_removed } from "./codemirror-notebook/add-cell-when-last-is-removed";
 
 import "./App.css";
 import "./editor.css";
-import { add_single_cell_when_all_cells_are_removed } from "./codemirror-notebook/add-cell-when-last-is-removed";
+
+import { RxCrossCircled } from "react-icons/rx";
 
 let Cell = styled.div`
   &.modified {
-    /* outline: solid 4px #f0f0f0; */
-    /* background-color: #432b00; */
     background-color: #052f1e;
   }
 
   &.disabled {
-    filter: contrast(0.4);
+    /* filter: contrast(0.4); */
+    opacity: 0.5;
+  }
+
+  &.disabled.modified {
+    /* background-color: #052f1e; */
   }
 `;
 
@@ -145,6 +150,10 @@ let NameInput = styled.input.attrs({ type: "text" })`
   font-weight: bold;
 
   text-overflow: ellipsis;
+
+  /* .disabled & {
+    text-decoration: line-through;
+  } */
 `;
 
 let classes = (obj) => {
@@ -167,11 +176,14 @@ let classes = (obj) => {
  *  css: {
  *    "input": { code: string },
  *  },
+ *  "apply-new-css": { "input": { sheets: Cell[] } },
  *  load: {
  *    "input": void,
  *    "output": Cell[],
  *  },
  *  ready: { "input": void },
+ *  close: { "input": void },
+ *  reload: { "input": void },
  *  "get-css-variables": { "input": {}, "output": { variables: { key: string, value: string }[] } },
  * }}
  */
@@ -352,6 +364,7 @@ function Editor({ viewupdate }) {
         }}
       >
         <CellHeaderButton
+          style={{ color: "gray" }}
           onClick={() => {
             let create_new_cell = viewupdate.state.facet(
               create_empty_cell_facet
@@ -456,13 +469,18 @@ let notebook_to_editorinchief = (
 };
 
 /** @param {EditorInChief<EditorState>} state */
-let editorinchief_to_css = (state) => {
-  return state.editors
-    .filter((x) => x.field(CellMetaField).enabled)
-    .values()
-    .toArray()
-    .map((x) => x.doc)
-    .join("\n\n");
+let editorinchief_to_sheets = (state) => {
+  return state.field(CellOrderField).map((cell_id) => {
+    let x = state.editor(cell_id);
+    let meta = x.field(CellMetaField);
+    return {
+      code: x.doc.toString(),
+      name: meta.name,
+      id: x.facet(EditorIdFacet),
+      collapsed: meta.folded,
+      disabled: !meta.enabled,
+    };
+  });
 };
 
 /**
@@ -493,11 +511,11 @@ let AppWhenLoaded = ({ state, set_state }) => {
   let viewupdate = useViewUpdate(state, set_state);
 
   React.useEffect(() => {
-    let code_now = editorinchief_to_css(viewupdate.state);
-    let code_prev = editorinchief_to_css(viewupdate.startState);
+    let code_now = editorinchief_to_sheets(viewupdate.state);
+    let code_prev = editorinchief_to_sheets(viewupdate.startState);
 
     if (code_now !== code_prev) {
-      call_extension("css", { code: code_now });
+      call_extension("apply-new-css", { sheets: code_now });
     }
   }, [viewupdate]);
 
@@ -551,6 +569,8 @@ let AppWhenLoaded = ({ state, set_state }) => {
     >
       <NotebookHeader
         onMouseDown={(event) => {
+          if (event.defaultPrevented) return;
+
           let x = event.clientX;
           let y = event.clientY;
 
@@ -580,7 +600,20 @@ let AppWhenLoaded = ({ state, set_state }) => {
           };
         }}
       >
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+          <RxCrossCircled
+            onMouseDown={(event) => {
+              event.preventDefault();
+            }}
+            onClick={(event) => {
+              if (event.metaKey) {
+                call_extension("reload");
+              } else {
+                call_extension("close");
+              }
+            }}
+          />
+        </div>
         <h1>Paintbrush</h1>
         <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
           {/* <NotebookHeaderButton onClick={() => {}}>

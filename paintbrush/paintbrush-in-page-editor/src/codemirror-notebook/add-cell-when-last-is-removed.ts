@@ -3,6 +3,7 @@ import {
   EditorAddEffect,
   EditorIdFacet,
   EditorInChief,
+  EditorRemoveEffect,
 } from "../codemirror-editor-in-chief/editor-in-chief";
 import { CellOrderField, CellOrderEffect } from "./cell-order";
 import { NoAnimation } from "./last-created-cells";
@@ -20,6 +21,13 @@ export let add_single_cell_when_all_cells_are_removed =
         } else {
           cells_left_after_effects.add(effect.value.cell_id);
         }
+      }
+
+      if (effect.is(EditorAddEffect)) {
+        cells_left_after_effects.add(effect.value.state.facet(EditorIdFacet));
+      }
+      if (effect.is(EditorRemoveEffect)) {
+        cells_left_after_effects.delete(effect.value.editor_id);
       }
     }
 

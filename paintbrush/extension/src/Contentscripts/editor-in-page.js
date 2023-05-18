@@ -1,54 +1,64 @@
 {
-  // @ts-ignore
-  // prettier-ignore
-  const browser = /** @type {import("webextension-polyfill-ts").Browser} */ (globalThis.browser);
-
-  let URL_DEVELOPMENT = (path) => `http://localhost:3000/${path}`;
-  let URL_PRODUCTION = (path) =>
-    browser.runtime.getURL(`/in-page-editor-build/${path}`);
-
-  let async = async (async) => async();
-
-  /**
-   * @param {string} htmlString
-   * @returns {HTMLElement}
-   */
-  let createElementFromHTML = (htmlString) => {
-    let div = document.createElement("div");
-    div.innerHTML = htmlString.trim();
-
+  let this_script = async () => {
     // @ts-ignore
-    return div.firstChild;
-  };
+    // prettier-ignore
+    const browser = /** @type {import("webextension-polyfill-ts").Browser} */ (globalThis.browser);
 
-  let querySelectorAllSafe = (selector) => {
-    try {
-      return document.querySelectorAll(selector);
-    } catch (error) {
-      return [];
-    }
-  };
+    let URL_DEVELOPMENT = (path) => `http://localhost:3000/${path}`;
+    let URL_PRODUCTION = (path) =>
+      browser.runtime.getURL(`/in-page-editor-build/${path}`);
 
-  // prettier-ignore
-  let preexisting_conditions = document.querySelector("paintbrush-overlay-container")
-  if (preexisting_conditions) {
-    preexisting_conditions.remove();
-  } else {
-    let should_invert = document.documentElement
+    let async = async (async) => async();
+
+    /**
+     * @param {string} htmlString
+     * @returns {HTMLElement}
+     */
+    let createElementFromHTML = (htmlString) => {
+      let div = document.createElement("div");
+      div.innerHTML = htmlString.trim();
+
       // @ts-ignore
-      .computedStyleMap()
-      .get("filter")
-      .toString()
-      .includes("invert(1)");
+      return div.firstChild;
+    };
+
+    let querySelectorAllSafe = (selector) => {
+      try {
+        return document.querySelectorAll(selector);
+      } catch (error) {
+        return [];
+      }
+    };
 
     // prettier-ignore
-    let shadow_element = createElementFromHTML(`<paintbrush-overlay-container style="position: relative; z-index: 10000000"></paintbrush-overlay-container>`);
-    let shadow_root = shadow_element.attachShadow({ mode: "open" });
+    let preexisting_conditions = document.querySelector("paintbrush-overlay-container")
+    if (preexisting_conditions) {
+      preexisting_conditions.remove();
+    } else {
+      let should_invert = document.documentElement
+        // @ts-ignore
+        .computedStyleMap()
+        .get("filter")
+        .toString()
+        .includes("invert(1)");
 
-    document.body.appendChild(shadow_element);
+      // prettier-ignore
+      let shadow_element = createElementFromHTML(`
+        <paintbrush-overlay-container
+          style="
+            position: fixed;
+            z-index: 10000000;
+            inset: 0;
+            pointer-events: none;
+          "
+        ></paintbrush-overlay-container>
+      `);
+      let shadow_root = shadow_element.attachShadow({ mode: "open" });
 
-    // prettier-ignore
-    shadow_root.appendChild(createElementFromHTML(`<style>
+      document.body.appendChild(shadow_element);
+
+      // prettier-ignore
+      shadow_root.appendChild(createElementFromHTML(`<style>
     @keyframes slidein {
       from {
         opacity: 0;
@@ -103,20 +113,22 @@
       border-image-width: 0 var(--border-size);
     }
   `))
-    async(async () => {
-      let { is_developer } = await browser.storage.local.get(["is_developer"]);
+      async(async () => {
+        let { is_developer } = await browser.storage.local.get([
+          "is_developer",
+        ]);
 
-      let get_url = is_developer ? URL_DEVELOPMENT : URL_PRODUCTION;
+        let get_url = is_developer ? URL_DEVELOPMENT : URL_PRODUCTION;
 
-      let css_color_scheme = shadow_element
-        // @ts-ignore
-        .computedStyleMap()
-        .get("color-scheme")
-        .toString();
+        let css_color_scheme = shadow_element
+          // @ts-ignore
+          .computedStyleMap()
+          .get("color-scheme")
+          .toString();
 
-      /** @type {HTMLIFrameElement} */
-      let injection = /** @type {any} */ (
-        createElementFromHTML(`
+        /** @type {HTMLIFrameElement} */
+        let injection = /** @type {any} */ (
+          createElementFromHTML(`
           <iframe
             border="0"
             style="
@@ -135,101 +147,149 @@
             src="${get_url("index.html")}?color-scheme=${css_color_scheme}"
           />
         `)
-      );
-
-      shadow_root.appendChild(injection);
-
-      let contentWindow = injection.contentWindow;
-
-      window.addEventListener("mousemove", (event) => {
-        contentWindow.postMessage(
-          {
-            type: "maybe enable again?",
-            x: event.clientX,
-            y: event.clientY,
-          },
-          "*"
         );
-        // console.log(`element_in_iframe:`, element_in_iframe);
-      });
 
-      // let timer = setInterval(() => {
-      //   for (let element of shadow_root.querySelectorAll(
-      //     ".highlight-overlay"
-      //   )) {
-      //   }
-      //   let overlay = overlay_ref.current;
-      //   overlay.style.position = "absolute";
-      //   overlay.style.top = `${rect.top - 4}px`;
-      //   overlay.style.left = `${rect.left - 4}px`;
-      //   overlay.style.width = `${rect.width + 8}px`;
-      //   overlay.style.height = `${rect.height + 8}px`;
-      // }, 100);
+        shadow_root.appendChild(injection);
 
-      let receive_message = async (data) => {
-        if (data.type === "css") {
-          let styletag = /** @type {HTMLStyleElement} */ (
-            document.querySelector(`[data-dral-styled]`)
+        let contentWindow = injection.contentWindow;
+
+        window.addEventListener("mousemove", (event) => {
+          contentWindow.postMessage(
+            {
+              type: "maybe enable again?",
+              x: event.clientX,
+              y: event.clientY,
+            },
+            "*"
           );
-          if (styletag == null) {
-            styletag = document.createElement("style");
-            styletag.dataset.dralStyled = "true";
-            document.head.appendChild(styletag);
-          }
-          styletag.innerHTML = data.code;
-        } else if (data.type === "ready") {
-          console.debug("MESSAGE FROM EDITOR:", "ready");
-          injection.style.opacity = `1`;
-        } else if (data.type === "save") {
-          console.debug("MESSAGE FROM EDITOR:", "save");
-          let host = window.location.host;
-          browser.storage.local.set({ [host]: data.cells });
-        } else if (data.type === "load") {
-          console.debug("MESSAGE FROM EDITOR:", "load");
-          let host = window.location.host;
-          return browser.storage.local.get([host]).then(({ [host]: cells }) => {
-            contentWindow.postMessage({ type: "load", cells }, "*");
-            return cells;
-          });
-        } else if (data.type === "highlight_selector") {
-          let { selector } = data;
-          console.debug("MESSAGE FROM EDITOR:", "highlight_selector", selector);
+          // console.log(`element_in_iframe:`, element_in_iframe);
+        });
 
-          // prettier-ignore
-          for (let existing_selector of shadow_root.querySelectorAll(`.highlight-overlay`)) {
+        // let timer = setInterval(() => {
+        //   for (let element of shadow_root.querySelectorAll(
+        //     ".highlight-overlay"
+        //   )) {
+        //   }
+        //   let overlay = overlay_ref.current;
+        //   overlay.style.position = "absolute";
+        //   overlay.style.top = `${rect.top - 4}px`;
+        //   overlay.style.left = `${rect.left - 4}px`;
+        //   overlay.style.width = `${rect.width + 8}px`;
+        //   overlay.style.height = `${rect.height + 8}px`;
+        // }, 100);
+
+        let receive_message = async (data) => {
+          if (data.type === "close") {
+            let preexisting_conditions = document.querySelector(
+              "paintbrush-overlay-container"
+            );
+            preexisting_conditions?.remove();
+            return;
+          }
+
+          if (data.type === "reload") {
+            let preexisting_conditions = document.querySelector(
+              "paintbrush-overlay-container"
+            );
+            preexisting_conditions?.remove();
+            return await this_script();
+          }
+
+          if (data.type === "apply-new-css") {
+            for (let style of data.sheets) {
+              try {
+                // prettier-ignore
+                let preexisting_element = document.querySelector(`[data-paintbrush-id="${style.id}"]`);
+                if (preexisting_element != null) {
+                  preexisting_element.remove();
+                }
+
+                console.log(`style:`, style);
+                if (style.disabled) continue;
+
+                let element = document.createElement("style");
+                // element.innerHTML = css.replace(/(?:!important)? *;(\n|$)/gm, " !important;$1");
+                element.innerHTML = style.code;
+                element.dataset.paintbrush = "true";
+                element.dataset.paintbrushId = style.id;
+                element.dataset.paintbrushTitle = style.name;
+                document.head.appendChild(element);
+              } catch (error) {
+                console.debug("Failed to apply paintbrush style:", error.stack);
+              }
+            }
+            return;
+          }
+
+          if (data.type === "css") {
+            let styletag = /** @type {HTMLStyleElement} */ (
+              document.querySelector(`[data-dral-styled]`)
+            );
+            if (styletag == null) {
+              styletag = document.createElement("style");
+              styletag.dataset.dralStyled = "true";
+              document.head.appendChild(styletag);
+            }
+            styletag.innerHTML = data.code;
+          } else if (data.type === "ready") {
+            console.debug("MESSAGE FROM EDITOR:", "ready");
+            injection.style.opacity = `1`;
+          } else if (data.type === "save") {
+            console.debug("MESSAGE FROM EDITOR:", "save");
+            let host = window.location.host;
+            browser.storage.local.set({ [host]: data.cells });
+          } else if (data.type === "load") {
+            console.debug("MESSAGE FROM EDITOR:", "load");
+            let host = window.location.host;
+            return browser.storage.local
+              .get([host])
+              .then(({ [host]: cells }) => {
+                contentWindow.postMessage({ type: "load", cells }, "*");
+                return cells;
+              });
+          } else if (data.type === "highlight_selector") {
+            let { selector } = data;
+            console.debug(
+              "MESSAGE FROM EDITOR:",
+              "highlight_selector",
+              selector
+            );
+
+            // prettier-ignore
+            for (let existing_selector of shadow_root.querySelectorAll(`.highlight-overlay`)) {
             existing_selector.remove();
           }
 
-          if (selector != null) {
-            let elements = querySelectorAllSafe(selector);
-            let outside_of_the_viewport = {
-              top: [],
-              bottom: [],
-              left: [],
-              right: [],
-            };
-            for (let element of elements) {
-              let box = element.getBoundingClientRect();
+            if (selector != null) {
+              let elements = querySelectorAllSafe(selector);
+              let outside_of_the_viewport = {
+                top: [],
+                bottom: [],
+                left: [],
+                right: [],
+              };
+              for (let element of elements) {
+                let box = element.getBoundingClientRect();
 
-              // Don't show if box is outside the viewport
-              if (box.top > window.innerHeight) {
-                outside_of_the_viewport.top.push(element);
-                continue;
-              }
-              if (box.bottom < 0) {
-                outside_of_the_viewport.bottom.push(element);
-                continue;
-              }
-              if (box.left > window.innerWidth) {
-                outside_of_the_viewport.left.push(element);
-                continue;
-              }
-              if (box.right < 0) {
-                outside_of_the_viewport.right.push(element);
-                continue;
-              }
+                // Don't show if box is outside the viewport
+                if (box.top > window.innerHeight) {
+                  outside_of_the_viewport.top.push(element);
+                  continue;
+                }
+                if (box.bottom < 0) {
+                  outside_of_the_viewport.bottom.push(element);
+                  continue;
+                }
+                if (box.left > window.innerWidth) {
+                  outside_of_the_viewport.left.push(element);
+                  continue;
+                }
+                if (box.right < 0) {
+                  outside_of_the_viewport.right.push(element);
+                  continue;
+                }
 
-              let injection = createElementFromHTML(`
+                let injection = createElementFromHTML(`
                   <div
                     class="highlight-overlay"
                     style="
@@ -242,117 +302,124 @@
                   >
                   </div>
                 `);
-              // @ts-ignore
-              injection.element_to_follow = element;
-              shadow_root.appendChild(injection);
-            }
-
-            if (outside_of_the_viewport.top.length !== 0) {
-              // AAAAGHHHH,
-              // is there a way to know what scroll container to show the "there is more content" message in?
-              // Should be possible to have multiple indicators in the same direction, but not in the same container.
-              // document.body.appendChild(createElementFromHTML(`
-              //   <div
-              //     style="
-              //       position: fixed;
-              //       top: 0;
-              //       left: ${box.left}px;
-              //       width: ${box.width}px;
-              //       height: ${box.height}px;
-              //       /* border: dashed 5px white; */
-              //     "
-              //   >
-              //   </div>
-              // `));
-            }
-          }
-        } else if (data.type === "disable me!") {
-          console.debug("MESSAGE FROM EDITOR:", "disable me!");
-          injection.style.pointerEvents = "none";
-        } else if (data.type === "get-css-variables") {
-          // TODO? Upgrade to some chrome debugger API stuff
-          // ..... So I can _actually_ get all the CSS variables?
-          let variables = Array.from(document.styleSheets)
-            .filter((styleSheet) => {
-              try {
-                return styleSheet.cssRules;
-              } catch (e) {
-                console.warn(e);
+                // @ts-ignore
+                injection.element_to_follow = element;
+                shadow_root.appendChild(injection);
               }
-            })
-            .map((styleSheet) => Array.from(styleSheet.cssRules))
-            .flat()
-            // @ts-ignore
-            .filter((cssRule) => cssRule.selectorText === ":root")
-            .map((cssRule) =>
-              cssRule.cssText.split("{")[1].split("}")[0].trim().split(";")
-            )
-            .flat()
-            .filter((text) => text !== "")
-            .map((text) => text.split(":"))
-            .map((parts) => ({
-              key: parts[0].trim(),
-              value: parts[1].trim(),
-            }));
-          return { variables };
-        } else if (data.type === "enable me!") {
-          console.debug("MESSAGE FROM EDITOR:", "enable me!");
-          injection.style.pointerEvents = "auto";
-        } else if (data.type === "scroll-into-view") {
-          console.debug("MESSAGE FROM EDITOR:", "scroll-into-view");
-          let { selector } = data;
-          let elements = document.querySelectorAll(selector);
 
-          if (elements.length === 0) {
-            window.alert(`No element with the selector \`${selector}\` found.`);
-          }
+              if (outside_of_the_viewport.top.length !== 0) {
+                // AAAAGHHHH,
+                // is there a way to know what scroll container to show the "there is more content" message in?
+                // Should be possible to have multiple indicators in the same direction, but not in the same container.
+                // document.body.appendChild(createElementFromHTML(`
+                //   <div
+                //     style="
+                //       position: fixed;
+                //       top: 0;
+                //       left: ${box.left}px;
+                //       width: ${box.width}px;
+                //       height: ${box.height}px;
+                //       /* border: dashed 5px white; */
+                //     "
+                //   >
+                //   </div>
+                // `));
+              }
+            }
+          } else if (data.type === "disable me!") {
+            console.debug("MESSAGE FROM EDITOR:", "disable me!");
+            injection.style.pointerEvents = "none";
+          } else if (data.type === "get-css-variables") {
+            // TODO? Upgrade to some chrome debugger API stuff
+            // ..... So I can _actually_ get all the CSS variables?
+            let variables = Array.from(document.styleSheets)
+              .filter((styleSheet) => {
+                try {
+                  return styleSheet.cssRules;
+                } catch (e) {
+                  console.warn(e);
+                }
+              })
+              .map((styleSheet) => Array.from(styleSheet.cssRules))
+              .flat()
+              // @ts-ignore
+              .filter((cssRule) => cssRule.selectorText === ":root")
+              .map((cssRule) =>
+                cssRule.cssText.split("{")[1].split("}")[0].trim().split(";")
+              )
+              .flat()
+              .filter((text) => text !== "")
+              .map((text) => text.split(":"))
+              .map((parts) => ({
+                key: parts[0].trim(),
+                value: parts[1].trim(),
+              }));
+            return { variables };
+          } else if (data.type === "enable me!") {
+            console.debug("MESSAGE FROM EDITOR:", "enable me!");
+            injection.style.pointerEvents = "auto";
+          } else if (data.type === "scroll-into-view") {
+            console.debug("MESSAGE FROM EDITOR:", "scroll-into-view");
+            let { selector } = data;
+            let elements = document.querySelectorAll(selector);
 
-          let element_closest_to_viewport = elements[0];
-          for (let element of elements) {
-            // If element is inside the viewport
-            if (
-              element.getBoundingClientRect().top < window.innerHeight &&
-              element.getBoundingClientRect().bottom > 0
-            ) {
-              element_closest_to_viewport = element;
-              break;
+            if (elements.length === 0) {
+              window.alert(
+                `No element with the selector \`${selector}\` found.`
+              );
             }
 
-            if (
-              Math.abs(element.getBoundingClientRect().top) <
-              Math.abs(element_closest_to_viewport.getBoundingClientRect().top)
-            ) {
-              element_closest_to_viewport = element;
+            let element_closest_to_viewport = elements[0];
+            for (let element of elements) {
+              // If element is inside the viewport
+              if (
+                element.getBoundingClientRect().top < window.innerHeight &&
+                element.getBoundingClientRect().bottom > 0
+              ) {
+                element_closest_to_viewport = element;
+                break;
+              }
+
+              if (
+                Math.abs(element.getBoundingClientRect().top) <
+                Math.abs(
+                  element_closest_to_viewport.getBoundingClientRect().top
+                )
+              ) {
+                element_closest_to_viewport = element;
+              }
+
+              // let y_distance = Math.min(Math.abs(element.getBoundingClientRect().top), Math.abs(element.getBoundingClientRect().bottom - window.innerHeight))
+              // if (element.getBoundingClientRect().top < 0) {
+              //   element_closest_to_viewport = element;
+              // }
             }
-
-            // let y_distance = Math.min(Math.abs(element.getBoundingClientRect().top), Math.abs(element.getBoundingClientRect().bottom - window.innerHeight))
-            // if (element.getBoundingClientRect().top < 0) {
-            //   element_closest_to_viewport = element;
-            // }
+            element_closest_to_viewport.scrollIntoViewIfNeeded({
+              behavior: "smooth",
+              block: "center",
+            });
+          } else {
+            console.warn("MESSAGE FROM EDITOR:", "Unknown type:", {
+              data: data,
+            });
           }
-          element_closest_to_viewport.scrollIntoViewIfNeeded({
-            behavior: "smooth",
-            block: "center",
-          });
-        } else {
-          console.warn("MESSAGE FROM EDITOR:", "Unknown type:", {
-            data: data,
-          });
-        }
-      };
+        };
 
-      window.addEventListener("message", async (message) => {
-        if (message.source !== contentWindow) return;
-        if (message.data == null) return;
+        window.addEventListener("message", async (message) => {
+          if (message.source !== contentWindow) return;
+          if (message.data == null) return;
 
-        let { message_id } = message.data;
-        let result = await receive_message(message.data);
-        contentWindow.postMessage(
-          { type: "response", message_id, result },
-          "*"
-        );
+          let { message_id } = message.data;
+          let result = await receive_message(message.data);
+          contentWindow.postMessage(
+            { type: "response", message_id, result },
+            "*"
+          );
+        });
+        console.log("Injected!");
       });
-      console.log("Injected!");
-    });
-  }
+    }
+  };
+
+  this_script();
 }

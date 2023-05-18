@@ -9,15 +9,19 @@
     return;
   }
 
-  let style = document.createElement("style");
-  // style.innerHTML = css.replace(/(?:!important)? *;(\n|$)/gm, " !important;$1");
-  style.innerHTML = Array.isArray(css)
-    ? css
-        .filter((x) => !x.disabled)
-        .map((x) => x.code)
-        .join("\n\n")
-    : css;
-  // @ts-ignore
-  style.dataset.dralStyled = true;
-  document.head.appendChild(style);
+  for (let style of Array.isArray(css) ? css : [css]) {
+    try {
+      if (style.disabled) continue;
+
+      let element = document.createElement("style");
+      // element.innerHTML = css.replace(/(?:!important)? *;(\n|$)/gm, " !important;$1");
+      element.innerHTML = style.code;
+      element.dataset.paintbrush = "true";
+      element.dataset.paintbrushId = style.id;
+      element.dataset.paintbrushTitle = style.name;
+      document.head.appendChild(element);
+    } catch (error) {
+      console.debug("Failed to apply paintbrush style:", error.stack);
+    }
+  }
 })();

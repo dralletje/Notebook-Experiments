@@ -87,7 +87,11 @@ export const ActiveSelector = StateField.define({
       });
 
       let selector_nodes = x.filter(
-        (x) => x.type === "selector" && x.node.from <= from && to <= x.node.to
+        (x) =>
+          x.type === "selector" &&
+          x.node.from <= from &&
+          to <= x.node.to &&
+          !(tr.state.selection.main.empty && x.node.from === from)
       );
       if (selector_nodes.length > 0) {
         return {
