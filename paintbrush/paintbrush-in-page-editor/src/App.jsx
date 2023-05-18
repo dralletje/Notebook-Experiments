@@ -7,22 +7,11 @@ import {
   CodemirrorFromViewUpdate,
   GenericViewUpdate,
 } from "codemirror-x-react/viewupdate.js";
-import { produce as immer } from "immer";
 import { v4 as uuidv4 } from "uuid";
 
-import { EditorState } from "@codemirror/state";
+import { EditorSelection, EditorState } from "@codemirror/state";
 import { indentLess, indentMore, invertedEffects } from "@codemirror/commands";
-import {
-  Facet,
-  Prec,
-  StateField,
-  StateEffect,
-  StateEffectType,
-} from "@codemirror/state";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
-
-import "./App.css";
-import "./editor.css";
 
 import {
   ActiveSelector,
@@ -36,8 +25,12 @@ import {
   shared_history,
 } from "./codemirror-editor-in-chief/codemirror-shared-history";
 import {
+  BlurEditorInChiefEffect,
+  EditorAddEffect,
   EditorDispatchEffect,
   EditorExtension,
+  EditorHasSelectionField,
+  EditorIdFacet,
   EditorInChiefKeymap,
 } from "./codemirror-editor-in-chief/editor-in-chief";
 import { isEqual } from "lodash";
@@ -52,6 +45,11 @@ import { CellOrderField } from "./codemirror-notebook/cell-order";
 import { cell_movement_extension } from "./codemirror-notebook/cell-movement";
 import { cell_keymap } from "./codemirror-notebook/add-move-and-run-cells";
 import { create_empty_cell_facet } from "./codemirror-notebook/config";
+import { CellMetaField, MutateCellMetaEffect } from "./cell-meta";
+
+import "./App.css";
+import "./editor.css";
+import { add_single_cell_when_all_cells_are_removed } from "./codemirror-notebook/add-cell-when-last-is-removed";
 
 let Cell = styled.div`
   &.modified {
@@ -65,27 +63,24 @@ let Cell = styled.div`
   }
 `;
 
-/** @type {Facet<string, string>} */
-let CellIdFacet = Facet.define({
-  combine: (x) => x[0],
-});
-
-let empty_cell = () => {
-  return {
-    id: uuidv4(),
-    code: "",
-  };
-};
-
 let NotebookHeader = styled.div`
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
-  padding: 16px 16px;
-  /* position: sticky; */
+  justify-content: center;
+  padding: 4px 6px 4px;
+  color: #a16fff;
+  background-color: rgb(45 16 93);
+  border-radius: 10px 10px 0px 0px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+
+  position: sticky;
   top: 0;
-  z-index: 1;
-  border-radius: 10px 10px 0 0;
+  z-index: 3;
+
+  h1 {
+    font-size: 1em;
+    font-weight: bold;
+  }
 `;
 
 let CellHeader = styled.div`
@@ -94,7 +89,7 @@ let CellHeader = styled.div`
   align-items: center;
   /* padding-top: 8px; */
   position: sticky;
-  top: 0;
+  top: 28px;
 
   z-index: 2;
   backdrop-filter: blur(10px);
@@ -117,7 +112,20 @@ let CellHeaderButton = styled.button`
   border-radius: 100px;
   background-color: transparent;
   transition: background-color 0.2s;
-  padding: 2px 16px;
+  padding: 2px 12px;
+
+  &:hover {
+    background-color: #ffffff1f;
+  }
+`;
+
+let NotebookHeaderButton = styled.button`
+  all: unset;
+  border-radius: 100px;
+  background-color: #ffffff08;
+  transition: background-color 0.2s;
+  padding: 0px 8px;
+  font-size: 0.7em;
 
   &:hover {
     background-color: #ffffff1f;
@@ -127,12 +135,16 @@ let CellHeaderButton = styled.button`
 let NameInput = styled.input.attrs({ type: "text" })`
   all: unset;
   font-size: 1rem;
-  padding: 4px 8px;
+  padding: 4px 16px;
   color: white;
   width: 100%;
 
   margin-bottom: 4px;
-  font-size: 1.3rem;
+  font-size: 1.1rem;
+  margin-top: 4px;
+  font-weight: bold;
+
+  text-overflow: ellipsis;
 `;
 
 let classes = (obj) => {
@@ -208,20 +220,6 @@ let code_tab = keymap.of([
   },
 ]);
 
-let send_selector_to_highlight_extension = EditorView.updateListener.of(
-  (update) => {
-    if (
-      update.state.field(ActiveSelector, false) !==
-      update.startState.field(ActiveSelector, false)
-    ) {
-      let cool = update.state.field(ActiveSelector, false);
-      call_extension("highlight_selector", {
-        selector: cool?.selector,
-      });
-    }
-  }
-);
-
 let useCssVariables = () => {
   let [variables, set_variables] = React.useState(
     /** @type {{ key: String, value: string }[]} */ ([])
@@ -263,8 +261,12 @@ function Editor({ viewupdate }) {
           enabled,
           folded: collapsed = false,
         } = cell.field(CellMetaField);
-        let id = cell.facet(CellIdFacet);
+        let id = cell.facet(EditorIdFacet);
         let disabled = !enabled;
+
+        let actually_collapsed = cell.field(EditorHasSelectionField)
+          ? false
+          : collapsed;
 
         return (
           <React.Fragment key={id}>
@@ -325,72 +327,52 @@ function Editor({ viewupdate }) {
                 <div style={{ width: 8 }} />
               </CellHeader>
 
-              <div style={{ display: collapsed ? "none" : "block" }}>
+              <div style={{ display: actually_collapsed ? "none" : "block" }}>
                 <CodemirrorFromViewUpdate viewupdate={cell_update}>
                   <Extension key="basic" extension={basic_css_extensions} />
                   <Extension extension={placeholder("Style away!")} deps={[]} />
                   <Extension extension={decorate_colors} />
-                  <Extension extension={code_tab} />
                   <Extension extension={pkgBubblePlugin()} deps={[]} />
-                  <Extension extension={send_selector_to_highlight_extension} />
                   <Extension extension={css_variables_facet_value} />
                   <Extension extension={css_variable_completions} />
+                  <Extension extension={code_tab} />
                 </CodemirrorFromViewUpdate>
               </div>
             </Cell>
           </React.Fragment>
         );
       })}
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          justifyContent: "center",
+          padding: "8px 16px",
+        }}
+      >
+        <CellHeaderButton
+          onClick={() => {
+            let create_new_cell = viewupdate.state.facet(
+              create_empty_cell_facet
+            );
+            let new_cell = create_new_cell(viewupdate.state, "");
+            viewupdate.view.dispatch({
+              effects: [
+                EditorAddEffect.of({
+                  state: new_cell,
+                  focus: true,
+                }),
+              ],
+            });
+          }}
+        >
+          add cell
+        </CellHeaderButton>
+      </div>
     </div>
   );
 }
-
-/**
- * @typedef CellMeta
- * @type {{
- *  name: string,
- *  code: string,
- *  folded: boolean,
- *  enabled: boolean,
- * }}
- */
-
-/** @type {StateEffectType<(value: CellMeta) => void>} */
-let MutateCellMetaEffect = StateEffect.define();
-let invert_fold = invertedEffects.of((tr) => {
-  let was = tr.startState.field(CellMetaField).folded;
-  let is = tr.state.field(CellMetaField).folded;
-  if (was !== is) {
-    return [
-      MutateCellMetaEffect.of((meta) => {
-        meta.folded = was;
-      }),
-    ];
-  } else {
-    return [];
-  }
-});
-let CellMetaField = StateField.define({
-  create() {
-    return /** @type {CellMeta} */ ({
-      code: "",
-      name: "",
-      enabled: true,
-      folded: false,
-    });
-  },
-  update(value, transaction) {
-    return immer(value, (value) => {
-      for (let effect of transaction.effects) {
-        if (effect.is(MutateCellMetaEffect)) {
-          // @ts-ignore
-          effect.value(value);
-        }
-      }
-    });
-  },
-  provide: () => invert_fold,
-});
 
 let create_cell_state = (
   /** @type {EditorInChief<EditorState>} */ editorstate,
@@ -399,8 +381,8 @@ let create_cell_state = (
   return editorstate.create_section_editor({
     editor_id: /** @type {any} */ (cell.id),
     doc: cell.code,
+    selection: EditorSelection.single(0),
     extensions: [
-      CellIdFacet.of(cell.id),
       CellMetaField.init(() => ({
         name: cell.name ?? "",
         code: cell.code,
@@ -453,6 +435,7 @@ let notebook_to_editorinchief = (
 
       save_on_save,
 
+      add_single_cell_when_all_cells_are_removed,
       CellOrderField.init(() => cells.map((x) => /** @type {any} */ (x.id))),
       cell_movement_extension,
       EditorExtension.of(cell_keymap),
@@ -487,19 +470,17 @@ let editorinchief_to_css = (state) => {
  * @returns {Cell[]}
  * */
 let editorinchief_to_serialized = (state) => {
-  return state.editors
-    .values()
-    .toArray()
-    .map((x) => {
-      let meta = x.field(CellMetaField);
-      return {
-        code: meta.code,
-        name: meta.name,
-        id: x.facet(CellIdFacet),
-        collapsed: meta.folded,
-        disabled: !meta.enabled,
-      };
-    });
+  return state.field(CellOrderField).map((cell_id) => {
+    let x = state.editor(cell_id);
+    let meta = x.field(CellMetaField);
+    return {
+      code: meta.code,
+      name: meta.name,
+      id: x.facet(EditorIdFacet),
+      collapsed: meta.folded,
+      disabled: !meta.enabled,
+    };
+  });
 };
 
 /**
@@ -529,18 +510,83 @@ let AppWhenLoaded = ({ state, set_state }) => {
     }
   }, [viewupdate]);
 
-  return (
-    <EditorBox>
-      <NotebookHeader>
-        <h1>Paintbrush</h1>
+  React.useEffect(() => {
+    let active_highlight = viewupdate.state
+      .selected_editor()
+      ?.field(ActiveSelector, false);
+    let prev_active_highlight = viewupdate.startState
+      .selected_editor()
+      ?.field(ActiveSelector, false);
 
-        <button
-          onClick={() => {
-            call_extension("toggle-horizontal-position");
-          }}
-        >
-          s
-        </button>
+    if (!isEqual(active_highlight, prev_active_highlight)) {
+      let cool = viewupdate.state
+        .selected_editor()
+        ?.field(ActiveSelector, false);
+      call_extension("highlight_selector", {
+        selector: cool?.selector,
+      });
+    }
+  }, [viewupdate]);
+
+  let [position, set_position] = React.useState({ right: 16, bottom: -16 });
+  let container_ref = React.useRef(null);
+  let unsubscribe_drag_ref = React.useRef(() => {});
+
+  return (
+    <EditorBox
+      ref={container_ref}
+      style={{
+        right: position.right,
+        bottom: position.bottom,
+        paddingBottom: Math.max(-position.bottom, 0),
+      }}
+      onClickCapture={(event) => {
+        let target = /** @type {HTMLElement} */ (event.target);
+        if (target.closest(".cm-editor") == null) {
+          viewupdate.view.dispatch({
+            effects: [BlurEditorInChiefEffect.of()],
+          });
+        }
+      }}
+    >
+      <NotebookHeader
+        onMouseDown={(event) => {
+          let x = event.clientX;
+          let y = event.clientY;
+
+          unsubscribe_drag_ref.current();
+          let mousemove_handler = (event) => {
+            let right = x - event.clientX;
+            let bottom = y - event.clientY;
+
+            container_ref.current.style.transform = `translateX(${-right}px) translateY(${-bottom}px)`;
+          };
+          document.addEventListener("mousemove", mousemove_handler);
+          let mouseup_handler = (event) => {
+            unsubscribe_drag_ref.current();
+            set_position(({ right, bottom }) => {
+              return {
+                right: right - (event.clientX - x),
+                bottom: bottom - (event.clientY - y),
+              };
+            });
+            container_ref.current.style.transform = "";
+          };
+          document.addEventListener("mouseup", mouseup_handler);
+          unsubscribe_drag_ref.current = () => {
+            document.removeEventListener("mousemove", mousemove_handler);
+            document.removeEventListener("mouseup", mouseup_handler);
+            unsubscribe_drag_ref.current = () => {};
+          };
+        }}
+      >
+        <div style={{ flex: 1 }} />
+        <h1>Paintbrush</h1>
+        <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
+          {/* <NotebookHeaderButton onClick={() => {}}>
+            close all
+          </NotebookHeaderButton> */}
+        </div>
       </NotebookHeader>
 
       <Editor viewupdate={viewupdate} />
@@ -552,11 +598,7 @@ let App = () => {
   let [state, set_state] = React.useState(/** @type {any} */ (null));
   React.useEffect(() => {
     call_extension("load").then((cells) => {
-      set_state(
-        notebook_to_editorinchief(
-          (cells ?? []).length === 0 ? [empty_cell()] : cells
-        )
-      );
+      set_state(notebook_to_editorinchief(cells ?? []));
     });
   }, []);
 
@@ -568,17 +610,16 @@ let App = () => {
 
 let EditorBox = styled.div`
   position: fixed;
-  right: 16px;
-  bottom: 0px;
   height: max(60vh, min(500px, 100vh));
-  width: max(20vw, 400px);
+  width: max(20vw, 350px);
   overflow: auto;
 
   background-color: rgb(24 24 24);
   outline: solid 1px #ffffff33;
-  border-radius: 10px 10px 0 0;
-  /* transform: translateX(calc(100% + 16px)); */
-  transition: transform 0.5s;
+  border-radius: 10px;
+
+  padding-bottom: 16px;
+  box-shadow: rgba(255, 255, 255, 0.04) 0px 0px 20px;
 `;
 
 export default App;

@@ -28,17 +28,12 @@ export let add_single_cell_when_all_cells_are_removed =
       let editor_in_chief = new EditorInChief(transaction.state);
       let create_empty_cell = editor_in_chief.facet(create_empty_cell_facet);
       let new_cell = create_empty_cell(editor_in_chief, "");
-      let new_cell_id = new_cell.facet(EditorIdFacet);
       return {
         annotations: NoAnimation.of(true),
         effects: [
           EditorAddEffect.of({
-            editor_id: new_cell_id,
             state: new_cell,
-          }),
-          CellOrderEffect.of({
-            cell_id: new_cell_id,
-            index: 0,
+            focus: true,
           }),
         ],
       };

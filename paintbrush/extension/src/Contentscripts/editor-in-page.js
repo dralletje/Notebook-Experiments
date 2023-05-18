@@ -42,7 +42,7 @@
       .includes("invert(1)");
 
     // prettier-ignore
-    let shadow_element = createElementFromHTML(`<paintbrush-overlay-container style="z-index: 10000000"></paintbrush-overlay-container>`);
+    let shadow_element = createElementFromHTML(`<paintbrush-overlay-container style="position: relative; z-index: 10000000"></paintbrush-overlay-container>`);
     let shadow_root = shadow_element.attachShadow({ mode: "open" });
 
     document.body.appendChild(shadow_element);
@@ -191,15 +191,6 @@
             contentWindow.postMessage({ type: "load", cells }, "*");
             return cells;
           });
-        } else if (data.type === "toggle-horizontal-position") {
-          console.debug("MESSAGE FROM EDITOR:", "toggle-horizontal-position");
-          if (injection.style.right !== "") {
-            injection.style.right = "";
-            injection.style.left = "16px";
-          } else {
-            injection.style.right = "16px";
-            injection.style.left = "";
-          }
         } else if (data.type === "highlight_selector") {
           let { selector } = data;
           console.debug("MESSAGE FROM EDITOR:", "highlight_selector", selector);

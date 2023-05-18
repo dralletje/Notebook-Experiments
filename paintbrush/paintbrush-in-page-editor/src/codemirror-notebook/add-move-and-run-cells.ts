@@ -8,7 +8,7 @@ import {
 import { keymap } from "@codemirror/view";
 
 // import { MoveToCellBelowEffect } from "./cell-movement";
-import { SelectedCellsField } from "./cell-selection";
+// import { SelectedCellsField } from "./cell-selection";
 import { compact, range } from "lodash";
 import {
   EditorAddEffect,
@@ -159,16 +159,12 @@ export let cell_keymap = Prec.high(
               let new_cell_id = new_cell.facet(EditorIdFacet);
               return [
                 EditorAddEffect.of({
-                  editor_id: new_cell_id,
                   state: new_cell,
+                  focus: true,
                 }),
                 CellOrderEffect.of({
                   cell_id: new_cell_id,
                   index: { after: cell_id },
-                }),
-                EditorDispatchEffect.of({
-                  editor_id: new_cell_id,
-                  transaction: { selection: EditorSelection.cursor(0) },
                 }),
               ];
             }),
@@ -234,13 +230,25 @@ export let cell_keymap = Prec.high(
               EditorInChiefEffect.of((state) => {
                 let cell_order = state.field(CellOrderField);
                 let cell_index = cell_order.indexOf(cell_id);
-                if (cell_index === 0)
-                  return EditorDispatchEffect.of({
-                    editor_id: cell_id,
-                    transaction: {
-                      annotations: NudgeCell.of(true),
-                    },
-                  });
+
+                // TODO Make it possible to disallow deleting the first cell in the notebook?
+                if (cell_index === 0 && view.state.doc.length === 0) {
+                  let next_cell_id = cell_order[cell_index + 1];
+
+                  return [
+                    EditorRemoveEffect.of({ editor_id: cell_id }),
+                    ...(next_cell_id
+                      ? [
+                          EditorDispatchEffect.of({
+                            editor_id: next_cell_id,
+                            transaction: {
+                              selection: EditorSelection.cursor(0),
+                            },
+                          }),
+                        ]
+                      : []),
+                  ];
+                }
 
                 let previous_cell_id = cell_order[cell_index - 1];
                 let previous_cell_state = state.editor(previous_cell_id);
@@ -262,10 +270,6 @@ export let cell_keymap = Prec.high(
                     },
                   }),
                   EditorRemoveEffect.of({ editor_id: cell_id }),
-                  CellOrderEffect.of({
-                    cell_id: cell_id,
-                    index: null,
-                  }),
                 ];
               }),
             ],

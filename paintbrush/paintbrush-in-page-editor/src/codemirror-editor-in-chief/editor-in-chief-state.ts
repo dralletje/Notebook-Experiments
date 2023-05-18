@@ -174,6 +174,16 @@ export class EditorInChief<SectionEditor extends MinimalEditorState> {
     return this.editors.mapValues((x) => x.doc);
   }
 
+  selected_editor() {
+    let cell_with_current_selection =
+      this.editorstate.field(EditorsField).cell_with_current_selection;
+    if (cell_with_current_selection != null) {
+      return this.editor(cell_with_current_selection, false);
+    } else {
+      return null;
+    }
+  }
+
   static editors(editorstate: EditorState) {
     return new EditorInChief(editorstate).editors;
   }

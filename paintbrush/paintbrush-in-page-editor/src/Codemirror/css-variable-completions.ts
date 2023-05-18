@@ -33,7 +33,6 @@ const css_variable_completions_source: CompletionSource = (context) => {
     ((context.explicit || isDash) && isVarArg(node, state.doc))
   ) {
     let variables = variableNames(state);
-    console.log(`variables:`, variables);
     return {
       from: node.name === "VariableName" || isDash ? node.from : pos,
       options: variables,

@@ -16,6 +16,7 @@ export let decorate_colors = DecorationsFromTree(
       let text_to = cursor.to;
 
       let text = doc.sliceString(text_from, text_to);
+      if (text.startsWith("var")) return;
       let color = ask_css_to_sanitize_color(text);
 
       if (color != "") {

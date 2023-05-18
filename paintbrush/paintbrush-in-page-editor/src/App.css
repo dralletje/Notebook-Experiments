@@ -24,6 +24,11 @@ paintbrush-cm-selector:hover {
   text-shadow: 0 0 20px white;
 }
 
+h1 {
+  font: inherit;
+  user-select: none;
+}
+
 * {
   margin: 0;
   box-sizing: border-box;

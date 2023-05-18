@@ -12,33 +12,17 @@
 }
 .cm-editor .cm-scroller {
   font: inherit;
+  padding-left: 12px !important;
+}
+.cm-editor.cm-focused {
+  outline: none;
 }
 
 .cm-editor {
   background-color: #ffffff08 !important;
 }
 
-.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul {
-  font: inherit;
-  max-width: 400px;
-}
-.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
-  display: flex;
-}
-.cm-editor .cm-completionLabel {
-  color: #a16fff;
-}
 .cm-editor .cm-completionDetail {
-  vertical-align: bottom;
-  align-self: flex-end;
-  display: inline-block;
-  flex: 1;
-  font-size: 0.75em;
-  overflow: hidden;
-  padding-right: 1em;
-  text-overflow: ellipsis;
-  margin-left: 2.5em;
-  text-align: right;
   color: #00a7ca;
 }
 

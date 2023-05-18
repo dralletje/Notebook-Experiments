@@ -103,8 +103,8 @@ export let EditorInChiefEffect = StateEffect.define<
 >();
 
 export let EditorAddEffect = StateEffect.define<{
-  editor_id: EditorId;
   state: EditorState;
+  focus?: boolean;
 }>();
 export let EditorRemoveEffect = StateEffect.define<{
   editor_id: EditorId;
@@ -177,12 +177,20 @@ export let EditorsField = StateField.define<{
           }
 
           if (effect.is(EditorAddEffect)) {
-            let { editor_id, state: cell_state } = effect.value;
+            let { state: cell_state, focus = false } = effect.value;
+            let editor_id = cell_state.facet(EditorIdFacet);
             cells[editor_id] = cell_state;
+
+            if (focus) {
+              state.cell_with_current_selection = editor_id;
+            }
           }
 
           if (effect.is(EditorRemoveEffect)) {
             let { editor_id } = effect.value;
+            if (state.cell_with_current_selection === editor_id) {
+              state.cell_with_current_selection = null;
+            }
             delete cells[editor_id];
           }
         }
