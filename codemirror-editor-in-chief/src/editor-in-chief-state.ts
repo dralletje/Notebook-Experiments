@@ -201,11 +201,9 @@ export class EditorInChief<Editors extends EditorMapping = EditorMapping> {
     editors,
     extensions = [],
   }: {
-    editors: (editorstate: EditorInChief<Editors>) => {
-      [key: EditorId]: EditorState;
-    };
+    editors: (editorstate: EditorInChief<any>) => Editors;
     extensions?: EditorInChiefExtension[];
-  }) {
+  }): EditorInChief<Editors> {
     let extensions_with_state_fields =
       editor_in_chief_extensions_to_codemirror(extensions);
 

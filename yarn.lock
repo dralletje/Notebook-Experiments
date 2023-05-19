@@ -820,6 +820,7 @@ __metadata:
     autoprefixer: ^10.4.14
     bezier-easing: ^2.1.0
     codemirror-awesome-line-wrapping: "workspace:^"
+    codemirror-editor-in-chief: "workspace:^"
     codemirror-x-react: "workspace:^"
     dral-lezer-helpers: "workspace:^"
     immer: ^10.0.2

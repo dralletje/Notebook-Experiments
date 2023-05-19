@@ -24,16 +24,15 @@ import { LezerEditor } from "./editors/lezer-editor/lezer-editor";
 
 import { compact, isEmpty, round } from "lodash-es";
 import {
-  create_nested_editor_state,
   EditorInChief,
   EditorInChiefKeymap,
   extract_nested_viewupdate,
-} from "./should-be-shared/codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 import {
   shared_history,
   historyKeymap,
   historyField,
-} from "./should-be-shared/codemirror-editor-in-chief/codemirror-shared-history";
+} from "codemirror-editor-in-chief/history";
 import { LezerErrorEditor } from "./editors/lezer-editor/lezer-error-editor";
 import { AppHeader } from "./Header.jsx";
 import {
@@ -124,17 +123,17 @@ let Runtime = styled.div`
   align-self: flex-end;
 `;
 
-/** @type {import("./should-be-shared/codemirror-editor-in-chief/logic.js").EditorId} */
+/** @type {import("codemirror-editor-in-chief").EditorId<"lezer-grammar">} */
 // @ts-ignore
-let LEZER_GRAMMAR_EDITOR_ID = "lezer-grammar";
+const LEZER_GRAMMAR_EDITOR_ID = "lezer-grammar";
 
-/** @type {import("./should-be-shared/codemirror-editor-in-chief/logic.js").EditorId} */
+/** @type {import("codemirror-editor-in-chief").EditorId<"javascript">} */
 // @ts-ignore
-let JAVASCRIPT_EDITOR_ID = "javascript";
+const JAVASCRIPT_EDITOR_ID = "javascript";
 
-/** @type {import("./should-be-shared/codemirror-editor-in-chief/logic.js").EditorId} */
+/** @type {import("codemirror-editor-in-chief").EditorId<"code-to-parse">} */
 // @ts-ignore
-let WHAT_TO_PARSE_EDITOR_ID = "code-to-parse";
+const WHAT_TO_PARSE_EDITOR_ID = "code-to-parse";
 
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {
@@ -182,18 +181,15 @@ let Editor = ({ project_name }) => {
 
     return EditorInChief.create({
       editors: (editorstate) => ({
-        [LEZER_GRAMMAR_EDITOR_ID]: create_nested_editor_state({
-          parent: editorstate.editorstate,
+        "lezer-grammar": editorstate.create_section_editor({
           editor_id: LEZER_GRAMMAR_EDITOR_ID,
           doc: _parser_code,
         }),
-        [JAVASCRIPT_EDITOR_ID]: create_nested_editor_state({
-          parent: editorstate.editorstate,
+        javascript: editorstate.create_section_editor({
           editor_id: JAVASCRIPT_EDITOR_ID,
           doc: javascript_stuff,
         }),
-        [WHAT_TO_PARSE_EDITOR_ID]: create_nested_editor_state({
-          parent: editorstate.editorstate,
+        "code-to-parse": editorstate.create_section_editor({
           editor_id: WHAT_TO_PARSE_EDITOR_ID,
           doc: code_to_parse,
         }),
@@ -208,8 +204,14 @@ let Editor = ({ project_name }) => {
   }, []);
 
   let [state, set_state] = React.useState(initial_state);
+  let _set_state = React.useCallback(
+    (/** @type {typeof state} */ new_state) => {
+      set_state(new_state);
+    },
+    [set_state]
+  );
 
-  let viewupdate = useViewUpdate(state, set_state);
+  let viewupdate = useViewUpdate(state, _set_state);
 
   let lezer_grammar_viewupdate = extract_nested_viewupdate(
     viewupdate,
