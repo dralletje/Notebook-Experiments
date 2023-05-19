@@ -5,7 +5,7 @@ import {
   EditorRemoveEffect,
   EditorInChiefKeymap,
   EditorInChiefStateField,
-} from "../codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 
 export let SelectCellsEffect = StateEffect.define<CellId[]>();
 export let SelectedCellsField = EditorInChiefStateField.define<CellId[]>({

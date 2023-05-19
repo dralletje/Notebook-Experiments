@@ -4,7 +4,7 @@ import {
   BlurEditorInChiefEffect,
   EditorInChiefEffect,
   EditorInChiefKeymap,
-} from "../codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 import {
   CellMetaField,
   MutateCellMetaEffect,

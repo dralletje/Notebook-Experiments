@@ -1,6 +1,6 @@
 import { StateEffect } from "@codemirror/state";
 import { SheetSizeField } from "./sheet-layout";
-import { EditorInChiefStateField } from "../codemirror-editor-in-chief/editor-in-chief";
+import { EditorInChiefStateField } from "codemirror-editor-in-chief";
 import { SheetPosition, SheetPositionSpec } from "./sheet-position";
 
 export const SelectedCellEffect =

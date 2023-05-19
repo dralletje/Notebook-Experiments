@@ -8,7 +8,7 @@ import {
 import { EditorView } from "@codemirror/view";
 import { compact } from "lodash";
 import { basic_markdown_setup } from "../packages/codemirror-markdown-wysiwyg/codemirror-markdown-wysiwyg";
-import { extract_nested_viewupdate } from "../packages/codemirror-editor-in-chief/editor-in-chief";
+import { extract_nested_viewupdate } from "codemirror-editor-in-chief";
 import { NudgeCell } from "../packages/codemirror-notebook/cell";
 import shadow from "react-shadow/styled-components";
 

@@ -1,4 +1,4 @@
-import { EditorInChiefStateField } from "../codemirror-editor-in-chief/editor-in-chief";
+import { EditorInChiefStateField } from "codemirror-editor-in-chief";
 
 export type SheetSize = {
   rows: number;

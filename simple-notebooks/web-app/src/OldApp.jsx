@@ -6,11 +6,8 @@ import { CellMetaField } from "./packages/codemirror-notebook/cell";
 import {
   shared_history,
   historyKeymap,
-} from "./packages/codemirror-editor-in-chief/codemirror-shared-history";
-import {
-  EditorInChief,
-  EditorInChiefKeymap,
-} from "./packages/codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief/history";
+import { EditorInChief, EditorInChiefKeymap } from "codemirror-editor-in-chief";
 
 import { SocketEnvironment } from "./environment/SocketEnvironment";
 import { WorkerEnvironment } from "./environment/WorkerEnvironment";
@@ -69,13 +66,9 @@ let FileTab = styled.button`
  */
 
 let NOTEBOOK_EDITOR_ID =
-  /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */ (
-    "notebook"
-  );
+  /** @type {import("codemirror-editor-in-chief").EditorId} */ ("notebook");
 let SHEET_EDITOR_ID =
-  /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */ (
-    "sheet"
-  );
+  /** @type {import("codemirror-editor-in-chief").EditorId} */ ("sheet");
 
 let project_to_editorinchief = (/** @type {Project} */ project) => {
   return notebook_to_editorinchief(project.notebook);

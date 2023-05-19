@@ -16,6 +16,7 @@ import {
   EditorHasSelectionField,
   editor_has_selection_extension,
 } from "./editor-has-selection-extension";
+import { BareEditorState } from "./editor-in-chief-state";
 
 declare const opaque: unique symbol;
 type Opaque<BaseType, BrandType = unknown> = BaseType & {
@@ -112,7 +113,7 @@ export let EditorRemoveEffect = StateEffect.define<{
 }>();
 
 export let EditorsField = StateField.define<{
-  cells: { [key: EditorId]: EditorState };
+  cells: { [key: EditorId]: BareEditorState };
   /** So... I need this separate from the EditorState's selection,
    *  because EditorState.selection can't be empty/inactive
    *  ALSO: Screw multiple selections (for now) */

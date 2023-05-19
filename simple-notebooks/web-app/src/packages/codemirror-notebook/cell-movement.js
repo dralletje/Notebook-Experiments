@@ -11,7 +11,7 @@ import {
   EditorDispatchEffect,
   EditorInChiefEffect,
   EditorExtension,
-} from "../codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 
 // A lot of this file is an adaptation of https://github.com/fonsp/Pluto.jl/blob/ab85efca962d009c741d4ec66508d687806e9579/frontend/components/CellInput/cell_movement_plugin.js
 // Only this uses my new nexus-style stuff, and it has cooler column-preserving-stuff 🤩

@@ -12,7 +12,7 @@ import { shallowEqualObjects } from "shallow-equal";
 import { Inspector } from "../yuck/Inspector";
 
 import { basic_javascript_setup } from "../codemirror-javascript/codemirror-javascript";
-import { EditorHasSelectionField } from "../packages/codemirror-editor-in-chief/editor-in-chief";
+import { EditorHasSelectionField } from "codemirror-editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,

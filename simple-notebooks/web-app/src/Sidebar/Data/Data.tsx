@@ -3,7 +3,7 @@ import React from "react";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 import { SheetPosition } from "../../packages/codemirror-sheet/sheet-position.js";
 import { EngineShadow } from "../../packages/codemirror-notebook/cell.js";
-import { extract_nested_viewupdate } from "../../packages/codemirror-editor-in-chief/extract-nested-viewupdate.js";
+import { extract_nested_viewupdate } from "codemirror-editor-in-chief";
 
 export let SidebarData = ({
   selected_cell,

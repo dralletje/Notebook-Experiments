@@ -2,7 +2,7 @@ import {
   EditorAddEffect,
   EditorDispatchEffect,
   EditorRemoveEffect,
-} from "../packages/codemirror-editor-in-chief/logic";
+} from "codemirror-editor-in-chief";
 import {
   CellOrderEffect,
   CellOrderField,

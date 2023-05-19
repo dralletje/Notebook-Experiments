@@ -1,3 +1,5 @@
+import { EditorState } from "@codemirror/state";
+
 interface Transaction<S> {
   state: S;
   startState: S;
@@ -5,16 +7,16 @@ interface Transaction<S> {
 
 interface TransactionSpec<S> {}
 
-interface EditorState {
+export interface UpdateableState {
   update(...spec: TransactionSpec<this>[]): Transaction<this>;
 }
 
-interface EditorView<S extends EditorState> {
+interface EditorView<S extends UpdateableState> {
   state: S;
   dispatch(...spec: Parameters<S["update"]>): void;
 }
 
-export class GenericViewUpdate<S extends EditorState> {
+export class GenericViewUpdate<S extends UpdateableState> {
   constructor(transactions: ReturnType<S["update"]>[], view: EditorView<S>);
 
   view: EditorView<S>;
@@ -28,12 +30,12 @@ export let CodemirrorFromViewUpdate: ({
   children,
   ...props
 }: {
-  viewupdate: GenericViewUpdate;
+  viewupdate: GenericViewUpdate<EditorState>;
   children: React.ReactNode;
   as?: string;
 } & import("react").HtmlHTMLAttributes<"div">) => JSX.Element;
 
-export let useViewUpdate: <TState>(
+export let useViewUpdate: <TState extends UpdateableState>(
   state: TState,
   on_change: (state: TState) => void
 ) => GenericViewUpdate<TState>;

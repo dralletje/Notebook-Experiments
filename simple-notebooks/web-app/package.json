@@ -26,6 +26,7 @@
     "@vitejs/plugin-react-swc": "^3.3.1",
     "codemirror-awesome-line-wrapping": "workspace:^",
     "codemirror-debug-syntax-plugin": "workspace:^",
+    "codemirror-editor-in-chief": "workspace:^",
     "codemirror-x-react": "workspace:^",
     "dral-lezer-helpers": "workspace:^",
     "excel-formula-parser": "^1.1.0",

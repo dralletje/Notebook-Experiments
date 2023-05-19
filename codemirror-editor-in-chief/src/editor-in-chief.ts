@@ -8,10 +8,7 @@ export {
   EditorIdFacet,
   EditorInChiefEffect,
 } from "./logic";
-export {
-  EditorHasSelectionField,
-  EditorHasSelectionEffect,
-} from "./editor-has-selection-extension";
+export { EditorHasSelectionField } from "./editor-has-selection-extension";
 export { extract_nested_viewupdate } from "./extract-nested-viewupdate";
 
 export { EditorInChief, EditorInChiefView } from "./editor-in-chief-state";
@@ -23,7 +20,7 @@ export {
 export { EditorInChiefTransaction } from "./wrap/transaction";
 export { EditorInChiefKeymap } from "./wrap/keymap";
 
-export type { EditorMapping } from "./editor-in-chief-state";
+export type { EditorInChiefTransactionSpec } from "./wrap/transaction";
 export type { EditorId } from "./logic";
 export type {
   EditorInChiefCommand,

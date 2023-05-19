@@ -1,5 +1,5 @@
 import { Annotation, AnnotationType } from "@codemirror/state";
-import { EditorInChiefStateField } from "../codemirror-editor-in-chief/editor-in-chief";
+import { EditorInChiefStateField } from "codemirror-editor-in-chief";
 
 /** @type {AnnotationType<true>} */
 export let NoAnimation = Annotation.define();

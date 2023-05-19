@@ -6,11 +6,8 @@ import { CellMetaField } from "./packages/codemirror-notebook/cell";
 import {
   shared_history,
   historyKeymap,
-} from "./packages/codemirror-editor-in-chief/codemirror-shared-history";
-import {
-  EditorInChief,
-  EditorInChiefKeymap,
-} from "./packages/codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief/history";
+import { EditorInChief, EditorInChiefKeymap } from "codemirror-editor-in-chief";
 
 // import { SocketEnvironment } from "./environment/SocketEnvironment";
 import { WorkerEnvironment } from "./environment/WorkerEnvironment";
@@ -52,11 +49,11 @@ import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selectio
  */
 
 let NOTEBOOK_EDITOR_ID =
-  /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */ (
+  /** @type {import("codemirror-editor-in-chief").EditorId<"notebook">} */ (
     "notebook"
   );
 let SHEET_EDITOR_ID =
-  /** @type {import("./packages/codemirror-editor-in-chief/editor-in-chief").EditorId} */ (
+  /** @type {import("codemirror-editor-in-chief").EditorId<"sheet">} */ (
     "sheet"
   );
 
@@ -77,7 +74,9 @@ let project_to_editorinchief = (/** @type {Project} */ project) => {
     extensions: [],
   });
 };
-let editorinchief_to_project = (/** @type {EditorInChief} */ editorinchief) => {
+let editorinchief_to_project = (
+  /** @type {import("./ProjectView").ProjectEditorInChief} */ editorinchief
+) => {
   let x = {
     notebook: editorinchief_to_notebook(
       editorinchief.editor(NOTEBOOK_EDITOR_ID)

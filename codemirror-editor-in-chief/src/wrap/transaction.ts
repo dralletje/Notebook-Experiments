@@ -17,15 +17,14 @@ export type EditorInChiefTransactionSpec = {
   filter?: boolean;
   scrollIntoView?: boolean;
 };
-export class EditorInChiefTransaction {
-  state: EditorInChief;
+export class EditorInChiefTransaction<
+  T extends EditorInChief<any> = EditorInChief<any>
+> {
+  state: T;
 
-  constructor(
-    public startState: EditorInChief,
-    public transaction: Transaction
-  ) {
+  constructor(public startState: T, public transaction: Transaction) {
     this.transaction = transaction;
-    this.state = new EditorInChief(this.transaction.state);
+    this.state = new EditorInChief(this.transaction.state) as T;
   }
 
   annotation<T>(type: AnnotationType<T>): T | undefined {

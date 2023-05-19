@@ -3,7 +3,7 @@ import { useViewUpdate } from "codemirror-x-react/viewupdate.js";
 import React from "react";
 import styled from "styled-components";
 import { Cell } from "../../Notebook/Cell.jsx";
-import { EditorHasSelectionField } from "../../packages/codemirror-editor-in-chief/editor-has-selection-extension";
+import { EditorHasSelectionField } from "codemirror-editor-in-chief";
 import { CellMetaField } from "../../packages/codemirror-notebook/cell";
 import { Flipper, Flipped, spring } from "react-flip-toolkit";
 

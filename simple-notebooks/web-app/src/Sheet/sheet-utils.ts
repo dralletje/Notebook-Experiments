@@ -6,7 +6,8 @@ import {
   EditorIdFacet,
   EditorInChief,
   EditorInChiefKeymap,
-} from "../packages/codemirror-editor-in-chief/editor-in-chief";
+  EditorInChiefTransactionSpec,
+} from "codemirror-editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,
@@ -18,7 +19,7 @@ import { CellOrderField } from "../packages/codemirror-notebook/cell-order.js";
 import {
   historyKeymap,
   shared_history,
-} from "../packages/codemirror-editor-in-chief/codemirror-shared-history";
+} from "codemirror-editor-in-chief/history";
 import { HyperfocusField } from "../packages/codemirror-sheet/hyperfocus";
 import { cell_keymap } from "../packages/codemirror-sheet/sheet-keymap";
 import {
@@ -33,9 +34,9 @@ import {
 } from "../packages/codemirror-sheet/sheet-selected-cell";
 import { SheetSizeField } from "../packages/codemirror-sheet/sheet-layout";
 import { sheet_movement } from "../packages/codemirror-sheet/sheet-movement";
-import { EditorInChiefTransactionSpec } from "../packages/codemirror-editor-in-chief/wrap/transaction";
 import { SheetPosition } from "../packages/codemirror-sheet/sheet-position";
 import { mapValues } from "lodash";
+import { ExcellState } from "../ExcellView";
 
 type SheetCell = {
   id: EditorId;
@@ -48,9 +49,7 @@ export type SheetSerialized = {
   size: { columns: number; rows: number };
 };
 
-export let editorinchief_to_sheet = (
-  state: EditorInChief<EditorState>
-): SheetSerialized => {
+export let editorinchief_to_sheet = (state: ExcellState): SheetSerialized => {
   let cell_editor_states = state.editors;
   return {
     size: {
@@ -70,7 +69,7 @@ export let editorinchief_to_sheet = (
 };
 
 export let sheetcell_to_editorstate = (
-  editorinchief: EditorInChief<EditorState>,
+  editorinchief: ExcellState,
   cell: SheetCell
 ) => {
   return editorinchief.create_section_editor({
@@ -135,7 +134,7 @@ export let sheet_to_editorinchief = (
 };
 
 export let cell_upsert = (
-  state: EditorInChief<EditorState>,
+  state: ExcellState,
   cell_id: EditorId,
   fn: (cell: EditorState) => TransactionSpec
 ) => {
@@ -146,6 +145,7 @@ export let cell_upsert = (
       ? sheetcell_to_editorstate(state, {
           id: cell_id,
           code: "",
+          // @ts-ignore
           unsaved_code: "",
         })
       : cell_state_existing;
@@ -155,7 +155,6 @@ export let cell_upsert = (
       ? {
           effects: [
             EditorAddEffect.of({
-              editor_id: cell_id,
               state: cell_state,
             }),
           ],
@@ -186,7 +185,7 @@ export type DOMEventHandlers<This> = {
     this: This,
     event: DOMEventMap[event],
     view: {
-      state: EditorInChief<EditorState>;
+      state: EditorInChief<any>;
       dispatch: (...tr: EditorInChiefTransactionSpec[]) => void;
     },
     cell_id: SheetPosition

@@ -1,5 +1,5 @@
 import { Prec } from "@codemirror/state";
-import { EditorInChiefKeymap } from "../codemirror-editor-in-chief/editor-in-chief";
+import { EditorInChiefKeymap } from "codemirror-editor-in-chief";
 import { SelectedCellEffect, SelectedCellField } from "./sheet-selected-cell";
 
 export let sheet_movement = EditorInChiefKeymap.of([

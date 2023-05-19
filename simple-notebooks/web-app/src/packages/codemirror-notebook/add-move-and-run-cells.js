@@ -12,7 +12,7 @@ import {
   EditorRemoveEffect,
   EditorInChiefEffect,
   EditorInChiefKeymap,
-} from "../codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,

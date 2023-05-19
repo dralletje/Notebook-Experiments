@@ -19,7 +19,7 @@ import {
   BlurEditorInChiefEffect,
   EditorInChief,
   extract_nested_viewupdate,
-} from "../packages/codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 
 import { CellTypeFacet } from "../packages/codemirror-notebook/cell";
 import { CellOrderField } from "../packages/codemirror-notebook/cell-order.js";
@@ -86,7 +86,7 @@ export function NotebookView({ viewupdate, engine }) {
             viewupdate.view.dispatch({
               effects: [
                 SelectCellsEffect.of(
-                  /** @type {import("../packages/codemirror-editor-in-chief/logic.js").EditorId[]} */ (
+                  /** @type {import("codemirror-editor-in-chief").EditorId[]} */ (
                     new_selected_cells
                   )
                 ),

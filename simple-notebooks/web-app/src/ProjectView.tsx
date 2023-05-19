@@ -18,7 +18,7 @@ import {
   EditorIdFacet,
   EditorInChief,
   extract_nested_viewupdate,
-} from "./packages/codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,
@@ -100,6 +100,11 @@ let Sheet = () => {};
 //   order: string[];
 // }
 
+export type ProjectEditorInChief = EditorInChief<{
+  sheet: EditorInChief<{ [key: string]: EditorState }>;
+  notebook: EditorInChief<{ [key: string]: EditorState }>;
+}>;
+
 export function ProjectView({
   filename,
   state: _state,
@@ -107,20 +112,20 @@ export function ProjectView({
   environment,
 }: {
   filename: string;
-  state: EditorInChief<any>;
-  onChange: (state: any) => void;
+  state: ProjectEditorInChief;
+  onChange: (state: ProjectEditorInChief) => void;
   environment: Environment;
 }) {
   let viewupdate = useViewUpdate(_state, onChange);
 
   let sheet_viewupdate = extract_nested_viewupdate(
     viewupdate,
-    "sheet" as EditorId
-  ) as any as GenericViewUpdate<EditorInChief<EditorState>>;
+    "sheet" as EditorId<"sheet">
+  );
   let notebook_viewupdate = extract_nested_viewupdate(
     viewupdate,
-    "notebook" as EditorId
-  ) as any as GenericViewUpdate<EditorInChief<EditorState>>;
+    "notebook" as EditorId<"notebook">
+  );
 
   let notebook_editorstates = notebook_viewupdate.state.editors;
   let notebook_cell_order = notebook_viewupdate.state.field(CellOrderField);

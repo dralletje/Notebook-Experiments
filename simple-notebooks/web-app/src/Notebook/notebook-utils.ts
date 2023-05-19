@@ -3,7 +3,7 @@ import {
   EditorIdFacet,
   EditorInChief,
   EditorInChiefKeymap,
-} from "../packages/codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 import {
   Cell,
   CellId,
@@ -17,11 +17,11 @@ import { create_codemirror_notebook } from "../packages/codemirror-notebook/code
 import {
   historyKeymap,
   shared_history,
-} from "../packages/codemirror-editor-in-chief/codemirror-shared-history";
+} from "codemirror-editor-in-chief/history";
 import { EditorState } from "@codemirror/state";
 
 export let editorinchief_to_notebook = (
-  state: EditorInChief<EditorState>
+  state: EditorInChief<{ [key: string]: EditorState }>
 ): Notebook => {
   let cell_editor_states = state.editors;
   return {
@@ -45,7 +45,7 @@ export let editorinchief_to_notebook = (
 };
 
 export let create_cell_state = (
-  editorstate: EditorInChief<EditorState>,
+  editorstate: EditorInChief<{ [key: string]: EditorState }>,
   cell: Cell
 ) => {
   return editorstate.create_section_editor({

@@ -18,7 +18,7 @@ import {
   EditorIdFacet,
   EditorInChief,
   extract_nested_viewupdate,
-} from "./packages/codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,

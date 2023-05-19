@@ -7,7 +7,7 @@ import {
   BlurEditorInChiefEffect,
   EditorDispatchEffect,
   EditorInChief,
-} from "../packages/codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 import {
   CellOrderEffect,
   CellOrderField,

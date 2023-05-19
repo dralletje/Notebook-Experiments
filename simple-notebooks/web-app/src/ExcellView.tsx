@@ -10,7 +10,7 @@ import {
   EditorInChief,
   extract_nested_viewupdate,
   EditorHasSelectionField,
-} from "./packages/codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 
 import {
   CodemirrorFromViewUpdate,
@@ -20,11 +20,13 @@ import { Extension } from "codemirror-x-react";
 import { Inspector } from "inspector-x-react";
 import { deserialize } from "./yuck/deserialize-value-to-show.js";
 
+export type ExcellState = EditorInChief<{ [key: string]: EditorState }>;
+
 export function Excell({
   viewupdate,
   engine,
 }: {
-  viewupdate: GenericViewUpdate<EditorInChief<EditorState>>;
+  viewupdate: GenericViewUpdate<ExcellState>;
   engine: EngineShadow;
 }) {
   let selected_cell = viewupdate.state.field(SelectedCellField, false);
@@ -103,7 +105,7 @@ let CellWrapper = ({
 }: {
   position: SheetPosition;
   selected_cell: { row: number; column: number };
-  viewupdate: GenericViewUpdate<EditorInChief<EditorState>>;
+  viewupdate: GenericViewUpdate<ExcellState>;
   cylinder: CylinderShadow;
 }) => {
   let has_normal_focus =
@@ -134,7 +136,7 @@ let CellWrapper = ({
 
     let unsub = [];
     for (let events of dom_event_handlers) {
-      for (let [event, handler] of Object.entries(events)) {
+      for (let [event_name, handler] of Object.entries(events)) {
         let el = cell_ref.current;
         if (el) {
           let listener = (event: Event) => {
@@ -145,8 +147,8 @@ let CellWrapper = ({
               event.preventDefault();
             }
           };
-          el.addEventListener(event, listener);
-          unsub.push(() => el.removeEventListener(event, listener));
+          el.addEventListener(event_name, listener);
+          unsub.push(() => el.removeEventListener(event_name, listener));
         }
       }
     }

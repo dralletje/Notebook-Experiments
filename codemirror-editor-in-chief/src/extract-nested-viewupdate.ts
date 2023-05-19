@@ -1,12 +1,12 @@
-import { EditorState, Transaction } from "@codemirror/state";
+import { Transaction } from "@codemirror/state";
 import ManyKeysWeakmap from "./many-keys-map";
 import { EditorIdFacet, EditorInChief, EditorsField } from "./editor-in-chief";
-import { EditorDispatchEffect } from "./logic";
+import { EditorDispatchEffect, EditorId } from "./logic";
 
 import type {
+  BareEditorState,
   EditorKeyOf,
   EditorMapping,
-  MinimalEditorState,
 } from "./editor-in-chief-state";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 import { EditorInChiefTransactionSpec } from "./wrap/transaction";
@@ -34,7 +34,7 @@ let nested_dispatch_weakmap = new ManyKeysWeakmap<
 >();
 let nested_editorstate_weakmap = new ManyKeysWeakmap<
   [Object, number],
-  EditorState
+  BareEditorState
 >();
 let nested_transactions_weakmap = new ManyKeysWeakmap<
   [Object, number],
@@ -42,7 +42,7 @@ let nested_transactions_weakmap = new ManyKeysWeakmap<
 >();
 let nested_viewupdate_weakmap = new ManyKeysWeakmap<
   [Object, Object, Object],
-  GenericViewUpdate<EditorState>
+  GenericViewUpdate<BareEditorState>
 >();
 
 export let extract_nested_viewupdate = <
@@ -50,8 +50,8 @@ export let extract_nested_viewupdate = <
   K extends EditorKeyOf<T>
 >(
   viewupdate: GenericViewUpdate<EditorInChief<T>>,
-  editor_id: K
-): GenericViewUpdate<EditorMapping[K]> => {
+  editor_id: EditorId<K>
+): GenericViewUpdate<T[K]> => {
   // Wrap every transaction in EditorDispatchEffect's
   let nested_dispatch = weakmap_get_or_create({
     weakmap: nested_dispatch_weakmap,
@@ -74,7 +74,9 @@ export let extract_nested_viewupdate = <
   let nested_editor_state = weakmap_get_or_create({
     weakmap: nested_editorstate_weakmap,
     key: [viewupdate.state, editor_id],
-    create: () => viewupdate.state.editor(editor_id),
+    // Can't use `.editor(...)` here because I want to it to silently fail if the editor doesn't exist.
+    // (Why do I want this to silently fail?!)
+    create: () => viewupdate.state.field(EditorsField).cells[editor_id],
   });
 
   let nested_transactions = weakmap_get_or_create({

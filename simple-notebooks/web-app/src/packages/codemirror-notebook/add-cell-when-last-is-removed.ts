@@ -1,8 +1,5 @@
 import { EditorState, Extension } from "@codemirror/state";
-import {
-  EditorAddEffect,
-  EditorInChief,
-} from "../codemirror-editor-in-chief/editor-in-chief";
+import { EditorAddEffect, EditorInChief } from "codemirror-editor-in-chief";
 import { CellOrderField, CellOrderEffect } from "./cell-order";
 import { empty_cell } from "./cell";
 import { NoAnimation } from "./last-created-cells";
@@ -30,7 +27,6 @@ export let add_single_cell_when_all_cells_are_removed =
         annotations: NoAnimation.of(true),
         effects: [
           EditorAddEffect.of({
-            editor_id: new_cell.id,
             state: create_cell_state(
               new EditorInChief(transaction.state),
               new_cell

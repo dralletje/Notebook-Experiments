@@ -9,5 +9,6 @@
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "outDir": "dist"
-  }
+  },
+  "include": ["src/**/*"]
 }

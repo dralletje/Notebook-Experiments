@@ -7,7 +7,6 @@ import {
 } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { ModernMap } from "@dral/modern-map";
-import { EditorState as GenericEditorState } from "codemirror-x-react/viewupdate";
 
 import {
   EditorsField,
@@ -57,13 +56,21 @@ export class EditorInChiefView {
   };
 }
 
-export type MinimalEditorState = EditorState;
-export type EditorMapping = { [key: EditorId]: MinimalEditorState };
-export type EditorKeyOf<T extends EditorMapping> = EditorId<
-  Extract<keyof T, string>
->;
+interface Transaction<S> {
+  state: S;
+  startState: S;
+}
+interface TransactionSpec<S> {}
+export interface BareEditorState {
+  update(...specs: TransactionSpec<this>[]): Transaction<this>;
+  facet<T>(facet: Facet<any, T>): T;
+  field<T>(field: StateField<T>): T;
+}
 
-let EditorInChiefCache = new WeakMap<EditorState, EditorInChief<any>>();
+export type EditorMapping = { [key: string]: BareEditorState };
+export type EditorKeyOf<T extends EditorMapping> = Extract<keyof T, string>;
+
+let EditorInChiefCache = new WeakMap<BareEditorState, EditorInChief<any>>();
 
 export class EditorInChief<Editors extends EditorMapping = EditorMapping> {
   constructor(public editorstate: EditorState) {
@@ -130,35 +137,44 @@ export class EditorInChief<Editors extends EditorMapping = EditorMapping> {
     });
   }
 
-  update(...specs: EditorInChiefTransactionSpec[]) {
+  update(
+    ...specs: EditorInChiefTransactionSpec[]
+  ): EditorInChiefTransaction<this> {
     // Instead of `expand_cell_effects_that_are_actually_meant_for_the_nexus` transactionExtender,
     // I would like to "extend" the transaction here. This makes it possible to keep the order of effects right.
     return new EditorInChiefTransaction(
       this,
       this.editorstate.update(...specs)
-    );
+    ) as any;
   }
 
-  get editors() {
+  get editors(): any {
     return new ModernMap(
       Object.entries(this.editorstate.field(EditorsField).cells)
-    ) as any as ModernMap<EditorKeyOf<Editors>, Editors[EditorKeyOf<Editors>]>;
+    ) as any as ModernMap<
+      EditorId<EditorKeyOf<Editors>>,
+      Editors[EditorKeyOf<Editors>]
+    >;
   }
 
-  editor<K extends EditorKeyOf<Editors>>(editor_id: K): Editors[K];
+  editor<K extends EditorKeyOf<Editors>>(editor_id: EditorId<K>): Editors[K];
   editor<K extends EditorKeyOf<Editors>>(
-    editor_id: K,
+    editor_id: EditorId<K>,
     required: false
   ): Editors[K] | undefined;
   editor<K extends EditorKeyOf<Editors>>(
-    editor_id: K,
+    editor_id: EditorId<K>,
     required?: false
-  ): Editors[K] | undefined {
+  ): Editors[Extract<K, string>] | undefined {
     if (required !== false && !this.editors.has(editor_id)) {
       throw new Error(`Editor with id ${editor_id} not found`);
     }
     return this.editors.get(editor_id) as any;
   }
+
+  // editor<K extends EditorKeyOf<Editors>>(editor_id: EditorId<K>): Editors[K] {
+  //   return this.editors.get(editor_id) as any;
+  // }
 
   get selection() {
     let cell_with_current_selection =
@@ -184,9 +200,9 @@ export class EditorInChief<Editors extends EditorMapping = EditorMapping> {
     return this.editors.mapValues((x) => x.doc);
   }
 
-  selected_editor() {
+  selected_editor(): Editors[EditorKeyOf<Editors>] | null {
     let cell_with_current_selection = this.editorstate.field(EditorsField)
-      .cell_with_current_selection as EditorKeyOf<Editors>;
+      .cell_with_current_selection as EditorId<EditorKeyOf<Editors>>;
     if (cell_with_current_selection != null) {
       return this.editor(cell_with_current_selection, false);
     } else {
@@ -194,6 +210,9 @@ export class EditorInChief<Editors extends EditorMapping = EditorMapping> {
     }
   }
 
+  /**
+   * @deprecated Why is this here?!
+   */
   static editors(editorstate: EditorState) {
     return new EditorInChief(editorstate).editors;
   }
