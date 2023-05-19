@@ -23,7 +23,7 @@ export {
 export { EditorInChiefTransaction } from "./wrap/transaction";
 export { EditorInChiefKeymap } from "./wrap/keymap";
 
-export type {} from "./editor-in-chief-state";
+export type { EditorMapping } from "./editor-in-chief-state";
 export type { EditorId } from "./logic";
 export type {
   EditorInChiefCommand,

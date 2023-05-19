@@ -1,11 +1,11 @@
 import { StateEffect, StateEffectType } from "@codemirror/state";
-import { invertedEffects } from "../codemirror-editor-in-chief/codemirror-shared-history";
+import { invertedEffects } from "codemirror-editor-in-chief/history";
 import {
   EditorAddEffect,
   EditorIdFacet,
   EditorInChiefStateField,
   EditorRemoveEffect,
-} from "../codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 import { uniq } from "lodash";
 
 /**
@@ -18,7 +18,7 @@ import { uniq } from "lodash";
  * }
  */
 
-/** @type {StateEffectType<{ index: CellPosition, cell_id: import("../codemirror-editor-in-chief/editor-in-chief").EditorId }>} */
+/** @type {StateEffectType<{ index: CellPosition, cell_id: import("codemirror-editor-in-chief").EditorId }>} */
 export let CellOrderEffect = StateEffect.define();
 
 let CellOrderInvertedEffects = invertedEffects.of((transaction) => {
@@ -65,7 +65,7 @@ let CellOrderInvertedEffects = invertedEffects.of((transaction) => {
 
 export let CellOrderField = EditorInChiefStateField.define({
   create() {
-    return /** @type {import("../codemirror-editor-in-chief/editor-in-chief").EditorId[]} */ ([]);
+    return /** @type {import("codemirror-editor-in-chief").EditorId[]} */ ([]);
   },
   update(value, transaction) {
     let current_value = value;

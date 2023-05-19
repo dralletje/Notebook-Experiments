@@ -6,6 +6,7 @@ import {
 } from "@codemirror/state";
 import { ModernMap } from "@dral/modern-map";
 import { EditorId } from "./logic";
+import { EditorInChiefChangeDesc } from "./wrap/changes";
 
 class ForCell<T> {
   constructor(public readonly cell_id: EditorId, public readonly value: T) {}

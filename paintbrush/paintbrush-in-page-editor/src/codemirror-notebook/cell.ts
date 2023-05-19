@@ -1,8 +1,5 @@
-import { invertedEffects } from "@codemirror/commands";
-import { Annotation, Facet, StateEffect, StateField } from "@codemirror/state";
-import { produce as immer } from "immer";
-import { v4 as uuidv4 } from "uuid";
-import { EditorId } from "../codemirror-editor-in-chief/logic";
+import { Annotation } from "@codemirror/state";
+import { EditorId } from "codemirror-editor-in-chief";
 
 export type CellId = EditorId;
 

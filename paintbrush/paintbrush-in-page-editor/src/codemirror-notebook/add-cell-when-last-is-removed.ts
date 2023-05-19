@@ -4,7 +4,7 @@ import {
   EditorIdFacet,
   EditorInChief,
   EditorRemoveEffect,
-} from "../codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 import { CellOrderField, CellOrderEffect } from "./cell-order";
 import { NoAnimation } from "./last-created-cells";
 import { create_empty_cell_facet } from "./config";

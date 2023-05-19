@@ -5,7 +5,7 @@ import {
   Facet,
   StateField,
 } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import type { EditorView } from "@codemirror/view";
 import { ModernMap } from "@dral/modern-map";
 import { EditorState as GenericEditorState } from "codemirror-x-react/viewupdate";
 

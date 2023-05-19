@@ -10,7 +10,8 @@
     "lezer-playground/packages/*",
     "packages/*",
     "paintbrush/extension",
-    "paintbrush/paintbrush-in-page-editor"
+    "paintbrush/paintbrush-in-page-editor",
+    "codemirror-editor-in-chief"
   ],
   "version": "1.0.0",
   "description": "",

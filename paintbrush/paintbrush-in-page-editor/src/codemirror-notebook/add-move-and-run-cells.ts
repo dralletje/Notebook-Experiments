@@ -17,7 +17,7 @@ import {
   EditorRemoveEffect,
   EditorInChiefEffect,
   EditorInChiefKeymap,
-} from "../codemirror-editor-in-chief/editor-in-chief";
+} from "codemirror-editor-in-chief";
 import { NudgeCell } from "./cell";
 import { CellOrderField, CellOrderEffect } from "./cell-order.js";
 import { NoAnimation } from "./last-created-cells.js";

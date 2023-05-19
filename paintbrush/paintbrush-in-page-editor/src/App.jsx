@@ -16,14 +16,13 @@ import {
   ActiveSelector,
   pkgBubblePlugin,
 } from "./codemirror-css/CssSelectorHighlight";
-import { EditorInChief } from "./codemirror-editor-in-chief/editor-in-chief-state";
-import { extract_nested_viewupdate } from "./codemirror-editor-in-chief/extract-nested-viewupdate";
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler";
 import {
   historyKeymap,
   shared_history,
-} from "./codemirror-editor-in-chief/codemirror-shared-history";
+} from "codemirror-editor-in-chief/history";
 import {
+  EditorInChief,
   BlurEditorInChiefEffect,
   EditorAddEffect,
   EditorDispatchEffect,
@@ -31,7 +30,8 @@ import {
   EditorHasSelectionField,
   EditorIdFacet,
   EditorInChiefKeymap,
-} from "./codemirror-editor-in-chief/editor-in-chief";
+  extract_nested_viewupdate,
+} from "codemirror-editor-in-chief";
 import { isEqual } from "lodash";
 import { decorate_colors } from "./codemirror-css/ColorHighlight";
 import dedent from "string-dedent";
@@ -367,7 +367,7 @@ function Editor({ viewupdate }) {
 }
 
 let create_cell_state = (
-  /** @type {EditorInChief<import("./codemirror-editor-in-chief/editor-in-chief-state").EditorMapping>} */ editorstate,
+  /** @type {EditorInChief<import("codemirror-editor-in-chief").EditorMapping>} */ editorstate,
   /** @type {Cell} */ cell
 ) => {
   return editorstate.create_section_editor({

@@ -1,4 +1,4 @@
-import { EditorExtension } from "../codemirror-editor-in-chief/logic";
+import { EditorExtension } from "codemirror-editor-in-chief";
 
 import { add_single_cell_when_all_cells_are_removed } from "./add-cell-when-last-is-removed";
 import { cell_keymap, notebook_keymap } from "./add-move-and-run-cells";

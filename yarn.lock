@@ -649,6 +649,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@codemirror/view@npm:^6.12.0":
+  version: 6.12.0
+  resolution: "@codemirror/view@npm:6.12.0"
+  dependencies:
+    "@codemirror/state": ^6.1.4
+    style-mod: ^4.0.0
+    w3c-keyname: ^2.2.4
+  checksum: 512cbc9c05ac2cfa738cdf7aac711847b44e24ff5869f31839a9fcc11da6a512448fa9bc980535d55b897de80d49e744336a2724ca1fe3dae8bfcb31e339fe64
+  languageName: node
+  linkType: hard
+
 "@cspotcode/source-map-support@npm:^0.8.0":
   version: 0.8.1
   resolution: "@cspotcode/source-map-support@npm:0.8.1"
@@ -2373,6 +2384,19 @@ __metadata:
   peerDependencies:
     "@codemirror/language": ^6.2.1
     "@codemirror/view": ^6.2.0
+  languageName: unknown
+  linkType: soft
+
+"codemirror-editor-in-chief@workspace:^, codemirror-editor-in-chief@workspace:codemirror-editor-in-chief":
+  version: 0.0.0-use.local
+  resolution: "codemirror-editor-in-chief@workspace:codemirror-editor-in-chief"
+  dependencies:
+    "@codemirror/commands": ^6.2.4
+    "@codemirror/state": ^6.2.0
+    "@codemirror/view": ^6.12.0
+    "@dral/modern-map": "workspace:^"
+    codemirror-x-react: "workspace:^"
+    typescript: ^5.0.4
   languageName: unknown
   linkType: soft
 
@@ -4730,6 +4754,7 @@ __metadata:
     "@lezer/common": ^1.0.2
     "@lezer/highlight": ^1.1.4
     "@lezer/markdown": ^1.0.2
+    codemirror-editor-in-chief: "workspace:^"
     codemirror-x-react: "workspace:^"
     htm: ^3.1.1
     immer: ^10.0.2

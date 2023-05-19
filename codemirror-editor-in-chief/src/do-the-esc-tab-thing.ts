@@ -11,7 +11,10 @@ import { EditorView, keymap } from "@codemirror/view";
 // .... So I need to create a new field/facet to block events manually.
 // .... Luckily, I am in control of everything so yeah I can do that 😎
 
-let handle_tab_ref = { escape_is_pressed: false, timeout: null };
+let handle_tab_ref = {
+  escape_is_pressed: false,
+  timeout: null as unknown as ReturnType<typeof setTimeout>,
+};
 export let escape_handler_keymap = Prec.highest(
   EditorView.domEventHandlers({
     keydown: (event, view) => {

@@ -29,6 +29,7 @@ import {
   EditorInChief,
   EditorAddEffect,
   EditorRemoveEffect,
+  EditorHasSelectionField,
 } from "./editor-in-chief";
 import { compact } from "lodash";
 import { EditorInChiefSelection, CellStateEffect } from "./wrap-cell-types";
@@ -625,18 +626,22 @@ let inverted_add_remove_editor = invertedEffects.of((transaction) => {
   let inverted_effects = [];
   for (let effect of transaction.effects) {
     if (effect.is(EditorAddEffect)) {
+      let editor_id = effect.value.state.facet(EditorIdFacet);
       inverted_effects.push(
         EditorRemoveEffect.of({
-          editor_id: effect.value.editor_id,
+          editor_id: editor_id,
         })
       );
     } else if (effect.is(EditorRemoveEffect)) {
       let { editor_id } = effect.value;
       let cell_state = transaction.startState.editor(editor_id);
+      // TODO Focus _should_ be handled by history itself...
+      // .... but fat chance is isn't yet
+      // let has_selection = cell_state.field(EditorHasSelectionField);
       inverted_effects.push(
         EditorAddEffect.of({
-          editor_id: editor_id,
           state: cell_state,
+          // focus: has_selection,
         })
       );
     }

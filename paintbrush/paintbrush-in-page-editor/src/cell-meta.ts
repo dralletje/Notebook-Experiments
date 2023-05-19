@@ -1,5 +1,5 @@
 import { StateEffect, StateField } from "@codemirror/state";
-import { invertedEffects } from "./codemirror-editor-in-chief/codemirror-shared-history";
+import { invertedEffects } from "codemirror-editor-in-chief/history";
 import { produce } from "immer";
 
 type CellMeta = {
