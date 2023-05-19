@@ -58,10 +58,14 @@ export class EditorInChiefView {
 }
 
 export type MinimalEditorState = EditorState;
+export type EditorMapping = { [key: EditorId]: MinimalEditorState };
+export type EditorKeyOf<T extends EditorMapping> = EditorId<
+  Extract<keyof T, string>
+>;
 
 let EditorInChiefCache = new WeakMap<EditorState, EditorInChief<any>>();
 
-export class EditorInChief<SectionEditor extends MinimalEditorState> {
+export class EditorInChief<Editors extends EditorMapping = EditorMapping> {
   constructor(public editorstate: EditorState) {
     this.editorstate = editorstate;
 
@@ -138,16 +142,22 @@ export class EditorInChief<SectionEditor extends MinimalEditorState> {
   get editors() {
     return new ModernMap(
       Object.entries(this.editorstate.field(EditorsField).cells)
-    ) as any as ModernMap<EditorId, SectionEditor>;
+    ) as any as ModernMap<EditorKeyOf<Editors>, Editors[EditorKeyOf<Editors>]>;
   }
 
-  editor(editor_id: EditorId): SectionEditor;
-  editor(editor_id: EditorId, required: false): SectionEditor | undefined;
-  editor(editor_id: EditorId, required?: false): SectionEditor | undefined {
+  editor<K extends EditorKeyOf<Editors>>(editor_id: K): Editors[K];
+  editor<K extends EditorKeyOf<Editors>>(
+    editor_id: K,
+    required: false
+  ): Editors[K] | undefined;
+  editor<K extends EditorKeyOf<Editors>>(
+    editor_id: K,
+    required?: false
+  ): Editors[K] | undefined {
     if (required !== false && !this.editors.has(editor_id)) {
       throw new Error(`Editor with id ${editor_id} not found`);
     }
-    return this.editors.get(editor_id);
+    return this.editors.get(editor_id) as any;
   }
 
   get selection() {
@@ -175,8 +185,8 @@ export class EditorInChief<SectionEditor extends MinimalEditorState> {
   }
 
   selected_editor() {
-    let cell_with_current_selection =
-      this.editorstate.field(EditorsField).cell_with_current_selection;
+    let cell_with_current_selection = this.editorstate.field(EditorsField)
+      .cell_with_current_selection as EditorKeyOf<Editors>;
     if (cell_with_current_selection != null) {
       return this.editor(cell_with_current_selection, false);
     } else {
@@ -187,11 +197,11 @@ export class EditorInChief<SectionEditor extends MinimalEditorState> {
   static editors(editorstate: EditorState) {
     return new EditorInChief(editorstate).editors;
   }
-  static create<SectionEditor extends MinimalEditorState>({
+  static create<Editors extends EditorMapping>({
     editors,
     extensions = [],
   }: {
-    editors: (editorstate: EditorInChief<SectionEditor>) => {
+    editors: (editorstate: EditorInChief<Editors>) => {
       [key: EditorId]: EditorState;
     };
     extensions?: EditorInChiefExtension[];

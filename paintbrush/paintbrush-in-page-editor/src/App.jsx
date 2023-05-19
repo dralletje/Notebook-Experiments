@@ -10,8 +10,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 
 import { EditorSelection, EditorState } from "@codemirror/state";
-import { indentLess, indentMore, invertedEffects } from "@codemirror/commands";
-import { EditorView, keymap, placeholder } from "@codemirror/view";
+import { placeholder } from "@codemirror/view";
 
 import {
   ActiveSelector,
@@ -51,7 +50,7 @@ import { add_single_cell_when_all_cells_are_removed } from "./codemirror-noteboo
 import "./App.css";
 import "./editor.css";
 
-import { RxCrossCircled } from "react-icons/rx";
+import { RxCrossCircled, RxEyeClosed, RxEyeOpen } from "react-icons/rx";
 
 let Cell = styled.div`
   &.modified {
@@ -124,23 +123,12 @@ let CellHeaderButton = styled.button`
   }
 `;
 
-let NotebookHeaderButton = styled.button`
-  all: unset;
-  border-radius: 100px;
-  background-color: #ffffff08;
-  transition: background-color 0.2s;
-  padding: 0px 8px;
-  font-size: 0.7em;
-
-  &:hover {
-    background-color: #ffffff1f;
-  }
-`;
-
 let NameInput = styled.input.attrs({ type: "text" })`
   all: unset;
   font-size: 1rem;
   padding: 4px 16px;
+  padding-left: 10px;
+
   color: white;
   width: 100%;
 
@@ -224,14 +212,6 @@ let call_extension = (type, argument) => {
   });
 };
 
-let code_tab = keymap.of([
-  {
-    key: "Tab",
-    run: indentMore,
-    shift: indentLess,
-  },
-]);
-
 let useCssVariables = () => {
   let [variables, set_variables] = React.useState(
     /** @type {{ key: String, value: string }[]} */ ([])
@@ -246,7 +226,7 @@ let useCssVariables = () => {
 
 /**
  * @param {{
- *   viewupdate: GenericViewUpdate<EditorInChief<EditorState>>,
+ *   viewupdate: GenericViewUpdate<EditorInChief<{ [k: string]: EditorState }>>,
  * }} props
  */
 function Editor({ viewupdate }) {
@@ -347,7 +327,6 @@ function Editor({ viewupdate }) {
                   <Extension extension={pkgBubblePlugin()} deps={[]} />
                   <Extension extension={css_variables_facet_value} />
                   <Extension extension={css_variable_completions} />
-                  <Extension extension={code_tab} />
                 </CodemirrorFromViewUpdate>
               </div>
             </Cell>
@@ -380,7 +359,7 @@ function Editor({ viewupdate }) {
             });
           }}
         >
-          add cell
+          add style
         </CellHeaderButton>
       </div>
     </div>
@@ -388,7 +367,7 @@ function Editor({ viewupdate }) {
 }
 
 let create_cell_state = (
-  /** @type {EditorInChief<EditorState>} */ editorstate,
+  /** @type {EditorInChief<import("./codemirror-editor-in-chief/editor-in-chief-state").EditorMapping>} */ editorstate,
   /** @type {Cell} */ cell
 ) => {
   return editorstate.create_section_editor({
@@ -468,7 +447,7 @@ let notebook_to_editorinchief = (
   });
 };
 
-/** @param {EditorInChief<EditorState>} state */
+/** @param {EditorInChief} state */
 let editorinchief_to_sheets = (state) => {
   return state.field(CellOrderField).map((cell_id) => {
     let x = state.editor(cell_id);
@@ -484,7 +463,7 @@ let editorinchief_to_sheets = (state) => {
 };
 
 /**
- * @param {EditorInChief<EditorState>} state
+ * @param {EditorInChief} state
  * @returns {Cell[]}
  * */
 let editorinchief_to_serialized = (state) => {
@@ -503,8 +482,8 @@ let editorinchief_to_serialized = (state) => {
 
 /**
  * @param {{
- *  state: EditorInChief<EditorState>,
- *  set_state: (state: EditorInChief<EditorState>) => void,
+ *  state: EditorInChief,
+ *  set_state: (state: EditorInChief) => void,
  * }} props
  */
 let AppWhenLoaded = ({ state, set_state }) => {
@@ -602,6 +581,7 @@ let AppWhenLoaded = ({ state, set_state }) => {
       >
         <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
           <RxCrossCircled
+            title="Close Paintbrush"
             onMouseDown={(event) => {
               event.preventDefault();
             }}
@@ -615,10 +595,61 @@ let AppWhenLoaded = ({ state, set_state }) => {
           />
         </div>
         <h1>Paintbrush</h1>
-        <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
-          {/* <NotebookHeaderButton onClick={() => {}}>
-            close all
-          </NotebookHeaderButton> */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+          }}
+        >
+          {viewupdate.state.field(CellOrderField).every((cell_id) => {
+            let x = viewupdate.state.editor(cell_id);
+            let meta = x.field(CellMetaField);
+            return meta.folded;
+          }) ? (
+            <RxEyeOpen
+              title="Open all"
+              onMouseDown={(event) => {
+                event.preventDefault();
+              }}
+              onClick={(event) => {
+                viewupdate.view.dispatch({
+                  effects: viewupdate.state.field(CellOrderField).map((x) => {
+                    return EditorDispatchEffect.of({
+                      editor_id: x,
+                      transaction: {
+                        effects: MutateCellMetaEffect.of((x) => {
+                          x.folded = false;
+                        }),
+                      },
+                    });
+                  }),
+                });
+              }}
+            />
+          ) : (
+            <RxEyeClosed
+              title="Close all"
+              onMouseDown={(event) => {
+                event.preventDefault();
+              }}
+              onClick={(event) => {
+                viewupdate.view.dispatch({
+                  effects: viewupdate.state.field(CellOrderField).map((x) => {
+                    return EditorDispatchEffect.of({
+                      editor_id: x,
+                      transaction: {
+                        effects: MutateCellMetaEffect.of((x) => {
+                          x.folded = true;
+                        }),
+                      },
+                    });
+                  }),
+                });
+              }}
+            />
+          )}
         </div>
       </NotebookHeader>
 
@@ -644,7 +675,7 @@ let App = () => {
 let EditorBox = styled.div`
   position: fixed;
   height: max(60vh, min(500px, 100vh));
-  width: max(20vw, 350px);
+  width: max(20vw, 400px);
   overflow: auto;
 
   background-color: rgb(24 24 24);

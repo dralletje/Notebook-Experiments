@@ -11,8 +11,7 @@
   font-size: 16px;
 }
 .cm-editor .cm-scroller {
-  font: inherit;
-  padding-left: 12px !important;
+  font-family: inherit;
 }
 .cm-editor.cm-focused {
   outline: none;
@@ -25,7 +24,6 @@
 .cm-editor .cm-completionDetail {
   color: #00a7ca;
 }
-
 .cm-editor .cm-selectionBackground {
   background: #7ff0ff11;
 }
@@ -51,8 +49,4 @@
 
 .cm-cursor {
   border-left: 1.2px solid white !important;
-}
-
-.cm-scroller {
-  padding: 8px !important;
 }

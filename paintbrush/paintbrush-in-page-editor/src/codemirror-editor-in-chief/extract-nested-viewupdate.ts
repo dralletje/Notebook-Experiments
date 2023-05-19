@@ -3,7 +3,11 @@ import ManyKeysWeakmap from "./many-keys-map";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 import { EditorIdFacet, EditorInChief, EditorsField } from "./editor-in-chief";
 import { EditorDispatchEffect, EditorId } from "./logic";
-import { MinimalEditorState } from "./editor-in-chief-state";
+import {
+  EditorKeyOf,
+  EditorMapping,
+  MinimalEditorState,
+} from "./editor-in-chief-state";
 
 let weakmap_get_or_create = <T extends Object, U>({
   weakmap,
@@ -39,10 +43,13 @@ let nested_viewupdate_weakmap = new ManyKeysWeakmap<
   GenericViewUpdate<EditorState>
 >();
 
-export let extract_nested_viewupdate = <T extends MinimalEditorState>(
+export let extract_nested_viewupdate = <
+  T extends EditorMapping,
+  K extends EditorKeyOf<T>
+>(
   viewupdate: GenericViewUpdate<EditorInChief<T>>,
-  editor_id: EditorId
-): GenericViewUpdate<MinimalEditorState> => {
+  editor_id: K
+): GenericViewUpdate<EditorMapping[K]> => {
   // Wrap every transaction in EditorDispatchEffect's
   let nested_dispatch = weakmap_get_or_create({
     weakmap: nested_dispatch_weakmap,
@@ -65,7 +72,7 @@ export let extract_nested_viewupdate = <T extends MinimalEditorState>(
   let nested_editor_state = weakmap_get_or_create({
     weakmap: nested_editorstate_weakmap,
     key: [viewupdate.state, editor_id],
-    create: () => viewupdate.state.field(EditorsField).cells[editor_id],
+    create: () => viewupdate.state.editor(editor_id),
   });
 
   let nested_transactions = weakmap_get_or_create({

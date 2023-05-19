@@ -35,13 +35,6 @@
     if (preexisting_conditions) {
       preexisting_conditions.remove();
     } else {
-      let should_invert = document.documentElement
-        // @ts-ignore
-        .computedStyleMap()
-        .get("filter")
-        .toString()
-        .includes("invert(1)");
-
       // prettier-ignore
       let shadow_element = createElementFromHTML(`
         <paintbrush-overlay-container
@@ -76,10 +69,6 @@
       animation-duration: 1.2s;
       /* animation-name: slidein; */
     }  
-
-    :host > * {
-      filter: ${should_invert ? "invert(1)" : "invert(0)"};
-    }
 
     .highlight-overlay, .highlight-overlay:before, .highlight-overlay:after {
       --border-size: 2px;
@@ -204,7 +193,6 @@
                   preexisting_element.remove();
                 }
 
-                console.log(`style:`, style);
                 if (style.disabled) continue;
 
                 let element = document.createElement("style");

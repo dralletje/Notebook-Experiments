@@ -36,7 +36,7 @@ export class EditorInChiefStateField<T> {
     return this.__field;
   }
 
-  init(init: (state: EditorInChief) => T) {
+  init(init: (state: EditorInChief<any>) => T) {
     return new EditorInChiefStateFieldInit(
       this.__field.init((state) => {
         return init(new EditorInChief(state));
