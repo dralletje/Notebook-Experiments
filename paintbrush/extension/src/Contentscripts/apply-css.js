@@ -15,7 +15,7 @@
 
       let element = document.createElement("style");
       // element.innerHTML = css.replace(/(?:!important)? *;(\n|$)/gm, " !important;$1");
-      element.innerHTML = style.code;
+      element.innerHTML = style.css_to_apply ?? style.code;
       element.dataset.paintbrush = "true";
       element.dataset.paintbrushId = style.id;
       element.dataset.paintbrushTitle = style.name;

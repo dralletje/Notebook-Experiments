@@ -638,18 +638,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@codemirror/view@npm:^6.0.0, @codemirror/view@npm:^6.11.3, @codemirror/view@npm:^6.2.2, @codemirror/view@npm:^6.6.0":
-  version: 6.11.3
-  resolution: "@codemirror/view@npm:6.11.3"
-  dependencies:
-    "@codemirror/state": ^6.1.4
-    style-mod: ^4.0.0
-    w3c-keyname: ^2.2.4
-  checksum: 6bd38a3a55933a71a092db487d1fa8fcc0dc12c8de0edd1827e73144645ff80a0a86fb8d590a3cfe39bffd7550f19546a3c4ee6811e7baa3a400e92322c60cd4
-  languageName: node
-  linkType: hard
-
-"@codemirror/view@npm:^6.12.0":
+"@codemirror/view@npm:^6.0.0, @codemirror/view@npm:^6.11.3, @codemirror/view@npm:^6.12.0, @codemirror/view@npm:^6.2.2, @codemirror/view@npm:^6.6.0":
   version: 6.12.0
   resolution: "@codemirror/view@npm:6.12.0"
   dependencies:
@@ -4756,11 +4745,15 @@ __metadata:
     "@lezer/common": ^1.0.2
     "@lezer/highlight": ^1.1.4
     "@lezer/markdown": ^1.0.2
+    autoprefixer: ^10.4.14
     codemirror-editor-in-chief: "workspace:^"
     codemirror-x-react: "workspace:^"
     htm: ^3.1.1
     immer: ^10.0.2
     lodash: ^4.17.21
+    postcss: ^8.4.23
+    postcss-nested: ^6.0.1
+    postcss-safe-parser: ^6.0.0
     react: ^18.1.0
     react-dom: ^18.1.0
     react-icons: ^4.8.0
@@ -4953,6 +4946,15 @@ __metadata:
   peerDependencies:
     postcss: ^8.4
   checksum: 84149edbfe9b0adf069b7ddf06d21fc7a543e7f44b97c3975d8b1f088dddc20853689cb859d5be06000cca83bdc56929b13581bfdaf1971cfafa492add867831
+  languageName: node
+  linkType: hard
+
+"postcss-safe-parser@npm:^6.0.0":
+  version: 6.0.0
+  resolution: "postcss-safe-parser@npm:6.0.0"
+  peerDependencies:
+    postcss: ^8.3.3
+  checksum: 06c733eaad83a3954367e7ee02ddfe3796e7a44d4299ccf9239f40964a4daac153c7d77613f32964b5a86c0c6c2f6167738f31d578b73b17cb69d0c4446f0ebe
   languageName: node
   linkType: hard
 

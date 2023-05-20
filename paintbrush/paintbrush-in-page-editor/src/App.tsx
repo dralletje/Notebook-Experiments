@@ -55,6 +55,8 @@ import "./editor.css";
 
 import { RxCrossCircled, RxEyeClosed, RxEyeOpen } from "react-icons/rx";
 import { as_editor_id } from "codemirror-editor-in-chief/dist/logic";
+import { call_extension } from "./communicate-with-extension";
+import { apply_postcss } from "./postcss";
 
 let Cell = styled.div`
   &.modified {
@@ -107,6 +109,7 @@ let CellHeader = styled.div`
 type Cell = {
   id: string;
   code: string;
+  css_to_apply: string;
   disabled?: boolean;
   collapsed?: boolean;
   name?: string;
@@ -150,68 +153,6 @@ let classes = (obj) => {
     .filter(([key, value]) => value)
     .map(([key, value]) => key)
     .join(" ");
-};
-
-type PaintbrushIframeCommandMap = {
-  highlight_selector: {
-    input: { selector: string | undefined };
-    output: void;
-  };
-  save: {
-    input: { cells: Cell[] };
-    output: void;
-  };
-  "toggle-horizontal-position": { input: void; output: void };
-  css: {
-    input: { code: string };
-    output: void;
-  };
-  "apply-new-css": { input: { sheets: Cell[] }; output: void };
-  load: {
-    input: void;
-    output: Cell[];
-  };
-  ready: { input: void; output: void };
-  close: { input: void; output: void };
-  reload: { input: void; output: void };
-  "get-css-variables": {
-    input: {};
-    output: { variables: { key: string; value: string }[] };
-  };
-};
-
-let message_counter = 1;
-
-/**
- * `window.parent.postMessage` but with types so
- * I know I am not screwing things up too much.
- */
-let call_extension = <K extends keyof PaintbrushIframeCommandMap>(
-  type: K,
-  argument?: PaintbrushIframeCommandMap[K]["input"]
-): Promise<PaintbrushIframeCommandMap[K]["output"]> => {
-  let message_id = message_counter++;
-  window.parent.postMessage(
-    {
-      ...argument,
-      type: type,
-      message_id: message_id,
-    },
-    "*"
-  );
-
-  return new Promise((resolve) => {
-    window.addEventListener("message", function listener(event) {
-      if (event.source !== window.parent) return;
-      if (
-        event.data.type === "response" &&
-        event.data.message_id === message_id
-      ) {
-        window.removeEventListener("message", listener);
-        resolve(event.data.result);
-      }
-    });
-  });
 };
 
 type PaintbrushEditorInChief = EditorInChief<{ [key: string]: EditorState }>;
@@ -391,9 +332,10 @@ let create_cell_state = (
 let save_on_save = EditorInChiefKeymap.of([
   {
     key: "Mod-s",
-    run: ({ state, dispatch }) => {
+    run: ({ state: editor_in_chief, dispatch }) => {
       dispatch({
-        effects: state.field(CellOrderField).map((id) => {
+        effects: editor_in_chief.field(CellOrderField).map((id) => {
+          let state = editor_in_chief.editor(id);
           return EditorDispatchEffect.of({
             editor_id: id,
             transaction: {
@@ -421,6 +363,7 @@ let notebook_to_editorinchief = (
       {
         id: uuidv4(),
         code: "",
+        css_to_apply: "",
         collapsed: false,
         disabled: false,
         name: "",
@@ -448,6 +391,7 @@ let notebook_to_editorinchief = (
         return create_cell_state(editor_in_chief, {
           id: uuidv4(),
           code,
+          css_to_apply: "",
           collapsed: false,
           disabled: false,
           name: "",
@@ -460,17 +404,32 @@ let notebook_to_editorinchief = (
   });
 };
 
-let editorinchief_to_sheets = (state: PaintbrushEditorInChief) => {
+let editorinchief_to_sheets = (state: PaintbrushEditorInChief): Cell[] => {
   return state.field(CellOrderField).map((cell_id) => {
     let x = state.editor(cell_id);
     let meta = x.field(CellMetaField);
-    return {
-      code: x.doc.toString(),
-      name: meta.name,
-      id: x.facet(EditorIdFacet),
-      collapsed: meta.folded,
-      disabled: !meta.enabled,
-    };
+    let doc = x.doc.toString();
+    try {
+      return {
+        code: doc,
+        css_to_apply: apply_postcss(doc),
+        name: meta.name,
+        id: x.facet(EditorIdFacet),
+        collapsed: meta.folded,
+        disabled: !meta.enabled,
+      };
+    } catch (error) {
+      // prettier-ignore
+      console.error("ERROR WHILE PROCESSING CELL", error.stack, x.doc.toString());
+      return {
+        code: doc,
+        css_to_apply: "",
+        name: meta.name,
+        id: x.facet(EditorIdFacet),
+        collapsed: meta.folded,
+        disabled: !meta.enabled,
+      };
+    }
   });
 };
 
@@ -478,13 +437,27 @@ let editorinchief_to_serialized = (state: PaintbrushEditorInChief): Cell[] => {
   return state.field(CellOrderField).map((cell_id) => {
     let x = state.editor(cell_id);
     let meta = x.field(CellMetaField);
-    return {
-      code: meta.code,
-      name: meta.name,
-      id: x.facet(EditorIdFacet),
-      collapsed: meta.folded,
-      disabled: !meta.enabled,
-    };
+    try {
+      return {
+        code: meta.code,
+        css_to_apply: apply_postcss(meta.code),
+        name: meta.name,
+        id: x.facet(EditorIdFacet),
+        collapsed: meta.folded,
+        disabled: !meta.enabled,
+      };
+    } catch (error) {
+      // prettier-ignore
+      console.error("ERROR WHILE PROCESSING CELL", error.stack, x.doc.toString());
+      return {
+        code: meta.code,
+        css_to_apply: "",
+        name: meta.name,
+        id: x.facet(EditorIdFacet),
+        collapsed: meta.folded,
+        disabled: !meta.enabled,
+      };
+    }
   });
 };
 
