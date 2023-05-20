@@ -23,22 +23,25 @@ import { EditorState } from "@codemirror/state";
 export let editorinchief_to_notebook = (
   state: EditorInChief<{ [key: string]: EditorState }>
 ): Notebook => {
-  let cell_editor_states = state.editors;
   return {
     cell_order: state.field(CellOrderField),
     cells: Object.fromEntries(
-      cell_editor_states.mapValues((cell_state) => {
+      state.field(CellOrderField).map((cell_id) => {
+        let cell_state = state.editor(cell_id);
         let type = cell_state.facet(CellTypeFacet);
-        return {
-          id: cell_state.facet(EditorIdFacet),
-          unsaved_code: cell_state.doc.toString(),
-          ...cell_state.field(CellMetaField),
-          type: type,
+        return [
+          cell_id,
+          {
+            id: cell_state.facet(EditorIdFacet),
+            unsaved_code: cell_state.doc.toString(),
+            ...cell_state.field(CellMetaField),
+            type: type,
 
-          // This autosaves the text cells
-          // TODO? Do we want this?
-          ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
-        };
+            // This autosaves the text cells
+            // TODO? Do we want this?
+            ...(type === "text" ? { code: cell_state.doc.toString() } : {}),
+          },
+        ];
       })
     ),
   };

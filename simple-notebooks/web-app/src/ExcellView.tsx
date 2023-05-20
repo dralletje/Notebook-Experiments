@@ -112,8 +112,9 @@ let CellWrapper = ({
     selected_cell?.row == position.row &&
     selected_cell?.column == position.column;
   let has_hyper_focus =
-    viewupdate.state.editors.get(position.id)?.field(EditorHasSelectionField) ??
-    false;
+    viewupdate.state
+      .editor(position.id, false)
+      ?.field(EditorHasSelectionField) ?? false;
 
   let cell_ref = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {

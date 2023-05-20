@@ -39,8 +39,11 @@ import shadow from "react-shadow/styled-components";
 import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 
 import { NotebookViewWithDragAndDrop } from "./Notebook/NotebookViewWithDragAndDrop";
+import { EditorState } from "@codemirror/state";
 
 let Sheet = () => {};
+
+type NotebookEditorInChief = EditorInChief<{ [k: string]: EditorState }>;
 
 export function IndependentNotebook({
   filename,
@@ -49,13 +52,12 @@ export function IndependentNotebook({
   environment,
 }: {
   filename: string;
-  state: EditorInChief<any>;
-  onChange: (state: any) => void;
+  state: NotebookEditorInChief;
+  onChange: (state: NotebookEditorInChief) => void;
   environment: Environment;
 }) {
   let notebook_viewupdate = useViewUpdate(state, onChange);
 
-  let notebook_editorstates = notebook_viewupdate.state.editors;
   let notebook_cell_order = notebook_viewupdate.state.field(CellOrderField);
 
   let notebook = React.useMemo(() => {
@@ -63,7 +65,7 @@ export function IndependentNotebook({
       cell_order: notebook_cell_order,
       cells: Object.fromEntries([
         ...notebook_cell_order.map((cell_id) => {
-          let cell_state = notebook_editorstates.get(cell_id);
+          let cell_state = notebook_viewupdate.state.editor(cell_id);
           let type = cell_state.facet(CellTypeFacet);
           return [
             cell_id,
@@ -81,7 +83,7 @@ export function IndependentNotebook({
         }),
       ]),
     };
-  }, [notebook_editorstates, notebook_cell_order]);
+  }, [notebook_viewupdate.state.editors, notebook_cell_order]);
 
   let notebook_with_filename = React.useMemo(() => {
     return { filename: filename, notebook: notebook };

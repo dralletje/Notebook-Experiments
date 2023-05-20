@@ -198,7 +198,8 @@ export let sheet_instant_edits = [
   cellEventHandlersField.of({
     click: (event, { state, dispatch }, position) => {
       let has_hyper_focus =
-        state.editors.get(position.id)?.field(EditorHasSelectionField) ?? false;
+        state.editor(position.id, false)?.field(EditorHasSelectionField) ??
+        false;
 
       if (has_hyper_focus) return;
       // TODO For some reason this is even gets here because has_hyper_focus
@@ -216,7 +217,8 @@ export let sheet_instant_edits = [
     },
     dblclick: (event, { state, dispatch }, position) => {
       let has_hyper_focus =
-        state.editors.get(position.id)?.field(EditorHasSelectionField) ?? false;
+        state.editor(position.id, false)?.field(EditorHasSelectionField) ??
+        false;
       if (has_hyper_focus) return;
 
       dispatch(

@@ -2,6 +2,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorInChief } from "../src/editor-in-chief";
 import { AsEditorId } from "../src/logic";
 import { BareEditorState, EditorMapping } from "../src/editor-in-chief-state";
+import { ModernMap } from "@dral/modern-map";
 
 let editor_in_chief = EditorInChief.create({
   editors: () => ({
@@ -12,7 +13,10 @@ let editor_in_chief = EditorInChief.create({
 });
 
 let x = editor_in_chief.editor(AsEditorId("a"));
-let x2 = editor_in_chief.editor(AsEditorId("c"));
+let empty_editor = editor_in_chief.editor(AsEditorId("c"));
+
+// @ts-expect-error - Can't get an editor because there is no valid key :D
+empty_editor.editor("hi");
 
 let z = editor_in_chief.update({});
 let state: typeof editor_in_chief = z.state;
@@ -40,3 +44,12 @@ let mapping: EditorMapping = null as any as EditorStateMapping;
 let in_chief: EditorInChief<EditorMapping> = null as any as EditorInChief<{
   [k: string]: BareEditorState;
 }>;
+
+editorbare_in_chief.editors;
+editorstate_in_chief.editors;
+editor_in_chief.editors;
+
+editorbare_in_chief.editors == editorstate_in_chief.editors;
+editorbare_in_chief.editors.emplace == editorstate_in_chief.editors.emplace;
+
+let map2: ModernMap<{}, {}> = null as any as ModernMap<{ x: 10 }, { x: 10 }>;

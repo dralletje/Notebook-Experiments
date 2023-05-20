@@ -71,7 +71,6 @@ export class ModernMap<K, V> extends Map<K, V> {
   entries() {
     return new ModernIterableIterator(super.entries());
   }
-
   // https://github.com/tc39/proposal-collection-methods
   mapValues<T>(fn: (value: V, key: K, map: this) => T) {
     return new ModernMap(
@@ -98,8 +97,21 @@ export class ModernMap<K, V> extends Map<K, V> {
       insert,
       update = (x) => x,
     }: {
-      insert?: (key: K, map: ModernMap<K, V>) => V;
-      update?: (value: V, key: K, map: ModernMap<K, V>) => V;
+      // Very weird how I need `V_star extends V` here for arguments.
+      // It only happens when the function is inside an object like this
+      // (`emplace(insert: (key: K, map: ModernMap<K, V>) => V) { ... }` wouldn't make this error)
+      // To check if the error exists, you can do
+      // `let x = ModernMap<string, {}> = null as any as ModernMap<string, { x: 10 }>`
+      // This line should not produce a type error, but without the `V_star extends V` it does.
+      insert?: <K_star extends K, V_star extends V>(
+        key: K_star,
+        map: ModernMap<K_star, V_star>
+      ) => V;
+      update?: <K_star extends K, V_star extends V>(
+        value: V_star,
+        key: K_star,
+        map: ModernMap<K_star, V_star>
+      ) => V;
     }
   ): V {
     if (this.has(key)) {

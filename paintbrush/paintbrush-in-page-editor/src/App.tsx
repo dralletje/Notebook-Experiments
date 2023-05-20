@@ -390,21 +390,18 @@ let save_on_save = EditorInChiefKeymap.of([
     key: "Mod-s",
     run: ({ state, dispatch }) => {
       dispatch({
-        effects: state.editors
-          .entries()
-          .map(([id, state]) => {
-            return EditorDispatchEffect.of({
-              editor_id: id,
-              transaction: {
-                effects: [
-                  MutateCellMetaEffect.of((meta) => {
-                    meta.code = state.doc.toString();
-                  }),
-                ],
-              },
-            });
-          })
-          .toArray(),
+        effects: state.field(CellOrderField).map((id) => {
+          return EditorDispatchEffect.of({
+            editor_id: id,
+            transaction: {
+              effects: [
+                MutateCellMetaEffect.of((meta) => {
+                  meta.code = state.doc.toString();
+                }),
+              ],
+            },
+          });
+        }),
       });
 
       return true;
