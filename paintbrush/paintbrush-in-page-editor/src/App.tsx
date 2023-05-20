@@ -6,7 +6,7 @@ import {
   useViewUpdate,
   CodemirrorFromViewUpdate,
   GenericViewUpdate,
-} from "codemirror-x-react/viewupdate.js";
+} from "codemirror-x-react/viewupdate";
 import { v4 as uuidv4 } from "uuid";
 
 import { EditorSelection, EditorState } from "@codemirror/state";
@@ -15,7 +15,7 @@ import { placeholder } from "@codemirror/view";
 import {
   ActiveSelector,
   pkgBubblePlugin,
-} from "./codemirror-css/CssSelectorHighlight";
+} from "./codemirror-css/css-selector-highlighter";
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler";
 import {
   historyKeymap,
@@ -33,7 +33,7 @@ import {
   extract_nested_viewupdate,
 } from "codemirror-editor-in-chief";
 import { isEqual } from "lodash";
-import { decorate_colors } from "./codemirror-css/ColorHighlight";
+import { decorate_colors } from "./codemirror-css/color-picker";
 import dedent from "string-dedent";
 import {
   css_variable_completions,
@@ -42,7 +42,10 @@ import {
 
 import { CellOrderField } from "./codemirror-notebook/cell-order";
 import { cell_movement_extension } from "./codemirror-notebook/cell-movement";
-import { cell_keymap } from "./codemirror-notebook/add-move-and-run-cells";
+import {
+  cell_keymap,
+  notebook_keymap,
+} from "./codemirror-notebook/add-move-and-run-cells";
 import { create_empty_cell_facet } from "./codemirror-notebook/config";
 import { CellMetaField, MutateCellMetaEffect } from "./cell-meta";
 import { add_single_cell_when_all_cells_are_removed } from "./codemirror-notebook/add-cell-when-last-is-removed";
@@ -51,6 +54,7 @@ import "./App.css";
 import "./editor.css";
 
 import { RxCrossCircled, RxEyeClosed, RxEyeOpen } from "react-icons/rx";
+import { AsEditorId } from "codemirror-editor-in-chief/dist/logic";
 
 let Cell = styled.div`
   &.modified {
@@ -100,16 +104,13 @@ let CellHeader = styled.div`
   border-bottom: solid 1px #ffffff12;
 `;
 
-/**
- * @typedef Cell
- * @type {{
- *  id: string,
- *  code: string,
- *  disabled?: boolean,
- *  collapsed?: boolean,
- *  name?: string,
- * }}
- */
+type Cell = {
+  id: string;
+  code: string;
+  disabled?: boolean;
+  collapsed?: boolean;
+  name?: string;
+};
 
 let CellHeaderButton = styled.button`
   all: unset;
@@ -151,43 +152,44 @@ let classes = (obj) => {
     .join(" ");
 };
 
-/**
- * @typedef PaintbrushIframeCommandMap
- * @type {{
- *  highlight_selector: {
- *    "input": { selector: string | undefined },
- *  },
- *  save: {
- *    "input": { cells: Cell[] },
- *  },
- *  "toggle-horizontal-position": { "input": void },
- *  css: {
- *    "input": { code: string },
- *  },
- *  "apply-new-css": { "input": { sheets: Cell[] } },
- *  load: {
- *    "input": void,
- *    "output": Cell[],
- *  },
- *  ready: { "input": void },
- *  close: { "input": void },
- *  reload: { "input": void },
- *  "get-css-variables": { "input": {}, "output": { variables: { key: string, value: string }[] } },
- * }}
- */
+type PaintbrushIframeCommandMap = {
+  highlight_selector: {
+    input: { selector: string | undefined };
+    output: void;
+  };
+  save: {
+    input: { cells: Cell[] };
+    output: void;
+  };
+  "toggle-horizontal-position": { input: void; output: void };
+  css: {
+    input: { code: string };
+    output: void;
+  };
+  "apply-new-css": { input: { sheets: Cell[] }; output: void };
+  load: {
+    input: void;
+    output: Cell[];
+  };
+  ready: { input: void; output: void };
+  close: { input: void; output: void };
+  reload: { input: void; output: void };
+  "get-css-variables": {
+    input: {};
+    output: { variables: { key: string; value: string }[] };
+  };
+};
 
 let message_counter = 1;
 
 /**
  * `window.parent.postMessage` but with types so
  * I know I am not screwing things up too much.
- *
- * @template {keyof PaintbrushIframeCommandMap} K
- * @param {K} type
- * @param {PaintbrushIframeCommandMap[K]["input"]} [argument]
- * @returns {Promise<PaintbrushIframeCommandMap[K]["output"]>}
  */
-let call_extension = (type, argument) => {
+let call_extension = <K extends keyof PaintbrushIframeCommandMap>(
+  type: K,
+  argument?: PaintbrushIframeCommandMap[K]["input"]
+): Promise<PaintbrushIframeCommandMap[K]["output"]> => {
   let message_id = message_counter++;
   window.parent.postMessage(
     {
@@ -212,9 +214,11 @@ let call_extension = (type, argument) => {
   });
 };
 
+type PaintbrushEditorInChief = EditorInChief<{ [key: string]: EditorState }>;
+
 let useCssVariables = () => {
   let [variables, set_variables] = React.useState(
-    /** @type {{ key: String, value: string }[]} */ ([])
+    [] as { key: string; value: string }[]
   );
   React.useEffect(() => {
     call_extension("get-css-variables", {}).then((x) => {
@@ -224,17 +228,16 @@ let useCssVariables = () => {
   return variables;
 };
 
-/**
- * @param {{
- *   viewupdate: GenericViewUpdate<EditorInChief<{ [k: string]: EditorState }>>,
- * }} props
- */
-function Editor({ viewupdate }) {
+function Editor({
+  viewupdate,
+}: {
+  viewupdate: GenericViewUpdate<EditorInChief<{ [k: string]: EditorState }>>;
+}) {
   React.useEffect(() => {
     call_extension("ready");
   }, []);
 
-  useCodemirrorKeyhandler(viewupdate);
+  useCodemirrorKeyhandler(viewupdate.view);
   let variables = useCssVariables();
 
   let css_variables_facet_value = React.useMemo(() => {
@@ -366,12 +369,9 @@ function Editor({ viewupdate }) {
   );
 }
 
-let create_cell_state = (
-  /** @type {EditorInChief<import("codemirror-editor-in-chief").EditorMapping>} */ editorstate,
-  /** @type {Cell} */ cell
-) => {
+let create_cell_state = (editorstate: PaintbrushEditorInChief, cell: Cell) => {
   return editorstate.create_section_editor({
-    editor_id: /** @type {any} */ (cell.id),
+    editor_id: AsEditorId(cell.id),
     doc: cell.code,
     selection: EditorSelection.single(0),
     extensions: [
@@ -413,9 +413,21 @@ let save_on_save = EditorInChiefKeymap.of([
 ]);
 
 let notebook_to_editorinchief = (
-  /** @type {Cell[]} */ cells,
-  extensions = []
-) => {
+  cells: Cell[],
+  extensions: Extension[] = []
+): PaintbrushEditorInChief => {
+  if (cells.length === 0) {
+    cells = [
+      {
+        id: uuidv4(),
+        code: "",
+        collapsed: false,
+        disabled: false,
+        name: "",
+      },
+    ];
+  }
+
   return EditorInChief.create({
     editors: (editorstate) => {
       return Object.fromEntries(
@@ -428,9 +440,10 @@ let notebook_to_editorinchief = (
       save_on_save,
 
       add_single_cell_when_all_cells_are_removed,
-      CellOrderField.init(() => cells.map((x) => /** @type {any} */ (x.id))),
+      CellOrderField.init(() => cells.map((x) => AsEditorId(x.id))),
       cell_movement_extension,
       EditorExtension.of(cell_keymap),
+      notebook_keymap,
       create_empty_cell_facet.of((editor_in_chief, code) => {
         return create_cell_state(editor_in_chief, {
           id: uuidv4(),
@@ -447,8 +460,7 @@ let notebook_to_editorinchief = (
   });
 };
 
-/** @param {EditorInChief} state */
-let editorinchief_to_sheets = (state) => {
+let editorinchief_to_sheets = (state: PaintbrushEditorInChief) => {
   return state.field(CellOrderField).map((cell_id) => {
     let x = state.editor(cell_id);
     let meta = x.field(CellMetaField);
@@ -462,11 +474,7 @@ let editorinchief_to_sheets = (state) => {
   });
 };
 
-/**
- * @param {EditorInChief} state
- * @returns {Cell[]}
- * */
-let editorinchief_to_serialized = (state) => {
+let editorinchief_to_serialized = (state: PaintbrushEditorInChief): Cell[] => {
   return state.field(CellOrderField).map((cell_id) => {
     let x = state.editor(cell_id);
     let meta = x.field(CellMetaField);
@@ -480,13 +488,13 @@ let editorinchief_to_serialized = (state) => {
   });
 };
 
-/**
- * @param {{
- *  state: EditorInChief,
- *  set_state: (state: EditorInChief) => void,
- * }} props
- */
-let AppWhenLoaded = ({ state, set_state }) => {
+let AppWhenLoaded = ({
+  state,
+  set_state,
+}: {
+  state: PaintbrushEditorInChief;
+  set_state: (state: PaintbrushEditorInChief) => void;
+}) => {
   let viewupdate = useViewUpdate(state, set_state);
 
   React.useEffect(() => {
@@ -538,7 +546,7 @@ let AppWhenLoaded = ({ state, set_state }) => {
         paddingBottom: Math.max(-position.bottom, 0),
       }}
       onClickCapture={(event) => {
-        let target = /** @type {HTMLElement} */ (event.target);
+        let target = event.target as HTMLElement;
         if (target.closest(".cm-editor") == null) {
           viewupdate.view.dispatch({
             effects: [BlurEditorInChiefEffect.of()],
@@ -659,7 +667,7 @@ let AppWhenLoaded = ({ state, set_state }) => {
 };
 
 let App = () => {
-  let [state, set_state] = React.useState(/** @type {any} */ (null));
+  let [state, set_state] = React.useState(null as PaintbrushEditorInChief);
   React.useEffect(() => {
     call_extension("load").then((cells) => {
       set_state(notebook_to_editorinchief(cells ?? []));

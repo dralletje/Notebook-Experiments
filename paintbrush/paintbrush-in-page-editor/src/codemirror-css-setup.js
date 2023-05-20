@@ -30,9 +30,7 @@ export let basic_css_extensions = [
   indentUnit.of("\t"),
   highlightSpecialChars(),
   drawSelection(),
-  EditorView.lineWrapping,
   awesome_line_wrapping,
-
   EditorState.allowMultipleSelections.of(true),
   // Multiple cursors with `alt` instead of the default `ctrl` (like vscode)
   EditorView.clickAddsSelectionRange.of(

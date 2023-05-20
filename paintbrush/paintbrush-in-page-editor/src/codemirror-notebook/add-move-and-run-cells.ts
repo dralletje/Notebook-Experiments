@@ -40,6 +40,14 @@ export let save_function_facet = Facet.define<SaveFunction, SaveFunction>({
 });
 
 export let notebook_keymap = EditorInChiefKeymap.of([
+  {
+    key: "Mod-p",
+    run: (view) => {
+      console.log(`view:`, view);
+      return true;
+    },
+  },
+
   // {
   //   key: "Mod-s",
   //   run: ({ state, dispatch }) => {

@@ -31,31 +31,6 @@ import {
 } from "./wrap/transaction";
 import { editor_has_selection_extension } from "./editor-has-selection-extension";
 
-export class EditorInChiefView {
-  constructor(private view: EditorView) {
-    this.view = view;
-  }
-
-  get state() {
-    return new EditorInChief(this.view.state);
-  }
-
-  dispatch = (...specs: EditorInChiefTransactionSpec[]) => {
-    this.view.dispatch(
-      ...specs.map((spec) => {
-        return {
-          effects: spec.effects,
-          annotations: spec.annotations,
-
-          scrollIntoView: spec.scrollIntoView,
-          filter: spec.filter,
-          userEvent: spec.userEvent,
-        };
-      })
-    );
-  };
-}
-
 interface Transaction<S> {
   state: S;
   startState: S;
@@ -161,15 +136,15 @@ export class EditorInChief<Editors extends EditorMapping = EditorMapping> {
   editor<K extends EditorKeyOf<Editors>>(
     editor_id: EditorId<K>,
     required: false
-  ): Editors[K] | undefined;
+  ): Editors[K] | null;
   editor<K extends EditorKeyOf<Editors>>(
     editor_id: EditorId<K>,
     required?: false
-  ): Editors[Extract<K, string>] | undefined {
+  ): Editors[K] | null {
     if (required !== false && !this.editors.has(editor_id)) {
       throw new Error(`Editor with id ${editor_id} not found`);
     }
-    return this.editors.get(editor_id) as any;
+    return this.editors.get(editor_id) ?? null;
   }
 
   // editor<K extends EditorKeyOf<Editors>>(editor_id: EditorId<K>): Editors[K] {
@@ -200,9 +175,9 @@ export class EditorInChief<Editors extends EditorMapping = EditorMapping> {
     return this.editors.mapValues((x) => x.doc);
   }
 
-  selected_editor(): Editors[EditorKeyOf<Editors>] | null {
+  selected_editor<K extends EditorKeyOf<Editors>>(): Editors[K] | null {
     let cell_with_current_selection = this.editorstate.field(EditorsField)
-      .cell_with_current_selection as EditorId<EditorKeyOf<Editors>>;
+      .cell_with_current_selection as EditorId<K>;
     if (cell_with_current_selection != null) {
       return this.editor(cell_with_current_selection, false);
     } else {

@@ -11,7 +11,7 @@ export {
 export { EditorHasSelectionField } from "./editor-has-selection-extension";
 export { extract_nested_viewupdate } from "./extract-nested-viewupdate";
 
-export { EditorInChief, EditorInChiefView } from "./editor-in-chief-state";
+export { EditorInChief } from "./editor-in-chief-state";
 export { editor_in_chief_extensions_to_codemirror } from "./wrap/extension";
 export {
   EditorInChiefStateField,

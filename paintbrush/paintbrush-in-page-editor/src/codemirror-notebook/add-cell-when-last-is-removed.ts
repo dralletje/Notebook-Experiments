@@ -33,7 +33,9 @@ export let add_single_cell_when_all_cells_are_removed =
 
     // Add a cell when the last cell is removed
     if (cells_left_after_effects.size === 0) {
-      let editor_in_chief = new EditorInChief(transaction.state);
+      let editor_in_chief = new EditorInChief<{ [k: string]: EditorState }>(
+        transaction.state
+      );
       let create_empty_cell = editor_in_chief.facet(create_empty_cell_facet);
       let new_cell = create_empty_cell(editor_in_chief, "");
       return {
