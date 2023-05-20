@@ -23,7 +23,7 @@ type Opaque<BaseType, BrandType = unknown> = BaseType & {
   readonly [opaque]: BrandType;
 };
 export type EditorId<T extends string = string> = Opaque<T, "EditorId">;
-export let AsEditorId = <T extends string>(id: T) => id as EditorId<T>;
+export let as_editor_id = <T extends string>(id: T) => id as EditorId<T>;
 
 export let EditorIdFacet = Facet.define<EditorId, EditorId>({
   combine: (x) => x[0],

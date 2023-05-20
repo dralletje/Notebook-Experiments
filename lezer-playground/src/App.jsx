@@ -43,6 +43,7 @@ import {
 import { useSearchParamState, useUrl } from "./use/use-url.js";
 import { WhatToParseEditorWithErrorBoundary } from "./editors/what-to-parse-editor/what-to-parse-editor-with-error-boundary.jsx";
 import { Pane, PaneStyle, PaneTab } from "./panel/panel.jsx";
+import { as_editor_id } from "codemirror-editor-in-chief/dist/logic.js";
 
 export let App = () => {
   let [url] = useUrl();
@@ -123,17 +124,9 @@ let Runtime = styled.div`
   align-self: flex-end;
 `;
 
-/** @type {import("codemirror-editor-in-chief").EditorId<"lezer-grammar">} */
-// @ts-ignore
-const LEZER_GRAMMAR_EDITOR_ID = "lezer-grammar";
-
-/** @type {import("codemirror-editor-in-chief").EditorId<"javascript">} */
-// @ts-ignore
-const JAVASCRIPT_EDITOR_ID = "javascript";
-
-/** @type {import("codemirror-editor-in-chief").EditorId<"code-to-parse">} */
-// @ts-ignore
-const WHAT_TO_PARSE_EDITOR_ID = "code-to-parse";
+const LEZER_GRAMMAR_EDITOR_ID = as_editor_id("lezer-grammar");
+const JAVASCRIPT_EDITOR_ID = as_editor_id("javascript");
+const WHAT_TO_PARSE_EDITOR_ID = as_editor_id("code-to-parse");
 
 /** @param {{ project_name: string }} props */
 let Editor = ({ project_name }) => {

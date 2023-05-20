@@ -31,6 +31,7 @@ import { create_codemirror_notebook } from "./packages/codemirror-notebook/codem
 
 import "./App.css";
 import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selection";
+import { as_editor_id } from "codemirror-editor-in-chief/dist/logic.js";
 
 /**
  * @typedef Workspace
@@ -48,14 +49,8 @@ import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selectio
  * }}
  */
 
-let NOTEBOOK_EDITOR_ID =
-  /** @type {import("codemirror-editor-in-chief").EditorId<"notebook">} */ (
-    "notebook"
-  );
-let SHEET_EDITOR_ID =
-  /** @type {import("codemirror-editor-in-chief").EditorId<"sheet">} */ (
-    "sheet"
-  );
+let NOTEBOOK_EDITOR_ID = as_editor_id("notebook");
+let SHEET_EDITOR_ID = as_editor_id("sheet");
 
 let project_to_editorinchief = (/** @type {Project} */ project) => {
   return EditorInChief.create({

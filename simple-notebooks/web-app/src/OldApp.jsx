@@ -27,6 +27,8 @@ import "./App.css";
 import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selection";
 import { NotebookView } from "./Notebook/NotebookView.jsx";
 import { IndependentNotebook } from "./IndependentNotebook";
+import { as_editor_id } from "codemirror-editor-in-chief/dist/logic.js";
+import { EditorState } from "@codemirror/state";
 
 /**
  * @typedef Workspace
@@ -65,15 +67,15 @@ let FileTab = styled.button`
  * }}
  */
 
-let NOTEBOOK_EDITOR_ID =
-  /** @type {import("codemirror-editor-in-chief").EditorId} */ ("notebook");
-let SHEET_EDITOR_ID =
-  /** @type {import("codemirror-editor-in-chief").EditorId} */ ("sheet");
+let NOTEBOOK_EDITOR_ID = as_editor_id("notebook");
+let SHEET_EDITOR_ID = as_editor_id("sheet");
 
 let project_to_editorinchief = (/** @type {Project} */ project) => {
   return notebook_to_editorinchief(project.notebook);
 };
-let editorinchief_to_project = (/** @type {EditorInChief} */ editorinchief) => {
+let editorinchief_to_project = (
+  /** @type {EditorInChief<{ [key: string]: EditorState }>} */ editorinchief
+) => {
   return { notebook: editorinchief_to_notebook(editorinchief) };
 };
 

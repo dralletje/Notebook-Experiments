@@ -37,6 +37,7 @@ import { sheet_movement } from "../packages/codemirror-sheet/sheet-movement";
 import { SheetPosition } from "../packages/codemirror-sheet/sheet-position";
 import { mapValues } from "lodash";
 import { ExcellState } from "../ExcellView";
+import { as_editor_id } from "codemirror-editor-in-chief/dist/logic";
 
 type SheetCell = {
   id: EditorId;
@@ -73,7 +74,7 @@ export let sheetcell_to_editorstate = (
   cell: SheetCell
 ) => {
   return editorinchief.create_section_editor({
-    editor_id: cell.id as EditorId,
+    editor_id: as_editor_id(cell.id),
     doc: cell.code,
     extensions: [
       EditorIdFacet.of(cell.id),

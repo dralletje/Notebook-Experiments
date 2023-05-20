@@ -54,7 +54,7 @@ import "./App.css";
 import "./editor.css";
 
 import { RxCrossCircled, RxEyeClosed, RxEyeOpen } from "react-icons/rx";
-import { AsEditorId } from "codemirror-editor-in-chief/dist/logic";
+import { as_editor_id } from "codemirror-editor-in-chief/dist/logic";
 
 let Cell = styled.div`
   &.modified {
@@ -369,9 +369,12 @@ function Editor({
   );
 }
 
-let create_cell_state = (editorstate: PaintbrushEditorInChief, cell: Cell) => {
-  return editorstate.create_section_editor({
-    editor_id: AsEditorId(cell.id),
+let create_cell_state = (
+  editor_in_chief: PaintbrushEditorInChief,
+  cell: Cell
+) => {
+  return editor_in_chief.create_section_editor({
+    editor_id: as_editor_id(cell.id),
     doc: cell.code,
     selection: EditorSelection.single(0),
     extensions: [
@@ -437,7 +440,7 @@ let notebook_to_editorinchief = (
       save_on_save,
 
       add_single_cell_when_all_cells_are_removed,
-      CellOrderField.init(() => cells.map((x) => AsEditorId(x.id))),
+      CellOrderField.init(() => cells.map((x) => as_editor_id(x.id))),
       cell_movement_extension,
       EditorExtension.of(cell_keymap),
       notebook_keymap,

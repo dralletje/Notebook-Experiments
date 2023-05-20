@@ -37,6 +37,7 @@ import {
 } from "./DragAndDropStuffWorking.jsx";
 import * as actions from "./notebook-commands.js";
 import { runScopeHandlers } from "@codemirror/view";
+import { as_editor_id } from "codemirror-editor-in-chief/dist/logic.js";
 
 // @ts-ignore
 let NotebookStyle = styled.div`
@@ -73,9 +74,7 @@ export function NotebookViewWithDragAndDrop({ viewupdate, engine }) {
           viewupdate.view.dispatch({
             effects: [
               SelectCellsEffect.of(
-                /** @type {import("../packages/codemirror-editor-in-chief/logic.js").EditorId[]} */ (
-                  new_selected_cells
-                )
+                new_selected_cells.map((x) => as_editor_id(x))
               ),
               BlurEditorInChiefEffect.of(),
             ],

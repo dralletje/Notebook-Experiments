@@ -51,7 +51,7 @@ const editorsmap_cache_key = Symbol("editorsmap_cache_key");
 
 export class EditorInChief<
   Editors extends EditorMapping = EditorMapping,
-  K extends EditorId<EditorKeyOf<Editors>> = EditorId<EditorKeyOf<Editors>>
+  Keys extends EditorKeyOf<Editors> = EditorKeyOf<Editors>
 > {
   editorstate: EditorState;
 
@@ -65,8 +65,8 @@ export class EditorInChief<
     }
   }
 
-  [editorsmap_cache_key]: ModernMap<K, Editors[K]>;
-  get editors(): ModernMap<K, Editors[K]> {
+  [editorsmap_cache_key]: ModernMap<EditorId<Keys>, Editors[Keys]>;
+  get editors(): ModernMap<EditorId<Keys>, Editors[Keys]> {
     if (this[editorsmap_cache_key] == null) {
       this[editorsmap_cache_key] = new ModernMap(
         Object.entries(this.editorstate.field(EditorsField).cells)
@@ -113,7 +113,7 @@ export class EditorInChief<
     extensions,
     selection,
   }: {
-    editor_id: EditorId;
+    editor_id: EditorId<Keys>;
     doc?: EditorStateConfig["doc"];
     extensions?: EditorStateConfig["extensions"];
     selection?: EditorStateConfig["selection"];
@@ -136,12 +136,12 @@ export class EditorInChief<
     ) as any;
   }
 
-  editor<K extends EditorKeyOf<Editors>>(editor_id: EditorId<K>): Editors[K];
-  editor<K extends EditorKeyOf<Editors>>(
+  editor<K extends Keys>(editor_id: EditorId<K>): Editors[K];
+  editor<K extends Keys>(
     editor_id: EditorId<K>,
     required: false
   ): Editors[K] | null;
-  editor<K extends EditorKeyOf<Editors>>(
+  editor<K extends Keys>(
     editor_id: EditorId<K>,
     required?: false
   ): Editors[K] | null {
@@ -182,7 +182,7 @@ export class EditorInChief<
     return this.editors.mapValues((x) => x.doc);
   }
 
-  selected_editor<K extends EditorKeyOf<Editors>>(): Editors[K] | null {
+  selected_editor<K extends Keys>(): Editors[K] | null {
     let cell_with_current_selection = this.editorstate.field(EditorsField)
       .cell_with_current_selection as EditorId<K>;
     if (cell_with_current_selection != null) {

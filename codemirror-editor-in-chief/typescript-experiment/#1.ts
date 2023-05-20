@@ -1,6 +1,6 @@
 import { EditorState } from "@codemirror/state";
 import { EditorInChief } from "../src/editor-in-chief";
-import { AsEditorId } from "../src/logic";
+import { as_editor_id } from "../src/logic";
 import { BareEditorState, EditorMapping } from "../src/editor-in-chief-state";
 import { ModernMap } from "@dral/modern-map";
 
@@ -12,8 +12,8 @@ let editor_in_chief = EditorInChief.create({
   }),
 });
 
-let x = editor_in_chief.editor(AsEditorId("a"));
-let empty_editor = editor_in_chief.editor(AsEditorId("c"));
+let x = editor_in_chief.editor(as_editor_id("a"));
+let empty_editor = editor_in_chief.editor(as_editor_id("c"));
 
 // @ts-expect-error - Can't get an editor because there is no valid key :D
 empty_editor.editor("hi");

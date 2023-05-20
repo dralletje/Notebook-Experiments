@@ -8,13 +8,6 @@ import {
 } from "codemirror-x-react/viewupdate";
 
 import {
-  SelectCellsEffect,
-  SelectedCellsField,
-} from "./packages/codemirror-notebook/cell-selection";
-
-import {
-  BlurEditorInChiefEffect,
-  EditorId,
   EditorIdFacet,
   EditorInChief,
   extract_nested_viewupdate,
@@ -43,8 +36,8 @@ import { SelectedCellField } from "./packages/codemirror-sheet/sheet-selected-ce
 
 import { parse } from "excel-formula-parser";
 import { SheetPosition } from "./packages/codemirror-sheet/sheet-position";
-import { Cell } from "./Notebook/Cell";
 import { SidebarData } from "./Sidebar/Data/Data";
+import { as_editor_id } from "codemirror-editor-in-chief/dist/logic";
 
 let tree_to_js = (tree: ReturnType<typeof parse>) => {
   if (tree.type === "function") {
@@ -120,11 +113,11 @@ export function ProjectView({
 
   let sheet_viewupdate = extract_nested_viewupdate(
     viewupdate,
-    "sheet" as EditorId<"sheet">
+    as_editor_id("sheet")
   );
   let notebook_viewupdate = extract_nested_viewupdate(
     viewupdate,
-    "notebook" as EditorId<"notebook">
+    as_editor_id("notebook")
   );
 
   let notebook_editorstates = notebook_viewupdate.state.editors;

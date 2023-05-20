@@ -12,13 +12,7 @@ import {
   SelectedCellsField,
 } from "./packages/codemirror-notebook/cell-selection";
 
-import {
-  BlurEditorInChiefEffect,
-  EditorId,
-  EditorIdFacet,
-  EditorInChief,
-  extract_nested_viewupdate,
-} from "codemirror-editor-in-chief";
+import { EditorIdFacet, EditorInChief } from "codemirror-editor-in-chief";
 import {
   CellMetaField,
   CellTypeFacet,
