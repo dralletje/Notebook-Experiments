@@ -4,8 +4,8 @@ import { BareEditorState, EditorInChief } from "../editor-in-chief-state";
 import { editor_state_extension } from "./extension";
 import { EditorInChiefTransactionSpec } from "./transaction";
 
-export type EditorInChiefCommand<Editor extends EditorInChief> = (view: {
-  state: Editor;
+export type EditorInChiefCommand<E extends EditorInChief> = (view: {
+  state: E;
   dispatch: (...specs: EditorInChiefTransactionSpec[]) => void;
 }) => boolean;
 
@@ -15,9 +15,9 @@ export type EditorInChiefKeyBinding<E extends EditorInChief> = {
   mac?: string;
   win?: string;
   preventDefault?: boolean;
-  run: EditorInChiefCommand<EditorInChief>;
+  run: EditorInChiefCommand<E>;
   scope?: KeyBinding["scope"];
-  shift?: EditorInChiefCommand<EditorInChief>;
+  shift?: EditorInChiefCommand<E>;
 };
 
 export class EditorInChiefKeymap {

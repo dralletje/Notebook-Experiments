@@ -26,6 +26,7 @@ import { compact, isEmpty, round } from "lodash-es";
 import {
   EditorInChief,
   EditorInChiefKeymap,
+  as_editor_id,
   extract_nested_viewupdate,
 } from "codemirror-editor-in-chief";
 import {
@@ -43,7 +44,6 @@ import {
 import { useSearchParamState, useUrl } from "./use/use-url.js";
 import { WhatToParseEditorWithErrorBoundary } from "./editors/what-to-parse-editor/what-to-parse-editor-with-error-boundary.jsx";
 import { Pane, PaneStyle, PaneTab } from "./panel/panel.jsx";
-import { as_editor_id } from "codemirror-editor-in-chief/dist/logic.js";
 
 export let App = () => {
   let [url] = useUrl();
@@ -174,17 +174,23 @@ let Editor = ({ project_name }) => {
 
     return EditorInChief.create({
       editors: (editorstate) => ({
-        "lezer-grammar": editorstate.create_section_editor({
-          editor_id: LEZER_GRAMMAR_EDITOR_ID,
+        "lezer-grammar": EditorState.create({
           doc: _parser_code,
+          extensions: [
+            editorstate.section_editor_extensions(LEZER_GRAMMAR_EDITOR_ID),
+          ],
         }),
-        javascript: editorstate.create_section_editor({
-          editor_id: JAVASCRIPT_EDITOR_ID,
-          doc: javascript_stuff,
+        javascript: EditorState.create({
+          doc: _parser_code,
+          extensions: [
+            editorstate.section_editor_extensions(JAVASCRIPT_EDITOR_ID),
+          ],
         }),
-        "code-to-parse": editorstate.create_section_editor({
-          editor_id: WHAT_TO_PARSE_EDITOR_ID,
-          doc: code_to_parse,
+        "code-to-parse": EditorState.create({
+          doc: _parser_code,
+          extensions: [
+            editorstate.section_editor_extensions(WHAT_TO_PARSE_EDITOR_ID),
+          ],
         }),
       }),
       extensions: [

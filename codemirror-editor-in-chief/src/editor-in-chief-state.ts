@@ -1,7 +1,6 @@
 import {
   EditorSelection,
   EditorState,
-  EditorStateConfig,
   Facet,
   StateField,
 } from "@codemirror/state";
@@ -106,23 +105,6 @@ export class EditorInChief<
       editor_has_selection_extension,
       this.facet(EditorExtension) ?? [],
     ];
-  }
-  create_section_editor({
-    editor_id,
-    doc,
-    extensions,
-    selection,
-  }: {
-    editor_id: EditorId<Keys>;
-    doc?: EditorStateConfig["doc"];
-    extensions?: EditorStateConfig["extensions"];
-    selection?: EditorStateConfig["selection"];
-  }) {
-    return EditorState.create({
-      doc: doc,
-      selection: selection,
-      extensions: [this.section_editor_extensions(editor_id), extensions ?? []],
-    });
   }
 
   update(

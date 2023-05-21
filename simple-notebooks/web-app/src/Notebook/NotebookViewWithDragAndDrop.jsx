@@ -18,6 +18,7 @@ import {
 import {
   BlurEditorInChiefEffect,
   EditorInChief,
+  as_editor_id,
   extract_nested_viewupdate,
 } from "codemirror-editor-in-chief";
 
@@ -37,7 +38,6 @@ import {
 } from "./DragAndDropStuffWorking.jsx";
 import * as actions from "./notebook-commands.js";
 import { runScopeHandlers } from "@codemirror/view";
-import { as_editor_id } from "codemirror-editor-in-chief/dist/logic.js";
 
 // @ts-ignore
 let NotebookStyle = styled.div`

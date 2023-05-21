@@ -10,6 +10,7 @@ import {
 import {
   EditorIdFacet,
   EditorInChief,
+  as_editor_id,
   extract_nested_viewupdate,
 } from "codemirror-editor-in-chief";
 import {
@@ -37,7 +38,6 @@ import { SelectedCellField } from "./packages/codemirror-sheet/sheet-selected-ce
 import { parse } from "excel-formula-parser";
 import { SheetPosition } from "./packages/codemirror-sheet/sheet-position";
 import { SidebarData } from "./Sidebar/Data/Data";
-import { as_editor_id } from "codemirror-editor-in-chief/dist/logic";
 
 let tree_to_js = (tree: ReturnType<typeof parse>) => {
   if (tree.type === "function") {

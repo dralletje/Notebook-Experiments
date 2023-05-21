@@ -20,8 +20,6 @@ import { Extension } from "codemirror-x-react";
 import { Inspector } from "inspector-x-react";
 import { deserialize } from "./yuck/deserialize-value-to-show.js";
 
-export type ExcellState = EditorInChief<{ [key: string]: EditorState }>;
-
 export function Excell({
   viewupdate,
   engine,
@@ -338,7 +336,7 @@ import {
 } from "./packages/codemirror-sheet/sheet-selected-cell";
 import { ALPHABET } from "./packages/codemirror-sheet/alphabet";
 import { SheetSizeField } from "./packages/codemirror-sheet/sheet-layout";
-import { cellEventHandlersField } from "./Sheet/sheet-utils";
+import { ExcellState, cellEventHandlersField } from "./Sheet/sheet-utils";
 import { SheetPosition } from "./packages/codemirror-sheet/sheet-position";
 
 let observable_inspector_sheet = new CSSish(observable_inspector);

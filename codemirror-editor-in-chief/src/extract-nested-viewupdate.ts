@@ -1,9 +1,9 @@
 import { Transaction } from "@codemirror/state";
-import { compositeKey, CompositeKey } from "composite-key";
-import { EditorIdFacet, EditorInChief, EditorsField } from "./editor-in-chief";
-import { EditorDispatchEffect, EditorId } from "./logic";
+import { compositeKey } from "composite-key";
 import { ModernWeakMap } from "@dral/modern-map";
 
+import { EditorDispatchEffect, EditorId } from "./logic";
+import { EditorIdFacet, EditorInChief, EditorsField } from "./editor-in-chief";
 import type {
   BareEditorState,
   EditorKeyOf,
@@ -17,6 +17,8 @@ import {
 
 type DispatchFunction = any;
 
+type CompositeKey<T extends any[]> = ReturnType<typeof compositeKey<T>>;
+
 let nested_dispatch_weakmap = new ModernWeakMap<
   CompositeKey<[DispatchFunction, EditorId]>,
   (...transactions: import("@codemirror/state").TransactionSpec[]) => void
@@ -26,11 +28,11 @@ let nested_editorstate_weakmap = new ModernWeakMap<
   BareEditorState
 >();
 let nested_transactions_weakmap = new ModernWeakMap<
-  CompositeKey<[EditorInChiefTransaction<EditorInChief>[], EditorId]>,
+  CompositeKey<[Array<EditorInChiefTransaction<EditorInChief>>, EditorId]>,
   Transaction[]
 >();
 let nested_viewupdate_weakmap = new ModernWeakMap<
-  CompositeKey<[Transaction[], BareEditorState, DispatchFunction]>,
+  CompositeKey<[Array<Transaction>, BareEditorState, DispatchFunction]>,
   GenericViewUpdate<any>
 >();
 
@@ -64,9 +66,7 @@ export let extract_nested_viewupdate = <
 
   let nested_editor_state = nested_editorstate_weakmap.emplace(
     compositeKey(viewupdate.state, editor_id),
-    {
-      insert: () => viewupdate.state.editor(editor_id, false),
-    }
+    { insert: () => viewupdate.state.editor(editor_id, false) }
   );
 
   let nested_transactions = nested_transactions_weakmap.emplace(

@@ -7,16 +7,13 @@ export {
   EditorExtension,
   EditorIdFacet,
   EditorInChiefEffect,
+  as_editor_id,
 } from "./logic";
 export { EditorHasSelectionField } from "./editor-has-selection-extension";
 export { extract_nested_viewupdate } from "./extract-nested-viewupdate";
 
 export { EditorInChief } from "./editor-in-chief-state";
-export { editor_in_chief_extensions_to_codemirror } from "./wrap/extension";
-export {
-  EditorInChiefStateField,
-  EditorInChiefStateFieldInit,
-} from "./wrap/statefield";
+export { EditorInChiefStateField } from "./wrap/statefield";
 export { EditorInChiefTransaction } from "./wrap/transaction";
 export { EditorInChiefKeymap } from "./wrap/keymap";
 

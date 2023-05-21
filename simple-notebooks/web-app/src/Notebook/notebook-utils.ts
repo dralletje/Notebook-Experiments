@@ -48,13 +48,13 @@ export let editorinchief_to_notebook = (
 };
 
 export let create_cell_state = (
-  editorstate: EditorInChief<{ [key: string]: EditorState }>,
+  editor_in_chief: EditorInChief<{ [key: string]: EditorState }>,
   cell: Cell
 ) => {
-  return editorstate.create_section_editor({
-    editor_id: cell.id,
+  return EditorState.create({
     doc: cell.unsaved_code ?? cell.code,
     extensions: [
+      editor_in_chief.section_editor_extensions(cell.id),
       CellMetaField.init(() => ({
         code: cell.code,
         requested_run_time: cell.requested_run_time ?? 0,

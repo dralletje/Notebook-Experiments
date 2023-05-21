@@ -678,6 +678,8 @@ __metadata:
 "@dral/codemirror-helpers@workspace:^, @dral/codemirror-helpers@workspace:packages/dral-codemirror-helpers":
   version: 0.0.0-use.local
   resolution: "@dral/codemirror-helpers@workspace:packages/dral-codemirror-helpers"
+  dependencies:
+    typescript: ^5.0.4
   languageName: unknown
   linkType: soft
 

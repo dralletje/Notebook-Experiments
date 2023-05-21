@@ -6,8 +6,8 @@ import {
   EditorRemoveEffect,
 } from "codemirror-editor-in-chief";
 import { CellOrderField, CellOrderEffect } from "./cell-order";
-import { NoAnimation } from "./last-created-cells";
 import { create_empty_cell_facet } from "./config";
+import { NoAnimation } from "./cell";
 
 export let add_single_cell_when_all_cells_are_removed =
   EditorState.transactionExtender.of((transaction) => {

@@ -230,7 +230,7 @@ let DecorateSelectors = ViewPlugin.fromClass(
   }
 );
 
-export const pkgBubblePlugin = () => [
+export const css_selector_highlighter = [
   HasFocus,
   HasFocusUpdater,
   ActiveSelector,

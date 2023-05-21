@@ -7,7 +7,7 @@ import {
   shared_history,
   historyKeymap,
 } from "codemirror-editor-in-chief/history";
-import { EditorInChief, EditorInChiefKeymap } from "codemirror-editor-in-chief";
+import { EditorInChief, as_editor_id } from "codemirror-editor-in-chief";
 
 import { SocketEnvironment } from "./environment/SocketEnvironment";
 import { WorkerEnvironment } from "./environment/WorkerEnvironment";
@@ -27,7 +27,6 @@ import "./App.css";
 import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selection";
 import { NotebookView } from "./Notebook/NotebookView.jsx";
 import { IndependentNotebook } from "./IndependentNotebook";
-import { as_editor_id } from "codemirror-editor-in-chief/dist/logic.js";
 import { EditorState } from "@codemirror/state";
 
 /**

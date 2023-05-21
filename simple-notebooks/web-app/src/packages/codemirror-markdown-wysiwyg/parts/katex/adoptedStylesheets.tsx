@@ -58,12 +58,12 @@ export let adopt_at = (element: HTMLStyleElement, stylesheet: CSSish) => {
   }
 };
 
-export let AdoptStylesheet = ({ stylesheet }: { stylesheet: CSSish }) => {
-  let ref = React.useRef(null as HTMLStyleElement | null);
-  React.useLayoutEffect(() => {
-    if (ref.current == null) return;
-    let element = ref.current;
-    return adopt_at(element, stylesheet);
-  }, []);
-  return <style ref={ref} />;
-};
+// export let AdoptStylesheet = ({ stylesheet }: { stylesheet: CSSish }) => {
+//   let ref = React.useRef(null as HTMLStyleElement | null);
+//   React.useLayoutEffect(() => {
+//     if (ref.current == null) return;
+//     let element = ref.current;
+//     return adopt_at(element, stylesheet);
+//   }, []);
+//   return <style ref={ref} />;
+// };

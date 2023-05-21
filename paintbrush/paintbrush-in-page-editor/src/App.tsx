@@ -14,7 +14,7 @@ import { placeholder } from "@codemirror/view";
 
 import {
   ActiveSelector,
-  pkgBubblePlugin,
+  css_selector_highlighter,
 } from "./codemirror-css/css-selector-highlighter";
 import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler";
 import {
@@ -31,6 +31,7 @@ import {
   EditorIdFacet,
   EditorInChiefKeymap,
   extract_nested_viewupdate,
+  as_editor_id,
 } from "codemirror-editor-in-chief";
 import { isEqual } from "lodash";
 import { decorate_colors } from "./codemirror-css/color-picker";
@@ -42,21 +43,18 @@ import {
 
 import { CellOrderField } from "./codemirror-notebook/cell-order";
 import { cell_movement_extension } from "./codemirror-notebook/cell-movement";
-import {
-  cell_keymap,
-  notebook_keymap,
-} from "./codemirror-notebook/add-move-and-run-cells";
 import { create_empty_cell_facet } from "./codemirror-notebook/config";
 import { CellMetaField, MutateCellMetaEffect } from "./cell-meta";
 import { add_single_cell_when_all_cells_are_removed } from "./codemirror-notebook/add-cell-when-last-is-removed";
 
-import "./App.css";
-import "./editor.css";
-
 import { RxCrossCircled, RxEyeClosed, RxEyeOpen } from "react-icons/rx";
-import { as_editor_id } from "codemirror-editor-in-chief/dist/logic";
 import { call_extension } from "./communicate-with-extension";
 import { apply_postcss } from "./postcss";
+
+import "./App.css";
+import "./editor.css";
+import { use_drag } from "./use/use-drag";
+import { split_and_stitch_cells } from "./codemirror-notebook/split-and-stich-cells";
 
 let Cell = styled.div`
   &.modified {
@@ -268,7 +266,7 @@ function Editor({
                   <Extension key="basic" extension={basic_css_extensions} />
                   <Extension extension={placeholder("Style away!")} deps={[]} />
                   <Extension extension={decorate_colors} />
-                  <Extension extension={pkgBubblePlugin()} deps={[]} />
+                  <Extension extension={css_selector_highlighter} deps={[]} />
                   <Extension extension={css_variables_facet_value} />
                   <Extension extension={css_variable_completions} />
                 </CodemirrorFromViewUpdate>
@@ -314,11 +312,11 @@ let create_cell_state = (
   editor_in_chief: PaintbrushEditorInChief,
   cell: Cell
 ) => {
-  return editor_in_chief.create_section_editor({
-    editor_id: as_editor_id(cell.id),
+  return EditorState.create({
     doc: cell.code,
     selection: EditorSelection.single(0),
     extensions: [
+      editor_in_chief.section_editor_extensions(as_editor_id(cell.id)),
       CellMetaField.init(() => ({
         name: cell.name ?? "",
         code: cell.code,
@@ -379,14 +377,13 @@ let notebook_to_editorinchief = (
     },
     extensions: [
       extensions,
+      CellOrderField.init(() => cells.map((x) => as_editor_id(x.id))),
 
       save_on_save,
 
       add_single_cell_when_all_cells_are_removed,
-      CellOrderField.init(() => cells.map((x) => as_editor_id(x.id))),
       cell_movement_extension,
-      EditorExtension.of(cell_keymap),
-      notebook_keymap,
+      EditorExtension.of(split_and_stitch_cells),
       create_empty_cell_facet.of((editor_in_chief, code) => {
         return create_cell_state(editor_in_chief, {
           id: uuidv4(),
@@ -506,9 +503,14 @@ let AppWhenLoaded = ({
     }
   }, [viewupdate]);
 
-  let [position, set_position] = React.useState({ right: 16, bottom: -16 });
   let container_ref = React.useRef(null);
-  let unsubscribe_drag_ref = React.useRef(() => {});
+  let [position, set_position] = React.useState({ right: 16, bottom: -16 });
+  let { onMouseDown } = use_drag(container_ref, ({ delta_x, delta_y }) => {
+    set_position((position) => ({
+      right: position.right - delta_x,
+      bottom: position.bottom - delta_y,
+    }));
+  });
 
   return (
     <EditorBox
@@ -527,39 +529,7 @@ let AppWhenLoaded = ({
         }
       }}
     >
-      <NotebookHeader
-        onMouseDown={(event) => {
-          if (event.defaultPrevented) return;
-
-          let x = event.clientX;
-          let y = event.clientY;
-
-          unsubscribe_drag_ref.current();
-          let mousemove_handler = (event) => {
-            let right = x - event.clientX;
-            let bottom = y - event.clientY;
-
-            container_ref.current.style.transform = `translateX(${-right}px) translateY(${-bottom}px)`;
-          };
-          document.addEventListener("mousemove", mousemove_handler);
-          let mouseup_handler = (event) => {
-            unsubscribe_drag_ref.current();
-            set_position(({ right, bottom }) => {
-              return {
-                right: right - (event.clientX - x),
-                bottom: bottom - (event.clientY - y),
-              };
-            });
-            container_ref.current.style.transform = "";
-          };
-          document.addEventListener("mouseup", mouseup_handler);
-          unsubscribe_drag_ref.current = () => {
-            document.removeEventListener("mousemove", mousemove_handler);
-            document.removeEventListener("mouseup", mouseup_handler);
-            unsubscribe_drag_ref.current = () => {};
-          };
-        }}
-      >
+      <NotebookHeader onMouseDown={onMouseDown}>
         <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
           <RxCrossCircled
             title="Close Paintbrush"

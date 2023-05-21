@@ -3,7 +3,8 @@ import { EditorId } from "codemirror-editor-in-chief";
 
 export type CellId = EditorId;
 
-export let NudgeCell = Annotation.define();
+export let NudgeCell = Annotation.define<string | void>();
+export let NoAnimation = Annotation.define<true>();
 
 export type NotebookSerialized = {
   cells: { [key: CellId]: Cell };

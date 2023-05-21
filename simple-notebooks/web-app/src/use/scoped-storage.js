@@ -11,6 +11,9 @@ import React from "react";
  * @template T
  */
 export class ScopedStorage {
+  /** @type {string} */
+  key;
+
   constructor(/** @type {string} */ key) {
     this.key = key;
   }
@@ -69,7 +72,7 @@ export let useScopedStorage = (storage, default_value) => {
   let [value, set_value] = React.useState(initial_storage ?? default_value);
 
   let set_value_and_store = React.useCallback(
-    (value) => {
+    (/** @type {T} */ value) => {
       set_value(value);
       storage.set(value);
     },

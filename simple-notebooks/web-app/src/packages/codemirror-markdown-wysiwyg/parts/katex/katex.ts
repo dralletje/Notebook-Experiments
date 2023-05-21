@@ -1,3 +1,4 @@
+import { Range } from "@codemirror/state";
 import {
   EditorView,
   WidgetType,
@@ -169,7 +170,8 @@ export let markdown_katex = [
   CollectFromTree({
     what: EditorView.decorations,
     with: ["selection"],
-    combine: (decorations) => Decoration.set(decorations, true),
+    combine: (decorations: Array<Range<Decoration>>) =>
+      Decoration.set(decorations, true),
     compute: ({ cursor, accumulator: decorations, state }) => {
       let { from, to } = state.selection.main;
       let doc = state.doc;

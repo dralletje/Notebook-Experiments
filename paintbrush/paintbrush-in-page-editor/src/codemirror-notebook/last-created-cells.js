@@ -1,9 +1,7 @@
 import { Annotation, AnnotationType } from "@codemirror/state";
 import { EditorInChiefStateField } from "codemirror-editor-in-chief";
 import { CellOrderField } from "./cell-order.js";
-
-/** @type {AnnotationType<true>} */
-export let NoAnimation = Annotation.define();
+import { NoAnimation } from "./cell";
 
 export let LastCreatedCells = EditorInChiefStateField.define({
   create() {

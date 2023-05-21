@@ -74,7 +74,7 @@ class CompositeNodeWithLifetime extends CompositeNode {
 // ╠═╡ folded = true
 const compoundStore = new CompositeNodeWithLifetime();
 // accepts multiple objects as a key and does identity on the parts of the iterable
-export const compositeKey = <T extends Tuple>(
+export const compositeKey = <T extends Tuple = any[]>(
   ...parts: T
 ): CompositeKey<[...T]> => {
   let node = compoundStore;
@@ -86,9 +86,8 @@ export const compositeKey = <T extends Tuple>(
   }
   // does not leak WeakMap paths since there are none added
   if (node === compoundStore) {
-    throw new TypeError(
-      "Composite keys must contain a non-primitive component"
-    );
+    // prettier-ignore
+    throw new TypeError("Composite keys must contain a non-primitive component");
   }
   for (let i = 0; i < parts.length; i++) {
     const value = parts[i];
@@ -101,7 +100,7 @@ export const compositeKey = <T extends Tuple>(
 
 // ╔═╡ [cells.b7588794-f86e-457c-b36d-b16ea0dc8d32]
 // ╠═╡ folded = false
-let arbitrarily_object = new TextEncoder();
+let arbitrarily_object = {};
 
 // ╔═╡ [cells.996dd129-f8d1-4e5c-a0f5-7a35bc280ee2]
 // ╠═╡ folded = false

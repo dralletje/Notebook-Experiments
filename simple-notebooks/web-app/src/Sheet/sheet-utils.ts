@@ -7,15 +7,12 @@ import {
   EditorInChief,
   EditorInChiefKeymap,
   EditorInChiefTransactionSpec,
+  as_editor_id,
 } from "codemirror-editor-in-chief";
 import {
   CellMetaField,
-  CellTypeFacet,
   MutateCellMetaEffect,
-  Notebook,
-  NotebookSerialized,
 } from "../packages/codemirror-notebook/cell";
-import { CellOrderField } from "../packages/codemirror-notebook/cell-order.js";
 import {
   historyKeymap,
   shared_history,
@@ -36,8 +33,8 @@ import { SheetSizeField } from "../packages/codemirror-sheet/sheet-layout";
 import { sheet_movement } from "../packages/codemirror-sheet/sheet-movement";
 import { SheetPosition } from "../packages/codemirror-sheet/sheet-position";
 import { mapValues } from "lodash";
-import { ExcellState } from "../ExcellView";
-import { as_editor_id } from "codemirror-editor-in-chief/dist/logic";
+
+export type ExcellState = EditorInChief<{ [key: string]: EditorState }>;
 
 type SheetCell = {
   id: EditorId;
@@ -73,11 +70,10 @@ export let sheetcell_to_editorstate = (
   editorinchief: ExcellState,
   cell: SheetCell
 ) => {
-  return editorinchief.create_section_editor({
-    editor_id: as_editor_id(cell.id),
+  return EditorState.create({
     doc: cell.code,
     extensions: [
-      EditorIdFacet.of(cell.id),
+      editorinchief.section_editor_extensions(as_editor_id(cell.id)),
       CellMetaField.init(() => ({
         code: cell.code,
         requested_run_time: 0,
@@ -251,7 +247,7 @@ export let sheet_instant_edits = [
       }
     },
   }),
-  EditorInChiefKeymap.of([
+  EditorInChiefKeymap.of<ExcellState>([
     {
       key: "Enter",
       run: ({ state, dispatch }) => {

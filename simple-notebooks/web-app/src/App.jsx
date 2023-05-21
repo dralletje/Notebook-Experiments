@@ -7,7 +7,11 @@ import {
   shared_history,
   historyKeymap,
 } from "codemirror-editor-in-chief/history";
-import { EditorInChief, EditorInChiefKeymap } from "codemirror-editor-in-chief";
+import {
+  EditorInChief,
+  EditorInChiefKeymap,
+  as_editor_id,
+} from "codemirror-editor-in-chief";
 
 // import { SocketEnvironment } from "./environment/SocketEnvironment";
 import { WorkerEnvironment } from "./environment/WorkerEnvironment";
@@ -31,7 +35,6 @@ import { create_codemirror_notebook } from "./packages/codemirror-notebook/codem
 
 import "./App.css";
 import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selection";
-import { as_editor_id } from "codemirror-editor-in-chief/dist/logic.js";
 
 /**
  * @typedef Workspace
