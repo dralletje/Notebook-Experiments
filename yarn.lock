@@ -2387,6 +2387,7 @@ __metadata:
     "@codemirror/view": ^6.12.0
     "@dral/modern-map": "workspace:^"
     codemirror-x-react: "workspace:^"
+    composite-key: "workspace:^"
     typescript: ^5.0.4
   languageName: unknown
   linkType: soft
@@ -2455,6 +2456,14 @@ __metadata:
   checksum: 0f82321821fc27b83bd409510bb9deeebcfa799ff0bf5d102128b500b7af22872c0c92cb6a0ebc5a4cf19c6b550fba9cedfa7329d18c6442a625f851377bacf0
   languageName: node
   linkType: hard
+
+"composite-key@workspace:^, composite-key@workspace:packages/composite-key":
+  version: 0.0.0-use.local
+  resolution: "composite-key@workspace:packages/composite-key"
+  dependencies:
+    typescript: ^5.0.4
+  languageName: unknown
+  linkType: soft
 
 "concat-map@npm:0.0.1":
   version: 0.0.1

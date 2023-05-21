@@ -128,3 +128,44 @@ export class ModernMap<K, V> extends Map<K, V> {
     }
   }
 }
+
+export class ModernWeakMap<K extends Object, V> extends WeakMap<K, V> {
+  // Polyfill for emplace proposal
+  // https://github.com/tc39/proposal-upsert
+  emplace(
+    key: K,
+    {
+      insert,
+      update = (x) => x,
+    }: {
+      // Very weird how I need `V_star extends V` here for arguments.
+      // It only happens when the function is inside an object like this
+      // (`emplace(insert: (key: K, map: ModernMap<K, V>) => V) { ... }` wouldn't make this error)
+      // To check if the error exists, you can do
+      // `let x = ModernMap<string, {}> = null as any as ModernMap<string, { x: 10 }>`
+      // This line should not produce a type error, but without the `V_star extends V` it does.
+      insert?: <K_star extends K, V_star extends V>(
+        key: K_star,
+        map: ModernWeakMap<K_star, V_star>
+      ) => V;
+      update?: <K_star extends K, V_star extends V>(
+        value: V_star,
+        key: K_star,
+        map: ModernWeakMap<K_star, V_star>
+      ) => V;
+    }
+  ): V {
+    if (this.has(key)) {
+      let updated_value = update(this.get(key)!, key, this);
+      this.set(key, updated_value);
+      return updated_value;
+    } else {
+      if (insert == null) {
+        throw new Error("Key not found and no insert function provided");
+      }
+      let fresh_value = insert(key, this);
+      this.set(key, fresh_value);
+      return fresh_value;
+    }
+  }
+}

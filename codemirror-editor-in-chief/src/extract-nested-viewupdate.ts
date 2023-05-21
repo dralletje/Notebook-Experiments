@@ -1,7 +1,8 @@
 import { Transaction } from "@codemirror/state";
-import ManyKeysWeakmap from "./many-keys-map";
+import { compositeKey, CompositeKey } from "composite-key";
 import { EditorIdFacet, EditorInChief, EditorsField } from "./editor-in-chief";
 import { EditorDispatchEffect, EditorId } from "./logic";
+import { ModernWeakMap } from "@dral/modern-map";
 
 import type {
   BareEditorState,
@@ -9,40 +10,28 @@ import type {
   EditorMapping,
 } from "./editor-in-chief-state";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
-import { EditorInChiefTransactionSpec } from "./wrap/transaction";
+import {
+  EditorInChiefTransaction,
+  EditorInChiefTransactionSpec,
+} from "./wrap/transaction";
 
-let weakmap_get_or_create = <T extends Object, U>({
-  weakmap,
-  key,
-  create,
-}: {
-  weakmap: WeakMap<T, U>;
-  key: T;
-  create: (key: T) => U;
-}): U => {
-  let value = weakmap.get(key);
-  if (value === undefined) {
-    value = create(key);
-    weakmap.set(key, value);
-  }
-  return value;
-};
+type DispatchFunction = any;
 
-let nested_dispatch_weakmap = new ManyKeysWeakmap<
-  [Object, number],
+let nested_dispatch_weakmap = new ModernWeakMap<
+  CompositeKey<[DispatchFunction, EditorId]>,
   (...transactions: import("@codemirror/state").TransactionSpec[]) => void
 >();
-let nested_editorstate_weakmap = new ManyKeysWeakmap<
-  [Object, number],
+let nested_editorstate_weakmap = new ModernWeakMap<
+  CompositeKey<[EditorInChief, EditorId]>,
   BareEditorState
 >();
-let nested_transactions_weakmap = new ManyKeysWeakmap<
-  [Object, number],
+let nested_transactions_weakmap = new ModernWeakMap<
+  CompositeKey<[EditorInChiefTransaction<EditorInChief>[], EditorId]>,
   Transaction[]
 >();
-let nested_viewupdate_weakmap = new ManyKeysWeakmap<
-  [Object, Object, Object],
-  GenericViewUpdate<BareEditorState>
+let nested_viewupdate_weakmap = new ModernWeakMap<
+  CompositeKey<[Transaction[], BareEditorState, DispatchFunction]>,
+  GenericViewUpdate<any>
 >();
 
 export let extract_nested_viewupdate = <
@@ -52,61 +41,64 @@ export let extract_nested_viewupdate = <
   viewupdate: GenericViewUpdate<EditorInChief<T>>,
   editor_id: EditorId<K>
 ): GenericViewUpdate<T[K]> => {
+  let x = compositeKey(viewupdate.view.dispatch, editor_id);
   // Wrap every transaction in EditorDispatchEffect's
-  let nested_dispatch = weakmap_get_or_create({
-    weakmap: nested_dispatch_weakmap,
-    key: [viewupdate.view.dispatch, editor_id],
-    create: () => {
-      return (...transactions: EditorInChiefTransactionSpec[]) => {
-        viewupdate.view.dispatch(
-          ...transactions.map((tr) => ({
-            annotations: tr.annotations,
-            effects: EditorDispatchEffect.of({
-              editor_id: editor_id,
-              transaction: tr,
-            }),
-          }))
+  let nested_dispatch = nested_dispatch_weakmap.emplace(
+    compositeKey(viewupdate.view.dispatch, editor_id),
+    {
+      insert: () => {
+        return (...transactions: EditorInChiefTransactionSpec[]) => {
+          viewupdate.view.dispatch(
+            ...transactions.map((tr) => ({
+              annotations: tr.annotations,
+              effects: EditorDispatchEffect.of({
+                editor_id: editor_id,
+                transaction: tr,
+              }),
+            }))
+          );
+        };
+      },
+    }
+  );
+
+  let nested_editor_state = nested_editorstate_weakmap.emplace(
+    compositeKey(viewupdate.state, editor_id),
+    {
+      insert: () => viewupdate.state.editor(editor_id, false),
+    }
+  );
+
+  let nested_transactions = nested_transactions_weakmap.emplace(
+    compositeKey(viewupdate.transactions, editor_id),
+    {
+      insert: () => {
+        // Because we get one `viewupdate` for multiple transactions happening,
+        // and `.transactions_to_send_to_cells` gets cleared after every transactions,
+        // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
+        let all_cell_transactions = viewupdate.transactions.flatMap(
+          (transaction) => {
+            return transaction.state.field(EditorsField)
+              .transactions_to_send_to_cells;
+          }
         );
-      };
-    },
-  });
+        return all_cell_transactions.filter((transaction) => {
+          return transaction.startState.facet(EditorIdFacet) === editor_id;
+        });
+      },
+    }
+  );
 
-  let nested_editor_state = weakmap_get_or_create({
-    weakmap: nested_editorstate_weakmap,
-    key: [viewupdate.state, editor_id],
-    // Can't use `.editor(...)` here because I want to it to silently fail if the editor doesn't exist.
-    // (Why do I want this to silently fail?!)
-    create: () => viewupdate.state.field(EditorsField).cells[editor_id],
-  });
-
-  let nested_transactions = weakmap_get_or_create({
-    weakmap: nested_transactions_weakmap,
-    key: [viewupdate.transactions, editor_id],
-    create: () => {
-      // Because we get one `viewupdate` for multiple transactions happening,
-      // and `.transactions_to_send_to_cells` gets cleared after every transactions,
-      // we have to go over all the transactions in the `viewupdate` and collect `.transactions_to_send_to_cells`s.
-      let all_cell_transactions = viewupdate.transactions.flatMap(
-        (transaction) => {
-          return transaction.state.field(EditorsField)
-            .transactions_to_send_to_cells;
-        }
-      );
-      return all_cell_transactions.filter((transaction) => {
-        return transaction.startState.facet(EditorIdFacet) === editor_id;
-      });
-    },
-  });
-
-  let nested_viewupdate = weakmap_get_or_create({
-    weakmap: nested_viewupdate_weakmap,
-    key: [nested_transactions, nested_editor_state, nested_dispatch],
-    create: () => {
-      return new GenericViewUpdate(nested_transactions, {
-        state: nested_editor_state,
-        dispatch: nested_dispatch,
-      });
-    },
-  });
+  let nested_viewupdate = nested_viewupdate_weakmap.emplace(
+    compositeKey(nested_transactions, nested_editor_state, nested_dispatch),
+    {
+      insert: () => {
+        return new GenericViewUpdate(nested_transactions, {
+          state: nested_editor_state,
+          dispatch: nested_dispatch,
+        });
+      },
+    }
+  );
   return nested_viewupdate;
 };

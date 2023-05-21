@@ -1,9 +1,8 @@
 {
-  "name": "@dral/modern-map",
+  "name": "composite-key",
   "version": "1.0.0",
   "description": "",
-  "main": "./modern-map.js",
-  "type": "module",
+  "main": "composite-key.js",
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
