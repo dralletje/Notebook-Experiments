@@ -10,5 +10,6 @@
     "moduleResolution": "node",
     "emitDeclarationOnly": true,
     "allowSyntheticDefaultImports": true
-  }
+  },
+  "include": ["dral-codemirror-helpers.js"]
 }

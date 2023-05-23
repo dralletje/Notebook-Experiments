@@ -604,7 +604,7 @@ class HistoryState {
 /// - Mod-y (Mod-Shift-z on macOS) + Ctrl-Shift-z on Linux: [`redo`](#commands.redo).
 /// - Mod-u: [`undoSelection`](#commands.undoSelection).
 /// - Alt-u (Mod-Shift-u on macOS): [`redoSelection`](#commands.redoSelection).
-export const historyKeymap: readonly EditorInChiefKeyBinding[] = [
+export const historyKeymap: readonly EditorInChiefKeyBinding<any>[] = [
   { key: "Mod-z", run: undo, preventDefault: true },
   { key: "Mod-y", mac: "Mod-Shift-z", run: redo, preventDefault: true },
   { linux: "Ctrl-Shift-z", run: redo, preventDefault: true },

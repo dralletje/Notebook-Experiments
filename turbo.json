@@ -20,7 +20,7 @@
         "zig-out",
 
         // For paintbrush.. why can't I do this per package???
-        "in-page-editor-build"
+        "src/in-page-editor-build"
       ],
       "inputs": [
         "src/**",
