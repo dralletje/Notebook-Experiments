@@ -33,6 +33,7 @@ export let CodemirrorFromViewUpdate: ({
   viewupdate: GenericViewUpdate<EditorState>;
   children: React.ReactNode;
   as?: string;
+  ref: React.RefObject<EditorView<EditorState>>;
 } & import("react").HtmlHTMLAttributes<"div">) => JSX.Element;
 
 export let useViewUpdate: <TState extends UpdateableState>(

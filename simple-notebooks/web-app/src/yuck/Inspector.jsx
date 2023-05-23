@@ -8,7 +8,6 @@ import { indentUnit } from "@codemirror/language";
 import { Decoration, EditorView } from "@codemirror/view";
 import { ReactWidget } from "react-codemirror-widget";
 import shadow from "react-shadow";
-import { deserialize } from "./deserialize-value-to-show";
 import {
   javascript_syntax_highlighting,
   my_javascript_parser,
@@ -222,20 +221,26 @@ let Render = ({ node }) => {
   return <div style={{ display: "inline-block" }} ref={ref} />;
 };
 
-export let InspectorNoMemo = ({ value }) => {
+/**
+ * @param {{
+ *   value: any,
+ *   deserialize: (value: any) => any,
+ * }} props
+ */
+export let InspectorNoMemo = ({ value, deserialize }) => {
   let result_deserialized = React.useMemo(() => {
     if (value?.type === "return") {
       return {
         type: /** @type {const} */ ("return"),
         name: value.name,
-        value: deserialize(0, value.value),
+        value: deserialize(value.value),
       };
     } else if (value?.type === "throw") {
       return {
         // Because observable inspector doesn't show the stack trace when it is a thrown value?
         // But we need to make our own custom error interface anyway (after we fix sourcemaps? Sighh)
         type: /** @type {const} */ ("return"),
-        value: deserialize(0, value.value),
+        value: deserialize(value.value),
       };
     } else {
       return { type: /** @type {const} */ ("pending") };

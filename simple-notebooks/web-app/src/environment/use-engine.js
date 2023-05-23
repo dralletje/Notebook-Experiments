@@ -29,6 +29,7 @@ let useEventListener = ({ target, type, listener }, deps) => {
  * @returns {[
  *  import("../packages/codemirror-notebook/cell.js").EngineShadow,
  *  import("./Environment.js").EngineLog[],
+ *  any,
  * ]}
  */
 export let useEngine = (notebook, environment) => {
@@ -136,7 +137,16 @@ export let useEngine = (notebook, environment) => {
     engine.update_notebook(notebook.notebook);
   }, [notebook]);
 
-  return [state.engine, state.logs];
+  let engine_shadow_with_deserialize = React.useMemo(() => {
+    return {
+      ...state.engine,
+      deserialize: (value) => {
+        return engine.deserialize(value);
+      },
+    };
+  }, [state.engine, engine.deserialize]);
+
+  return [engine_shadow_with_deserialize, state.logs, engine.deserialize];
 };
 
 /** @returns {import("../packages/codemirror-notebook/cell").CylinderShadow} */

@@ -59,7 +59,7 @@ export let editor_has_selection_extension = [
       opacity: 0,
     },
     "&:not(.has-selection) .cm-selectionMatch": {
-      opacity: 0,
+      background: "none",
     },
   }),
 ];

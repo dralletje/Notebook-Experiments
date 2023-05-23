@@ -19,7 +19,6 @@ import {
   NudgeCell,
 } from "../packages/codemirror-notebook/cell";
 import { default_cylinder } from "../environment/use-engine.js";
-import { highlight_cell_references } from "../packages/codemirror-notebook-sheet/codemirror-notebook-sheet";
 
 let InspectorContainer = styled.div`
   /* padding-left: calc(16px + 4px);
@@ -243,6 +242,7 @@ let remove_selection_on_blur_extension = EditorView.domEventHandlers({
  *  is_selected: boolean,
  *  did_just_get_created: boolean,
  *  viewupdate: GenericViewUpdate,
+ *  deserialize: any,
  * }} props
  */
 export let Cell = ({
@@ -251,6 +251,7 @@ export let Cell = ({
   is_selected,
   did_just_get_created,
   viewupdate,
+  deserialize,
 }) => {
   let state = viewupdate.state;
   let type = state.facet(CellTypeFacet);
@@ -351,7 +352,7 @@ export let Cell = ({
       className={`font-mono ${classes} cell`}
     >
       <InspectorContainer className="inspector-container">
-        <Inspector value={cylinder?.result} />
+        <Inspector value={cylinder?.result} deserialize={deserialize} />
       </InspectorContainer>
 
       {/*
@@ -367,10 +368,6 @@ export let Cell = ({
         }}
       >
         <CodemirrorFromViewUpdate ref={editorview_ref} viewupdate={viewupdate}>
-          <Extension
-            key="highlight_cell_references"
-            extension={highlight_cell_references}
-          />
           <Extension
             key="placeholder"
             deps={[]}

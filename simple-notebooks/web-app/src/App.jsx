@@ -7,34 +7,27 @@ import {
   shared_history,
   historyKeymap,
 } from "codemirror-editor-in-chief/history";
-import {
-  EditorInChief,
-  EditorInChiefKeymap,
-  as_editor_id,
-} from "codemirror-editor-in-chief";
+import { EditorInChief, as_editor_id } from "codemirror-editor-in-chief";
 
-// import { SocketEnvironment } from "./environment/SocketEnvironment";
-import { WorkerEnvironment } from "./environment/WorkerEnvironment";
-import { InpageEnvironment } from "./environment/InpageEnvironment.js";
+import { SocketEnvironment } from "./environment/SocketEnvironment";
+import { InpageEnvironment } from "./environment/in-page-environment/InpageEnvironment.js";
+import { WorkerEnvironment } from "./environment/worker-environment-worker/WorkerEnvironment";
 import { useWorkerStorage, useSocketStorage } from "./use/use-storage";
 import { useUrl } from "./packages/use-url/use-url.js";
 import { ContextMenuWrapper } from "./packages/react-contextmenu/react-contextmenu.jsx";
-import { ProjectView } from "./ProjectView";
 
 import {
   empty_notebook,
   editorinchief_to_notebook,
   notebook_to_editorinchief,
 } from "./Notebook/notebook-utils";
-import {
-  editorinchief_to_sheet,
-  sheet_to_editorinchief,
-} from "./Sheet/sheet-utils";
-
 import { create_codemirror_notebook } from "./packages/codemirror-notebook/codemirror-notebook";
 
 import "./App.css";
 import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selection";
+import { NotebookView } from "./Notebook/NotebookView.jsx";
+import { IndependentNotebook } from "./IndependentNotebook";
+import { EditorState } from "@codemirror/state";
 
 /**
  * @typedef Workspace
@@ -44,44 +37,42 @@ import { SelectedCellsField } from "./packages/codemirror-notebook/cell-selectio
  * }} files
  */
 
+// @ts-ignore
+let FileTab = styled.button`
+  background: none;
+  border: none;
+
+  padding-left: 24px;
+  padding-right: 24px;
+
+  &[aria-selected="true"] {
+    background: white;
+    color: black;
+  }
+  &:not([aria-selected="true"]):hover {
+    background: black;
+    color: white;
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-decoration-skip-ink: none;
+    /* text-underline-position: under; */
+  }
+`;
+
 /**
  * @typedef Project
  * @type {{
  *  notebook: import("./packages/codemirror-notebook/cell").Notebook,
- *  sheet: import("./Sheet/sheet-utils").SheetSerialized,
  * }}
  */
 
-let NOTEBOOK_EDITOR_ID = as_editor_id("notebook");
-let SHEET_EDITOR_ID = as_editor_id("sheet");
-
 let project_to_editorinchief = (/** @type {Project} */ project) => {
-  return EditorInChief.create({
-    editors: (parent) => {
-      return {
-        notebook: notebook_to_editorinchief(
-          project.notebook,
-          parent.section_editor_extensions(NOTEBOOK_EDITOR_ID)
-        ),
-        sheet: sheet_to_editorinchief(
-          project.sheet,
-          parent.section_editor_extensions(SHEET_EDITOR_ID)
-        ),
-      };
-    },
-    extensions: [],
-  });
+  return notebook_to_editorinchief(project.notebook);
 };
 let editorinchief_to_project = (
-  /** @type {import("./ProjectView").ProjectEditorInChief} */ editorinchief
+  /** @type {EditorInChief<{ [key: string]: EditorState }>} */ editorinchief
 ) => {
-  let x = {
-    notebook: editorinchief_to_notebook(
-      editorinchief.editor(NOTEBOOK_EDITOR_ID)
-    ),
-    sheet: editorinchief_to_sheet(editorinchief.editor(SHEET_EDITOR_ID)),
-  };
-  return x;
+  return { notebook: editorinchief_to_notebook(editorinchief) };
 };
 
 function App() {
@@ -103,7 +94,7 @@ function App() {
     deserialize: project_to_editorinchief,
     serialize: editorinchief_to_project,
   });
-  let environment = React.useRef(WorkerEnvironment).current;
+  let environment = React.useRef(InpageEnvironment).current;
 
   //////////////////////////////////////////////////////////////
 
@@ -112,10 +103,6 @@ function App() {
       produce(workspace, (/** @type {Workspace} */ workspace) => {
         workspace.files[open_file] = project_to_editorinchief({
           notebook: empty_notebook(open_file),
-          sheet: {
-            cells: {},
-            size: { columns: 26, rows: 50 },
-          },
         });
       })
     );
@@ -127,8 +114,76 @@ function App() {
   }
 
   return (
-    <AppStyle>
-      <ProjectView
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "stretch",
+
+        // @ts-ignore
+        "--header-height": "50px",
+      }}
+    >
+      <div
+        style={{
+          height: 50,
+          position: "sticky",
+          top: 0,
+          backgroundColor: "black",
+          zIndex: 1,
+
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "stretch",
+        }}
+      >
+        {Object.keys(workspace.files).map((filename) => (
+          <ContextMenuWrapper
+            key={filename}
+            options={[
+              {
+                title: "Remove",
+                onClick: () => {
+                  if (confirm("Are you sure you want to remove this note?")) {
+                    set_workspace(
+                      produce(workspace, (workspace) => {
+                        delete workspace.files[filename];
+                      })
+                    );
+                  }
+                  set_url(`/`);
+                },
+              },
+              {
+                title: "Rename",
+                onClick: () => {
+                  let new_filename = prompt("New note name", filename);
+                  if (new_filename == null) return;
+                  set_workspace(
+                    produce(workspace, (workspace) => {
+                      // @ts-ignore
+                      workspace[new_filename] = workspace.files[filename];
+                      delete workspace.files[filename];
+                    })
+                  );
+                  set_url(`/${new_filename}`);
+                },
+              },
+            ]}
+          >
+            <FileTab
+              aria-selected={filename === open_file}
+              onClick={() => {
+                set_url(`/${filename}`);
+              }}
+            >
+              {filename}
+            </FileTab>
+          </ContextMenuWrapper>
+        ))}
+      </div>
+
+      <IndependentNotebook
         key={open_file}
         filename={open_file}
         environment={environment}
@@ -141,17 +196,7 @@ function App() {
           );
         }}
       />
-    </AppStyle>
+    </div>
   );
 }
 export default App;
-
-let AppStyle = styled.div`
-  /* --header-height: 30px; */
-  --header-height: 0px;
-  --sidebar-width: 500px;
-
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-`;

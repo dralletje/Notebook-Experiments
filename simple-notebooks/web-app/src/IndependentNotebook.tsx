@@ -1,16 +1,7 @@
 import React from "react";
 
 import styled from "styled-components";
-import { isEqual } from "lodash";
-import {
-  GenericViewUpdate,
-  useViewUpdate,
-} from "codemirror-x-react/viewupdate";
-
-import {
-  SelectCellsEffect,
-  SelectedCellsField,
-} from "./packages/codemirror-notebook/cell-selection";
+import { useViewUpdate } from "codemirror-x-react/viewupdate";
 
 import { EditorIdFacet, EditorInChief } from "codemirror-editor-in-chief";
 import {
@@ -19,18 +10,10 @@ import {
 } from "./packages/codemirror-notebook/cell";
 import { CellOrderField } from "./packages/codemirror-notebook/cell-order.js";
 
-import { ContextMenuItem } from "./packages/react-contextmenu/react-contextmenu";
-import { LastCreatedCells } from "./packages/codemirror-notebook/last-created-cells.js";
-
-import { useCodemirrorKeyhandler } from "./use/use-codemirror-keyhandler.js";
 import { Logs } from "./Sidebar/Logs/Logs.jsx";
 import { useEngine } from "./environment/use-engine.js";
 import { Environment } from "./environment/Environment";
-import { Excell } from "./ExcellView";
 import { useUrl } from "./packages/use-url/use-url";
-import { NotebookView } from "./Notebook/NotebookView";
-import shadow from "react-shadow/styled-components";
-import { AdoptStylesheet, CSSish } from "./yuck/adoptedStyleSheets";
 
 import { NotebookViewWithDragAndDrop } from "./Notebook/NotebookViewWithDragAndDrop";
 import { EditorState } from "@codemirror/state";
@@ -83,7 +66,10 @@ export function IndependentNotebook({
     return { filename: filename, notebook: notebook };
   }, [notebook, filename]);
 
-  let [engine, logs] = useEngine(notebook_with_filename, environment);
+  let [engine, logs, deserialize] = useEngine(
+    notebook_with_filename,
+    environment
+  );
 
   let [url, set_url] = useUrl();
   let tab = url.hash.length === 0 ? "notebook" : url.hash.slice(1);
@@ -95,6 +81,7 @@ export function IndependentNotebook({
     <div style={{ display: "flex", flex: 1, zIndex: 0 }}>
       <main style={{ overflow: "auto", flex: 1 }}>
         <NotebookViewWithDragAndDrop
+          deserialize={engine.deserialize}
           engine={engine}
           viewupdate={notebook_viewupdate}
         />

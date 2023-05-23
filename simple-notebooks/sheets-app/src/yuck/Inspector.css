@@ -1,0 +1,56 @@
+:host,
+:root {
+  --syntax_normal: #848484;
+  --syntax_comment: #747474;
+  --syntax_number: #00ca5a;
+  --syntax_keyword: #008c85; /* Or white? */
+  --syntax_atom: #10a778;
+  --syntax_string: #00ca5a;
+  --syntax_error: #ffbedc;
+  --syntax_unknown_variable: #838383;
+  --syntax_known_variable: #ff7a6f;
+  --syntax_matchbracket: #20bbfc;
+  --syntax_key: #f91515;
+  --mono_fonts: 82%/1.5 Menlo, Consolas, monospace;
+
+  display: contents;
+}
+
+svg {
+  display: inline;
+}
+
+/* For some, weird reason, this rule isn't 
+          in the open source version */
+.observablehq--caret {
+  margin-right: 4px;
+  vertical-align: baseline;
+}
+
+.observablehq--inspect {
+  /* Makes the whole inspector flow like text */
+  display: inline;
+  font-size: 1em;
+}
+/* Add a gimmicky javascript logo */
+.observablehq--inspect.observablehq--collapsed > a::before,
+.observablehq--inspect:not(.observablehq--collapsed)::before,
+.observablehq--running::before {
+  all: initial;
+  content: "JS";
+  color: #323330;
+  background-color: #f0db4f;
+  display: inline-block;
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 3px;
+  padding-bottom: 2px;
+  margin-right: 8px;
+  font-size: 14px;
+  font-family: "Roboto Mono";
+  font-weight: bold;
+  margin-bottom: 3px;
+
+  /* Hmmm, undo the logo sorry sorry */
+  content: unset;
+}

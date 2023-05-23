@@ -277,15 +277,15 @@ let SimpleDialog = ({ open, children }) => {
     } else {
       ref.current.close();
 
-      // Dialog.close() wants to move focus back to whatever had focus before,
-      // which is fine-ish, but it also wants to set focusVisible to true,
-      // which is not fine, so we blur and focus quickly to get rid of that.
-      // TODO THIS DOESN'T WORK SADLY
-      /** @type {HTMLElement} */
-      // @ts-ignore
-      let element = ref.current.getRootNode().activeElement;
-      element?.blur();
-      element?.focus();
+      // // Dialog.close() wants to move focus back to whatever had focus before,
+      // // which is fine-ish, but it also wants to set focusVisible to true,
+      // // which is not fine, so we blur and focus quickly to get rid of that.
+      // // TODO THIS DOESN'T WORK SADLY
+      // /** @type {HTMLElement} */
+      // // @ts-ignore
+      // let element = ref.current.getRootNode().activeElement;
+      // element?.blur();
+      // element?.focus();
     }
   }, [open]);
 

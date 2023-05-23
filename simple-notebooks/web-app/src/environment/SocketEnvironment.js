@@ -1,5 +1,6 @@
 import { io } from "socket.io-client";
 import { AddLogEvent, Engine, UpdateEngineEvent } from "./Environment";
+import { deserialize } from "./deserialize-value-to-show.js";
 
 class SocketEngine extends Engine {
   /** @private */
@@ -40,6 +41,10 @@ class SocketEngine extends Engine {
       filename: this.notebook.filename,
       notebook: this.notebook,
     });
+  }
+
+  deserialize(value) {
+    return deserialize(0, value);
   }
 }
 

@@ -51,10 +51,15 @@ let NotebookStyle = styled.div`
 /**
  * @param {{
  *  viewupdate: GenericViewUpdate<EditorInChief>,
- *  engine: import("../packages/codemirror-notebook/cell").EngineShadow
+ *  engine: import("../packages/codemirror-notebook/cell").EngineShadow,
+ *  deserialize: any,
  * }} props
  */
-export function NotebookViewWithDragAndDrop({ viewupdate, engine }) {
+export function NotebookViewWithDragAndDrop({
+  viewupdate,
+  engine,
+  deserialize,
+}) {
   let { state, view: editor_in_chief } = viewupdate;
 
   let cell_order = state.field(CellOrderField);
@@ -130,6 +135,7 @@ export function NotebookViewWithDragAndDrop({ viewupdate, engine }) {
                       />
                     ) : (
                       <CellMemo
+                        deserialize={deserialize}
                         cell_id={cell_id}
                         viewupdate={cell_viewupdate}
                         cylinder={engine.cylinders[cell_id]}

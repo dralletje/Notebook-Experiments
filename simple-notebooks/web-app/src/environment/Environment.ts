@@ -53,4 +53,6 @@ export abstract class Engine extends TypedEventTarget<{
   }
 
   abstract update_notebook(notebook: Notebook): void;
+
+  abstract deserialize(value: any): any;
 }

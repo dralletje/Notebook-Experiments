@@ -49,10 +49,10 @@ export let format_with_prettier = ({ code, cursor }) => {
     printWidth: 60,
     tabWidth: 2,
     cursorOffset: cursor,
+    // Hate to do this but semis don't work nice here
+    noSemi: true,
     // useTabs: true,
   });
 
-  return dont_end_up_just_before_semicolon(
-    trim({ formatted, cursorOffset: Math.max(cursorOffset, 0) })
-  );
+  return trim({ formatted, cursorOffset: Math.max(cursorOffset, 0) });
 };

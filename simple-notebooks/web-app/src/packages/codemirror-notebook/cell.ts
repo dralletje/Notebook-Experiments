@@ -96,6 +96,7 @@ export type Log = {
 
 export type EngineShadow = {
   cylinders: { [id: string]: CylinderShadow };
+  deserialize: (value: any) => any;
 };
 export type CylinderShadow = {
   last_run: number;
