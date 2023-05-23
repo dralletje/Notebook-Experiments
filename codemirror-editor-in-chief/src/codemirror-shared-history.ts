@@ -185,7 +185,7 @@ export function shared_history(
 /// that preserves history.
 export const historyField = historyField_ as EditorInChiefStateField<unknown>;
 
-function cmd(side: BranchName, selection: boolean): EditorInChiefCommand {
+function cmd(side: BranchName, selection: boolean): EditorInChiefCommand<any> {
   return function ({ state, dispatch }) {
     // TODO FIgure out selection & check readOnly on sub editors?
     // if (!selection && state.readOnly) return false;
