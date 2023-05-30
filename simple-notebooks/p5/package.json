@@ -1,0 +1,95 @@
+{
+  "name": "@dral/p5-app",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.7.1",
+    "@codemirror/collab": "^6.0.0",
+    "@codemirror/commands": "^6.2.4",
+    "@codemirror/lang-javascript": "^6.1.8",
+    "@codemirror/lang-lezer": "^6.0.1",
+    "@codemirror/lang-markdown": "^6.1.1",
+    "@codemirror/language": "^6.6.0",
+    "@codemirror/search": "^6.4.0",
+    "@codemirror/state": "^6.2.0",
+    "@codemirror/view": "^6.11.3",
+    "@dral/codemirror-helpers": "workspace:^",
+    "@dral/dralbook-transform-javascript": "workspace:^",
+    "@dral/javascript-basic-serialize": "workspace:^",
+    "@dral/javascript-notebook-runner": "workspace:^",
+    "@dral/modern-map": "workspace:^",
+    "@dral/typed-event-target": "workspace:^",
+    "@ionic/react": "^7.0.0",
+    "@lezer/common": "^1.0.2",
+    "@types/node": "^18.16.12",
+    "@typescript/vfs": "^1.4.0",
+    "@vitejs/plugin-react-swc": "^3.3.1",
+    "codemirror-awesome-line-wrapping": "workspace:^",
+    "codemirror-debug-syntax-plugin": "workspace:^",
+    "codemirror-editor-in-chief": "workspace:^",
+    "codemirror-x-react": "workspace:^",
+    "dral-lezer-helpers": "workspace:^",
+    "excel-formula-parser": "^1.1.0",
+    "htl": "^0.3.1",
+    "immer": "^10.0.2",
+    "inspector-x-react": "workspace:^",
+    "ionicons": "^7.1.0",
+    "katex": "^0.16.7",
+    "lodash": "^4.17.21",
+    "lodash-es": "^4.17.21",
+    "md-literal": "workspace:^",
+    "node-emoji": "^2.0.2",
+    "p5": "^1.6.0",
+    "picocolors": "^1.0.0",
+    "polyfills": "workspace:^",
+    "prettier": "^2.8.8",
+    "prop-types": "^15.8.1",
+    "react": "^18.2.0",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-codemirror-widget": "workspace:^",
+    "react-dom": "^18.2.0",
+    "react-flip-toolkit": "^7.1.0",
+    "react-is": "^18.2.0",
+    "react-shadow": "^20.0.0",
+    "react-use-path": "^0.3.1",
+    "shallow-equal": "^3.1.0",
+    "socket.io-client": "^4.6.1",
+    "styled-components": "^5.3.9",
+    "ts-opaque": "^3.0.1",
+    "typescript": "^5.0.4",
+    "uuid": "^9.0.0"
+  },
+  "scripts": {
+    "start": "vite",
+    "build": "vite build"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.194",
+    "@types/react": "^18.2.6",
+    "@types/serviceworker": "^0.0.67",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.23",
+    "postcss-nesting": "^11.2.2",
+    "rollup-plugin-visualizer": "^5.9.0",
+    "tailwindcss": "^3.3.2",
+    "vite": "^4.3.7"
+  }
+}
