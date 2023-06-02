@@ -1001,6 +1001,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@dral/prettier-plugin-lezer@workspace:packages/prettier-plugin-lezer":
+  version: 0.0.0-use.local
+  resolution: "@dral/prettier-plugin-lezer@workspace:packages/prettier-plugin-lezer"
+  dependencies:
+    "@lezer/common": ^1.0.3
+    "@lezer/lezer": ^1.1.1
+    lodash: ^4.17.21
+    prettier: ^2.8.8
+    string-dedent: ^3.0.1
+  peerDependencies:
+    prettier: "*"
+  languageName: unknown
+  linkType: soft
+
 "@dral/typed-event-target@workspace:^, @dral/typed-event-target@workspace:packages/typed-event-target":
   version: 0.0.0-use.local
   resolution: "@dral/typed-event-target@workspace:packages/typed-event-target"
@@ -1307,10 +1321,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lezer/common@npm:^1.0.0, @lezer/common@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "@lezer/common@npm:1.0.2"
-  checksum: bbcc58e07be02652bf0700d2856042ec089d5be0b95893d628b3e18192ade864fac83b61b19653e10b9f1472261a178b12318d934e9004edd5483a577c0db56b
+"@lezer/common@npm:^1.0.0, @lezer/common@npm:^1.0.2, @lezer/common@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "@lezer/common@npm:1.0.3"
+  checksum: cc90dc2f0aeaebeb3fe886cbd27f8b1e8bee817d8c2efff178604807debd68c5db820fd23afb830962780063d21891afbdf564420221faca2822e77bc6327184
   languageName: node
   linkType: hard
 
@@ -1366,7 +1380,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lezer/lezer@npm:^1.0.0":
+"@lezer/lezer@npm:^1.0.0, @lezer/lezer@npm:^1.1.1":
   version: 1.1.1
   resolution: "@lezer/lezer@npm:1.1.1"
   dependencies:

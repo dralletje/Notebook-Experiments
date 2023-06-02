@@ -1,0 +1,24 @@
+{
+  "name": "@dral/prettier-plugin-lezer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@lezer/lezer": "^1.1.1",
+    "prettier": "^2.8.8",
+    "string-dedent": "^3.0.1"
+  },
+  "dependencies": {
+    "@lezer/common": "^1.0.3",
+    "lodash": "^4.17.21"
+  },
+  "peerDependencies": {
+    "prettier": "*"
+  }
+}

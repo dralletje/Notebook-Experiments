@@ -1,0 +1,544 @@
+@precedence{ 
+  spec @cut,
+  censig @left, 
+  zapzap @left, 
+  typecast @left, 
+  bunt,
+  bind2 @left,
+  bind @left, 
+  composition @left, 
+  fashep_comma @left,
+  cell2
+}
+
+@top Program { Gap? hoon (Gap hoon)* Gap?}
+
+hoon{
+  runeTall |
+  hoon_wide
+}
+
+hoon_wide {
+  runeWideExpression |
+  irregularForms |
+  literal 
+}
+
+@tokens {
+  //Strings
+  Tape {
+    '"' (![\n\r"] | '\\"')* '"' |
+    '"' '"' '"' Gap (![]* Gap)? '"' '"' '"'
+  }
+  //(list @tD)
+  Cord {
+    "'" (![\n\r'] | "\\'")* ("\\" Gap  "/" ![\n\r']+)* "'" | 
+    "'" "'" "'" Gap (![']* Gap)? "'" "'" "'" |
+    "~~" $[0-9a-zA-Z~_.-]*
+  } //@t
+
+  Knot { "~." $[0-9a-zA-Z~_.-]* } //@ta
+  Term { "%" (@asciiLetter ($[0-9a-zA-Z-] | "~" "~")* | Number | Cord | Knot |"|" | "&" | ".y" | ".n" | "$" |
+   "/" | "%"+ ) } //@tas
+
+  Name { @asciiLowercase (@asciiLowercase | '-' | @digit)* }
+  Aura { "@" @asciiLetter*}
+  SpecialIndex { ("&"|"|") @digit+}
+  Lark { ($[-+] $[<>])+ | $[-+] ($[<>] $[-+])+ }
+  
+  // prettier-ignore
+  Rune { 
+  /*"+|" | "+$" | "++" | "+*" | */
+  "|$" | "|_" | "|:" | "|%" | "|." | "|^" | "|-" | "|~" | "|*" | "|=" | "|@" | "|?" |
+  "$|" | "$_" | "$%" | /*"$:" |*/ "$<" | "$>" | "$-" | "$^" | "$+" | "$&" | "$~" | "$@" | /*"$=" |*/ "$?" |
+  "%_" | "%:" | /*"%." |*/ "%-" | "%^" | "%+" | /*"%~" |*/ "%*" | "%=" |
+  ":-" | ":_" | ":+" | ":^" |/* ":*" | ":~" |*/
+  ".^" | /*".+" |*/ ".*" | ".=" | ".?" |
+  "/-" | "/+" | "/=" | "/*" | "/$" | "/~" | "/%" | "/?" |
+  "^|" | "^:" | "^." | "^-" | "^+" | "^&" | /*"^~" |*/ "^*" /*| "^="*/ | "^?" |
+  ";:" | ";<" | ";+" | ";;" | ";/" | ";~" | ";*" | ";=" |
+  "~>" | "~|" | "~$" | "~_" | "~%" | "~<" | "~+" | "~/" | "~&" | "~=" | "~?" | "~!" |
+  "=>" | /*"=|" |*/ "=:" | "=," | /*"=." | "=-" | "=^" |*/ "=<" | /*"=+" | "=;" | "=/" | "=~" | "=*" |"=?" */
+  "?|" | "?-" | "?:" | "?." | "?^" | "?<" | "?>" | "?+" | "?&" |"?@" | "?~" | "?=" |"?!" |
+  "!," | "!>" | "!<" | "!;" | /*"!=" |*/ "!?" | "!@" | /*"!!" |*/ "!:" /*| "!."*/
+  }
+
+  // prettier-ignore
+  RuneWide { 
+  ("|$"| "|:" | "|." | "|-" | "|~" | "|*" | "|=" | "|?" |
+  "$|" | "$_" | "$%" | /*"$:" |*/ "$<" | "$>" | "$-" | "$^" | "$+" | "$&" | "$~" | "$@" | "$=" | "$?" |
+  "%_" | "%:" | "%." | "%-" | "%^" | "%+" | /*"%~" |*/ "%*" | "%=" |
+  ":-" | ":_" | ":+" | ":^" |/* ":*" | ":~" |*/
+  ".^" | /*".+" |*/ ".*" | ".=" | ".?" |
+  "/-" | "/+" | "/=" | "/*" | "/$" | "/~" | "/%" | "/?" |
+  "^|" | "^:" | "^." | "^-" | "^+" | "^&" | /*"^~" |*/ "^*" /*| "^="*/ | "^?" |
+  ";:" | ";<" | ";+" | ";;" | ";/" | ";~" | ";*" | ";=" |
+  "~>" | "~|" | "~$" | "~_" | "~%" | "~<" | "~+" | "~/" | "~&" | "~=" | "~?" | "~!" |
+  "=>" | "=|" | "=:" | "=," | /*"=." |*/ "=-" | "=^" | "=<" | /*"=+" |*/ "=;" | "=/" | /*"=~" | "=*" |"=?"*/
+  "?|" | "?-" | "?:" | "?." | "?^" | "?<" | "?>" | "?+" | "?&" |"?@" | "?~" | "?=" |"?!" |
+  "!," | "!>" | "!<" | "!;" | /*"!=" |*/ "!?" | "!@" | /*"!!" |*/ "!:" | "!.") "("
+  }
+
+  Number { 
+    @digit @digit? @digit? ("." Gap? @digit @digit @digit)* | 
+    "0x" $[0-9a-fA-F] $[0-9a-fA-F]? $[0-9a-fA-F]? $[0-9a-fA-F]? ("." Gap? $[0-9a-fA-F] $[0-9a-fA-F] $[0-9a-fA-F]
+     $[0-9a-fA-F])* |
+    "0b" $[01] $[01]? $[01]? $[01]? ("." Gap? $[01] $[01] $[01] $[01])* | 
+    "0i" @digit+ |
+    "0v" $[0-9a-v] $[0-9a-v]? $[0-9a-v]? $[0-9a-v]? $[0-9a-v]? ("." $[0-9a-v] $[0-9a-v] $[0-9a-v] 
+    $[0-9a-v] $[0-9a-v])* |
+    "0w" $[0-9a-zA-Z-~] $[0-9a-zA-Z-~]? $[0-9a-zA-Z-~]? $[0-9a-zA-Z-~]? $[0-9a-zA-Z-~]? 
+    ("." $[0-9a-zA-Z-~] $[0-9a-zA-Z-~] $[0-9a-zA-Z-~] $[0-9a-zA-Z-~] $[0-9a-zA-Z-~])*
+  }
+
+  Date { "~" ($[dhms] @digit+ ("." $[dhms] @digit+)* ("." ("." $[0-9a-f] $[0-9a-f] $[0-9a-f] $[0-9a-f])+)? //day.hour.min.second
+  | @digit+ "." @digit @digit? "." @digit+ ) } //year.month.day
+
+  Sail {
+    ";" $[0-9a-zA-Z_-]+ ":" ![\r\n]+
+  }
+
+  space { ' ' }
+  Gap { (' ' $[ ]+ | (' '? $[\t\n\r]+ ' '?) | ' '? lineComment)+ }
+  lineComment { "::" ![\n]* }
+
+  @precedence { Gap, space, ":"}
+  @precedence { RuneWide, Rune, ".", Term, "%", ":", Date, Knot, Cord, "~",
+   "!", "=", "^", "/", "$", SpecialIndex, "&", "|", "?", "+", Aura, "@"}
+}
+
+Path { "/" (Name|CellExpression|GateCall|Number|Cord)? !bind ("/"+ (Name|CellExpression|GateCall|Number|Cord))*}
+Boolean { "&" | "|" | "." "y" | "." "n" }
+String { Term | Cord | Tape | Knot }
+literal {
+  Sail | Shadow | Number | String | Date 
+  | "%" | "%" "~" | Wing | ("^" !bind)* Name | SpecialIndex | Boolean | BasicMold
+}
+
+skin { //skins don't include numbers
+  Name |
+  BasicMold |
+  Shadow |
+  CellExpression |
+  BindExpression |
+  compositionMini
+}
+
+compositionMini{
+  Composition { "="? Name !bind (":" Name)+ }
+}
+
+BasicMold{"*"|"@"|"^"|"?"|"~"|Aura}
+
+spec_tall {
+  spec |
+  bucRune[@isGroup=Runes]{
+    Buccol { open_rune_2<"$" ":"> Gap list<spec_tall> } |
+    Bucket { rune<"$^"> Gap pair<spec_tall, spec_tall> } |
+    Buccen { open_rune<"$%"> Gap list<spec_tall> } |
+    Bucsig { rune<"$~"> Gap pair<hoon, spec_tall> } |
+    Buchep { rune<"$-"> Gap pair<spec_tall, spec_tall> } |
+    Bucwut { open_rune<"$?"> Gap list<spec_tall> } |
+    Bucpat { rune<"$@"> Gap pair<spec_tall, spec_tall> } |
+    Buctis { "$" "=" Gap pair<skin, spec_tall> }
+  }
+}
+
+spec {
+  "^"? Name |
+  Term |
+  GateCall |
+  CellExpression | 
+  bucRuneWide |
+  TypeUnion |
+  compositionMini |
+  BasicMold |
+  Shadow |
+  BindExpression {Name "=" spec} |
+  Normalize {"_" (spec|"`"spec"`" "*"? Name) } |
+  "$" !bind|
+  SpecialIndex
+}
+
+wing {
+   wingc (!bind "." wingc)+
+}
+wingc {
+  Name | DefaultArm{"$"} | Lark | Lark{"+" | "-"} | FullContext{"."} | SpecialIndex | "+" Number 
+}
+Wing { wing | Lark{"+" | "-"} | FullContext{"."} | Lark | ("^" !bind)* DefaultArm{"$"} ~buccol | "+" Number }
+
+Normalize{ "_" hoon_wide }
+GateCall { "(" list_space<hoon_wide> ")" }
+EqualityCheck { "=" "(" hoon_wide space hoon_wide ")" }
+CellExpression { "~"? "[" list_space<hoon_wide> "]" "~"?}
+TypeUnion { "?" "(" list_space<spec> ")" }
+PullArmInDoor { "~" "(" argWingWide space hoon_wide space list_space<hoon_wide> ")" }
+ResolveWing {argWingWide ("(" list_comma<pair_wide<argWingWide, hoon_wide>> ")" | "(" hoon_wide")")}
+TypeCast { "`" spec "`" hoon_wide }
+AppendNullList { '`' hoon_wide}
+BindExpression {  (Name | Term | BasicMold | CellExpression | "$") "=" hoon_wide }
+Bunt { "*" !bunt spec }
+FactoryGate { ","+ (spec |  Wing) }
+BinaryToNary { ":" "(" hoon_wide space list_space<hoon_wide> ")" }
+Composition { (hoon_wide !composition ":")+ hoon_wide }
+LogicalOrOperator { "|(" list_space<hoon_wide> ")"}
+LogicalAndOperator { "&(" list_space<hoon_wide> ")"}
+LogicalNotOperator { "!" hoon_wide }
+Print1 { "<" list_space<hoon_wide> ">"}
+Print2 { ">" list_space<hoon_wide> "<"}
+Shadow {"=" (Name | Term |Shadow) }
+Cell2 { hoon_wide !cell2 ("^" hoon_wide)+ }
+AddCell { (Name | Number | "&" | "|" | "~") ("+"|"/") hoon_wide }
+
+irregularForms {
+  Normalize |
+  GateCall |
+  BindExpression |
+  EqualityCheck |
+  TypeUnion |
+  PullArmInDoor |
+  ResolveWing |
+  TypeCast |
+  AppendNullList |
+  Bunt |
+  FactoryGate |
+  BinaryToNary |
+  Composition |
+  LogicalOrOperator |
+  LogicalAndOperator |
+  LogicalNotOperator |
+  Print1 |
+  Print2 |
+  CellExpression |
+  Cell2 |
+  AddCell |
+  Path
+}
+
+rune<r> { @specialize<Rune, r> }
+rune_wide<r, term> { @specialize<RuneWide, r> term ")"}
+
+open_rune<r> { open_rune_2<rune<r>> }
+open_rune_2<r> { OpeningRune[closedBy=Ending, @isGroup=Runes]{ r } }
+open_core_rune<r> { open_core_rune_2<rune<r>> }
+open_core_rune_2<r> { OpeningCoreRune[closedBy=CoreEnding, @isGroup=Runes]{ r } }
+
+list_comma<term> { term ("," space term)* }
+list_space<term> { term (space term)* }
+
+list<term> { term (Gap term)* Gap Ending[openedBy=OpeningRune, @isGroup=Runes]{"=" "="} }
+list_core<term> {term (Gap term)* Gap CoreEnding[openedBy=OpeningCoreRune]{"--"} }
+
+pair_wide<term1, term2> { term1 space term2 }
+triple_wide<term1, term2, term3> { term1 space term2 space term3 }
+quad_wide<term1, term2, term3, term4> { term1 space term2 space term3 space term4 }
+
+pair<term1, term2> { term1 Gap term2 }
+triple<term1, term2, term3> { term1 Gap term2 Gap term3 }
+quad<term1, term2, term3, term4> { term1 Gap term2 Gap term3 Gap term4 }
+
+argTerm { spec_tall }
+argTermWide { /*Name | Term | */spec }
+argTome { Name | Term }
+argChum { Name | Term }
+// argValue { Name | CellExpression | tisRuneWide }
+argStud { Name }
+argWing { tisRune | argWingWide }
+argWingWide { Wing | Name | SpecialIndex  | 
+Name "=" (!bind (Wing | Name | SpecialIndex ) | GateCall) | tisRuneWide }
+argPath { Name | Path}
+
+tisRune[@isGroup=Runes]{
+  Tisgar { rune<"=>"> Gap pair<hoon, hoon> } |
+  Tisbar { "=" "|" Gap pair<spec_tall, hoon> } |
+  Tiscol { open_rune<"=:"> Gap pair<list<pair<argWing, hoon>>, hoon> } |
+  Tiscom { rune<"=,"> Gap pair<hoon, hoon> } |
+  Tisdot { "=" "." Gap triple<argWing, hoon, hoon> } |
+  Tishep { "=" "-" Gap pair<hoon, hoon> } |
+  Tisket { "=" "^" Gap quad<skin, argWing, hoon, hoon> } |
+  Tisgal { rune<"=<"> Gap pair<hoon, hoon> } |
+  Tislus { "=" "+" Gap pair<hoon, hoon> } |
+  Tismic { "=" ";" Gap triple<skin, hoon, hoon> } |
+  Tisfas { "=" "/" Gap triple<skin, hoon, hoon> } |
+  Tissig { open_rune_2<"=" "~"> Gap list<hoon> } |
+  Tistar { "=" "*" Gap triple<argTerm, hoon, hoon> } |
+  Tiswut { "=" "?" Gap quad<argWing, hoon, hoon, hoon> }  
+}
+
+tisRuneWide[@isGroup=Runes]{
+  TisgarWide { rune_wide<"=>(", pair_wide<hoon_wide, hoon_wide>> } |
+  TisbarWide { rune_wide<"=|(", pair_wide<spec, hoon_wide>> } |
+  TiscolWide { rune_wide<"=:(", pair_wide<list_comma<pair_wide<argWing, hoon_wide>>, hoon_wide>> } |
+  TiscomWide { rune_wide<"=,(", pair_wide<hoon_wide, hoon_wide>> } |
+  TisdotWide { "=" "." "(" triple_wide<argWing, hoon_wide, hoon_wide> ")" } |
+  TishepWide { rune_wide<"=-(", pair_wide<hoon_wide, hoon_wide>> } |
+  TisketWide { rune_wide<"=^(", quad_wide<skin, argWing, hoon_wide, hoon_wide>> } |
+  TisgalWide { rune_wide<"=<(", pair_wide<hoon_wide, hoon_wide>> } |
+  TislusWide { "=" "+" "(" pair_wide<hoon_wide, hoon_wide> ")" } |
+  TismicWide { rune_wide<"=;(", triple_wide<skin, hoon_wide, hoon_wide>> } |
+  TisfasWide { rune_wide<"=/(", triple_wide<skin, hoon_wide, hoon_wide>> } |
+  TissigWide { "=" "~" "(" list_space<hoon_wide> ")" } |
+  TistarWide { "=" "*" "(" triple_wide<argTerm, hoon_wide, hoon_wide> ")" } |
+  TiswutWide { "=" "?" "(" quad_wide<argWing, hoon_wide, hoon_wide, hoon_wide> ")" }
+}
+
+bucRune[@isGroup=Runes]{
+  Bucbar { rune<"$|"> Gap pair<spec_tall, hoon> } |
+  Buccab { rune<"$_"> Gap hoon } |
+  Buccen { open_rune<"$%"> Gap list<spec_tall> } |
+  Buccol { open_rune_2<"$" ~buccol ":"> Gap list<spec_tall> } |
+  Bucgal { rune<"$<"> Gap pair<spec_tall, spec_tall> } |
+  Bucgar { rune<"$>"> Gap pair<spec_tall, spec_tall> } |
+  Buchep { rune<"$-"> Gap pair<spec_tall, spec_tall> } |
+  Bucket { rune<"$^"> Gap pair<spec_tall, spec_tall> } |
+  Buclus { rune<"$+"> Gap pair<argStud, spec_tall> } |
+  Bucpam { rune<"$&"> Gap pair<spec_tall, hoon> } |
+  Bucsig { rune<"$~"> Gap pair<hoon, spec_tall> } |
+  Bucpat { rune<"$@"> Gap pair<spec_tall, spec_tall> } |
+  Buctis { "$" "=" Gap pair<skin, spec_tall> } |
+  Bucwut { open_rune<"$?"> Gap list<spec_tall> }
+}
+
+bucRuneWide[@isGroup=Runes]{
+  BucbarWide { rune_wide<"$|(", pair_wide<spec, hoon_wide>> } |
+  BuccabWide { rune_wide<"$_(", hoon_wide> } |
+  BuccenWide { rune_wide<"$%(", list_space<spec>> } |
+  BuccolWide { "$" ~buccol ":" "(" list_space<spec> ")" } |
+  BucgalWide { rune_wide<"$<(", pair_wide<spec, spec>> } |
+  BucgarWide { rune_wide<"$>(", pair_wide<spec, spec>> } |
+  BuchepWide { rune_wide<"$-(", pair_wide<spec, spec>> } |
+  BucketWide { rune_wide<"$^(", pair_wide<spec, spec>> } |
+  BuclusWide { rune_wide<"$+(", pair_wide<argStud, spec>> } |
+  BucpamWide { rune_wide<"$&(", pair_wide<spec, hoon_wide>> } |
+  BucsigWide { rune_wide<"$~(", pair_wide<hoon_wide, spec>> } |
+  BucpatWide { rune_wide<"$@(", pair_wide<spec, spec>> } |
+  BuctisWide { rune_wide<"$=(", pair_wide<skin, spec>> } |
+  BucwutWide { rune_wide<"$?(", list_space<spec>> }
+}
+
+Lustar[@isGroup=Runes] { "+" "*" Gap (pair<argTerm, hoon> Gap)+ (lusRune Gap)*} // Lustar must be the first arm in a core
+
+lusRune[@isGroup=Runes]{
+  Lusbar { "+" "|" Gap argTome } |
+  Lusbuc { "+" "$" Gap pair<argTerm, spec_tall> } |
+  Luslus { "+" "+" Gap pair<argTerm, hoon> }
+}
+
+runeTall[@isGroup=Runes]{
+  //Cores
+  Barbuc { rune<"|$"> Gap pair<"[" list_space<argTerm> "]", spec_tall> } |
+  Barcab { open_core_rune<"|_"> Gap pair<spec_tall, (Lustar CoreEnding[openedBy=OpeningCoreRune, @isGroup=Runes]{"--"} | list_core<lusRune>)> } |
+  Barcol { rune<"|:"> Gap pair<hoon, hoon> } |
+  Barcen { open_core_rune<"|%"> Gap (Lustar CoreEnding[openedBy=OpeningCoreRune, @isGroup=Runes]{"--"} | list_core<lusRune>) } |
+  Bardot { rune<"|."> Gap hoon } |
+  Barket { open_core_rune<"|^"> Gap pair<hoon, (Lustar CoreEnding[openedBy=OpeningCoreRune, @isGroup=Runes]{"--"} | list_core<lusRune>)> } |
+  Barhep { rune<"|-"> Gap hoon } |
+  Barsig { rune<"|~"> Gap pair<spec_tall, hoon> } |
+  Bartar { rune<"|*"> Gap pair<spec_tall, hoon> } |
+  Bartis { rune<"|="> Gap pair<spec_tall, hoon> } |
+  Barpat { open_core_rune<"|@"> Gap (Lustar CoreEnding[openedBy=OpeningCoreRune, @isGroup=Runes]{"--"} | list_core<lusRune>) } |
+  Barwut { rune<"|?"> Gap hoon } |
+
+  //Structures
+  bucRune |
+
+  //Calls
+  Cencab { open_rune<"%_"> Gap pair<argWing, list<pair<argWing, hoon>>> } |
+  Cencol { open_rune<"%:"> Gap pair<hoon, list<hoon>> } |
+  Cendot { "%" "." Gap pair<hoon, hoon> } |
+  Cenhep { rune<"%-"> Gap pair<hoon, hoon> } |
+  Cenket { rune<"%^"> Gap quad<hoon, hoon, hoon, hoon> } |
+  Cenlus { rune<"%+"> Gap triple<hoon, hoon, hoon> } |
+  Censig { "%" "~" !censig Gap triple<argWing, hoon, hoon> } |
+  Centar { open_rune<"%*"> Gap triple<argWing, hoon, list<pair<argWing, hoon>>> } |
+  Centis { open_rune<"%="> Gap pair<argWing, list<pair<argWing, hoon>>> } |
+
+  //Cells
+  Colhep { rune<":-"> Gap pair<hoon, hoon> } |
+  Colcab { rune<":_"> Gap pair<hoon, hoon> } |
+  Collus { rune<":+"> Gap triple<hoon, hoon, hoon> } |
+  Colket { rune<":^"> Gap quad<hoon, hoon, hoon, hoon> } |
+  Coltar { open_rune_2<":" "*"> Gap list<hoon> } |
+  Colsig { open_rune_2<":" "~"> Gap list<hoon> } |
+
+  //Nock
+  Dotket { open_rune<".^"> Gap pair<spec_tall, list<hoon>> } |
+  Dotlus { "." "+" Gap hoon } |
+  Dottar { rune<".*"> Gap pair<hoon, hoon> } |
+  Dottis { rune<".="> Gap pair<hoon, hoon> } |
+  Dotwut { rune<".?"> Gap hoon } |
+
+  //Imports
+  Fashep { rune<"/-"> Gap "*"? Name ("=" Name)? (!fashep_comma "," (Gap|space)? "*"? Name ("=" Name)?)* } |
+  Faslus { rune<"/+"> Gap "*"? Name ("=" Name)? (!fashep_comma "," (Gap|space)? "*"? Name ("=" Name)?)* } |
+  Fastis { rune<"/="> Gap pair<Name, argPath> } |
+  Fastar { rune<"/*"> Gap triple<Name, Term, argPath> } |
+  Fasbuc { rune<"/$"> Gap triple<Name, Term, Term> } |
+  Fassig { rune<"/~"> Gap triple<Name, spec_tall, argPath> } |
+  Fascen { rune<"/%"> Gap pair<Name, Term> } |
+  Faswut { rune<"/?"> Gap Number} |
+
+  //Casts
+  Ketbar { rune<"^|"> Gap hoon } |
+  Ketcol { rune<"^:"> Gap spec_tall } |
+  Ketdot { rune<"^."> Gap pair<hoon, hoon> } |
+  Kethep { rune<"^-"> Gap pair<spec_tall, hoon> } |
+  Ketlus { rune<"^+"> Gap pair<hoon, hoon> } |
+  Ketpam { rune<"^&"> Gap hoon } |
+  Ketsig { "^" "~" Gap hoon } |
+  Kettar { rune<"^*"> Gap spec_tall } |
+  Kettis { "^" "=" Gap pair<skin, hoon> } |
+  Ketwut { rune<"^?"> Gap hoon } |
+
+  //Make
+  Miccol { open_rune<";:"> Gap pair<hoon, list<hoon>> } |
+  Micgal { rune<";<"> Gap quad<spec_tall, hoon, hoon, hoon> } |
+  Miclus { rune<";+"> Gap hoon } |
+  Micmic { rune<";;"> Gap pair<spec_tall, hoon> } |
+  Micfas { rune<";/"> Gap hoon } |
+  Micsig { open_rune<";~"> Gap pair<hoon, list<hoon>> } |
+  Mictar { rune<";*"> Gap hoon } |
+  Mictis { open_rune<";="> Gap list<hoon> } |
+
+  //Hints
+  Siggar { rune<"~>"> Gap pair<argTerm ("." hoon)?, hoon> } |
+  Sigbar { rune<"~|"> Gap pair<hoon, hoon> } |
+  Sigbuc { rune<"~$"> Gap pair<argTerm, hoon> } |
+  Sigcab { rune<"~_"> Gap pair<hoon, hoon> } |
+  Sigcen { open_rune<"~%"> Gap quad<argChum, hoon, ("=" "=" Gap list<pair<Name, Name>> | "~"), hoon> } |
+  Siggal { rune<"~<"> Gap pair<argTerm ("." hoon)?, hoon> } |
+  Siglus { rune<"~+"> Gap hoon } |
+  Sigfas { rune<"~/"> Gap pair<Term, hoon> } |
+  Sigpam { rune<"~&"> Gap pair<hoon, hoon> } |
+  Sigtis { rune<"~="> Gap pair<hoon, hoon> } |
+  Sigwut { rune<"~?"> Gap triple<((">" | ">"">" | ">"">"">") Gap)? hoon, hoon, hoon> } |
+  Sigzap { rune<"~!"> Gap pair<hoon, hoon> } |
+
+  //Subject
+  tisRune |
+  //Conditionals
+  Wutbar { open_rune<"?|"> Gap list<hoon> } |
+  // Wuthep { open_rune<"?-"> Gap pair<argWing, list<pair<spec_tall, argValue>>> } |
+  Wuthep { open_rune<"?-"> Gap pair<argWing|GateCall|TypeCast, list<pair<spec_tall, hoon>>> } |
+  Wutcol { rune<"?:"> Gap triple<hoon, hoon, hoon> } |
+  Wutdot { rune<"?."> Gap triple<hoon, hoon, hoon> } |
+  Wutket { rune<"?^"> Gap triple<argWing|GateCall|TypeCast, hoon, hoon> } |
+  Wutgal { rune<"?<"> Gap pair<hoon, hoon> } |
+  Wutgar { rune<"?>"> Gap pair<hoon, hoon> } |
+  Wutlus { open_rune<"?+"> Gap triple<argWing|GateCall|TypeCast, hoon, list<pair<spec_tall, hoon>>> } |
+  Wutpam { open_rune<"?&"> Gap list<hoon> } |
+  Wutpat { rune<"?@"> Gap triple<argWing|GateCall|TypeCast, hoon, hoon> } |
+  Wutsig { rune<"?~"> Gap triple<argWing|GateCall|TypeCast, hoon, hoon> } |
+  Wuttis { rune<"?="> Gap pair<spec_tall, argWing|GateCall|TypeCast> } |
+  Wutzap { rune<"?!"> Gap hoon } |
+
+  //Wild
+  Zapcom { rune<"!,"> Gap pair<hoon, hoon> } |
+  Zapgar { rune<"!>"> Gap hoon } |
+  Zapgal { rune<"!<"> Gap pair<spec_tall, hoon> } |
+  Zapmic { rune<"!;"> Gap pair<hoon, hoon> } |
+  Zaptis { "!" "=" Gap hoon } |
+  Zapwut { rune<"!?"> Gap pair<(Number | "[" Number space Number "]"), hoon> } |
+  Zappat { rune<"!@"> Gap triple<hoon, hoon, hoon> } |
+  Zapcol { rune<"!:"> Gap hoon } |
+  Zapdot {"!" "." !bind Gap hoon }
+}
+
+runeWideExpression[@isGroup=Runes]{
+  BarbucWide { rune_wide<"|$(", pair_wide<"[" list_space<argTerm> "]", spec>> } |
+  BarcolWide { rune_wide<"|:(", pair_wide<hoon_wide, hoon_wide>> } |
+  BardotWide { rune_wide<"|.(", hoon_wide> } |
+  BarhepWide { rune_wide<"|-(", hoon_wide> } |
+  BarsigWide { rune_wide<"|~(", pair_wide<spec, hoon_wide>> } |
+  BartarWide { rune_wide<"|*(", pair_wide<spec, hoon_wide>> } |
+  BartisWide { rune_wide<"|=(", pair_wide<spec, hoon_wide>> } |
+  BarwutWide { rune_wide<"|?(", hoon_wide> } |
+
+  bucRuneWide |
+
+  CencabWide { rune_wide<"%_(", pair_wide<argWingWide, list_comma<pair_wide<argWingWide, hoon_wide>>>> } |
+  CencolWide { rune_wide<"%:(", pair_wide<hoon_wide, list_space<hoon_wide>>> } |
+  CendotWide { rune_wide<"%.(", pair_wide<hoon_wide, hoon_wide>> } |
+  CenhepWide { rune_wide<"%-(", pair_wide<hoon_wide, hoon_wide>> } |
+  CenketWide { rune_wide<"%^(", quad_wide<hoon_wide, hoon_wide, hoon_wide, hoon_wide>> } |
+  CenlusWide { rune_wide<"%+(", triple_wide<hoon_wide, hoon_wide, hoon_wide>> } |
+  CensigWide { "%" "~" "(" triple_wide<argWingWide, hoon_wide, hoon_wide> ")" } |
+  CentarWide { rune_wide<"%*(", triple_wide<argWingWide, hoon_wide, list_comma<pair_wide<argWingWide, hoon_wide>>>> } |
+  CentisWide { rune_wide<"%=(", pair_wide<argWingWide, list_comma<pair_wide<argWingWide, hoon_wide>>>> } |
+
+  ColhepWide { rune_wide<":-(", pair_wide<hoon_wide, hoon_wide>> } |
+  ColcabWide { rune_wide<":_(", pair_wide<hoon_wide, hoon_wide>> } |
+  CollusWide { rune_wide<":+(", triple_wide<hoon_wide, hoon_wide, hoon_wide>> } |
+  ColketWide { rune_wide<":^(", quad_wide<hoon_wide, hoon_wide, hoon_wide, hoon_wide>> } |
+  ColtarWide { ":" "*" "(" list_space<hoon_wide> ")" } |
+  ColsigWide { ":" "~" "(" list_space<hoon_wide> ")" } |
+
+  DotketWide { rune_wide<".^(", pair_wide<spec, list_space<hoon_wide>>> } |
+  DotlusWide { "." "+" "(" hoon_wide ")"} |
+  DottarWide { rune_wide<".*(", pair_wide<hoon_wide, hoon_wide>> } |
+  DottisWide { rune_wide<".=(", pair_wide<hoon_wide, hoon_wide>> } |
+  DotwutWide { rune_wide<".?(", hoon_wide> } |
+
+  KetbarWide { rune_wide<"^|(", hoon_wide> } |
+  KetcolWide { rune_wide<"^:(", spec> } |
+  KetdotWide { rune_wide<"^.(", pair_wide<hoon_wide, hoon_wide>> } |
+  KethepWide { rune_wide<"^-(", pair_wide<spec, hoon_wide>> } |
+  KetlusWide { rune_wide<"^+(", pair_wide<hoon_wide, hoon_wide>> } |
+  KetpamWide { rune_wide<"^&(", hoon_wide> } |
+  KetsigWide { "^" "~" "(" hoon_wide ")" } |
+  KettarWide { rune_wide<"^*(", spec> } |
+  KettisWide { "^" !bind "=" "(" pair_wide<skin, hoon_wide> ")" } |
+  KetwutWide { rune_wide<"^?(", hoon_wide> } |
+
+  MiccolWide { rune_wide<";:(", pair_wide<hoon_wide, list_space<hoon_wide>>> } |
+  MicgalWide { rune_wide<";<(", quad_wide<spec, hoon_wide, hoon_wide, hoon_wide>> } |
+  MiclusWide { rune_wide<";+(", hoon_wide> } |
+  MicmicWide { rune_wide<";;(", pair_wide<spec, hoon_wide>> } |
+  MicfasWide { rune_wide<";/(", hoon_wide> } |
+  MicsigWide { rune_wide<";~(", pair_wide<hoon_wide, list_space<hoon_wide>>> } |
+  MictarWide { rune_wide<";*(", hoon_wide> } |
+  MictisWide { rune_wide<";=(", list_space<hoon_wide>> } |
+
+  SiggarWide { rune_wide<"~>(", pair_wide<argTermWide ("." hoon_wide)?, hoon_wide>> } |
+  SigbarWide { rune_wide<"~|(", pair_wide<hoon_wide, hoon_wide>> } |
+  SigbucWide { rune_wide<"~$(", pair_wide<argTermWide, hoon_wide>> } |
+  SigcabWide { rune_wide<"~_(", pair_wide<hoon_wide, hoon_wide>> } |
+  SiggalWide { rune_wide<"~<(", pair_wide<argTermWide ("." hoon_wide)?, hoon_wide>> } |
+  SiglusWide { rune_wide<"~+(", hoon_wide> } |
+  SigfasWide { rune_wide<"~/(", pair_wide<argTermWide, hoon_wide>> } |
+  SigpamWide { rune_wide<"~&(", pair_wide<hoon_wide, hoon_wide>> } |
+  SigtisWide { rune_wide<"~=(", pair_wide<hoon_wide, hoon_wide>> } |
+  SigwutWide { rune_wide<"~?(", triple_wide<((">" | ">"">" | ">"">"">") space)? hoon_wide, hoon_wide, hoon_wide>> } |
+  SigzapWide { rune_wide<"~!(", pair_wide<hoon_wide, hoon_wide>> } |
+
+  tisRuneWide |
+  
+  WutbarWide { rune_wide<"?|(", list_space<hoon_wide>> } |
+  // WuthepWide { rune_wide<"?-(", pair_wide<argWingWide, list_comma<pair_wide<spec, argValue>>>> } |
+  WuthepWide { rune_wide<"?-(", pair_wide<argWingWide|GateCall|TypeCast, list_comma<pair_wide<spec, hoon_wide>>>> } |
+  WutcolWide { rune_wide<"?:(", triple_wide<hoon_wide, hoon_wide, hoon_wide>> } |
+  WutdotWide { rune_wide<"?.(", triple_wide<hoon_wide, hoon_wide, hoon_wide>> } |
+  WutketWide { rune_wide<"?^(", triple_wide<argWingWide|GateCall|TypeCast, hoon_wide, hoon_wide>> } |
+  WutgalWide { rune_wide<"?<(", pair_wide<hoon_wide, hoon_wide>> } |
+  WutgarWide { rune_wide<"?>(", pair_wide<hoon_wide, hoon_wide>> } |
+  WutlusWide { rune_wide<"?+(", triple_wide<argWingWide|GateCall|TypeCast, hoon_wide, list_comma<pair_wide<spec, hoon_wide>>>> } |
+  WutpamWide { rune_wide<"?&(", list_space<hoon_wide>> } |
+  WutpatWide { rune_wide<"?@(", triple_wide<argWingWide|GateCall|TypeCast, hoon_wide, hoon_wide>> } |
+  WutsigWide { rune_wide<"?~(", triple_wide<argWingWide|GateCall|TypeCast, hoon_wide, hoon_wide>> } |
+  WuttisWide { rune_wide<"?=(", pair_wide<spec, argWingWide|GateCall|TypeCast>> } |
+  WutzapWide { rune_wide<"?!(", hoon_wide> } |
+
+  ZapcomWide { rune_wide<"!,(", pair_wide<hoon_wide, hoon_wide>> } |
+  ZapgarWide { rune_wide<"!>(", hoon_wide> } |
+  ZapgalWide { rune_wide<"!<(", pair_wide<spec, hoon_wide>> } |
+  ZapmicWide { rune_wide<"!;(", pair_wide<hoon_wide, hoon_wide>> } |
+  ZaptisWide { "!" "=" "(" hoon_wide ")" } |
+  ZapwutWide { rune_wide<"!?(", pair_wide<(Number | "[" Number space Number "]"), hoon_wide>> } |
+  ZappatWide { rune_wide<"!@(", triple_wide<hoon_wide, hoon_wide, hoon_wide>> } |
+  ZapcolWide { rune_wide<"!:(", hoon_wide> } |
+  ZapdotWide { rune_wide<"!.(", hoon_wide> } |
+  Zapzap { "!" "!" !zapzap }
+}
+
+@detectDelim
