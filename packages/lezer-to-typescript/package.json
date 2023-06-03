@@ -1,0 +1,22 @@
+{
+  "name": "@dral/lezer-to-typescript",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lezer-to-typescript.js",
+  "type": "module",
+  "scripts": {
+    "start": "ts-node --esm -T ./lezer-to-typescript.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@lezer/common": "^1.0.3",
+    "@lezer/lezer": "^1.1.1",
+    "lodash": "^4.17.21",
+    "string-dedent": "^3.0.1"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1"
+  }
+}

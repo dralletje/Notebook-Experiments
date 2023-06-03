@@ -832,6 +832,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@dral/lezer-to-typescript@workspace:packages/lezer-to-typescript":
+  version: 0.0.0-use.local
+  resolution: "@dral/lezer-to-typescript@workspace:packages/lezer-to-typescript"
+  dependencies:
+    "@lezer/common": ^1.0.3
+    "@lezer/lezer": ^1.1.1
+    lodash: ^4.17.21
+    string-dedent: ^3.0.1
+    ts-node: ^10.9.1
+  languageName: unknown
+  linkType: soft
+
 "@dral/modern-map@workspace:^, @dral/modern-map@workspace:packages/modern-map":
   version: 0.0.0-use.local
   resolution: "@dral/modern-map@workspace:packages/modern-map"

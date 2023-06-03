@@ -18,6 +18,7 @@ let {
   },
 } = require("prettier/doc");
 const { to_simple_object } = require("./lezer-ast.js");
+const { dont_break } = require("./utils.js");
 
 module.exports.languages = [
   {
@@ -50,8 +51,6 @@ if (false) {
 module.exports.parsers = {
   lezer: {
     parse(text, parsers, options) {
-      // console.log(`options:`, options);
-      // return parsers.lezer.parse(text, options);
       let ast = parser.parse(text);
 
       let comments = [];
@@ -74,30 +73,6 @@ module.exports.parsers = {
     // hasPragma,
     // preprocess,
   },
-};
-
-/**
- * @param {LezerNode} node
- * @param {{ [key: string]: (path: LezerNode) => import("prettier").Doc }} options
- */
-let switch_node = (node, options) => {
-  let handler = options[node.name];
-  if (handler != null) {
-    return handler(node);
-  } else {
-    throw new Error(`Unhandled node type "${node.name}"`);
-  }
-};
-
-let has_newline_before = (
-  /** @type {LezerNode} */ node,
-  /** @type {Options} */ options
-) => {
-  let end_previous = skipWhitespace(options.originalText, node.from, {
-    backwards: true,
-  });
-  if (!end_previous) return false;
-  return options.originalText.slice(end_previous, node.from).includes("\n");
 };
 
 let has_newline_after = (
@@ -128,7 +103,6 @@ let print_choice = (
   /** @type {Options} */ options,
   /** @type {(node: LezerNode) => import("prettier").Doc} */ print
 ) => {
-  // return [];
   return group(
     nodes.map((node, index) => {
       if (node.name === "|") return [" ", "|"];
@@ -151,9 +125,10 @@ let print_list = (
   /** @type {Options} */ options,
   /** @type {(node: LezerNode) => import("prettier").Doc} */ print
 ) => {
+  let is_empty = !nodes.find((x) => x.name !== "{" && x.name !== "}");
   return nodes.map((node, index) => {
     if (node.name === "{") return ["{"];
-    if (node.name === "}") return dedent([line, "}"]);
+    if (node.name === "}") return dedent([is_empty ? softline : line, "}"]);
     if (node.name === "|") throw new Error("Unexpected |");
 
     if (index === 0) {
@@ -166,17 +141,6 @@ let print_list = (
       print(node),
     ];
   });
-};
-
-/**
- * @template S
- * @template T
- * @param {S} separator
- * @param {Array<T>} nodes
- * @returns {Array<S | T>}
- */
-let interleave = (separator, nodes) => {
-  return nodes.flatMap((x, i) => (i === 0 ? [x] : [separator, x]));
 };
 
 let print_tokens_body = (
@@ -192,6 +156,7 @@ let print_tokens_body = (
   /** @type {import("prettier").Doc[]} */
   let current_literal_parts = [];
 
+  let is_empty = !nodes.find((x) => x.name !== "{" && x.name !== "}");
   for (let node of nodes) {
     if (node.name === "LiteralTokenDeclaration") {
       current_literal_parts.push(print(node));
@@ -219,7 +184,7 @@ let print_tokens_body = (
       continue;
     }
     if (node.name === "}") {
-      parts.push(dedent([hardline, "}"]));
+      parts.push(dedent([is_empty ? softline : line, "}"]));
       continue;
     }
 
@@ -273,42 +238,6 @@ let print_hard_list = (
   });
 };
 
-/** @returns {import("prettier").Doc} */
-let dont_break = (/** @type {import("prettier").Doc} */ doc) => {
-  if (typeof doc === "string") {
-    return doc;
-  }
-  if (Array.isArray(doc)) {
-    return doc.map(dont_break);
-  }
-  if (doc.type === "group") {
-    return {
-      ...doc,
-      contents: dont_break(doc.contents),
-    };
-  }
-  if (doc.type === "line") {
-    if (doc.soft) return "";
-    if (doc.hard) return "";
-    return " ";
-  }
-  if (doc.type === "concat") {
-    return { type: "concat", parts: doc.parts.map(dont_break) };
-  }
-  if (doc.type === "indent") {
-    return { type: "indent", contents: dont_break(doc.contents) };
-  }
-  if (doc.type === "align") {
-    return { type: "align", contents: dont_break(doc.contents), n: doc.n };
-  }
-  if (doc.type === "break-parent") {
-    return "";
-  }
-
-  console.warn(`DOC TYPE THAT dont_break DOESNT UNDERSTAND:`, doc);
-  return doc;
-};
-
 let unwrap_parens = (/** @type {LezerNode} */ node) => {
   if (node.name === "RuleName") {
     return node;
@@ -323,33 +252,32 @@ let unwrap_parens = (/** @type {LezerNode} */ node) => {
   }
 };
 
-class LezerPath {
-  /** @type {LezerNode} */ node;
-  /** @type {LezerPath | null} */ parent;
-  /** @type {number | null} */ index;
-  constructor(
-    /** @type {LezerNode} */ node,
-    /** @type {LezerPath | null} */ parent,
-    /** @type {number | null} */ index
-  ) {
-    this.node = node;
-    this.parent = parent;
-    this.index = index;
-  }
+/**
+ * @typedef LezerPath
+ * @type {LezerNode}
+ */
 
-  get comments() {
-    return this.node.comments;
+let print_body = (
+  /** @type {LezerPath} */ node,
+  /** @type {Options} */ options,
+  /** @type {(node: LezerNode) => import("prettier").Doc} */ print
+) => {
+  let is_empty = !node.children.find((x) => x.name !== "{" && x.name !== "}");
+  return node.children.map((node, index) => {
+    if (node.name === "{") return ["{", is_empty ? softline : line];
+    if (node.name === "}") return dedent([is_empty ? softline : line, "}"]);
+    return group(print(node));
+  });
+};
+
+let fake_print_comments = (/** @type {LezerPath} */ node) => {
+  for (let child of node.children) {
+    for (let comment of child.comments ?? []) {
+      comment.printed = true;
+    }
+    fake_print_comments(child);
   }
-  get name() {
-    return this.node.name;
-  }
-  get source() {
-    return this.node.source;
-  }
-  get children() {
-    return this.node.children.map((x) => new LezerPath(this.path.concat(x)));
-  }
-}
+};
 
 /** @returns {import("prettier").Doc} */
 let print = (
@@ -358,8 +286,9 @@ let print = (
   /** @type {(node: LezerNode) => import("prettier").Doc} */ print
 ) => {
   for (let comment of node.comments ?? []) {
-    if (comment.leading && comment.placement === "ownLine") {
+    if (comment.leading) {
       if (comment.value.startsWith("// prettier-ignore")) {
+        fake_print_comments(node);
         return node.source;
       }
     }
@@ -374,12 +303,7 @@ let print = (
   }
 
   if (node.name === "Body") {
-    return indent(node.children.map(print));
-    // return indent(
-    //   node.children.map((x) =>
-    //     x.name === "{" ? "{" : x.name === "}" ? "}" : print(x)
-    //   )
-    // );
+    return indent(print_body(node, options, print));
   }
 
   if (node.name === "PrecedenceBody") {
@@ -415,27 +339,11 @@ let print = (
         : [dont_break(print(x)), " "]
     );
   }
-  // if (node.name === "Sequence") {
-  //   let init = node.children.slice(0, -1);
-  //   let last = node.children[node.children.length - 1];
 
-  //   return join(
-  //     " ",
-  //     init
-  //       .map((x) => dont_break(print(x)))
-  //       .concat(last == null ? [] : [print(last)])
-  //   );
-  // }
-  // if (node.name === "Sequence") {
-  //   return dont_break(print_list(node.children, options, print));
-  // }
-  // if (node.name === "Sequence") {
-  //   let [first, ...rest] = node.children;
-  //   return dont_break([
-  //     print(first),
-  //     ...rest.map((x) => [has_space_before(x, options) ? " " : [], print(x)]),
-  //   ]);
-  // }
+  // I guess?
+  if (node.name === "BlockComment") {
+    return node.source;
+  }
 
   if (node.name === "DialectsDeclaration") {
     return group(join(" ", node.children.map(print)));
@@ -507,7 +415,7 @@ let print = (
         " ",
         node.children.map((x) =>
           x.name === "TokensBody"
-            ? print_list(x.children, options, print)
+            ? indent(print_list(x.children, options, print))
             : print(x)
         )
       )
@@ -521,25 +429,9 @@ let print = (
   }
   if (node.name === "@context") return node.source;
 
-  // if (node.name === "LineComment") {
-  //   return [
-  //     /\n *$/.test(node.root_source.slice(0, node.from)) ? hardline : [],
-  //     node.source,
-  //     ifBreak([], hardline),
-  //   ];
-  // }
-
-  // Removed Breed because it is formatted just like all the rest
-  // if (node.name === "Breed") {
-  //   return join(" ", node.children.map(print));
-  // }
-
   if (node.name === "⚠") {
     return node.children.map(print);
   }
-
-  if (node.name === "{") return ["{", line];
-  if (node.name === "}") return dedent([line, "}"]);
 
   if (
     node.name === "RuleName" ||
@@ -556,6 +448,7 @@ let print = (
     return dont_break(node.children.map(print));
   }
   if (node.name === "@specialize") return node.source;
+  if (node.name === "@extend") return node.source;
   if (node.name === "PropEsc")
     return node.children.map((x) =>
       x.name === "{" ? "{" : x.name === "}" ? "}" : print(x)
@@ -610,12 +503,15 @@ let apply_comments = (
   printed,
   /** @type {Options} */ options
 ) => {
-  // console.log(`printed:`, printed);
   let leading_comments = [];
   let trailing_comments = [];
+
   for (let comment of node.comments ?? []) {
     if (comment.printed) continue;
 
+    // console.log(`comment:`, comment);
+
+    let comment_value = options.originalText.slice(comment.from, comment.to);
     if (comment.leading) {
       if (
         isPreviousLineEmpty(
@@ -629,12 +525,16 @@ let apply_comments = (
 
       try {
         if (comment.placement === "ownLine") {
-          leading_comments.push([comment.value, hardline]);
+          leading_comments.push([comment_value, hardline]);
           comment.printed = true;
           continue;
         } else if (comment.placement === "endOfLine") {
           // I feel like a leading "endOfLine" comment is kinda odd...
-          leading_comments.push([comment.value, hardline]);
+          leading_comments.push([comment_value, hardline]);
+          comment.printed = true;
+          continue;
+        } else {
+          leading_comments.push([comment_value, " "]);
           comment.printed = true;
           continue;
         }
@@ -651,18 +551,25 @@ let apply_comments = (
       }
     } else if (comment.trailing) {
       if (comment.placement === "ownLine") {
-        trailing_comments.push([hardline, comment.value]);
+        trailing_comments.push([hardline, comment_value]);
         comment.printed = true;
         continue;
       } else if (comment.placement === "endOfLine") {
-        trailing_comments.push([" ", breakParent, comment.value]);
+        trailing_comments.push([" ", breakParent, comment_value]);
+        comment.printed = true;
+        continue;
+      } else {
+        trailing_comments.push([" ", comment_value]);
         comment.printed = true;
         continue;
       }
+    } else {
+      // Hah!
+      // IDK, but I'm just going to put this before the node
+      leading_comments.push([comment_value, hardline]);
+      comment.printed = true;
+      continue;
     }
-
-    console.error(`Comment not printed:`, comment, "on node", node);
-    throw new Error("Comment not printed!");
   }
 
   let value = [...leading_comments, printed, ...trailing_comments];
@@ -691,23 +598,6 @@ module.exports.printers = {
     print(path, options, _print) {
       let root_node = path.getValue();
 
-      // console.log(
-      //   `val:`,
-      //   JSON.stringify(
-      //     root_node,
-      //     (x, y) => {
-      //       if (x === "root_source") return null;
-      //       if (x === "source") {
-      //         if (y.length > 20) {
-      //           return y.slice(0, 9) + "..." + y.slice(-9);
-      //         }
-      //       }
-      //       return y;
-      //     },
-      //     2
-      //   )
-      // );
-
       let print_with_comments_and_stuff = (node) => {
         let printed = print(node, options, print_with_comments_and_stuff);
         return apply_comments(node, printed, options);
@@ -716,36 +606,18 @@ module.exports.printers = {
       return val;
     },
 
-    getCommentChildNodes(
-      // The node whose children should be returned.
-      node,
-      options
-    ) {
+    getCommentChildNodes(node, options) {
       return node.children;
     },
     canAttachComment(node) {
-      // return (
-      //   node.name === "Variable" ||
-      //   node.name === "Call" ||
-      //   node.name === "ImplicitBlock" ||
-      //   node.name === "[" ||
-      //   node.name === "Block" ||
-      //   node.name === "Line" ||
-      //   node.name === "List"
-      // );
-
       if (node.group?.includes("Expression")) return true;
       if (node.group?.includes("Declaration")) return true;
-      if (node.name === "RuleDeclaration" || node.name === "Prop") {
-        return true;
-      } else {
-        // console.log(`ATTACH COMMENT? node:`, node.name);
-        return false;
-      }
+
+      if (node.name === "Precedence") return true;
+      if (node.name === "Prop") return true;
+
+      // console.log("Can't attach comment to", node.name);
+      return false;
     },
-    // printComment(commentPath, options) {
-    //   console.log(`commentPath:`, commentPath);
-    //   return commentPath.getValue().source;
-    // },
   },
 };

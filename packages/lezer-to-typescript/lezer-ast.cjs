@@ -24,10 +24,6 @@ const {
  *  name: TokenNames,
  *  children: Array<LezerNode<TokenNames>>,
  *  source: string,
- *  from: number,
- *  group: readonly string[] | undefined,
- *  to: number,
- *  comments?: Array<PrettierComment>,
  * }}
  */
 
@@ -45,42 +41,20 @@ function* node_children(
 }
 
 /**
- * @template {string} [TokenNames=string]
- * @returns {LezerNode<TokenNames>}
+ * @returns {LezerNode}
  */
 let to_simple_object = (
   /** @type {import("@lezer/common").SyntaxNode} */ node,
-  /** @type {string} */ source_text,
-  /** @type {(node: PrettierComment) => void} */ report_comment
+  /** @type {string} */ source_text
 ) => {
-  let comments = [];
-
   let children = compact(
-    Array.from(node_children(node)).map((x) => {
-      if (x.name === "LineComment" || x.name === "BlockComment") {
-        report_comment({
-          value: source_text.slice(x.from, x.to),
-          from: x.from,
-          to: x.to,
-        });
-        return null;
-      } else {
-        return /** @type {LezerNode<TokenNames>} */ (
-          /** @type {any} */ (to_simple_object(x, source_text, report_comment))
-        );
-      }
-    })
+    Array.from(node_children(node)).map((x) => to_simple_object(x, source_text))
   );
+
   return {
-    // root_source: source_text,
-    name: /** @type {TokenNames} */ (node.name),
-    // node: node,
-    comments: comments,
-    from: node.from,
-    to: node.to,
-    group: node.type.prop(NodeProp.group),
-    children: children,
+    name: node.name,
     source: source_text.slice(node.from, node.to),
+    children: children,
   };
 };
 module.exports.to_simple_object = to_simple_object;

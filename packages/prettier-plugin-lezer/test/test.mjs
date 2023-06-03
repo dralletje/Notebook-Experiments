@@ -9,7 +9,7 @@ let result = prettier.format(
     "utf-8"
   ),
   {
-    printWidth: 80,
+    printWidth: 60,
     parser: "lezer",
     pluginSearchDirs: ["../"],
     plugins: ["@dral/prettier-plugin-lezer"],
