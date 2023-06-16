@@ -1,0 +1,28 @@
+{
+  "name": "@dral/zig-jspi-test",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@dral/zig-jspi": "workspace:*",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "start": "vite",
+    "build": "vite build"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.6",
+    "@vitejs/plugin-react-swc": "^3.3.1",
+    "vite": "^4.3.7"
+  }
+}

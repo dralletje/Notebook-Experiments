@@ -1,185 +1,251 @@
-export interface Node<Name extends string, Child extends Node<string> = any> {
-  readonly name: Name;
-  readonly children: Array<Child>;
-  readonly source: string;
+export interface Node<Name extends string, Children extends any[] = []> {
+  name: Name;
+  children: Children;
+  source: string;
 }
 
-export type GrammarNode = Node<"Grammar", declarationNode>;
+export type GrammarNode = Node<"Grammar", Array<declarationNode>>;
 
 export type declarationNode =
   | RuleDeclarationNode
   | topRuleDeclarationNode
   | Node<
       "PrecedenceDeclaration",
-      | atNode<Node<"@precedence">>
-      | Node<
-          "PrecedenceBody",
-          | Node<"{">
-          | Node<
-              "Precedence",
-              | PrecedenceNameNode
-              | atNode<Node<"@left">>
-              | atNode<Node<"@right">>
-              | atNode<Node<"@cut">>
+      Array<
+        | atNode<Node<"@precedence">>
+        | Node<
+            "PrecedenceBody",
+            Array<
+              | Node<"{">
+              | Node<
+                  "Precedence",
+                  Array<
+                    | PrecedenceNameNode
+                    | atNode<Node<"@left">>
+                    | atNode<Node<"@right">>
+                    | atNode<Node<"@cut">>
+                  >
+                >
+              | Node<",">
+              | Node<"}">
             >
-          | Node<",">
-          | Node<"}">
-        >
+          >
+      >
     >
   | Node<
       "TokensDeclaration",
-      | atNode<Node<"@tokens">>
-      | Node<"TokensBody", Node<"{"> | tokenDeclarationNode | Node<"}">>
+      Array<
+        | atNode<Node<"@tokens">>
+        | Node<
+            "TokensBody",
+            Array<Node<"{"> | tokenDeclarationNode | Node<"}">>
+          >
+      >
     >
   | Node<
       "LocalTokensDeclaration",
-      | atNode<Node<"@local">>
-      | kwNode<Node<"tokens">>
-      | Node<
-          "TokensBody",
-          | Node<"{">
-          | tokenDeclarationNode
-          | Node<"ElseToken", atNode<Node<"@else">> | RuleNameNode | PropsNode>
-          | Node<"}">
-        >
+      Array<
+        | atNode<Node<"@local">>
+        | kwNode<Node<"tokens">>
+        | Node<
+            "TokensBody",
+            Array<
+              | Node<"{">
+              | tokenDeclarationNode
+              | Node<
+                  "ElseToken",
+                  Array<atNode<Node<"@else">> | RuleNameNode | PropsNode>
+                >
+              | Node<"}">
+            >
+          >
+      >
     >
   | Node<
       "ExternalTokensDeclaration",
-      | atNode<Node<"@external">>
-      | kwNode<Node<"tokens">>
-      | NameNode
-      | kwNode<Node<"from">>
-      | LiteralNode
-      | externalTokenSetNode
+      Array<
+        | atNode<Node<"@external">>
+        | kwNode<Node<"tokens">>
+        | NameNode
+        | kwNode<Node<"from">>
+        | LiteralNode
+        | externalTokenSetNode
+      >
     >
   | Node<
       "ExternalPropDeclaration",
-      | atNode<Node<"@external">>
-      | kwNode<Node<"prop">>
-      | NameNode
-      | kwNode<Node<"as">>
-      | NameNode
-      | kwNode<Node<"from">>
-      | LiteralNode
+      Array<
+        | atNode<Node<"@external">>
+        | kwNode<Node<"prop">>
+        | NameNode
+        | kwNode<Node<"as">>
+        | NameNode
+        | kwNode<Node<"from">>
+        | LiteralNode
+      >
     >
   | Node<
       "ExternalPropSourceDeclaration",
-      | atNode<Node<"@external">>
-      | kwNode<Node<"propSource">>
-      | NameNode
-      | kwNode<Node<"from">>
-      | LiteralNode
+      Array<
+        | atNode<Node<"@external">>
+        | kwNode<Node<"propSource">>
+        | NameNode
+        | kwNode<Node<"from">>
+        | LiteralNode
+      >
     >
   | Node<
       "ExternalSpecializeDeclaration",
-      | atNode<Node<"@external">>
-      | kwNode<Node<"extend">>
-      | kwNode<Node<"specialize">>
-      | BodyNode
-      | NameNode
-      | kwNode<Node<"from">>
-      | LiteralNode
-      | externalTokenSetNode
+      Array<
+        | atNode<Node<"@external">>
+        | kwNode<Node<"extend">>
+        | kwNode<Node<"specialize">>
+        | BodyNode
+        | NameNode
+        | kwNode<Node<"from">>
+        | LiteralNode
+        | externalTokenSetNode
+      >
     >
   | Node<
       "ContextDeclaration",
-      atNode<Node<"@context">> | NameNode | kwNode<Node<"from">> | LiteralNode
+      Array<
+        atNode<Node<"@context">> | NameNode | kwNode<Node<"from">> | LiteralNode
+      >
     >
   | Node<
       "DialectsDeclaration",
-      | atNode<Node<"@dialects">>
-      | Node<"DialectBody", Node<"{"> | NameNode | Node<","> | Node<"}">>
+      Array<
+        | atNode<Node<"@dialects">>
+        | Node<
+            "DialectBody",
+            Array<Node<"{"> | NameNode | Node<","> | Node<"}">>
+          >
+      >
     >
-  | Node<"TopSkipDeclaration", atNode<Node<"@skip">> | BodyNode>
+  | Node<"TopSkipDeclaration", Array<atNode<Node<"@skip">> | BodyNode>>
   | Node<
       "SkipScope",
-      | atNode<Node<"@skip">>
-      | BodyNode
-      | Node<
-          "SkipBody",
-          Node<"{"> | RuleDeclarationNode | topRuleDeclarationNode | Node<"}">
-        >
+      Array<
+        | atNode<Node<"@skip">>
+        | BodyNode
+        | Node<
+            "SkipBody",
+            Array<
+              | Node<"{">
+              | RuleDeclarationNode
+              | topRuleDeclarationNode
+              | Node<"}">
+            >
+          >
+      >
     >
-  | Node<"DetectDelimDeclaration", atNode<Node<"@detectDelim">>>;
+  | Node<"DetectDelimDeclaration", Array<atNode<Node<"@detectDelim">>>>;
 
 export type externalTokenSetNode = Node<
   "TokensBody",
-  Node<"{"> | Node<"Token", RuleNameNode | PropsNode> | Node<","> | Node<"}">
+  Array<
+    | Node<"{">
+    | Node<"Token", Array<RuleNameNode | PropsNode>>
+    | Node<",">
+    | Node<"}">
+  >
 >;
 
 export type tokenDeclarationNode =
   | Node<
       "TokenPrecedenceDeclaration",
-      | atNode<Node<"@precedence">>
-      | Node<
-          "PrecedenceBody",
-          Node<"{"> | LiteralNode | nameExpressionNode | Node<","> | Node<"}">
-        >
+      Array<
+        | atNode<Node<"@precedence">>
+        | Node<
+            "PrecedenceBody",
+            Array<
+              | Node<"{">
+              | LiteralNode
+              | nameExpressionNode
+              | Node<",">
+              | Node<"}">
+            >
+          >
+      >
     >
   | Node<
       "TokenConflictDeclaration",
-      | atNode<Node<"@conflict">>
-      | Node<
-          "ConflictBody",
-          | Node<"{">
-          | LiteralNode
-          | nameExpressionNode
-          | Node<",">
-          | LiteralNode
-          | nameExpressionNode
-          | Node<"}">
-        >
+      Array<
+        | atNode<Node<"@conflict">>
+        | Node<
+            "ConflictBody",
+            Array<
+              | Node<"{">
+              | LiteralNode
+              | nameExpressionNode
+              | Node<",">
+              | LiteralNode
+              | nameExpressionNode
+              | Node<"}">
+            >
+          >
+      >
     >
-  | Node<"LiteralTokenDeclaration", LiteralNode | PropsNode>
+  | Node<"LiteralTokenDeclaration", Array<LiteralNode | PropsNode>>
   | RuleDeclarationNode;
 
 export type RuleDeclarationNode = Node<
   "RuleDeclaration",
-  RuleNameNode | PropsNode | ParamListNode | BodyNode
+  Array<RuleNameNode | PropsNode | ParamListNode | BodyNode>
 >;
 
 export type topRuleDeclarationNode = Node<
   "RuleDeclaration",
-  atNode<Node<"@top">> | RuleNameNode | PropsNode | ParamListNode | BodyNode
+  Array<
+    atNode<Node<"@top">> | RuleNameNode | PropsNode | ParamListNode | BodyNode
+  >
 >;
 
 export type ParamListNode = Node<
   "ParamList",
-  Node<"<"> | NameNode | Node<","> | NameNode | Node<">">
+  Array<Node<"<"> | NameNode | Node<","> | NameNode | Node<">">>
 >;
 
-export type BodyNode = Node<"Body", Node<"{"> | expressionNode | Node<"}">>;
+export type BodyNode = Node<
+  "Body",
+  Array<Node<"{"> | expressionNode | Node<"}">>
+>;
 
 export type PropsNode = Node<
   "Props",
-  Node<"["> | PropNode | Node<","> | PropNode | Node<"]">
+  Array<Node<"["> | PropNode | Node<","> | PropNode | Node<"]">>
 >;
 
 export type PropNode = Node<
   "Prop",
-  | AtNameNode
-  | NameNode
-  | Node<"=">
-  | LiteralNode
-  | NameNode
-  | Node<".">
-  | Node<"PropEsc", Node<"{"> | RuleNameNode | Node<"}">>
+  Array<
+    | AtNameNode
+    | NameNode
+    | Node<"=">
+    | LiteralNode
+    | NameNode
+    | Node<".">
+    | Node<"PropEsc", Array<Node<"{"> | RuleNameNode | Node<"}">>>
+  >
 >;
 
 export type expressionNode =
   | seqExpressionNode
-  | Node<"Choice", seqExpressionNode | Node<"|"> | seqExpressionNode>;
+  | Node<"Choice", Array<seqExpressionNode | Node<"|"> | seqExpressionNode>>;
 
 export type seqExpressionNode =
   | atomExpressionNode
   | Node<
       "Sequence",
-      | markerNode
-      | atomExpressionNode
-      | markerNode
-      | atomExpressionNode
-      | atomExpressionNode
-      | markerNode
+      Array<
+        | markerNode
+        | atomExpressionNode
+        | markerNode
+        | atomExpressionNode
+        | atomExpressionNode
+        | markerNode
+      >
     >;
 
 export type atomExpressionNode =
@@ -189,43 +255,45 @@ export type atomExpressionNode =
   | InvertedCharSetNode
   | nameExpressionNode
   | Node<"CharClass">
-  | Node<"Optional", atomExpressionNode | Node<"?">>
-  | Node<"Repeat", atomExpressionNode | Node<"*">>
-  | Node<"Repeat1", atomExpressionNode | Node<"+">>
-  | Node<"InlineRule", RuleNameNode | PropsNode | PropsNode | BodyNode>
-  | Node<"ParenExpression", Node<"("> | expressionNode | Node<")">>
+  | Node<"Optional", Array<atomExpressionNode | Node<"?">>>
+  | Node<"Repeat", Array<atomExpressionNode | Node<"*">>>
+  | Node<"Repeat1", Array<atomExpressionNode | Node<"+">>>
+  | Node<"InlineRule", Array<RuleNameNode | PropsNode | PropsNode | BodyNode>>
+  | Node<"ParenExpression", Array<Node<"("> | expressionNode | Node<")">>>
   | Node<
       "Specialization",
-      | atNode<Node<"@specialize">>
-      | atNode<Node<"@extend">>
-      | PropsNode
-      | ArgListNode
+      Array<
+        | atNode<Node<"@specialize">>
+        | atNode<Node<"@extend">>
+        | PropsNode
+        | ArgListNode
+      >
     >;
 
 export type nameExpressionNode =
   | RuleNameNode
   | ScopedNameNode
-  | Node<"Call", RuleNameNode | ScopedNameNode | ArgListNode>;
+  | Node<"Call", Array<RuleNameNode | ScopedNameNode | ArgListNode>>;
 
 export type markerNode =
-  | Node<"PrecedenceMarker", Node<"!"> | PrecedenceNameNode>
-  | Node<"AmbiguityMarker", Node<"~"> | NameNode>;
+  | Node<"PrecedenceMarker", Array<Node<"!"> | PrecedenceNameNode>>
+  | Node<"AmbiguityMarker", Array<Node<"~"> | NameNode>>;
 
 export type ScopedNameNode = Node<
   "ScopedName",
-  RuleNameNode | Node<"."> | RuleNameNode
+  Array<RuleNameNode | Node<"."> | RuleNameNode>
 >;
 
 export type ArgListNode = Node<
   "ArgList",
-  Node<"<"> | expressionNode | Node<","> | expressionNode | Node<">">
+  Array<Node<"<"> | expressionNode | Node<","> | expressionNode | Node<">">>
 >;
 
-export type RuleNameNode = Node<"RuleName", nameNode>;
+export type RuleNameNode = Node<"RuleName", Array<nameNode>>;
 
-export type PrecedenceNameNode = Node<"PrecedenceName", nameNode>;
+export type PrecedenceNameNode = Node<"PrecedenceName", Array<nameNode>>;
 
-export type NameNode = Node<"Name", Node<"a", nameNode>>;
+export type NameNode = Node<"Name", Array<Node<"a", Array<nameNode>>>>;
 
 export type kwNode<valueNode> = valueNode;
 
@@ -257,216 +325,322 @@ type InvertedCharSetNode = Node<"InvertedCharSet">;
 
 export type AllNodes =
   | GrammarNode
+  | atNode<Node<"@precedence">>
+  | atNode<Node<"@left">>
+  | atNode<Node<"@right">>
+  | atNode<Node<"@cut">>
   | Node<
       "Precedence",
-      | PrecedenceNameNode
-      | atNode<Node<"@left">>
-      | atNode<Node<"@right">>
-      | atNode<Node<"@cut">>
+      Array<
+        | PrecedenceNameNode
+        | atNode<Node<"@left">>
+        | atNode<Node<"@right">>
+        | atNode<Node<"@cut">>
+      >
     >
   | Node<
       "PrecedenceBody",
-      | Node<"{">
-      | Node<
-          "Precedence",
-          | PrecedenceNameNode
-          | atNode<Node<"@left">>
-          | atNode<Node<"@right">>
-          | atNode<Node<"@cut">>
-        >
-      | Node<",">
-      | Node<"}">
-    >
-  | Node<
-      "PrecedenceDeclaration",
-      | atNode<Node<"@precedence">>
-      | Node<
-          "PrecedenceBody",
-          | Node<"{">
-          | Node<
-              "Precedence",
+      Array<
+        | Node<"{">
+        | Node<
+            "Precedence",
+            Array<
               | PrecedenceNameNode
               | atNode<Node<"@left">>
               | atNode<Node<"@right">>
               | atNode<Node<"@cut">>
             >
-          | Node<",">
-          | Node<"}">
-        >
+          >
+        | Node<",">
+        | Node<"}">
+      >
     >
-  | Node<"TokensBody", Node<"{"> | tokenDeclarationNode | Node<"}">>
+  | Node<
+      "PrecedenceDeclaration",
+      Array<
+        | atNode<Node<"@precedence">>
+        | Node<
+            "PrecedenceBody",
+            Array<
+              | Node<"{">
+              | Node<
+                  "Precedence",
+                  Array<
+                    | PrecedenceNameNode
+                    | atNode<Node<"@left">>
+                    | atNode<Node<"@right">>
+                    | atNode<Node<"@cut">>
+                  >
+                >
+              | Node<",">
+              | Node<"}">
+            >
+          >
+      >
+    >
+  | atNode<Node<"@tokens">>
+  | Node<"TokensBody", Array<Node<"{"> | tokenDeclarationNode | Node<"}">>>
   | Node<
       "TokensDeclaration",
-      | atNode<Node<"@tokens">>
-      | Node<"TokensBody", Node<"{"> | tokenDeclarationNode | Node<"}">>
+      Array<
+        | atNode<Node<"@tokens">>
+        | Node<
+            "TokensBody",
+            Array<Node<"{"> | tokenDeclarationNode | Node<"}">>
+          >
+      >
     >
-  | Node<"ElseToken", atNode<Node<"@else">> | RuleNameNode | PropsNode>
+  | atNode<Node<"@local">>
+  | kwNode<Node<"tokens">>
+  | atNode<Node<"@else">>
+  | Node<"ElseToken", Array<atNode<Node<"@else">> | RuleNameNode | PropsNode>>
   | Node<
       "TokensBody",
-      | Node<"{">
-      | tokenDeclarationNode
-      | Node<"ElseToken", atNode<Node<"@else">> | RuleNameNode | PropsNode>
-      | Node<"}">
+      Array<
+        | Node<"{">
+        | tokenDeclarationNode
+        | Node<
+            "ElseToken",
+            Array<atNode<Node<"@else">> | RuleNameNode | PropsNode>
+          >
+        | Node<"}">
+      >
     >
   | Node<
       "LocalTokensDeclaration",
-      | atNode<Node<"@local">>
-      | kwNode<Node<"tokens">>
-      | Node<
-          "TokensBody",
-          | Node<"{">
-          | tokenDeclarationNode
-          | Node<"ElseToken", atNode<Node<"@else">> | RuleNameNode | PropsNode>
-          | Node<"}">
-        >
+      Array<
+        | atNode<Node<"@local">>
+        | kwNode<Node<"tokens">>
+        | Node<
+            "TokensBody",
+            Array<
+              | Node<"{">
+              | tokenDeclarationNode
+              | Node<
+                  "ElseToken",
+                  Array<atNode<Node<"@else">> | RuleNameNode | PropsNode>
+                >
+              | Node<"}">
+            >
+          >
+      >
     >
+  | atNode<Node<"@external">>
+  | kwNode<Node<"tokens">>
+  | kwNode<Node<"from">>
   | Node<
       "ExternalTokensDeclaration",
-      | atNode<Node<"@external">>
-      | kwNode<Node<"tokens">>
-      | NameNode
-      | kwNode<Node<"from">>
-      | LiteralNode
-      | externalTokenSetNode
+      Array<
+        | atNode<Node<"@external">>
+        | kwNode<Node<"tokens">>
+        | NameNode
+        | kwNode<Node<"from">>
+        | LiteralNode
+        | externalTokenSetNode
+      >
     >
+  | atNode<Node<"@external">>
+  | kwNode<Node<"prop">>
+  | kwNode<Node<"as">>
+  | kwNode<Node<"from">>
   | Node<
       "ExternalPropDeclaration",
-      | atNode<Node<"@external">>
-      | kwNode<Node<"prop">>
-      | NameNode
-      | kwNode<Node<"as">>
-      | NameNode
-      | kwNode<Node<"from">>
-      | LiteralNode
+      Array<
+        | atNode<Node<"@external">>
+        | kwNode<Node<"prop">>
+        | NameNode
+        | kwNode<Node<"as">>
+        | NameNode
+        | kwNode<Node<"from">>
+        | LiteralNode
+      >
     >
+  | atNode<Node<"@external">>
+  | kwNode<Node<"propSource">>
+  | kwNode<Node<"from">>
   | Node<
       "ExternalPropSourceDeclaration",
-      | atNode<Node<"@external">>
-      | kwNode<Node<"propSource">>
-      | NameNode
-      | kwNode<Node<"from">>
-      | LiteralNode
+      Array<
+        | atNode<Node<"@external">>
+        | kwNode<Node<"propSource">>
+        | NameNode
+        | kwNode<Node<"from">>
+        | LiteralNode
+      >
     >
+  | atNode<Node<"@external">>
+  | kwNode<Node<"extend">>
+  | kwNode<Node<"specialize">>
+  | kwNode<Node<"from">>
   | Node<
       "ExternalSpecializeDeclaration",
-      | atNode<Node<"@external">>
-      | kwNode<Node<"extend">>
-      | kwNode<Node<"specialize">>
-      | BodyNode
-      | NameNode
-      | kwNode<Node<"from">>
-      | LiteralNode
-      | externalTokenSetNode
+      Array<
+        | atNode<Node<"@external">>
+        | kwNode<Node<"extend">>
+        | kwNode<Node<"specialize">>
+        | BodyNode
+        | NameNode
+        | kwNode<Node<"from">>
+        | LiteralNode
+        | externalTokenSetNode
+      >
     >
+  | atNode<Node<"@context">>
+  | kwNode<Node<"from">>
   | Node<
       "ContextDeclaration",
-      atNode<Node<"@context">> | NameNode | kwNode<Node<"from">> | LiteralNode
+      Array<
+        atNode<Node<"@context">> | NameNode | kwNode<Node<"from">> | LiteralNode
+      >
     >
-  | Node<"DialectBody", Node<"{"> | NameNode | Node<","> | Node<"}">>
+  | atNode<Node<"@dialects">>
+  | Node<"DialectBody", Array<Node<"{"> | NameNode | Node<","> | Node<"}">>>
   | Node<
       "DialectsDeclaration",
-      | atNode<Node<"@dialects">>
-      | Node<"DialectBody", Node<"{"> | NameNode | Node<","> | Node<"}">>
+      Array<
+        | atNode<Node<"@dialects">>
+        | Node<
+            "DialectBody",
+            Array<Node<"{"> | NameNode | Node<","> | Node<"}">>
+          >
+      >
     >
-  | Node<"TopSkipDeclaration", atNode<Node<"@skip">> | BodyNode>
+  | atNode<Node<"@skip">>
+  | Node<"TopSkipDeclaration", Array<atNode<Node<"@skip">> | BodyNode>>
+  | atNode<Node<"@skip">>
   | Node<
       "SkipBody",
-      Node<"{"> | RuleDeclarationNode | topRuleDeclarationNode | Node<"}">
+      Array<
+        Node<"{"> | RuleDeclarationNode | topRuleDeclarationNode | Node<"}">
+      >
     >
   | Node<
       "SkipScope",
-      | atNode<Node<"@skip">>
-      | BodyNode
-      | Node<
-          "SkipBody",
-          Node<"{"> | RuleDeclarationNode | topRuleDeclarationNode | Node<"}">
-        >
+      Array<
+        | atNode<Node<"@skip">>
+        | BodyNode
+        | Node<
+            "SkipBody",
+            Array<
+              | Node<"{">
+              | RuleDeclarationNode
+              | topRuleDeclarationNode
+              | Node<"}">
+            >
+          >
+      >
     >
-  | Node<"DetectDelimDeclaration", atNode<Node<"@detectDelim">>>
+  | atNode<Node<"@detectDelim">>
+  | Node<"DetectDelimDeclaration", Array<atNode<Node<"@detectDelim">>>>
   | declarationNode
-  | Node<"Token", RuleNameNode | PropsNode>
+  | Node<"Token", Array<RuleNameNode | PropsNode>>
   | externalTokenSetNode
+  | atNode<Node<"@precedence">>
   | Node<
       "PrecedenceBody",
-      Node<"{"> | LiteralNode | nameExpressionNode | Node<","> | Node<"}">
+      Array<
+        Node<"{"> | LiteralNode | nameExpressionNode | Node<","> | Node<"}">
+      >
     >
   | Node<
       "TokenPrecedenceDeclaration",
-      | atNode<Node<"@precedence">>
-      | Node<
-          "PrecedenceBody",
-          Node<"{"> | LiteralNode | nameExpressionNode | Node<","> | Node<"}">
-        >
+      Array<
+        | atNode<Node<"@precedence">>
+        | Node<
+            "PrecedenceBody",
+            Array<
+              | Node<"{">
+              | LiteralNode
+              | nameExpressionNode
+              | Node<",">
+              | Node<"}">
+            >
+          >
+      >
     >
+  | atNode<Node<"@conflict">>
   | Node<
       "ConflictBody",
-      | Node<"{">
-      | LiteralNode
-      | nameExpressionNode
-      | Node<",">
-      | LiteralNode
-      | nameExpressionNode
-      | Node<"}">
+      Array<
+        | Node<"{">
+        | LiteralNode
+        | nameExpressionNode
+        | Node<",">
+        | LiteralNode
+        | nameExpressionNode
+        | Node<"}">
+      >
     >
   | Node<
       "TokenConflictDeclaration",
-      | atNode<Node<"@conflict">>
-      | Node<
-          "ConflictBody",
-          | Node<"{">
-          | LiteralNode
-          | nameExpressionNode
-          | Node<",">
-          | LiteralNode
-          | nameExpressionNode
-          | Node<"}">
-        >
+      Array<
+        | atNode<Node<"@conflict">>
+        | Node<
+            "ConflictBody",
+            Array<
+              | Node<"{">
+              | LiteralNode
+              | nameExpressionNode
+              | Node<",">
+              | LiteralNode
+              | nameExpressionNode
+              | Node<"}">
+            >
+          >
+      >
     >
-  | Node<"LiteralTokenDeclaration", LiteralNode | PropsNode>
+  | Node<"LiteralTokenDeclaration", Array<LiteralNode | PropsNode>>
   | tokenDeclarationNode
   | RuleDeclarationNode
+  | atNode<Node<"@top">>
   | topRuleDeclarationNode
   | ParamListNode
   | BodyNode
   | PropsNode
-  | Node<"PropEsc", Node<"{"> | RuleNameNode | Node<"}">>
+  | Node<"PropEsc", Array<Node<"{"> | RuleNameNode | Node<"}">>>
   | PropNode
-  | Node<"Choice", seqExpressionNode | Node<"|"> | seqExpressionNode>
+  | Node<"Choice", Array<seqExpressionNode | Node<"|"> | seqExpressionNode>>
   | expressionNode
   | Node<
       "Sequence",
-      | markerNode
-      | atomExpressionNode
-      | markerNode
-      | atomExpressionNode
-      | atomExpressionNode
-      | markerNode
+      Array<
+        | markerNode
+        | atomExpressionNode
+        | markerNode
+        | atomExpressionNode
+        | atomExpressionNode
+        | markerNode
+      >
     >
   | seqExpressionNode
   | Node<"CharClass">
-  | Node<"Optional", atomExpressionNode | Node<"?">>
-  | Node<"Repeat", atomExpressionNode | Node<"*">>
-  | Node<"Repeat1", atomExpressionNode | Node<"+">>
-  | Node<"InlineRule", RuleNameNode | PropsNode | PropsNode | BodyNode>
-  | Node<"ParenExpression", Node<"("> | expressionNode | Node<")">>
+  | Node<"Optional", Array<atomExpressionNode | Node<"?">>>
+  | Node<"Repeat", Array<atomExpressionNode | Node<"*">>>
+  | Node<"Repeat1", Array<atomExpressionNode | Node<"+">>>
+  | Node<"InlineRule", Array<RuleNameNode | PropsNode | PropsNode | BodyNode>>
+  | Node<"ParenExpression", Array<Node<"("> | expressionNode | Node<")">>>
+  | atNode<Node<"@specialize">>
+  | atNode<Node<"@extend">>
   | Node<
       "Specialization",
-      | atNode<Node<"@specialize">>
-      | atNode<Node<"@extend">>
-      | PropsNode
-      | ArgListNode
+      Array<
+        | atNode<Node<"@specialize">>
+        | atNode<Node<"@extend">>
+        | PropsNode
+        | ArgListNode
+      >
     >
   | atomExpressionNode
-  | Node<"Call", RuleNameNode | ScopedNameNode | ArgListNode>
+  | Node<"Call", Array<RuleNameNode | ScopedNameNode | ArgListNode>>
   | nameExpressionNode
-  | Node<"PrecedenceMarker", Node<"!"> | PrecedenceNameNode>
-  | Node<"AmbiguityMarker", Node<"~"> | NameNode>
+  | Node<"PrecedenceMarker", Array<Node<"!"> | PrecedenceNameNode>>
+  | Node<"AmbiguityMarker", Array<Node<"~"> | NameNode>>
   | markerNode
   | ScopedNameNode
   | ArgListNode
   | RuleNameNode
   | PrecedenceNameNode
-  | Node<"a", nameNode>
+  | Node<"a", Array<nameNode>>
   | NameNode
   | Node<"LineComment">
   | Node<"BlockComment">

@@ -1,3 +1,5 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "zig.zigPath": "/Users/michiel/Projects/StatebasedNotebook/node_modules/.bin/zig",
+  "zig.zls.enabled": true
 }

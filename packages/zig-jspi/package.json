@@ -1,0 +1,17 @@
+{
+  "name": "@dral/zig-jspi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/zig-jspi.js",
+  "scripts": {
+    "build-safe": "zig build-lib src/main.zig -target wasm32-freestanding -dynamic -OReleaseSafe",
+    "build": "zig build-lib src/main.zig -target wasm32-freestanding -dynamic -OReleaseFast",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "which-zig": "which zig"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@zig-on-npm/zig": "^0.10.0-rc.7"
+  }
+}

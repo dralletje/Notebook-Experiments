@@ -8,65 +8,20 @@ import type {
   GrammarNode,
   AllNodes,
   Node,
-  RuleDeclarationNode,
   expressionNode,
 } from "./lezer-types-omg";
-
-// type ChildrenType<T extends WTFNode<any, any>> = T extends WTFNode<
-//   any,
-//   infer Children extends WTFNode<any, any>
-// >
-//   ? Children
-//   : never;
-// type NameType<T extends WTFNode<any, any>> = T extends WTFNode<infer Name, any>
-//   ? Name
-//   : never;
-
-// type MyNode<N extends AllNodes = AllNodes> = {
-//   name: NameType<N>;
-//   children: Array<MyNode<ChildrenType<N>>>;
-//   source: string;
-// };
-
-type A = "one" | "two" | "three";
-
-class MyNode<Name, Child extends Node<any, any>> {
-  name: Name;
-  children: Child[];
-  source: string;
-
-  child<N extends Child["name"]>(name: N): Extract<Child, { name: N }> {
-    return this.children.find((x) => x.name === name) as any;
-  }
-}
-
-type MapNode<U> = U extends Node<
-  infer Name extends AllNodes["name"],
-  infer Child
->
-  ? MyNode<Name, MapNode<Child>>
-  : never;
-
-type B = MapNode<GrammarNode>;
-
-type L = B["children"][0]["name"];
-
-let x: B = null;
-let a = x.child("ExternalPropDeclaration");
-
-// type Node<name extends AllNodes["name"]> = MyNode<AllNodes & { name: name }>;
 
 let source = await fs.readFile("./grammar.grammar", "utf-8");
 
 let parse_call = (call: EZNode<"Call">) => {
   let children = Array.from(call.children);
   let name = get_rule_name(call);
-  let args = children.find((x) => x.name === "ArgList");
+  let args = children.find(has_name("ArgList"));
 
   return {
     type: "call",
     name: name,
-    args: args.children.map((x) => x.source),
+    args: args?.children.map((x) => x.source) ?? [],
     source: call.source,
   } as const;
 };
@@ -86,10 +41,10 @@ let get_name_from_props = (expression: EZNode<"Props"> | null) => {
 
       let prop_esc = prop.children.find(has_name("PropEsc"));
       if (prop_esc != null) {
-        return prop_esc.children.find(has_name("RuleName")).source;
+        return prop_esc.children.find(has_name("RuleName"))?.source;
       }
 
-      throw new Error("A");
+      throw new Error("No PropEsc or Name in Prop");
     }
   }
 };
@@ -126,10 +81,7 @@ let parse_expression = (
   } else if (expression.name === "Repeat1") {
     return expression.children.filter(not_has_name("+")).map(parse).flat();
   } else if (expression.name === "ParenExpression") {
-    return expression.children
-      .filter((x) => x.name !== "(" && x.name !== ")")
-      .map(parse)
-      .flat();
+    return expression.children.filter(not_has_name("(", ")")).map(parse).flat();
   } else if (expression.name === "Call") {
     return [parse_call(expression)];
   } else if (expression.name === "Specialization") {
@@ -149,7 +101,9 @@ let parse_expression = (
     // TODO Check for anonimity
     let body_expression = expression.children
       .find(has_name("Body"))
-      .children.find(not_has_name("{", "}"));
+      ?.children.find(not_has_name("{", "}"));
+
+    if (body_expression == null) return [];
 
     let subexpression = parse_expression_with_params(body_expression, params);
 
@@ -177,19 +131,23 @@ let parse_rule = (rule: EZNode<"RuleDeclaration">) => {
   // Need this for typescript?
   let children = Array.from(rule.children);
 
-  let id = children.find((x) => x.name === "RuleName").source;
+  let id = children.find(has_name("RuleName"))?.source;
   let name = get_rule_name(rule) ?? id;
+
+  if (name == null) throw new Error("RuleDeclaration without RuleName");
 
   let x = children.find(has_name("ParamList"));
   let params = x?.children.map((x) => x.source);
 
   let body_expression = children
     .find(has_name("Body"))
-    .children.find(not_has_name("{", "}"));
+    ?.children.find(not_has_name("{", "}"));
+
+  if (body_expression == null) throw new Error("RuleDeclaration without Body");
 
   let expression = parse_expression_with_params(body_expression, params);
 
-  let is_top = children.find((x) => x.name === "@top") != null;
+  let is_top = children.find(has_name("@top")) != null;
 
   return {
     id,
@@ -202,11 +160,14 @@ let parse_rule = (rule: EZNode<"RuleDeclaration">) => {
   };
 };
 
-let get_rule_name = (rule: Node<any>) => {
+let get_rule_name = (
+  rule: EZNode<"InlineRule" | "RuleDeclaration" | "Call">
+) => {
+  // @ts-ignore
   let children = Array.from(rule.children);
-  let naive_name = children.find(has_name("RuleName")).source;
+  let naive_name = children.find(has_name("RuleName"))?.source;
 
-  let props = children.find(has_name("Props"));
+  let props = children.find(has_name("Props")) as any as EZNode<"Props">;
   let name_from_props = get_name_from_props(props);
   if (name_from_props) {
     return name_from_props;
@@ -215,16 +176,21 @@ let get_rule_name = (rule: Node<any>) => {
   return naive_name;
 };
 
-let is_anonymous_rule = (rule: Node<any>) => {
-  let naive_name = rule.children.find(has_name("RuleName")).source;
+let is_anonymous_rule = (
+  rule: EZNode<"InlineRule" | "RuleDeclaration" | "Call">
+) => {
+  // @ts-ignore
+  let children = Array.from(rule.children);
 
-  let props = rule.children.find(has_name("Props"));
+  let naive_name = children.find(has_name("RuleName"))?.source;
+
+  let props = children.find(has_name("Props")) as any as EZNode<"Props">;
   let name_from_props = get_name_from_props(props);
   if (name_from_props) {
     return false;
   }
 
-  if (naive_name.toLowerCase()[0] !== naive_name[0]) {
+  if (naive_name?.toLowerCase()[0] !== naive_name?.[0]) {
     return false;
   } else {
     return true;
@@ -242,7 +208,7 @@ let has_name = <const T extends AllNodes["name"]>(name: T) => {
 let not_has_name = <const T extends AllNodes["name"]>(...names: Array<T>) => {
   return function has_name<N extends Node<any, any>>(
     x: N
-  ): x is Exclude<N, Node<T>> {
+  ): x is Exclude<N, Node<T, any>> {
     return names.includes(x.name) === false;
   };
 };
@@ -250,7 +216,8 @@ let not_has_name = <const T extends AllNodes["name"]>(...names: Array<T>) => {
 type EZNode<N extends AllNodes["name"]> = Extract<AllNodes, { name: N }>;
 
 type DeclarationNode = GrammarNode["children"][0];
-type CoverAllCases<L extends Node<any>> = {
+
+type CoverAllCases<L extends Node<any, any>> = {
   [K in L["name"]]: ((x: Extract<L, { name: K }>) => void) | null;
 };
 
@@ -336,9 +303,11 @@ let print_expression = (expression: any, has_params) => {
   } else if (expression.literal != null) {
     return `Node<${expression.literal}>`;
   } else if (expression.type === "call") {
-    return `${expression.name}Node<${expression.args
+    let value = `${expression.name}Node<${expression.args
       .map((x) => print_expression(x, has_params))
       .join(", ")}>`;
+    all_rules.push(value);
+    return value;
   } else if (expression.type === "specialization") {
     return `${expression.name}Node`;
   } else if (expression.type === "inline_rule" || expression.type === "rule") {
@@ -357,7 +326,7 @@ let print_expression = (expression: any, has_params) => {
       let children = expression.expression
         .map((x) => print_expression(x, has_params))
         .join(" | ");
-      let x = `Node<"${expression.name}", ${children}>`;
+      let x = `Node<"${expression.name}", Array<${children}>>`;
       if (!has_params && expression.type === "inline_rule") all_rules.push(x);
       return x;
     }
@@ -401,9 +370,9 @@ let top_names = Object.values(ast.rules)
 let all_rules_string = all_rules.join(" | ");
 
 console.log(dedent`
-  export interface Node<Name extends string, Child = never> {
+  export interface Node<Name extends string, Children extends any[] = never[]> {
     name: Name;
-    children: Array<Child>;
+    children: Children;
     source: string;
   }
   
