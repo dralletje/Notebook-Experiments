@@ -65,6 +65,7 @@ let engine = new Engine(async function RUN_CELL({
   // TODO Split up this try/catch into one for code compilation,
   // .... and one for code execution
   try {
+    console.log(`code:`, code);
     let fn = new Function(...inputs_array.map((x) => x[0]), code);
 
     try {
@@ -75,12 +76,16 @@ let engine = new Engine(async function RUN_CELL({
 
     let result = await fn(...inputs_array.map((x) => x[1]));
 
+    console.log("huh");
+
     // I am going on a limb here, and freezing everything we get back.
     // This is to prevent the user from modifying the result of a cell in another cell.
     // Lets see if that actually works/feels good.
     // TODO Add some feature-flags-kinda thing to the UI to toggle this.
     // FEATURE_FLAG: freeze_results
     // deepFreeze(result);
+
+    console.log(`result:`, result);
 
     // TODO Dirty hack to make `Couldn't return-ify X` errors stackless
     if (result.default instanceof SyntaxError) {

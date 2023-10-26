@@ -97,7 +97,7 @@ let fix_return_and_get_result_ast = (ast, properties_to_return) => {
           // Because typescript will replace type exports/imports with `export {}` (to be a module)
           // I'm not going to show these at all, even if you really want to 😈
           if (statement.specifiers.length === 0) {
-            return [];
+            return [return_with_default(t.identifier("undefined"))];
           }
 
           // export { a, b, c }
