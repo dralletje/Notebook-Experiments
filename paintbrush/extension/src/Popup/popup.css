@@ -12,6 +12,8 @@ body {
   -moz-user-select: none;
 
   boder-radius: 4px;
+  min-width: 250px;
+
 }
 
 body * {
@@ -20,7 +22,6 @@ body * {
 }
 
 body {
-  min-width: 250px;
   /* font-family: 'Lucida Grande', Helvetica, Arial, sans-serif; */
   /* font-family: "Lucida Grande", caption; */
   font-family: Roboto, system-ui, sans-serif;

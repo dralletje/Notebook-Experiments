@@ -1,1 +1,1 @@
-## Paintbrush in page editor
+# Paintbrush in page editor
