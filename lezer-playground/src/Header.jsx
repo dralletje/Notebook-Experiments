@@ -140,9 +140,10 @@ let ProjectsDropdown = () => {
 
 let path_prefix = "./premade-projects/";
 // @ts-expect-error - Vite glob 😎
-const modules = import.meta.glob("./premade-projects/**/*", { query: "?raw" });
-
-console.log(`modules:`, modules);
+const modules = import.meta.glob("./premade-projects/**/*", {
+  query: "?raw",
+  import: "default",
+});
 
 let premade_projects = {};
 for (let [path, import_module] of Object.entries(modules)) {
@@ -159,8 +160,6 @@ for (let [path, import_module] of Object.entries(modules)) {
     console.error(`Unknown file type: ${path}/${filename}`);
   }
 }
-
-console.log(`premade_projects:`, premade_projects);
 
 let LoadSampleDropdown = ({ scoped_storage }) => {
   let path = window.location.pathname;

@@ -15,20 +15,27 @@
   or @left
 }
 
-@top Script { (newline | statement)+ }
+@top Script { statement+ }
 
-@skip { space | newlineEmpty | newlineBracketed | Comment }
+@skip { space | newlineBracketed | Comment | blankLine }
 
 Decorator { At dottedName ArgList? newline }
 
 FunctionDefinition {
-  kw<"async">? kw<"def"> VariableName
+  kw<"async">? kw<"def"> VariableName TypeParamList?
   ParamList
   TypeDef { "->" test }?
   Body
 }
 
 ParamList { "(" commaSep<param>? ")" }
+
+TypeParamList { "[" commaSep<TypeParam> "]" }
+
+TypeParam {
+  ("*" | "**") VariableName |
+  VariableName TypeDef?
+}
 
 MatchStatement {
   skw<"match"> "*"? expression MatchBody { ":" newline indent MatchClause+ (dedent | eof) }
@@ -65,7 +72,7 @@ SequencePattern { "[" commaSep<pattern> "]" | "(" commaSep<pattern> ")" }
 
 MappingPattern { "{" commaSep<"**" pattern | (VariableName | LiteralPattern) ":" pattern> "}" }
 
-ClassDefinition { kw<"class"> VariableName ArgList? Body }
+ClassDefinition { kw<"class"> VariableName TypeParamList? ArgList? Body }
 
 param { VariableName TypeDef? (AssignOp{"="} test)? | "*" VariableName? | "**" VariableName | "/" }
 
@@ -92,16 +99,17 @@ smallStatement {
   RaiseStatement { kw<"raise"> (test (kw<"from"> test | ("," test ("," test)?))?)? } |
   ImportStatement |
   ScopeStatement { (kw<"global"> | kw<"nonlocal">) commaSep<VariableName> } |
-  AssertStatement { kw<"assert"> commaSep<test> }
+  AssertStatement { kw<"assert"> commaSep<test> } |
+  TypeDefinition { skw<"type"> VariableName TypeParamList? "=" test }
 }
 
 expressions { commaSep<"*" expression | test> }
 
 ImportStatement {
-  kw<"import"> dottedName (kw<"as"> VariableName)? |
+  kw<"import"> (importList | importedNames) |
   kw<"from"> (("." | "...")+ dottedName? | dottedName) kw<"import"> ("*" | importList | importedNames)
 }
-importedNames { commaSep<VariableName | VariableName kw<"as"> VariableName> }
+importedNames { commaSep<dottedName | dottedName kw<"as"> VariableName> }
 importList[@export] { "(" importedNames ")" }
 
 commaSep<expr> { expr ("," expr)* ","? }
@@ -128,7 +136,7 @@ IfStatement {
 
 TryStatement {
   kw<"try"> Body
-  (kw<"except"> (test ((kw<"as"> | ",") VariableName)?)? Body)*
+  (kw<"except"> "*"? (test ((kw<"as"> | ",") VariableName)?)? Body)*
   elseClause?
   (kw<"finally"> Body)?
 }
@@ -189,12 +197,12 @@ expression[@isGroup=Expression] {
 }
 
 subscript[@export] {
-  "[" commaSep<test | test? ":" test? (":" test?)?> "]"
+  "[" commaSep<testNamed | testNamed? ":" testNamed? (":" testNamed?)?> "]"
 }
 
 ParenthesizedExpression { "(" (testNamed | "*" expression | YieldExpression) ")" }
 
-TupleExpression { "(" (testNamed | "*" expression) (("," (testNamed | "*" expression))+ ","? | ",") ")" }
+TupleExpression { "(" ((testNamed | "*" expression) (("," (testNamed | "*" expression))+ ","? | ","))? ")" }
 ComprehensionExpression { "(" (testNamed | "*" expression) compFor ")" }
 
 ArrayExpression { "[" commaSep<testNamed | "*" expression>? "]" }
@@ -222,7 +230,7 @@ BinaryExpression {
 
 ArgList { "(" commaSep<argument>? ")" }
 
-argument { test compFor? | VariableName AssignOp{"=" | ":="} test | "**" test | "*" test }
+argument { test compFor? | VariableName AssignOp{"=" | ":="} test compFor? | "**" test | "*" test }
 
 compFor {
   kw<"async">? kw<"for"> commaSep<expression> kw<"in"> testInner (compFor | compIf)?
@@ -245,23 +253,37 @@ kw<term> { @specialize[@name={term}]<identifier, term> }
 skw<term> { @extend[@name={term}]<identifier, term> }
 
 @skip {} {
-  String {
-    shortString |
-    longStringStart<"'"> longString1Content* "'''" |
-    longStringStart<'"'> longString2Content* '"""'
+  String[isolate] {
+    (stringStart | stringStartD | stringStartL | stringStartLD |
+     stringStartR | stringStartRD | stringStartRL | stringStartRLD)
+    (stringContent | Escape)*
+    stringEnd
   }
 
-  FormatString {
-    formatStringStart<"'"> (formatString1Content | FormatReplacement)* "'" |
-    formatStringStart<'"'> (formatString2Content | FormatReplacement)* '"' |
-    longFormatStringStart<"'"> (longFormatString1Content | FormatReplacement)* "'''" |
-    longFormatStringStart<'"'> (longFormatString2Content | FormatReplacement)* '"""'
+  FormatString[isolate] {
+    (stringStartF | stringStartFD | stringStartFL | stringStartFLD |
+     stringStartFR | stringStartFRD | stringStartFRL | stringStartFRLD)
+    (stringContent | Escape | FormatReplacement)*
+    stringEnd
   }
 
-  formatStringSpec { FormatSpec { ":" (formatStringSpecChars | FormatReplacement)* } "}" }
+  formatStringSpec { FormatSpec { ":" (formatStringSpecChars | nestedFormatReplacement)* } "}" }
+
+  blankLine {
+    blankLineStart space? Comment? (newline | eof)
+  }
 }
 
-FormatReplacement { "{" (YieldExpression | commaSep<"*"? test>) FormatConversion? (formatStringSpec | "}") }
+formatReplacement<start> {
+  start
+  (YieldExpression | commaSep<"*"? test>)
+  FormatSelfDoc {"="}?
+  FormatConversion?
+  (formatStringSpec | "}")
+}
+
+FormatReplacement[isolate] { formatReplacement<replacementStart> }
+nestedFormatReplacement[isolate,@name=FormatReplacement,@export] { formatReplacement<"{"> }
 
 @context trackIndent from "./tokens.js"
 
@@ -269,16 +291,57 @@ FormatReplacement { "{" (YieldExpression | commaSep<"*"? test>) FormatConversion
 
 @external tokens indentation from "./tokens" { indent, dedent }
 
+@external tokens newlines from "./tokens" { newline, blankLineStart, newlineBracketed, eof }
+
+@external tokens strings from "./tokens" {
+  stringContent
+  Escape
+  replacementStart[@name="{"]
+  stringEnd
+}
+
 @tokens {
   CompareOp { "<" | ">" | $[<>=!] "=" | "<>" }
 
   UpdateOp { ($[+\-@%&|^] | "<<" | ">>" | "*" "*"? | "/" "/"?) "=" }
 
-  @precedence {
-    longStringStart<"'">, longStringStart<'"'>, longFormatStringStart<"'">, longFormatStringStart<'"'>,
-    shortString, formatStringStart<"'">, formatStringStart<'"'>,
-    identifier
-  }
+  // String types are identified by letter suffixes:
+  //   D: double quoted
+  //   L: long string
+  //   R: raw string
+  //   F: format string
+  stringStart[@export] { stringPrefix? "'" }
+  stringStartD[@export] { stringPrefix? '"' }
+  stringStartL[@export] { stringPrefix? "'''" }
+  stringStartLD[@export] { stringPrefix? '"""' }
+  stringStartR[@export] { stringPrefixR "'" }
+  stringStartRD[@export] { stringPrefixR '"' }
+  stringStartRL[@export] { stringPrefixR "'''" }
+  stringStartRLD[@export] { stringPrefixR '"""' }
+  stringStartF[@export] { stringPrefixF "'" }
+  stringStartFD[@export] { stringPrefixF '"' }
+  stringStartFL[@export] { stringPrefixF "'''" }
+  stringStartFLD[@export] { stringPrefixF '"""' }
+  stringStartFR[@export] { stringPrefixFR "'" }
+  stringStartFRD[@export] { stringPrefixFR '"' }
+  stringStartFRL[@export] { stringPrefixFR "'''" }
+  stringStartFRLD[@export] { stringPrefixFR '"""' }
+
+  stringPrefix { $[uUbB] }
+  stringPrefixR { $[rR] $[bB]? | $[bB] $[rR] }
+  stringPrefixF { $[fF] }
+  stringPrefixFR { $[rR] $[fF] | $[fF] $[rR] }
+
+  // Give string quotes a higher precedence than identifiers, and long
+  // strings a higher precedence than short strings
+  @precedence { stringStartL, stringStart, identifier }
+  @precedence { stringStartLD, stringStartD, identifier }
+  @precedence { stringStartRL, stringStartR, identifier }
+  @precedence { stringStartRLD, stringStartRD, identifier }
+  @precedence { stringStartFL, stringStartF, identifier }
+  @precedence { stringStartFLD, stringStartFD, identifier }
+  @precedence { stringStartFRL, stringStartFR, identifier }
+  @precedence { stringStartFRLD, stringStartFRD, identifier }
 
   identifierChar { @asciiLetter | $[_\u{a1}-\u{10ffff}] }
 
@@ -286,42 +349,9 @@ FormatReplacement { "{" (YieldExpression | commaSep<"*"? test>) FormatConversion
 
   identifier { word }
 
-  stringPrefix { $[rRuUbB] | $[bB] $[rR] | $[rR] $[bR] }
-
-  formatPrefix { $[fF] | $[fF] $[rR] | $[rR] $[fF] }
-
-  shortString { stringPrefix? ("'" (!['\\\n\r] | "\\" _)* "'"? | '"' (!["\\\n\r] | "\\" _)* '"'?) }
-
-  formatStringStart<quote> { formatPrefix quote }
-
   FormatConversion { "!" $[sra] }
 
   formatStringSpecChars { ![{}]+ }
-
-  formatString1Content { (!['{\\] | "\\" _ | "{{")+ }
-  formatString2Content { (!["{\\] | "\\" _ | "{{")+ }
-
-  longStringStart<quote> { stringPrefix? quote quote quote }
-
-  longString1Content { (!['\\] | "\\" _ | "'" longString1_2)+ }
-  longString1_2 { !['\\] | "\\" _ | "'" longString1_3 }
-  longString1_3 { !['\\] | "\\" _ }
-
-  longString2Content { (!["\\] | "\\" _ | '"' longString2_2)+ }
-  longString2_2 { !["\\] | "\\" _ | '"' longString2_3 }
-  longString2_3 { !["\\] | "\\" _ }
-
-  longFormatStringStart<quote> { formatPrefix quote quote quote }
-
-  longFormatString1Content { (!['\\{] | "\\" _ | "'" longFormatString1_2 | "{{")+ }
-  longFormatString1_2 { !['\\{] | "\\" _ | "{{" | "'" longFormatString1_3 }
-  longFormatString1_3 { !['\\{] | "\\" _ | "{{" }
-
-  longFormatString2Content { (!["\\{] | "\\" _ | '"' longFormatString2_2 | "{{")+ }
-  longFormatString2_2 { !["\\{] | "\\" _ | "{{" | '"' longFormatString2_3 }
-  longFormatString2_3 { !["\\{] | "\\" _ | "{{" }
-
-  @precedence { "{", formatString1Content, formatString2Content, longFormatString1Content, longFormatString2Content }
 
   Number {
     (@digit ("_" | @digit)* ("." @digit ("_" | @digit)*)? | "." @digit ("_" | @digit)*)
@@ -331,7 +361,7 @@ FormatReplacement { "{" (YieldExpression | commaSep<"*"? test>) FormatConversion
     "0" $[xX] $[_0-9a-fA-F]+
   }
 
-  Comment { "#" ![\n\r]* }
+  Comment[isolate] { "#" ![\n\r]* }
 
   space { ($[ \t\f] | "\\" $[\n\r])+ }
 
@@ -344,10 +374,7 @@ FormatReplacement { "{" (YieldExpression | commaSep<"*"? test>) FormatConversion
   "{"[@export=BraceL] "}"
 
   "." "," ";" ":" "@" "*" "**"
-
 }
-
-@external tokens newlines from "./tokens" { newline, newlineBracketed, newlineEmpty, eof }
 
 @external propSource pythonHighlighting from "./highlight"
 

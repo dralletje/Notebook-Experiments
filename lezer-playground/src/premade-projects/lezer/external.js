@@ -5,7 +5,7 @@ export const lezerHighlighting = styleTags({
   BlockComment: t.blockComment,
   AnyChar: t.character,
   Literal: t.string,
-  "tokens from grammar as empty prop extend specialize": t.keyword,
+  "tokens from grammar as empty prop extend specialize AtName": t.keyword,
   "@top @left @right @cut @external": t.modifier,
   "@precedence @tokens @context @dialects @skip @detectDelim @conflict":
     t.definitionKeyword,

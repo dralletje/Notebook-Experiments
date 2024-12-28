@@ -6,7 +6,9 @@
 
 @skip { whitespace | Comment }
 
-@top StyleSheet { item+ }
+@top StyleSheet { item* }
+
+@top Styles { blockContent }
 
 item {
   RuleSet |
@@ -43,12 +45,17 @@ NamespaceStatement {
 
 KeyframesStatement {
   @specialize[@name=keyframes]<AtKeyword, "@keyframes">
-  KeyframeName { identifier }
+  KeyframeName { identifier | StringLiteral }
   KeyframeList
 }
 
+KeyframeSelector {
+  KeyframeRangeName { identifier } NumberLiteral? |
+  NumberLiteral
+}
+
 KeyframeList {
-  "{" ((kw<"from"> | kw<"to"> | NumberLiteral) Block)* "}"
+  "{" (KeyframeSelector ("," KeyframeSelector)* Block)* "}"
 }
 
 SupportsStatement {
@@ -57,7 +64,9 @@ SupportsStatement {
 
 AtRule { AtKeyword commaSep<query> (";" | Block) }
 
-Block { "{" ~item item* (Declaration (";" ~item item* Declaration?)*)? "}" }
+Block { "{" blockContent "}" }
+
+blockContent { ~item item* (Declaration (";" ~item item* Declaration?)*)? }
 
 selector {
   UniversalSelector |
@@ -89,7 +98,7 @@ ArgList<content> { "(" commaSep<content> ")" }
 
 Declaration {
   (PropertyName { identifier ~item } | VariableName)
-  ":" value (","? value)* Important?
+  ":" (value (","? value)*)? Important?
 }
 
 query {
@@ -110,21 +119,30 @@ value {
   StringLiteral |
   BinaryExpression { value !valueOp BinOp value } |
   CallExpression |
-  CallLiteral
+  CallLiteral |
+  LineNames { "[" LineName { identifier }* "]" }
 }
 
 CallLiteral {
   @specialize[@name=CallTag]<callee, "url" | "url-prefix" | "domain" | "regexp">
-  "(" (ParenthesizedContent | StringLiteral) ")"
+  "(" (ParenthesizedContent | StringLiteral)? ")"
 }
 
 CallExpression {
   Callee { callee } ArgList<value+>
 }
 
-commaSep<value> { "" | value ("," value)* }
+@skip {} {
+  Comment[isolate] { "/*" (commentContent | commentLineBreak)* commentEnd }
+}
 
-kw<term> { @specialize[@name={term}]<identifier, term> }
+@local tokens {
+  commentEnd { "*/" | @eof }
+  commentLineBreak { "\n" }
+  @else commentContent
+}
+
+commaSep<value> { "" | value ("," value)* }
 
 @external tokens descendant from "./tokens" {
   descendantOp
@@ -161,19 +179,11 @@ kw<term> { @specialize[@name={term}]<identifier, term> }
 
   whitespace { @whitespace+ }
 
-  Comment { "/*" commentRest }
-
-  commentRest { ![*] commentRest | "*" commentAfterStar }
-
-  commentAfterStar { "/" | "*" commentAfterStar | ![/*] commentRest }
-
-  @precedence { Comment, BinOp }
-
   hexDigit { @digit | $[a-fA-F] }
 
   ParenthesizedContent { !['")] ![)]+ }
 
-  @precedence { whitespace, ParenthesizedContent, Comment }
+  @precedence { whitespace, ParenthesizedContent, "/*" }
 
   ColorLiteral {
     "#" hexDigit hexDigit hexDigit (hexDigit (hexDigit hexDigit (hexDigit hexDigit)?)?)?
@@ -183,7 +193,7 @@ kw<term> { @specialize[@name={term}]<identifier, term> }
 
   @precedence { numberLiteralInner, BinOp, SiblingOp }
 
-  StringLiteral { "\"" (!["\n\\] | "\\" _)* "\"" | "'" (!['\n\\] | "\\" _)* "'" }
+  StringLiteral[isolate] { "\"" (!["\n\\] | "\\" _)* "\"" | "'" (!['\n\\] | "\\" _)* "'" }
 
   "#"
 

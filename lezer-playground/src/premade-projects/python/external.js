@@ -1,10 +1,11 @@
+////////////////////////////////////////////
 // highlight.js
-import { styleTags, tags as t } from "@lezer/highlight";
+////////////////////////////////////////////
+import {styleTags, tags as t} from "@lezer/highlight"
 
 export const pythonHighlighting = styleTags({
-  'async "*" "**" FormatConversion FormatSpec': t.modifier,
-  "for while if elif else try except finally return raise break continue with pass assert await yield":
-    t.controlKeyword,
+  "async \"*\" \"**\" FormatConversion FormatSpec": t.modifier,
+  "for while if elif else try except finally return raise break continue with pass assert await yield match case": t.controlKeyword,
   "in not and or is del": t.operatorKeyword,
   "from def class global nonlocal lambda": t.definitionKeyword,
   import: t.moduleKeyword,
@@ -21,8 +22,9 @@ export const pythonHighlighting = styleTags({
   Number: t.number,
   String: t.string,
   FormatString: t.special(t.string),
+  Escape: t.escape,
   UpdateOp: t.updateOperator,
-  ArithOp: t.arithmeticOperator,
+  "ArithOp!": t.arithmeticOperator,
   BitOp: t.bitwiseOperator,
   CompareOp: t.compareOperator,
   AssignOp: t.definitionOperator,
@@ -32,178 +34,233 @@ export const pythonHighlighting = styleTags({
   "[ ]": t.squareBracket,
   "{ }": t.brace,
   ".": t.derefOperator,
-  ", ;": t.separator,
-});
+  ", ;": t.separator
+})
 
+////////////////////////////////////////////
 // tokens.js
-import { ExternalTokenizer, ContextTracker } from "@lezer/lr";
+////////////////////////////////////////////
+import {ExternalTokenizer, ContextTracker} from "@lezer/lr"
 import {
-  newline as newlineToken,
-  eof,
-  newlineEmpty,
-  newlineBracketed,
-  indent,
-  dedent,
-  printKeyword,
-  ParenthesizedExpression,
-  TupleExpression,
-  ComprehensionExpression,
-  PatternArgList,
-  SequencePattern,
-  MappingPattern,
-  ArrayExpression,
-  ArrayComprehensionExpression,
-  ArgList,
-  ParamList,
-  importList,
-  subscript,
-  DictionaryExpression,
-  DictionaryComprehensionExpression,
-  SetExpression,
-  SetComprehensionExpression,
-  FormatReplacement,
-  ParenL,
-  BraceL,
-  BracketL,
-} from "./parser.terms.js";
+  newline as newlineToken, eof, newlineBracketed, blankLineStart, indent, dedent, printKeyword,
+  ParenthesizedExpression, TupleExpression, ComprehensionExpression,
+  PatternArgList, SequencePattern, MappingPattern, TypeParamList,
+  ArrayExpression, ArrayComprehensionExpression, ArgList, ParamList, importList, subscript,
+  DictionaryExpression, DictionaryComprehensionExpression, SetExpression, SetComprehensionExpression,
+  String as StringTerm, FormatString, FormatReplacement, nestedFormatReplacement,
+  stringStart, stringStartD, stringStartL, stringStartLD,
+  stringStartR, stringStartRD, stringStartRL, stringStartRLD,
+  stringStartF, stringStartFD, stringStartFL, stringStartFLD,
+  stringStartFR, stringStartFRD, stringStartFRL, stringStartFRLD,
+  stringContent, Escape, replacementStart, stringEnd,
+  ParenL, BraceL, BracketL
+} from "./parser.terms.js"
 
-const newline = 10,
-  carriageReturn = 13,
-  space = 32,
-  tab = 9,
-  hash = 35,
-  parenOpen = 40,
-  dot = 46;
+const newline = 10, carriageReturn = 13, space = 32, tab = 9, hash = 35, parenOpen = 40, dot = 46,
+      braceOpen = 123, braceClose = 125, singleQuote = 39, doubleQuote = 34, backslash = 92,
+      letter_o = 111, letter_x = 120, letter_N = 78, letter_u = 117, letter_U = 85
 
 const bracketed = new Set([
-  ParenthesizedExpression,
-  TupleExpression,
-  ComprehensionExpression,
-  importList,
-  ArgList,
-  ParamList,
-  ArrayExpression,
-  ArrayComprehensionExpression,
-  subscript,
-  SetExpression,
-  SetComprehensionExpression,
-  DictionaryExpression,
-  DictionaryComprehensionExpression,
-  FormatReplacement,
-  SequencePattern,
-  MappingPattern,
-  PatternArgList,
-]);
+  ParenthesizedExpression, TupleExpression, ComprehensionExpression, importList, ArgList, ParamList,
+  ArrayExpression, ArrayComprehensionExpression, subscript,
+  SetExpression, SetComprehensionExpression, FormatString, FormatReplacement, nestedFormatReplacement,
+  DictionaryExpression, DictionaryComprehensionExpression,
+  SequencePattern, MappingPattern, PatternArgList, TypeParamList
+])
 
-export const newlines = new ExternalTokenizer(
-  (input, stack) => {
-    if (input.next < 0) {
-      input.acceptToken(eof);
-    } else if (input.next != newline && input.next != carriageReturn) {
-    } else if (stack.context.depth < 0) {
-      input.acceptToken(newlineBracketed, 1);
-    } else {
-      input.advance();
-      let spaces = 0;
-      while (input.next == space || input.next == tab) {
-        input.advance();
-        spaces++;
-      }
-      let empty =
-        input.next == newline ||
-        input.next == carriageReturn ||
-        input.next == hash;
-      input.acceptToken(empty ? newlineEmpty : newlineToken, -spaces);
-    }
-  },
-  { contextual: true, fallback: true }
-);
+function isLineBreak(ch) {
+  return ch == newline || ch == carriageReturn
+}
+
+function isHex(ch) {
+  return ch >= 48 && ch <= 57 || ch >= 65 && ch <= 70 || ch >= 97 && ch <= 102
+}
+
+export const newlines = new ExternalTokenizer((input, stack) => {
+  let prev
+  if (input.next < 0) {
+    input.acceptToken(eof)
+  } else if (stack.context.flags & cx_Bracketed) {
+    if (isLineBreak(input.next)) input.acceptToken(newlineBracketed, 1)
+  } else if (((prev = input.peek(-1)) < 0 || isLineBreak(prev)) &&
+             stack.canShift(blankLineStart)) {
+    let spaces = 0
+    while (input.next == space || input.next == tab) { input.advance(); spaces++ }
+    if (input.next == newline || input.next == carriageReturn || input.next == hash)
+      input.acceptToken(blankLineStart, -spaces)
+  } else if (isLineBreak(input.next)) {
+    input.acceptToken(newlineToken, 1)
+  }
+}, {contextual: true})
 
 export const indentation = new ExternalTokenizer((input, stack) => {
-  let cDepth = stack.context.depth;
-  if (cDepth < 0) return;
-  let prev = input.peek(-1),
-    depth;
-  if ((prev == newline || prev == carriageReturn) && stack.context.depth >= 0) {
-    let depth = 0,
-      chars = 0;
+  let context = stack.context
+  if (context.flags) return
+  let prev = input.peek(-1), depth
+  if (prev == newline || prev == carriageReturn) {
+    let depth = 0, chars = 0
     for (;;) {
-      if (input.next == space) depth++;
-      else if (input.next == tab) depth += 8 - (depth % 8);
-      else break;
-      input.advance();
-      chars++;
+      if (input.next == space) depth++
+      else if (input.next == tab) depth += 8 - (depth % 8)
+      else break
+      input.advance()
+      chars++
     }
-    if (
-      depth != cDepth &&
-      input.next != newline &&
-      input.next != carriageReturn &&
-      input.next != hash
-    ) {
-      if (depth < cDepth) input.acceptToken(dedent, -chars);
-      else input.acceptToken(indent);
+    if (depth != context.indent &&
+        input.next != newline && input.next != carriageReturn && input.next != hash) {
+      if (depth < context.indent) input.acceptToken(dedent, -chars)
+      else input.acceptToken(indent)
     }
   }
-});
+})
 
-function IndentLevel(parent, depth) {
-  this.parent = parent;
-  // -1 means this is not an actual indent level but a set of brackets
-  this.depth = depth;
-  this.hash =
-    (parent ? (parent.hash + parent.hash) << 8 : 0) + depth + (depth << 4);
+// Flags used in Context objects
+const cx_Bracketed = 1, cx_String = 2, cx_DoubleQuote = 4, cx_Long = 8, cx_Raw = 16, cx_Format = 32
+
+function Context(parent, indent, flags) {
+  this.parent = parent
+  this.indent = indent
+  this.flags = flags
+  this.hash = (parent ? parent.hash + parent.hash << 8 : 0) + indent + (indent << 4) + flags + (flags << 6)
 }
 
-const topIndent = new IndentLevel(null, 0);
+const topIndent = new Context(null, 0, 0)
 
 function countIndent(space) {
-  let depth = 0;
+  let depth = 0
   for (let i = 0; i < space.length; i++)
-    depth += space.charCodeAt(i) == tab ? 8 - (depth % 8) : 1;
-  return depth;
+    depth += space.charCodeAt(i) == tab ? 8 - (depth % 8) : 1
+  return depth
 }
+
+const stringFlags = new Map([
+  [stringStart, 0],
+  [stringStartD, cx_DoubleQuote],
+  [stringStartL, cx_Long],
+  [stringStartLD, cx_Long | cx_DoubleQuote],
+  [stringStartR, cx_Raw],
+  [stringStartRD, cx_Raw | cx_DoubleQuote],
+  [stringStartRL, cx_Raw | cx_Long],
+  [stringStartRLD, cx_Raw | cx_Long | cx_DoubleQuote],
+  [stringStartF, cx_Format],
+  [stringStartFD, cx_Format | cx_DoubleQuote],
+  [stringStartFL, cx_Format | cx_Long],
+  [stringStartFLD, cx_Format | cx_Long | cx_DoubleQuote],
+  [stringStartFR, cx_Format | cx_Raw],
+  [stringStartFRD, cx_Format | cx_Raw | cx_DoubleQuote],
+  [stringStartFRL, cx_Format | cx_Raw | cx_Long],
+  [stringStartFRLD, cx_Format | cx_Raw | cx_Long | cx_DoubleQuote]
+].map(([term, flags]) => [term, flags | cx_String]))
 
 export const trackIndent = new ContextTracker({
   start: topIndent,
-  reduce(context, term) {
-    return context.depth < 0 && bracketed.has(term) ? context.parent : context;
+  reduce(context, term, _, input) {
+    if ((context.flags & cx_Bracketed) && bracketed.has(term) ||
+        (term == StringTerm || term == FormatString) && (context.flags & cx_String))
+      return context.parent
+    return context
   },
   shift(context, term, stack, input) {
     if (term == indent)
-      return new IndentLevel(
-        context,
-        countIndent(input.read(input.pos, stack.pos))
-      );
-    if (term == dedent) return context.parent;
-    if (term == ParenL || term == BracketL || term == BraceL)
-      return new IndentLevel(context, -1);
-    return context;
+      return new Context(context, countIndent(input.read(input.pos, stack.pos)), 0)
+    if (term == dedent)
+      return context.parent
+    if (term == ParenL || term == BracketL || term == BraceL || term == replacementStart)
+      return new Context(context, 0, cx_Bracketed)
+    if (stringFlags.has(term))
+      return new Context(context, 0, stringFlags.get(term) | (context.flags & cx_Bracketed))
+    return context
   },
-  hash(context) {
-    return context.hash;
-  },
-});
+  hash(context) { return context.hash }
+})
 
-export const legacyPrint = new ExternalTokenizer((input) => {
+export const legacyPrint = new ExternalTokenizer(input => {
   for (let i = 0; i < 5; i++) {
-    if (input.next != "print".charCodeAt(i)) return;
-    input.advance();
+    if (input.next != "print".charCodeAt(i)) return
+    input.advance()
   }
-  if (/\w/.test(String.fromCharCode(input.next))) return;
-  for (let off = 0; ; off++) {
-    let next = input.peek(off);
-    if (next == space || next == tab) continue;
-    if (
-      next != parenOpen &&
-      next != dot &&
-      next != newline &&
-      next != carriageReturn &&
-      next != hash
-    )
-      input.acceptToken(printKeyword);
-    return;
+  if (/\w/.test(String.fromCharCode(input.next))) return
+  for (let off = 0;; off++) {
+    let next = input.peek(off)
+    if (next == space || next == tab) continue
+    if (next != parenOpen && next != dot && next != newline && next != carriageReturn && next != hash)
+      input.acceptToken(printKeyword)
+    return
   }
-});
+})
+
+export const strings = new ExternalTokenizer((input, stack) => {
+  let {flags} = stack.context
+  let quote = (flags & cx_DoubleQuote) ? doubleQuote : singleQuote
+  let long = (flags & cx_Long) > 0
+  let escapes = !(flags & cx_Raw)
+  let format = (flags & cx_Format) > 0
+
+  let start = input.pos
+  for (;;) {
+    if (input.next < 0) {
+      break
+    } else if (format && input.next == braceOpen) {
+      if (input.peek(1) == braceOpen) {
+        input.advance(2)
+      } else {
+        if (input.pos == start) {
+          input.acceptToken(replacementStart, 1)
+          return
+        }
+        break
+      }
+    } else if (escapes && input.next == backslash) {
+      if (input.pos == start) {
+        input.advance()
+        let escaped = input.next
+        if (escaped >= 0) {
+          input.advance()
+          skipEscape(input, escaped)
+        }
+        input.acceptToken(Escape)
+        return
+      }
+      break
+    } else if (input.next == quote && (!long || input.peek(1) == quote && input.peek(2) == quote)) {
+      if (input.pos == start) {
+        input.acceptToken(stringEnd, long ? 3 : 1)
+        return
+      }
+      break
+    } else if (input.next == newline) {
+      if (long) {
+        input.advance()
+      } else if (input.pos == start) {
+        input.acceptToken(stringEnd)
+        return
+      }
+      break
+    } else {
+      input.advance()
+    }
+  }
+  if (input.pos > start) input.acceptToken(stringContent)
+})
+
+function skipEscape(input, ch) {
+  if (ch == letter_o) {
+    for (let i = 0; i < 2 && input.next >= 48 && input.next <= 55; i++) input.advance()
+  } else if (ch == letter_x) {
+    for (let i = 0; i < 2 && isHex(input.next); i++) input.advance()
+  } else if (ch == letter_u) {
+    for (let i = 0; i < 4 && isHex(input.next); i++) input.advance()
+  } else if (ch == letter_U) {
+    for (let i = 0; i < 8 && isHex(input.next); i++) input.advance()
+  } else if (ch == letter_N) {
+    if (input.next == braceOpen) {
+      input.advance()
+      while (input.next >= 0 && input.next != braceClose && input.next != singleQuote &&
+             input.next != doubleQuote && input.next != newline) input.advance()
+      if (input.next == braceClose) input.advance()
+    }
+  }
+}
 
 // A very dim/dull syntax highlighting so you have something to look at, but also to trigger you to write your own ;)
 // Also shows that you can use `export let extension = [...]`, to add extensions to the "demo text" editor.
