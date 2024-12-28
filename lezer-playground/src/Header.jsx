@@ -140,7 +140,7 @@ let ProjectsDropdown = () => {
 
 let path_prefix = "./premade-projects/";
 // @ts-expect-error - Vite glob 😎
-const modules = import.meta.glob("./premade-projects/**/*", { as: "raw" });
+const modules = import.meta.glob("./premade-projects/**/*", { query: "?raw" });
 
 console.log(`modules:`, modules);
 

@@ -19,14 +19,14 @@ Making writing lezer grammars fun since 2022.
 
 ## Usage
 
-Can only be installed with yarn, because I heavily use workspaces..
+Can only be installed with pnpm, because I heavily use workspaces..
 
 ```
-yarn install
+pnpm install
 ```
 
 Now you know the drill:
 
 ```
-yarn start
+pnpm start
 ```
