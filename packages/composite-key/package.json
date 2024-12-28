@@ -2,15 +2,7 @@
   "name": "composite-key",
   "version": "1.0.0",
   "description": "",
-  "main": "composite-key.js",
-  "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "main": "composite-key.ts",
   "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "typescript": "^5.0.4"
-  }
+  "license": "ISC"
 }

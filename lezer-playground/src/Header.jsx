@@ -141,6 +141,9 @@ let ProjectsDropdown = () => {
 let path_prefix = "./premade-projects/";
 // @ts-expect-error - Vite glob 😎
 const modules = import.meta.glob("./premade-projects/**/*", { as: "raw" });
+
+console.log(`modules:`, modules);
+
 let premade_projects = {};
 for (let [path, import_module] of Object.entries(modules)) {
   let [project, filename] = path.slice(path_prefix.length).split("/");
@@ -156,6 +159,8 @@ for (let [path, import_module] of Object.entries(modules)) {
     console.error(`Unknown file type: ${path}/${filename}`);
   }
 }
+
+console.log(`premade_projects:`, premade_projects);
 
 let LoadSampleDropdown = ({ scoped_storage }) => {
   let path = window.location.pathname;
@@ -175,10 +180,15 @@ let LoadSampleDropdown = ({ scoped_storage }) => {
                   premade_projects[project_name].grammar(),
                   premade_projects[project_name].external(),
                 ]).then(([example, grammar, external]) => {
-                  scoped_storage.child("code_to_parse").set(example),
-                    scoped_storage.child("javascript_stuff").set(external),
-                    scoped_storage.child("parser_code").set(grammar),
-                    window.location.reload();
+                  console.log(`example, grammar, external:`, {
+                    example,
+                    grammar,
+                    external,
+                  });
+                  scoped_storage.child("code_to_parse").set(example);
+                  scoped_storage.child("javascript_stuff").set(external);
+                  scoped_storage.child("parser_code").set(grammar);
+                  window.location.reload();
                 });
               }}
             >

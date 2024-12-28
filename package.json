@@ -1,33 +1,10 @@
 {
-  "name": "statebasednotebook",
-  "private": true,
-  "packageManager": "yarn@3.3.0",
-  "workspaces": [
-    "simple-notebooks/web-app",
-    "simple-notebooks/node-engine",
-    "simple-notebooks/p5",
-    "simple-notebooks/packages/*",
-    "lezer-playground",
-    "lezer-playground/packages/*",
-    "packages/*",
-    "paintbrush/extension",
-    "paintbrush/paintbrush-in-page-editor",
-    "codemirror-editor-in-chief"
-  ],
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "turbo run build"
   },
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
     "turbo": "^1.9.6",
     "typescript": "^5.0.4"
   },
-  "resolutions": {
-    "recast@^0.23.2": "patch:recast@npm%3A0.23.2#./.yarn/patches/recast-npm-0.23.2-a2d4acb9d1.patch"
-  }
+  "packageManager": "pnpm@9.15.0"
 }

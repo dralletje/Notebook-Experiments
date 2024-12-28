@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "description": "",
   "main": "useImmerStore.js",
-  "scripts": {
-    "prepare": "npx -p typescript tsc useImmerStore.js --declaration --allowJs --emitDeclarationOnly",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "author": "",
   "license": "ISC",
   "dependencies": {

@@ -19,6 +19,8 @@
     "@codemirror/view": "^6.12.0",
     "@dral/modern-map": "workspace:^",
     "codemirror-x-react": "workspace:^",
-    "composite-key": "workspace:^"
+    "composite-key": "workspace:^",
+    "immer": "^10.0.2",
+    "lodash": "^4.17.21"
   }
 }

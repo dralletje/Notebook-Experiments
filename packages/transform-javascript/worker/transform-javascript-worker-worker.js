@@ -1,6 +1,6 @@
 import "./process-polyfill-mehh.js";
 
-import { transform_code } from "@dral/dralbook-transform-javascript";
+import { transform_code } from "../transform-javascript.js";
 import { handleCalls } from "@dral/worker-typescript-magic/import-in-worker";
 
 let commands = {

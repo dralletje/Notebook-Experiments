@@ -181,13 +181,13 @@ let Editor = ({ project_name }) => {
           ],
         }),
         javascript: EditorState.create({
-          doc: _parser_code,
+          doc: javascript_stuff,
           extensions: [
             editorstate.section_editor_extensions(JAVASCRIPT_EDITOR_ID),
           ],
         }),
         "code-to-parse": EditorState.create({
-          doc: _parser_code,
+          doc: code_to_parse,
           extensions: [
             editorstate.section_editor_extensions(WHAT_TO_PARSE_EDITOR_ID),
           ],
