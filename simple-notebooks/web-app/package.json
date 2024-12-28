@@ -21,6 +21,7 @@
     "@dral/typed-event-target": "workspace:^",
     "@ionic/react": "^7.0.0",
     "@lezer/common": "^1.0.2",
+    "@observablehq/inspector": "^3.2.4",
     "@types/node": "^18.16.12",
     "@typescript/vfs": "^1.4.0",
     "@vitejs/plugin-react-swc": "^3.3.1",

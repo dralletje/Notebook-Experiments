@@ -13,6 +13,9 @@
     "typescript": "^5.0.4"
   },
   "dependencies": {
+    "@codemirror/language": "^6.6.0",
+    "@codemirror/state": "^6.2.0",
+    "@codemirror/view": "^6.36.1",
     "dral-lezer-helpers": "workspace:^"
   }
 }

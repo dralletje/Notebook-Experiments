@@ -11,8 +11,14 @@
   "dependencies": {
     "@codemirror/state": "^6.2.0",
     "@codemirror/view": "^6.11.3",
-    "react": "^18.2.0",
     "react-codemirror-widget": "workspace:^",
-    "react-color": "^2.19.3"
+    "react-color": "^2.19.3",
+    "styled-components": "^6.1.13"
+  },
+  "devDependencies": {
+    "react": "^18"
+  },
+  "peerDependencies": {
+    "react": "^18"
   }
 }

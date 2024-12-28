@@ -11,5 +11,8 @@
   "peerDependencies": {
     "@codemirror/language": "^6.2.1",
     "@codemirror/view": "^6.2.0"
+  },
+  "dependencies": {
+    "dral-lezer-helpers": "workspace:^"
   }
 }

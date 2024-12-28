@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       turbo:
-        specifier: ^1.9.6
-        version: 1.13.4
+        specifier: ^2.3.3
+        version: 2.3.3
       typescript:
         specifier: ^5.0.4
         version: 5.7.2
@@ -129,6 +129,9 @@ importers:
       dral-lezer-helpers:
         specifier: workspace:^
         version: link:../packages/dral-lezer-helpers
+      immer:
+        specifier: ^10.0.2
+        version: 10.1.1
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
@@ -273,6 +276,9 @@ importers:
       '@codemirror/view':
         specifier: ^6.2.0
         version: 6.36.1
+      dral-lezer-helpers:
+        specifier: workspace:^
+        version: link:../dral-lezer-helpers
 
   packages/codemirror-subtle-color-picker:
     dependencies:
@@ -282,15 +288,19 @@ importers:
       '@codemirror/view':
         specifier: ^6.11.3
         version: 6.36.1
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
       react-codemirror-widget:
         specifier: workspace:^
         version: link:../react-codemirror-widget
       react-color:
         specifier: ^2.19.3
         version: 2.19.3(react@18.3.1)
+      styled-components:
+        specifier: ^6.1.13
+        version: 6.1.13(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+    devDependencies:
+      react:
+        specifier: ^18
+        version: 18.3.1
 
   packages/codemirror-x-react:
     dependencies:
@@ -303,11 +313,24 @@ importers:
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
+    devDependencies:
+      react:
+        specifier: ^18
+        version: 18.3.1
 
   packages/composite-key: {}
 
   packages/dral-codemirror-helpers:
     dependencies:
+      '@codemirror/language':
+        specifier: ^6.6.0
+        version: 6.10.8
+      '@codemirror/state':
+        specifier: ^6.2.0
+        version: 6.5.0
+      '@codemirror/view':
+        specifier: ^6.36.1
+        version: 6.36.1
       dral-lezer-helpers:
         specifier: workspace:^
         version: link:../dral-lezer-helpers
@@ -586,12 +609,18 @@ importers:
       autoprefixer:
         specifier: ^10.4.14
         version: 10.4.20(postcss@8.4.49)
+      codemirror-awesome-line-wrapping:
+        specifier: workspace:^
+        version: link:../../packages/codemirror-awesome-line-wrapping
       codemirror-editor-in-chief:
         specifier: workspace:^
         version: link:../../codemirror-editor-in-chief
       codemirror-x-react:
         specifier: workspace:^
         version: link:../../packages/codemirror-x-react
+      dral-lezer-helpers:
+        specifier: workspace:^
+        version: link:../../packages/dral-lezer-helpers
       htm:
         specifier: ^3.1.1
         version: 3.1.1
@@ -732,12 +761,18 @@ importers:
       '@dral/typed-event-target':
         specifier: workspace:^
         version: link:../../packages/typed-event-target
+      '@iarna/toml':
+        specifier: ^2.2.5
+        version: 2.2.5
       '@ionic/react':
         specifier: ^7.0.0
         version: 7.8.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@lezer/common':
         specifier: ^1.0.2
         version: 1.2.3
+      '@observablehq/inspector':
+        specifier: ^3.2.4
+        version: 3.2.4
       '@types/node':
         specifier: ^18.16.12
         version: 18.19.68
@@ -878,7 +913,14 @@ importers:
         specifier: ^4.3.7
         version: 4.5.5(@types/node@18.19.68)
 
-  simple-notebooks/packages/javascript-basic-serialize: {}
+  simple-notebooks/packages/javascript-basic-serialize:
+    dependencies:
+      react:
+        specifier: ^18
+        version: 18.3.1
+      react-dom:
+        specifier: ^18
+        version: 18.3.1(react@18.3.1)
 
   simple-notebooks/packages/javascript-notebook-runner:
     dependencies:
@@ -894,6 +936,9 @@ importers:
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
+      picocolors:
+        specifier: ^1.0.0
+        version: 1.1.1
       ts-opaque:
         specifier: ^3.0.1
         version: 3.0.1
@@ -901,6 +946,202 @@ importers:
       typescript:
         specifier: ^5.0.4
         version: 5.7.2
+
+  simple-notebooks/sheets-app:
+    dependencies:
+      '@codemirror/autocomplete':
+        specifier: ^6.7.1
+        version: 6.18.4
+      '@codemirror/collab':
+        specifier: ^6.0.0
+        version: 6.1.1
+      '@codemirror/commands':
+        specifier: ^6.2.4
+        version: 6.7.1
+      '@codemirror/lang-javascript':
+        specifier: ^6.1.8
+        version: 6.2.2
+      '@codemirror/lang-lezer':
+        specifier: ^6.0.1
+        version: 6.0.1
+      '@codemirror/lang-markdown':
+        specifier: ^6.1.1
+        version: 6.3.1
+      '@codemirror/language':
+        specifier: ^6.6.0
+        version: 6.10.8
+      '@codemirror/search':
+        specifier: ^6.4.0
+        version: 6.5.8
+      '@codemirror/state':
+        specifier: ^6.2.0
+        version: 6.5.0
+      '@codemirror/view':
+        specifier: ^6.11.3
+        version: 6.36.1
+      '@dral/codemirror-helpers':
+        specifier: workspace:^
+        version: link:../../packages/dral-codemirror-helpers
+      '@dral/dralbook-transform-javascript':
+        specifier: workspace:^
+        version: link:../../packages/transform-javascript
+      '@dral/javascript-basic-serialize':
+        specifier: workspace:^
+        version: link:../packages/javascript-basic-serialize
+      '@dral/javascript-notebook-runner':
+        specifier: workspace:^
+        version: link:../packages/javascript-notebook-runner
+      '@dral/modern-map':
+        specifier: workspace:^
+        version: link:../../packages/modern-map
+      '@dral/typed-event-target':
+        specifier: workspace:^
+        version: link:../../packages/typed-event-target
+      '@ionic/react':
+        specifier: ^7.0.0
+        version: 7.8.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@lezer/common':
+        specifier: ^1.0.2
+        version: 1.2.3
+      '@observablehq/inspector':
+        specifier: ^3.2.4
+        version: 3.2.4
+      '@types/node':
+        specifier: ^18.16.12
+        version: 18.19.68
+      '@typescript/vfs':
+        specifier: ^1.4.0
+        version: 1.6.0(typescript@5.7.2)
+      '@vitejs/plugin-react-swc':
+        specifier: ^3.3.1
+        version: 3.7.2(vite@4.5.5(@types/node@18.19.68))
+      codemirror-awesome-line-wrapping:
+        specifier: workspace:^
+        version: link:../../packages/codemirror-awesome-line-wrapping
+      codemirror-debug-syntax-plugin:
+        specifier: workspace:^
+        version: link:../../packages/codemirror-debug-syntax-plugin
+      codemirror-editor-in-chief:
+        specifier: workspace:^
+        version: link:../../codemirror-editor-in-chief
+      codemirror-x-react:
+        specifier: workspace:^
+        version: link:../../packages/codemirror-x-react
+      dral-lezer-helpers:
+        specifier: workspace:^
+        version: link:../../packages/dral-lezer-helpers
+      excel-formula-parser:
+        specifier: ^1.1.0
+        version: 1.1.0
+      htl:
+        specifier: ^0.3.1
+        version: 0.3.1
+      immer:
+        specifier: ^10.0.2
+        version: 10.1.1
+      inspector-x-react:
+        specifier: workspace:^
+        version: link:../../packages/inspector-x-react
+      ionicons:
+        specifier: ^7.1.0
+        version: 7.4.0
+      katex:
+        specifier: ^0.16.7
+        version: 0.16.18
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.17.21
+      md-literal:
+        specifier: workspace:^
+        version: link:../../packages/md-literal
+      node-emoji:
+        specifier: ^2.0.2
+        version: 2.2.0
+      picocolors:
+        specifier: ^1.0.0
+        version: 1.1.1
+      polyfills:
+        specifier: workspace:^
+        version: link:../../packages/node-polyfills
+      prettier:
+        specifier: ^2.8.8
+        version: 2.8.8
+      prop-types:
+        specifier: ^15.8.1
+        version: 15.8.1
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-beautiful-dnd:
+        specifier: ^13.1.1
+        version: 13.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-codemirror-widget:
+        specifier: workspace:^
+        version: link:../../packages/react-codemirror-widget
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      react-flip-toolkit:
+        specifier: ^7.1.0
+        version: 7.2.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-is:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-shadow:
+        specifier: ^20.0.0
+        version: 20.5.0(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-use-path:
+        specifier: ^0.3.1
+        version: 0.3.2(react@18.3.1)
+      shallow-equal:
+        specifier: ^3.1.0
+        version: 3.1.0
+      socket.io-client:
+        specifier: ^4.6.1
+        version: 4.8.1
+      styled-components:
+        specifier: ^5.3.9
+        version: 5.3.11(@babel/core@7.26.0)(react-dom@18.3.1(react@18.3.1))(react-is@18.3.1)(react@18.3.1)
+      ts-opaque:
+        specifier: ^3.0.1
+        version: 3.0.1
+      typescript:
+        specifier: ^5.0.4
+        version: 5.7.2
+      uuid:
+        specifier: ^9.0.0
+        version: 9.0.1
+    devDependencies:
+      '@types/lodash':
+        specifier: ^4.14.194
+        version: 4.17.13
+      '@types/react':
+        specifier: ^18.2.6
+        version: 18.3.18
+      '@types/serviceworker':
+        specifier: ^0.0.67
+        version: 0.0.67
+      autoprefixer:
+        specifier: ^10.4.14
+        version: 10.4.20(postcss@8.4.49)
+      postcss:
+        specifier: ^8.4.23
+        version: 8.4.49
+      postcss-nesting:
+        specifier: ^11.2.2
+        version: 11.3.0(postcss@8.4.49)
+      rollup-plugin-visualizer:
+        specifier: ^5.9.0
+        version: 5.13.1(rollup@4.29.1)
+      tailwindcss:
+        specifier: ^3.3.2
+        version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.3)(@types/node@18.19.68)(typescript@5.7.2))
+      vite:
+        specifier: ^4.3.7
+        version: 4.5.5(@types/node@18.19.68)
 
   simple-notebooks/web-app:
     dependencies:
@@ -958,6 +1199,9 @@ importers:
       '@lezer/common':
         specifier: ^1.0.2
         version: 1.2.3
+      '@observablehq/inspector':
+        specifier: ^3.2.4
+        version: 3.2.4
       '@types/node':
         specifier: ^18.16.12
         version: 18.19.68
@@ -3602,38 +3846,38 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
-  turbo-darwin-64@1.13.4:
-    resolution: {integrity: sha512-A0eKd73R7CGnRinTiS7txkMElg+R5rKFp9HV7baDiEL4xTG1FIg/56Vm7A5RVgg8UNgG2qNnrfatJtb+dRmNdw==}
+  turbo-darwin-64@2.3.3:
+    resolution: {integrity: sha512-bxX82xe6du/3rPmm4aCC5RdEilIN99VUld4HkFQuw+mvFg6darNBuQxyWSHZTtc25XgYjQrjsV05888w1grpaA==}
     cpu: [x64]
     os: [darwin]
 
-  turbo-darwin-arm64@1.13.4:
-    resolution: {integrity: sha512-eG769Q0NF6/Vyjsr3mKCnkG/eW6dKMBZk6dxWOdrHfrg6QgfkBUk0WUUujzdtVPiUIvsh4l46vQrNVd9EOtbyA==}
+  turbo-darwin-arm64@2.3.3:
+    resolution: {integrity: sha512-DYbQwa3NsAuWkCUYVzfOUBbSUBVQzH5HWUFy2Kgi3fGjIWVZOFk86ss+xsWu//rlEAfYwEmopigsPYSmW4X15A==}
     cpu: [arm64]
     os: [darwin]
 
-  turbo-linux-64@1.13.4:
-    resolution: {integrity: sha512-Bq0JphDeNw3XEi+Xb/e4xoKhs1DHN7OoLVUbTIQz+gazYjigVZvtwCvgrZI7eW9Xo1eOXM2zw2u1DGLLUfmGkQ==}
+  turbo-linux-64@2.3.3:
+    resolution: {integrity: sha512-eHj9OIB0dFaP6BxB88jSuaCLsOQSYWBgmhy2ErCu6D2GG6xW3b6e2UWHl/1Ho9FsTg4uVgo4DB9wGsKa5erjUA==}
     cpu: [x64]
     os: [linux]
 
-  turbo-linux-arm64@1.13.4:
-    resolution: {integrity: sha512-BJcXw1DDiHO/okYbaNdcWN6szjXyHWx9d460v6fCHY65G8CyqGU3y2uUTPK89o8lq/b2C8NK0yZD+Vp0f9VoIg==}
+  turbo-linux-arm64@2.3.3:
+    resolution: {integrity: sha512-NmDE/NjZoDj1UWBhMtOPmqFLEBKhzGS61KObfrDEbXvU3lekwHeoPvAMfcovzswzch+kN2DrtbNIlz+/rp8OCg==}
     cpu: [arm64]
     os: [linux]
 
-  turbo-windows-64@1.13.4:
-    resolution: {integrity: sha512-OFFhXHOFLN7A78vD/dlVuuSSVEB3s9ZBj18Tm1hk3aW1HTWTuAw0ReN6ZNlVObZUHvGy8d57OAGGxf2bT3etQw==}
+  turbo-windows-64@2.3.3:
+    resolution: {integrity: sha512-O2+BS4QqjK3dOERscXqv7N2GXNcqHr9hXumkMxDj/oGx9oCatIwnnwx34UmzodloSnJpgSqjl8iRWiY65SmYoQ==}
     cpu: [x64]
     os: [win32]
 
-  turbo-windows-arm64@1.13.4:
-    resolution: {integrity: sha512-u5A+VOKHswJJmJ8o8rcilBfU5U3Y1TTAfP9wX8bFh8teYF1ghP0EhtMRLjhtp6RPa+XCxHHVA2CiC3gbh5eg5g==}
+  turbo-windows-arm64@2.3.3:
+    resolution: {integrity: sha512-dW4ZK1r6XLPNYLIKjC4o87HxYidtRRcBeo/hZ9Wng2XM/MqqYkAyzJXJGgRMsc0MMEN9z4+ZIfnSNBrA0b08ag==}
     cpu: [arm64]
     os: [win32]
 
-  turbo@1.13.4:
-    resolution: {integrity: sha512-1q7+9UJABuBAHrcC4Sxp5lOqYS5mvxRrwa33wpIyM18hlOCpRD/fTJNxZ0vhbMcJmz15o9kkVm743mPn7p6jpQ==}
+  turbo@2.3.3:
+    resolution: {integrity: sha512-DUHWQAcC8BTiUZDRzAYGvpSpGLiaOQPfYXlCieQbwUvmml/LRGIe3raKdrOPOoiX0DYlzxs2nH6BoWJoZrj8hA==}
     hasBin: true
 
   type-is@1.6.18:
@@ -4420,7 +4664,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 20.17.10
+      '@types/node': 18.19.68
       '@types/yargs': 17.0.33
       chalk: 4.1.2
 
@@ -5586,7 +5830,7 @@ snapshots:
   jest-util@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 20.17.10
+      '@types/node': 18.19.68
       chalk: 4.1.2
       ci-info: 3.9.0
       graceful-fs: 4.2.11
@@ -6496,32 +6740,32 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  turbo-darwin-64@1.13.4:
+  turbo-darwin-64@2.3.3:
     optional: true
 
-  turbo-darwin-arm64@1.13.4:
+  turbo-darwin-arm64@2.3.3:
     optional: true
 
-  turbo-linux-64@1.13.4:
+  turbo-linux-64@2.3.3:
     optional: true
 
-  turbo-linux-arm64@1.13.4:
+  turbo-linux-arm64@2.3.3:
     optional: true
 
-  turbo-windows-64@1.13.4:
+  turbo-windows-64@2.3.3:
     optional: true
 
-  turbo-windows-arm64@1.13.4:
+  turbo-windows-arm64@2.3.3:
     optional: true
 
-  turbo@1.13.4:
+  turbo@2.3.3:
     optionalDependencies:
-      turbo-darwin-64: 1.13.4
-      turbo-darwin-arm64: 1.13.4
-      turbo-linux-64: 1.13.4
-      turbo-linux-arm64: 1.13.4
-      turbo-windows-64: 1.13.4
-      turbo-windows-arm64: 1.13.4
+      turbo-darwin-64: 2.3.3
+      turbo-darwin-arm64: 2.3.3
+      turbo-linux-64: 2.3.3
+      turbo-linux-arm64: 2.3.3
+      turbo-windows-64: 2.3.3
+      turbo-windows-arm64: 2.3.3
 
   type-is@1.6.18:
     dependencies:
