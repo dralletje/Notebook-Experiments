@@ -1,3 +1,5 @@
+// import "./node-polyfills-mehh.js";
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";

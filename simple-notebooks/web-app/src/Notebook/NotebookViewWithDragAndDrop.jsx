@@ -45,7 +45,7 @@ let NotebookStyle = styled.div`
   /* min-height: 100vh; */
   padding-bottom: 100px;
 
-  max-width: 700px;
+  max-width: 900px;
 `;
 
 /**

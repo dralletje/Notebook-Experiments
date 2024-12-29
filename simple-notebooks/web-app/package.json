@@ -14,7 +14,6 @@
     "@codemirror/state": "^6.2.0",
     "@codemirror/view": "^6.11.3",
     "@dral/codemirror-helpers": "workspace:^",
-    "@dral/dralbook-transform-javascript": "workspace:^",
     "@dral/javascript-basic-serialize": "workspace:^",
     "@dral/javascript-notebook-runner": "workspace:^",
     "@dral/modern-map": "workspace:^",
@@ -57,7 +56,8 @@
     "styled-components": "^5.3.9",
     "ts-opaque": "^3.0.1",
     "typescript": "^5.0.4",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "vite-plugin-node-polyfills": "^0.22.0"
   },
   "scripts": {
     "start": "vite",

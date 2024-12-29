@@ -2,10 +2,11 @@ import { resolve } from "node:path";
 import { defineConfig } from "vite";
 // import react from "@vitejs/plugin-react-swc";
 import react from "@vitejs/plugin-react-swc";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), nodePolyfills()],
   server: {
     fs: {
       // Allow serving files from project root...
