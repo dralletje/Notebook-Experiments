@@ -171,7 +171,7 @@ importers:
         version: 5.1.34
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.0.6(@types/node@20.17.10)(jiti@1.21.7)(yaml@2.6.1))
+        version: 4.3.4(vite@6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1))
       autoprefixer:
         specifier: ^10.4.14
         version: 10.4.20(postcss@8.4.49)
@@ -183,10 +183,10 @@ importers:
         version: 5.13.1(rollup@4.29.1)
       tailwindcss:
         specifier: ^3.3.2
-        version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.3)(@types/node@20.17.10)(typescript@5.7.2))
+        version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.3)(@types/node@22.10.2)(typescript@5.7.2))
       vite:
         specifier: ^6.0.6
-        version: 6.0.6(@types/node@20.17.10)(jiti@1.21.7)(yaml@2.6.1)
+        version: 6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1)
 
   lezer-playground/packages/all-folds-zig:
     dependencies:
@@ -389,7 +389,7 @@ importers:
     devDependencies:
       ts-node:
         specifier: ^10.9.1
-        version: 10.9.2(@swc/core@1.10.3)(@types/node@20.17.10)(typescript@5.7.2)
+        version: 10.9.2(@swc/core@1.10.3)(@types/node@22.10.2)(typescript@5.7.2)
 
   packages/md-literal:
     dependencies:
@@ -635,10 +635,10 @@ importers:
     devDependencies:
       '@vitejs/plugin-react-swc':
         specifier: ^3.3.1
-        version: 3.7.2(vite@4.5.5(@types/node@20.17.10))
+        version: 3.7.2(vite@4.5.5(@types/node@22.10.2))
       vite:
         specifier: ^4.3.8
-        version: 4.5.5(@types/node@20.17.10)
+        version: 4.5.5(@types/node@22.10.2)
 
   simple-notebooks/node-engine:
     dependencies:
@@ -933,9 +933,6 @@ importers:
       '@codemirror/lang-javascript':
         specifier: ^6.1.8
         version: 6.2.2
-      '@codemirror/lang-lezer':
-        specifier: ^6.0.1
-        version: 6.0.1
       '@codemirror/lang-markdown':
         specifier: ^6.1.1
         version: 6.3.1
@@ -976,14 +973,14 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4
       '@types/node':
-        specifier: ^18.16.12
-        version: 18.19.68
+        specifier: ^22.10.2
+        version: 22.10.2
       '@typescript/vfs':
         specifier: ^1.4.0
         version: 1.6.0(typescript@5.7.2)
       '@vitejs/plugin-react-swc':
         specifier: ^3.3.1
-        version: 3.7.2(vite@4.5.5(@types/node@18.19.68))
+        version: 3.7.2(vite@6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1))
       codemirror-awesome-line-wrapping:
         specifier: workspace:^
         version: link:../../packages/codemirror-awesome-line-wrapping
@@ -999,9 +996,6 @@ importers:
       dral-lezer-helpers:
         specifier: workspace:^
         version: link:../../packages/dral-lezer-helpers
-      excel-formula-parser:
-        specifier: ^1.1.0
-        version: 1.1.0
       htl:
         specifier: ^0.3.1
         version: 0.3.1
@@ -1036,8 +1030,8 @@ importers:
         specifier: workspace:^
         version: link:../../packages/node-polyfills
       prettier:
-        specifier: ^2.8.8
-        version: 2.8.8
+        specifier: ^3.4.2
+        version: 3.4.2
       prop-types:
         specifier: ^15.8.1
         version: 15.8.1
@@ -1056,9 +1050,6 @@ importers:
       react-flip-toolkit:
         specifier: ^7.1.0
         version: 7.2.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react-is:
-        specifier: ^18.2.0
-        version: 18.3.1
       react-shadow:
         specifier: ^20.0.0
         version: 20.5.0(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1072,8 +1063,8 @@ importers:
         specifier: ^4.6.1
         version: 4.8.1
       styled-components:
-        specifier: ^5.3.9
-        version: 5.3.11(@babel/core@7.26.0)(react-dom@18.3.1(react@18.3.1))(react-is@18.3.1)(react@18.3.1)
+        specifier: ^6.1.13
+        version: 6.1.13(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       ts-opaque:
         specifier: ^3.0.1
         version: 3.0.1
@@ -1081,11 +1072,11 @@ importers:
         specifier: ^5.0.4
         version: 5.7.2
       uuid:
-        specifier: ^9.0.0
-        version: 9.0.1
+        specifier: ^11.0.3
+        version: 11.0.3
       vite-plugin-node-polyfills:
         specifier: ^0.22.0
-        version: 0.22.0(rollup@4.29.1)(vite@4.5.5(@types/node@18.19.68))
+        version: 0.22.0(rollup@4.29.1)(vite@6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1))
     devDependencies:
       '@types/lodash':
         specifier: ^4.14.194
@@ -1094,8 +1085,8 @@ importers:
         specifier: ^18.2.6
         version: 18.3.18
       '@types/serviceworker':
-        specifier: ^0.0.67
-        version: 0.0.67
+        specifier: ^0.0.108
+        version: 0.0.108
       autoprefixer:
         specifier: ^10.4.14
         version: 10.4.20(postcss@8.4.49)
@@ -1103,17 +1094,17 @@ importers:
         specifier: ^8.4.23
         version: 8.4.49
       postcss-nesting:
-        specifier: ^11.2.2
-        version: 11.3.0(postcss@8.4.49)
+        specifier: ^13.0.1
+        version: 13.0.1(postcss@8.4.49)
       rollup-plugin-visualizer:
         specifier: ^5.9.0
         version: 5.13.1(rollup@4.29.1)
       tailwindcss:
         specifier: ^3.3.2
-        version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.3)(@types/node@18.19.68)(typescript@5.7.2))
+        version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.3)(@types/node@22.10.2)(typescript@5.7.2))
       vite:
-        specifier: ^4.3.7
-        version: 4.5.5(@types/node@18.19.68)
+        specifier: ^6.0.6
+        version: 6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1)
 
 packages:
 
@@ -1345,11 +1336,23 @@ packages:
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
     engines: {node: '>=12'}
 
+  '@csstools/selector-resolve-nested@3.0.0':
+    resolution: {integrity: sha512-ZoK24Yku6VJU1gS79a5PFmC8yn3wIapiKmPgun0hZgEI5AOqgH2kiPRsPz1qkGv4HL+wuDLH83yQyk6inMYrJQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      postcss-selector-parser: ^7.0.0
+
   '@csstools/selector-specificity@2.2.0':
     resolution: {integrity: sha512-+OJ9konv95ClSTOJCmMZqpd5+YGsB2S+x6w3E1oaM8UuR5j8nTNHYSz8c9BEPGDOCMQYIEEGlVPj/VY64iTbGw==}
     engines: {node: ^14 || ^16 || >=18}
     peerDependencies:
       postcss-selector-parser: ^6.0.10
+
+  '@csstools/selector-specificity@5.0.0':
+    resolution: {integrity: sha512-PCqQV3c4CoVm3kdPhyeZ07VmBRdH2EpMFA/pd9OASpOEC3aXNGoqPDAZ80D0cLpMBxnmk0+yNhGsEx31hq7Gtw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      postcss-selector-parser: ^7.0.0
 
   '@emotion/is-prop-valid@1.2.2':
     resolution: {integrity: sha512-uNsoYd37AFmaCdXlg6EYD1KaPOaRWRByMCYzbKUX4+hhMfrxdVSelShywL4JVaAeM/eHUOSprYBQls+/neX3pw==}
@@ -2035,6 +2038,9 @@ packages:
 
   '@types/node@20.17.10':
     resolution: {integrity: sha512-/jrvh5h6NXhEauFFexRin69nA0uHJ5gwk4iDivp/DeoEua3uwCUto6PC86IpRITBOs4+6i2I56K5x5b6WYGXHA==}
+
+  '@types/node@22.10.2':
+    resolution: {integrity: sha512-Xxr6BBRCAOQixvonOye19wnzyDiUtTeqldOOmj3CkeblonbccA12PFwlufvRdrpjXxqnmUaeiU5EOA+7s5diUQ==}
 
   '@types/prop-types@15.7.14':
     resolution: {integrity: sha512-gNMvNH49DJ7OJYv+KAKn0Xp45p8PLl6zo2YnvDIbTd4J6MER2BmWN49TG7n9LvkyihINxeKW8+3bfS2yDC9dzQ==}
@@ -3331,6 +3337,12 @@ packages:
     peerDependencies:
       postcss: ^8.4
 
+  postcss-nesting@13.0.1:
+    resolution: {integrity: sha512-VbqqHkOBOt4Uu3G8Dm8n6lU5+9cJFxiuty9+4rcoyRPO9zZS1JIs6td49VIoix3qYqELHlJIn46Oih9SAKo+yQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      postcss: ^8.4
+
   postcss-safe-parser@6.0.0:
     resolution: {integrity: sha512-FARHN8pwH+WiS2OPCxJI8FuRJpTVnn6ZNFiqAM2aeW2LwTHWWmWgIyKC6cUo0L8aeKiF/14MNvnpls6R2PBeMQ==}
     engines: {node: '>=12.0'}
@@ -3339,6 +3351,10 @@ packages:
 
   postcss-selector-parser@6.1.2:
     resolution: {integrity: sha512-Q8qQfPiZ+THO/3ZrOrO0cJJKfpYCagtMUkXbnEfmgUjwXg6z/WBeOyS9APBBPCTSiDV+s4SwQGu8yFsiMRIudg==}
+    engines: {node: '>=4'}
+
+  postcss-selector-parser@7.0.0:
+    resolution: {integrity: sha512-9RbEr1Y7FFfptd/1eEdntyjMwLeghW1bHX9GWjXo19vx4ytPQhANltvVxDggzJl7mnWM+dX28kb6cyS/4iQjlQ==}
     engines: {node: '>=4'}
 
   postcss-value-parser@4.2.0:
@@ -3355,6 +3371,11 @@ packages:
   prettier@2.8.8:
     resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
     engines: {node: '>=10.13.0'}
+    hasBin: true
+
+  prettier@3.4.2:
+    resolution: {integrity: sha512-e9MewbtFo+Fevyuxn/4rrcDAaq0IYxPGLvObpQjiZBMAzB9IGmzlnG9RZy3FFas+eBMu2vA0CszMeduow5dIuQ==}
+    engines: {node: '>=14'}
     hasBin: true
 
   pretty-format@29.7.0:
@@ -3897,6 +3918,9 @@ packages:
   undici-types@6.19.8:
     resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
 
+  undici-types@6.20.0:
+    resolution: {integrity: sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==}
+
   unicode-emoji-modifier-base@1.0.0:
     resolution: {integrity: sha512-yLSH4py7oFH3oG/9K+XWrz1pSi3dfUrWEnInbxMfArOfc1+33BlGPQtLsOYwvdMy11AwUBetYuaRxSPqgkq+8g==}
     engines: {node: '>=4'}
@@ -3932,6 +3956,10 @@ packages:
   utils-merge@1.0.1:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
+
+  uuid@11.0.3:
+    resolution: {integrity: sha512-d0z310fCWv5dJwnX1Y/MncBAqGMKEzlBb1AOf7z9K8ALnd0utBX/msg/fA0+sbyN1ihbMsLhrBlnl1ak7Wa0rg==}
+    hasBin: true
 
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
@@ -4474,9 +4502,17 @@ snapshots:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
 
+  '@csstools/selector-resolve-nested@3.0.0(postcss-selector-parser@7.0.0)':
+    dependencies:
+      postcss-selector-parser: 7.0.0
+
   '@csstools/selector-specificity@2.2.0(postcss-selector-parser@6.1.2)':
     dependencies:
       postcss-selector-parser: 6.1.2
+
+  '@csstools/selector-specificity@5.0.0(postcss-selector-parser@7.0.0)':
+    dependencies:
+      postcss-selector-parser: 7.0.0
 
   '@emotion/is-prop-valid@1.2.2':
     dependencies:
@@ -4679,7 +4715,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 18.19.68
+      '@types/node': 22.10.2
       '@types/yargs': 17.0.33
       chalk: 4.1.2
 
@@ -4992,6 +5028,10 @@ snapshots:
     dependencies:
       undici-types: 6.19.8
 
+  '@types/node@22.10.2':
+    dependencies:
+      undici-types: 6.20.0
+
   '@types/prop-types@15.7.14': {}
 
   '@types/react-redux@7.1.34':
@@ -5008,7 +5048,7 @@ snapshots:
 
   '@types/resolve@1.17.1':
     dependencies:
-      '@types/node': 20.17.10
+      '@types/node': 22.10.2
 
   '@types/serviceworker@0.0.108': {}
 
@@ -5046,21 +5086,28 @@ snapshots:
     transitivePeerDependencies:
       - '@swc/helpers'
 
-  '@vitejs/plugin-react-swc@3.7.2(vite@4.5.5(@types/node@20.17.10))':
+  '@vitejs/plugin-react-swc@3.7.2(vite@4.5.5(@types/node@22.10.2))':
     dependencies:
       '@swc/core': 1.10.3
-      vite: 4.5.5(@types/node@20.17.10)
+      vite: 4.5.5(@types/node@22.10.2)
     transitivePeerDependencies:
       - '@swc/helpers'
 
-  '@vitejs/plugin-react@4.3.4(vite@6.0.6(@types/node@20.17.10)(jiti@1.21.7)(yaml@2.6.1))':
+  '@vitejs/plugin-react-swc@3.7.2(vite@6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1))':
+    dependencies:
+      '@swc/core': 1.10.3
+      vite: 6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1)
+    transitivePeerDependencies:
+      - '@swc/helpers'
+
+  '@vitejs/plugin-react@4.3.4(vite@6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1))':
     dependencies:
       '@babel/core': 7.26.0
       '@babel/plugin-transform-react-jsx-self': 7.25.9(@babel/core@7.26.0)
       '@babel/plugin-transform-react-jsx-source': 7.25.9(@babel/core@7.26.0)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.2
-      vite: 6.0.6(@types/node@20.17.10)(jiti@1.21.7)(yaml@2.6.1)
+      vite: 6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -6031,7 +6078,7 @@ snapshots:
   jest-util@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 18.19.68
+      '@types/node': 22.10.2
       chalk: 4.1.2
       ci-info: 3.9.0
       graceful-fs: 4.2.11
@@ -6391,13 +6438,13 @@ snapshots:
       postcss: 8.4.49
       ts-node: 10.9.2(@swc/core@1.10.3)(@types/node@18.19.68)(typescript@5.7.2)
 
-  postcss-load-config@4.0.2(postcss@8.4.49)(ts-node@10.9.2(@swc/core@1.10.3)(@types/node@20.17.10)(typescript@5.7.2)):
+  postcss-load-config@4.0.2(postcss@8.4.49)(ts-node@10.9.2(@swc/core@1.10.3)(@types/node@22.10.2)(typescript@5.7.2)):
     dependencies:
       lilconfig: 3.1.3
       yaml: 2.6.1
     optionalDependencies:
       postcss: 8.4.49
-      ts-node: 10.9.2(@swc/core@1.10.3)(@types/node@20.17.10)(typescript@5.7.2)
+      ts-node: 10.9.2(@swc/core@1.10.3)(@types/node@22.10.2)(typescript@5.7.2)
 
   postcss-nested@6.2.0(postcss@8.4.49):
     dependencies:
@@ -6410,11 +6457,23 @@ snapshots:
       postcss: 8.4.49
       postcss-selector-parser: 6.1.2
 
+  postcss-nesting@13.0.1(postcss@8.4.49):
+    dependencies:
+      '@csstools/selector-resolve-nested': 3.0.0(postcss-selector-parser@7.0.0)
+      '@csstools/selector-specificity': 5.0.0(postcss-selector-parser@7.0.0)
+      postcss: 8.4.49
+      postcss-selector-parser: 7.0.0
+
   postcss-safe-parser@6.0.0(postcss@8.4.49):
     dependencies:
       postcss: 8.4.49
 
   postcss-selector-parser@6.1.2:
+    dependencies:
+      cssesc: 3.0.0
+      util-deprecate: 1.0.2
+
+  postcss-selector-parser@7.0.0:
     dependencies:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
@@ -6434,6 +6493,8 @@ snapshots:
       source-map-js: 1.2.1
 
   prettier@2.8.8: {}
+
+  prettier@3.4.2: {}
 
   pretty-format@29.7.0:
     dependencies:
@@ -6991,7 +7052,7 @@ snapshots:
     transitivePeerDependencies:
       - ts-node
 
-  tailwindcss@3.4.17(ts-node@10.9.2(@swc/core@1.10.3)(@types/node@20.17.10)(typescript@5.7.2)):
+  tailwindcss@3.4.17(ts-node@10.9.2(@swc/core@1.10.3)(@types/node@22.10.2)(typescript@5.7.2)):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -7010,7 +7071,7 @@ snapshots:
       postcss: 8.4.49
       postcss-import: 15.1.0(postcss@8.4.49)
       postcss-js: 4.0.1(postcss@8.4.49)
-      postcss-load-config: 4.0.2(postcss@8.4.49)(ts-node@10.9.2(@swc/core@1.10.3)(@types/node@20.17.10)(typescript@5.7.2))
+      postcss-load-config: 4.0.2(postcss@8.4.49)(ts-node@10.9.2(@swc/core@1.10.3)(@types/node@22.10.2)(typescript@5.7.2))
       postcss-nested: 6.2.0(postcss@8.4.49)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.10
@@ -7085,6 +7146,26 @@ snapshots:
     optionalDependencies:
       '@swc/core': 1.10.3
 
+  ts-node@10.9.2(@swc/core@1.10.3)(@types/node@22.10.2)(typescript@5.7.2):
+    dependencies:
+      '@cspotcode/source-map-support': 0.8.1
+      '@tsconfig/node10': 1.0.11
+      '@tsconfig/node12': 1.0.11
+      '@tsconfig/node14': 1.0.3
+      '@tsconfig/node16': 1.0.4
+      '@types/node': 22.10.2
+      acorn: 8.14.0
+      acorn-walk: 8.3.4
+      arg: 4.1.3
+      create-require: 1.1.1
+      diff: 4.0.2
+      make-error: 1.3.6
+      typescript: 5.7.2
+      v8-compile-cache-lib: 3.0.1
+      yn: 3.1.1
+    optionalDependencies:
+      '@swc/core': 1.10.3
+
   ts-opaque@3.0.1: {}
 
   tslib@2.6.2: {}
@@ -7133,6 +7214,8 @@ snapshots:
 
   undici-types@6.19.8: {}
 
+  undici-types@6.20.0: {}
+
   unicode-emoji-modifier-base@1.0.0: {}
 
   unpipe@1.0.0: {}
@@ -7168,6 +7251,8 @@ snapshots:
 
   utils-merge@1.0.1: {}
 
+  uuid@11.0.3: {}
+
   uuid@8.3.2: {}
 
   uuid@9.0.1: {}
@@ -7176,11 +7261,11 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite-plugin-node-polyfills@0.22.0(rollup@4.29.1)(vite@4.5.5(@types/node@18.19.68)):
+  vite-plugin-node-polyfills@0.22.0(rollup@4.29.1)(vite@6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1)):
     dependencies:
       '@rollup/plugin-inject': 5.0.5(rollup@4.29.1)
       node-stdlib-browser: 1.3.0
-      vite: 4.5.5(@types/node@18.19.68)
+      vite: 6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1)
     transitivePeerDependencies:
       - rollup
 
@@ -7193,22 +7278,22 @@ snapshots:
       '@types/node': 18.19.68
       fsevents: 2.3.3
 
-  vite@4.5.5(@types/node@20.17.10):
+  vite@4.5.5(@types/node@22.10.2):
     dependencies:
       esbuild: 0.18.20
       postcss: 8.4.49
       rollup: 3.29.5
     optionalDependencies:
-      '@types/node': 20.17.10
+      '@types/node': 22.10.2
       fsevents: 2.3.3
 
-  vite@6.0.6(@types/node@20.17.10)(jiti@1.21.7)(yaml@2.6.1):
+  vite@6.0.6(@types/node@22.10.2)(jiti@1.21.7)(yaml@2.6.1):
     dependencies:
       esbuild: 0.24.2
       postcss: 8.4.49
       rollup: 4.29.1
     optionalDependencies:
-      '@types/node': 20.17.10
+      '@types/node': 22.10.2
       fsevents: 2.3.3
       jiti: 1.21.7
       yaml: 2.6.1
