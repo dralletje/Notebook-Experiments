@@ -46,10 +46,10 @@ let STUFF_FROM_PLUTO_I_GUESS = EditorView.baseTheme({
     height: "unset",
   },
   ".cm-selectionBackground": {
-    background: "var(--cm-selection-background-blurred)",
+    background: "var(--cm-selection-background-blurred) !important",
   },
   "&.cm-focused .cm-selectionBackground": {
-    background: "var(--cm-selection-background)",
+    background: "var(--cm-selection-background) !important",
   },
   ".cm-editor": {
     color: "var(--cm-editor-text-color)",

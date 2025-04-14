@@ -257,7 +257,7 @@ export let useJavascriptResult = ({
         if (terms_file_result instanceof Loading) {
           throw new TermsFileNotReadyError();
         }
-        return terms_file_result.get();
+        return terms_file_result.get().export;
       };
 
       let import_map = {
@@ -271,7 +271,6 @@ export let useJavascriptResult = ({
       };
 
       try {
-        console.log(`our_javascript_code.code:`, our_javascript_code.code);
         let untyped_result = await run_cell_code(our_javascript_code.code, {
           __meta__: {
             // prettier-ignore
@@ -294,7 +293,6 @@ export let useJavascriptResult = ({
             },
           },
         });
-        console.log(`untyped_result:`, untyped_result);
         return /** @type {{ export: { extensions: Array<import("@codemirror/state").Extension> } }} */ (
           untyped_result
         );

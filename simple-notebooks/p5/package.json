@@ -53,7 +53,6 @@
     "react-flip-toolkit": "^7.1.0",
     "react-is": "^18.2.0",
     "react-shadow": "^20.0.0",
-    "react-use-path": "^0.3.1",
     "shallow-equal": "^3.1.0",
     "socket.io-client": "^4.6.1",
     "styled-components": "^5.3.9",
