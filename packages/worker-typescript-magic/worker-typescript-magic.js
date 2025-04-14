@@ -20,9 +20,22 @@ export class MagicWorker {
   /** @private */
   request_id_counter = 1;
 
+  /** @type {Promise<void>} */
+  ready;
+
   /** @param {Worker} worker */
   constructor(worker) {
     this.worker = worker;
+    this.ready = new Promise((resolve, reject) => {
+      this.worker.addEventListener("message", (message) => {
+        if (message.data.type === "__init__") {
+          resolve();
+        }
+      });
+      this.worker.addEventListener("error", (error) => {
+        reject(error);
+      });
+    });
   }
 
   terminate() {
@@ -36,6 +49,7 @@ export class MagicWorker {
    * @returns {Promise<ReturnType<T[P]>>}
    */
   async request(method, data) {
+    await this.ready;
     let request_id = this.request_id_counter++;
 
     this.worker.postMessage({

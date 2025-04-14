@@ -5,7 +5,7 @@ import { LRParser } from "@lezer/lr";
 
 import { useWorker, useWorkerPool } from "../use/useWorker.js";
 import { LezerGeneratorWorker } from "@dral/lezer-generator-worker";
-import { TransformJavascriptWorker } from "@dral/dralbook-transform-javascript/worker/transform-javascript-worker.js";
+import { TransformJavascriptWorker } from "../should-be-shared/transform-javascript/worker/transform-javascript-worker.js";
 import {
   Failure,
   Loading,
@@ -162,16 +162,19 @@ export let useLezerCompiled = ({ do_run, parser_code }) => {
       let start = Date.now();
       try {
         let worker = get_lezer_worker(signal);
-        console.log(`worker:`, worker);
+
         let parser = await worker.request("build-parser", {
           code: parser_code,
         });
-        console.log(`parser:`, parser);
+
         let time = Date.now() - start;
 
         return { parser, time };
       } catch (e) {
-        console.log(`e:`, e.stack);
+        console.error(
+          `Error while running build-parser in the worker:`,
+          e instanceof Error ? e.stack : e
+        );
         throw e;
       }
     },
@@ -219,9 +222,13 @@ export let useJavascriptResult = ({
       let terms_code = await babel_worker.request("transform-code", {
         code: terms_code_raw,
       });
-
       // Run the terms file
-      return await run_cell_code(terms_code.code, {});
+      try {
+        return await run_cell_code(terms_code.code, {});
+      } catch (error) {
+        console.error(`Error while running terms file:`, error);
+        throw error;
+      }
     },
     [generated_parser_code, babel_worker]
   );

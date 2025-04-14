@@ -69,4 +69,6 @@ export let handleCalls = (commands, debug = false) => {
       }
     });
   };
+
+  self.postMessage({ type: "__init__" });
 };
