@@ -56,6 +56,9 @@ class Path<T extends Ast.Node> {
   }
 }
 
+/// TODO Update @swc types with missing ctxt's
+/// https://github.com/swc-project/swc/blob/main/packages/types/index.ts
+
 let t = {
   identifier: (name: string): Ast.Identifier => {
     return {
@@ -628,8 +631,6 @@ export function transform(ast: Ast.Module) {
   // );
   // let has_top_level_return = get_has_top_level_return(ast);
   let exported = get_exported(ast);
-
-  console.log(`exported:`, exported);
 
   // let result_ast = fix_return_and_get_result_ast(ast, [
   //   ...created_names.map((name) => {
