@@ -8,9 +8,7 @@ export class TransformJavascriptWorker extends MagicWorker {
     super(
       new Worker(
         new URL("./transform-javascript-worker-worker.js", import.meta.url),
-        {
-          type: "module",
-        }
+        { type: "module" }
       )
     );
   }

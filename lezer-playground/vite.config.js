@@ -11,13 +11,10 @@ export default defineConfig({
       allow: [".."],
     },
   },
+  worker: {
+    format: "es",
+  },
   build: {
-    rollupOptions: {
-      plugins: [
-        visualizer({
-          filename: `${import.meta.dirname}/bundle-analyzer-result.html`,
-        }),
-      ],
-    },
+    target: "esnext",
   },
 });
