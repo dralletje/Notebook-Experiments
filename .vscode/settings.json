@@ -1,5 +1,25 @@
 {
   "typescript.tsdk": "node_modules/typescript/lib",
   "zig.zigPath": "/Users/michiel/Projects/StatebasedNotebook/node_modules/.bin/zig",
-  "zig.zls.enabled": true
+  "zig.zls.enabled": true,
+  "workbench.colorCustomizations": {
+    "activityBar.activeBackground": "#482825",
+    "activityBar.background": "#482825",
+    "activityBar.foreground": "#e7e7e7",
+    "activityBar.inactiveForeground": "#e7e7e799",
+    "activityBarBadge.background": "#36693a",
+    "activityBarBadge.foreground": "#e7e7e7",
+    "commandCenter.border": "#e7e7e799",
+    "sash.hoverBorder": "#482825",
+    "statusBar.background": "#693a37",
+    "statusBar.foreground": "#e7e7e7",
+    "statusBarItem.hoverBackground": "#8a4c49",
+    "statusBarItem.remoteBackground": "#693a37",
+    "statusBarItem.remoteForeground": "#e7e7e7",
+    "titleBar.activeBackground": "#693a37",
+    "titleBar.activeForeground": "#e7e7e7",
+    "titleBar.inactiveBackground": "#693a3799",
+    "titleBar.inactiveForeground": "#e7e7e799"
+  },
+  "peacock.color": "#693a37"
 }
