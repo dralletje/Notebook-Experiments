@@ -287,7 +287,9 @@ export let _cursor_to_inspector_lang = (cursor, indent = "") => {
   let text = "";
 
   text += indent;
-  if (cursor.type.isError) {
+  if (cursor.type == null) {
+    text += "???";
+  } else if (cursor.type.isError) {
     text += `⚠`;
   } else if (cursor.type.isAnonymous) {
     text += `🔘`;
@@ -369,7 +371,11 @@ export let cursor_to_inspector_lang = (cursor) => {
   node_loop: while (true) {
     let first_line_of_this_node = "";
     first_line_of_this_node += indents[0];
-    if (cursor.type.isError) {
+    if (cursor.type == null) {
+      console.log(`cursor:`, cursor);
+      first_line_of_this_node += `??`;
+      break;
+    } else if (cursor.type.isError) {
       first_line_of_this_node += `⚠`;
     } else if (cursor.type.isAnonymous) {
       first_line_of_this_node += `🔘`;

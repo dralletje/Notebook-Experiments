@@ -42,7 +42,6 @@ import { range } from "lodash-es";
 import {
   cursor_to_inspector_lang,
   inspector_meta_from_tree,
-  _cursor_to_inspector_lang,
 } from "./cursor-to-inspector-lang.js";
 import { GenericViewUpdate } from "codemirror-x-react/viewupdate.js";
 // @ts-ignore

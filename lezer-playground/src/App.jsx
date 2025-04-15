@@ -124,6 +124,31 @@ let Runtime = styled.div`
   align-self: flex-end;
 `;
 
+class Catch extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    // Update state so the next render will show the fallback UI.
+    return { error: error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    this.props.onError?.(error, errorInfo);
+  }
+
+  render() {
+    if (this.state.error != null) {
+      // You can render any custom fallback UI
+      return this.props.fallback(this.state.error);
+    }
+
+    return this.props.children;
+  }
+}
+
 const LEZER_GRAMMAR_EDITOR_ID = as_editor_id("lezer-grammar");
 const JAVASCRIPT_EDITOR_ID = as_editor_id("javascript");
 const WHAT_TO_PARSE_EDITOR_ID = as_editor_id("code-to-parse");
@@ -505,12 +530,22 @@ let Editor = ({ project_name }) => {
             }
           >
             {parser_in_betweens instanceof Success ? (
-              <ParsedResultEditor
-                code_to_parse_viewupdate={code_to_parse_viewupdate}
-                parser={parser_in_betweens.value}
-                code_to_parse={code_to_parse}
-                onSelection={onSelection}
-              />
+              <Catch
+                fallback={() => (
+                  <FillAndCenter>
+                    <pre style={{ color: "#ff00004d" }}>
+                      The results view crashed!
+                    </pre>
+                  </FillAndCenter>
+                )}
+              >
+                <ParsedResultEditor
+                  code_to_parse_viewupdate={code_to_parse_viewupdate}
+                  parser={parser_in_betweens.value}
+                  code_to_parse={code_to_parse}
+                  onSelection={onSelection}
+                />
+              </Catch>
             ) : parser_in_betweens instanceof Failure &&
               parser instanceof Failure ? (
               generated_parser_code instanceof Failure ? (
