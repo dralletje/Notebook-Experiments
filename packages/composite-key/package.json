@@ -2,7 +2,7 @@
   "name": "composite-key",
   "version": "1.0.0",
   "description": "",
-  "main": "composite-key.ts",
+  "main": "composite-key.dralbook.ts",
   "author": "",
   "license": "ISC"
 }
