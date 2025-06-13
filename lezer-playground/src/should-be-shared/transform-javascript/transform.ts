@@ -591,11 +591,7 @@ export function transform(ast: Ast.Module) {
   // }
 
   // Add "use strict" directive
-  ast.body.unshift({
-    type: "ExpressionStatement",
-    span: NOSPAN,
-    expression: t.stringLiteral("use strict"),
-  });
+  ast.body.unshift(t.expressionStatement(t.stringLiteral("use strict")));
 
   // let accidental_globals = [];
   // for (let statement of ast.program.body) {
