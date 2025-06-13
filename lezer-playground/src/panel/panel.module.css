@@ -1,0 +1,131 @@
+/* Thanks, https://loading.io/css/ */
+.loadingringthing {
+  --size: 1em;
+  --px: calc(var(--size) / 80);
+
+  & {
+    display: inline-block;
+    position: relative;
+    width: calc(80 * var(--px));
+    height: calc(80 * var(--px));
+  }
+  &:after {
+    content: " ";
+    display: block;
+    border-radius: 50%;
+    width: 0;
+    height: 0;
+    margin: calc(8 * var(--px));
+    box-sizing: border-box;
+    border: calc(32 * var(--px)) solid currentColor;
+    border-color: currentColor transparent currentColor transparent;
+    animation: lds-hourglass 1.2s infinite;
+  }
+}
+
+@keyframes lds-hourglass {
+  0% {
+    transform: rotate(0);
+    animation-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  }
+  50% {
+    transform: rotate(900deg);
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+  100% {
+    transform: rotate(1800deg);
+  }
+}
+
+.paneheader {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 18px;
+  padding-right: 5px;
+  font-weight: bold;
+  font-size: 12px;
+
+  background-color: #ffffff17;
+  color: #ffffff75;
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  user-select: none;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 4px;
+
+  .paneheader, :global(.cm-panels) {
+    background-size: 100px 100px;
+    background-color: #ffffff17;
+    background-image: url("./noise-backgrounds/img-noise-100x100.png");
+  }
+
+  :global(.cm-panels) {
+    color: #ffffff75;
+    border-bottom: none;
+  }
+  :global(.cm-search) {
+    font-size: 1rem;
+    font-family: var(--mono-font-family);
+
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    [name="select"],
+    [name="replace"],
+    [name="replaceAll"],
+    label {
+      display: none;
+    }
+
+    input,
+    button {
+      border: none;
+      border-radius: 2px !important;
+      font-family: inherit;
+    }
+    input:focus-visible,
+    button:focus-visible {
+      outline: 2px #ffffff4f solid;
+    }
+
+    [name="search"] {
+      flex: 1;
+    }
+
+    [name="close"] {
+      position: relative !important;
+      /* margin-left: 8px !important; */
+      margin-left: 4px !important;
+      padding-right: 4px !important;
+      padding-left: 4px !important;
+    }
+  }
+
+  :global(.cm-textfield) {
+    color: white;
+    background-color: #0000006b;
+  }
+  :global(.cm-button) {
+    background: none;
+    background-color: black;
+  }
+
+  :global(.cm-content),
+  :global(.cm-gutters) {
+    background-size: 100px 100px;
+    background-image: url("./noise-backgrounds/img-noise-100x100.png");
+
+    &.cm-gutters {
+      background-position: right;
+    }
+  }
+}

@@ -1,32 +1,9 @@
 import React from "react";
-import styled from "styled-components";
 import { Failure } from "../../use/OperationMonadBullshit.js";
 import { WhatToParseEditor } from "./what-to-parse-editor.jsx";
 
-let ErrorBox = styled.div`
-  color: rgb(181 181 181);
-  background-color: #420000;
-  padding: 8px;
-  padding-top: 0px;
-  max-height: 50%;
-  overflow: auto;
-  font-size: 16px;
-
-  h1 {
-    padding-top: 8px;
-    padding-bottom: 4px;
-    font-weight: bold;
-    font-size: 12px;
-    background-color: #420000;
-
-    position: sticky;
-    top: 0px;
-  }
-
-  pre {
-    white-space: pre-wrap;
-  }
-`;
+// @ts-ignore
+import classes from "./what-to-parse-editor-with-error-boundary.module.css";
 
 /**
  * @extends {React.Component<Parameters<WhatToParseEditor>[0] & { errors: Array<{ title: string, error: Error }> }, { component_error: Error | null }>}
@@ -84,7 +61,7 @@ export class WhatToParseEditorWithErrorBoundary extends React.Component {
         </div>
 
         {errors_with_component_error.length > 0 && (
-          <ErrorBox>
+          <div className={`${classes.errorbox}`}>
             {errors_with_component_error.map((error) => (
               <React.Fragment key={error.title}>
                 <h1>{error.title}</h1>
@@ -92,7 +69,7 @@ export class WhatToParseEditorWithErrorBoundary extends React.Component {
                 <pre>{error.error.message}</pre>
               </React.Fragment>
             ))}
-          </ErrorBox>
+          </div>
         )}
       </div>
     );

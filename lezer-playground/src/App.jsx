@@ -43,7 +43,7 @@ import {
 } from "./ugh/run-whole-compilation-pipeline.js";
 import { useSearchParamState, useUrl } from "./use/use-url.js";
 import { WhatToParseEditorWithErrorBoundary } from "./editors/what-to-parse-editor/what-to-parse-editor-with-error-boundary.jsx";
-import { Pane, PaneStyle, PaneTab } from "./panel/panel.jsx";
+import { Pane, PaneTab } from "./panel/panel.jsx";
 
 export let App = () => {
   let [url] = useUrl();
@@ -82,7 +82,7 @@ let AppGrid = styled.div`
       / 100% 100% 100% 8px;
     gap: 8px;
 
-    ${PaneStyle} {
+    .pane {
       scroll-snap-align: center;
     }
   }

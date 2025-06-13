@@ -1,0 +1,24 @@
+.errorbox {
+  color: rgb(181 181 181);
+  background-color: #420000;
+  padding: 8px;
+  padding-top: 0px;
+  max-height: 50%;
+  overflow: auto;
+  font-size: 16px;
+
+  h1 {
+    padding-top: 8px;
+    padding-bottom: 4px;
+    font-weight: bold;
+    font-size: 12px;
+    background-color: #420000;
+
+    position: sticky;
+    top: 0px;
+  }
+
+  pre {
+    white-space: pre-wrap;
+  }
+}
