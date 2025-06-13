@@ -227,7 +227,6 @@ let t = {
     };
   },
   argument: (name: Ast.Expression): Ast.Argument => {
-    console.log(`name:`, name);
     return {
       spread: undefined,
       expression: name,

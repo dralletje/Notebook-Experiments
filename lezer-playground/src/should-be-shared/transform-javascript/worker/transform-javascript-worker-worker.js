@@ -20,4 +20,4 @@ let commands = {
  * @type {typeof commands}
  */
 
-handleCalls(commands, true);
+handleCalls(commands);

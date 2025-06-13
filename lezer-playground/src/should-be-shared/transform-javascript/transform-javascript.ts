@@ -8,7 +8,6 @@ export function transform_code(
   code: string,
   { filename }: { filename: string }
 ) {
-  console.log("#1");
   // let unmodified_ast = parse(code, {
   //   parser: {
   //     parse: (input, options) => {
@@ -45,8 +44,6 @@ export function transform_code(
     tsx: true,
   });
 
-  console.log(`#3:`, unmodified_ast);
-
   // let without_typescript = remove_typescript_and_transform_jsx(unmodified_ast);
 
   let {
@@ -59,13 +56,10 @@ export function transform_code(
     },
   } = transform(structuredClone(unmodified_ast));
 
-  console.log(`ast:`, ast);
-
   let result = printSync(ast, {
     // sourceMaps: true,
   });
 
-  console.log(`result:`, result.code);
   // let result = print(ast, {});
 
   // let source_map = "data:text/plain;base64," + btoa(JSON.stringify(result.map));

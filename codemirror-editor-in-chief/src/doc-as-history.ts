@@ -37,7 +37,6 @@ let apply_doc_effect = EditorState.transactionFilter.of((transaction) => {
   for (let effect of transaction.effects) {
     if (effect.is(DocChangedEffect)) {
       let next_transaction: TransactionSpec = { changes: effect.value };
-      console.log(`next_transaction:`, next_transaction);
       if (Array.isArray(_transactions)) {
         _transactions = [..._transactions, next_transaction];
       } else {
