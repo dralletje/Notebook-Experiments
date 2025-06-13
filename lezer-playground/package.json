@@ -6,12 +6,12 @@
     "@codemirror/autocomplete": "^6.7.1",
     "@codemirror/collab": "^6.0.0",
     "@codemirror/commands": "^6.2.4",
-    "@codemirror/lang-javascript": "^6.1.8",
+    "@codemirror/lang-javascript": "^6.2.4",
     "@codemirror/lang-lezer": "^6.0.1",
-    "@codemirror/language": "^6.6.0",
-    "@codemirror/search": "^6.4.0",
+    "@codemirror/language": "^6.11.1",
+    "@codemirror/search": "^6.5.11",
     "@codemirror/state": "^6.2.0",
-    "@codemirror/view": "^6.11.3",
+    "@codemirror/view": "^6.37.2",
     "@dral/all-folds-zig": "workspace:^",
     "@dral/codemirror-helpers": "workspace:^",
     "@dral/codemirror-subtle-color-picker": "workspace:^",
@@ -26,8 +26,8 @@
     "@lezer/generator": "^1.7.2",
     "@lezer/highlight": "^1.2.1",
     "@lezer/lr": "^1.4.2",
-    "@swc/core": "~1.11.21",
-    "@swc/wasm-web": "^1.11.21",
+    "@swc/core": "~1.12.1",
+    "@swc/wasm-web": "^1.12.1",
     "bezier-easing": "^2.1.0",
     "codemirror-awesome-line-wrapping": "workspace:^",
     "codemirror-editor-in-chief": "workspace:^",
@@ -42,7 +42,7 @@
     "react-icons": "^5.5.0",
     "recast": "^0.23.9",
     "style-mod": "^4.0.3",
-    "styled-components": "^6.1.13"
+    "styled-components": "^6.1.19"
   },
   "packageManager": "pnpm@9.15.0",
   "scripts": {
@@ -57,13 +57,10 @@
   },
   "devDependencies": {
     "@types/lodash-es": "^4.17.7",
-    "@types/react": "^19.1.2",
-    "@types/serviceworker": "^0.0.127",
+    "@types/react": "^19.1.8",
+    "@types/serviceworker": "^0.0.139",
     "@types/styled-components": "^5.1.26",
-    "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.23",
-    "tailwindcss": "^3.3.2",
-    "vite": "^6.2.6"
+    "@vitejs/plugin-react": "^4.5.2",
+    "vite": "^6.3.5"
   }
 }
