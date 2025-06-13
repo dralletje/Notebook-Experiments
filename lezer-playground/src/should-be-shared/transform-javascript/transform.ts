@@ -560,6 +560,11 @@ let get_exported = (ast: Ast.Module): { [exported_as: string]: string } => {
             throw new Error(`Expected an Identifier but got a "${declaration.id.type}"`);
           }
         }
+      } else if (node.declaration.type === "FunctionDeclaration") {
+        // export function x() {}
+        exported[to_string(node.declaration.identifier)] = to_string(
+          node.declaration.identifier
+        );
       } else {
         // prettier-ignore
         throw new Error(`Expected a VariableDeclaration but got a "${node.declaration.type}"`);
