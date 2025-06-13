@@ -538,19 +538,6 @@ let get_exported = (ast: Ast.Module): { [exported_as: string]: string } => {
   let exported: { [exported_as: string]: string } = {};
   traverse(ast, {
     ExportDeclaration({ node }: Path<Ast.ExportDeclaration>) {
-      // if (node.declaration != null) {
-      //   // export let x = 10
-      //   if (node.declaration.type === "VariableDeclaration") {
-      //     for (let declaration of node.declaration.declarations) {
-      //       exported[to_string(declaration.id)] = to_string(declaration.id);
-      //     }
-      //   } else {
-      //     throw new Error(
-      //       `Expected a VariableDeclaration but got a "${node.declaration.type}"`
-      //     );
-      //   }
-      // }
-
       if (node.declaration.type === "VariableDeclaration") {
         for (let declaration of node.declaration.declarations) {
           if (declaration.id.type === "Identifier") {
@@ -607,14 +594,8 @@ export function transform(ast: Ast.Module) {
   ast.body.unshift({
     type: "ExpressionStatement",
     span: NOSPAN,
-    expression: {
-      type: "StringLiteral",
-      value: "use strict",
-      span: NOSPAN,
-    },
+    expression: t.stringLiteral("use strict"),
   });
-
-  // ast.program.directives = [t.directive(t.directiveLiteral("use strict"))];
 
   // let accidental_globals = [];
   // for (let statement of ast.program.body) {
@@ -680,9 +661,8 @@ export function transform(ast: Ast.Module) {
             return "default";
           } else if (specifier.type === "ImportNamespaceSpecifier") {
             // Eh
-            throw new Error(
-              `Expected an ImportSpecifier but got a "${specifier.type}"`
-            );
+            // prettier-ignore
+            throw new Error(`Expected an ImportSpecifier but got a "${specifier.type}"`);
           } else if (specifier.type === "ImportSpecifier") {
             let name = specifier.imported ?? specifier.local;
             return to_string(name);
