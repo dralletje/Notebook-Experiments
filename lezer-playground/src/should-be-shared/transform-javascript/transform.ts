@@ -561,12 +561,26 @@ let get_exported = (ast: Ast.Module): { [exported_as: string]: string } => {
           }
         }
       } else if (node.declaration.type === "FunctionDeclaration") {
-        // export function x() {}
+        /// export function x() {}
         exported[to_string(node.declaration.identifier)] = to_string(
           node.declaration.identifier
         );
+      } else if (node.declaration.type === "ClassDeclaration") {
+        /// export class x {}
+        exported[to_string(node.declaration.identifier)] = to_string(
+          node.declaration.identifier
+        );
+      } else if (
+        node.declaration.type === "TsEnumDeclaration" ||
+        node.declaration.type === "TsInterfaceDeclaration" ||
+        node.declaration.type === "TsTypeAliasDeclaration" ||
+        node.declaration.type === "TsModuleDeclaration"
+      ) {
+        /// Any type export
+        /// Don't do anything with these as they don't impact runtime
       } else {
         // prettier-ignore
+        // @ts-expect-error - Should be exhaustive
         throw new Error(`Expected a VariableDeclaration but got a "${node.declaration.type}"`);
       }
     },
