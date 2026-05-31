@@ -151,6 +151,7 @@ class Catch extends React.Component {
 
 const LEZER_GRAMMAR_EDITOR_ID = as_editor_id("lezer-grammar");
 const JAVASCRIPT_EDITOR_ID = as_editor_id("javascript");
+const NESTED_JAVASCRIPT_EDITOR_ID = as_editor_id("javascript");
 const WHAT_TO_PARSE_EDITOR_ID = as_editor_id("code-to-parse");
 
 /** @param {{ project_name: string }} props */
@@ -205,17 +206,29 @@ let Editor = ({ project_name }) => {
             editorstate.section_editor_extensions(LEZER_GRAMMAR_EDITOR_ID),
           ],
         }),
-        javascript: EditorState.create({
-          doc: javascript_stuff,
-          extensions: [
-            editorstate.section_editor_extensions(JAVASCRIPT_EDITOR_ID),
-          ],
-        }),
         "code-to-parse": EditorState.create({
           doc: code_to_parse,
           extensions: [
             editorstate.section_editor_extensions(WHAT_TO_PARSE_EDITOR_ID),
           ],
+        }),
+
+        javascript: EditorInChief.create({
+          extensions: [
+            // shared_history(),
+            // EditorInChiefKeymap.of(historyKeymap),
+            editorstate.section_editor_extensions(JAVASCRIPT_EDITOR_ID),
+          ],
+          editors: () => ({
+            javascript: EditorState.create({
+              doc: javascript_stuff,
+              extensions: [
+                editorstate.section_editor_extensions(
+                  NESTED_JAVASCRIPT_EDITOR_ID
+                ),
+              ],
+            }),
+          }),
         }),
       }),
       extensions: [
@@ -245,9 +258,14 @@ let Editor = ({ project_name }) => {
     viewupdate,
     WHAT_TO_PARSE_EDITOR_ID
   );
-  let javascript_stuff_viewupdate = extract_nested_viewupdate(
+
+  let _javascript_stuff_viewupdate = extract_nested_viewupdate(
     viewupdate,
     JAVASCRIPT_EDITOR_ID
+  );
+  let javascript_stuff_viewupdate = extract_nested_viewupdate(
+    _javascript_stuff_viewupdate,
+    NESTED_JAVASCRIPT_EDITOR_ID
   );
 
   React.useEffect(() => {
@@ -266,6 +284,7 @@ let Editor = ({ project_name }) => {
   }, [code_to_parse_viewupdate]);
   React.useEffect(() => {
     for (let transaction of javascript_stuff_viewupdate.transactions) {
+      console.log(`transaction:`, transaction);
       if (transaction.docChanged) {
         set_javascript_stuff(transaction.newDoc.toString());
       }

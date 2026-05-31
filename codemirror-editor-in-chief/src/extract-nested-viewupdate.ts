@@ -43,7 +43,6 @@ export let extract_nested_viewupdate = <
   viewupdate: GenericViewUpdate<EditorInChief<T>>,
   editor_id: EditorId<K>
 ): GenericViewUpdate<T[K]> => {
-  let x = compositeKey(viewupdate.view.dispatch, editor_id);
   // Wrap every transaction in EditorDispatchEffect's
   let nested_dispatch = nested_dispatch_weakmap.emplace(
     compositeKey(viewupdate.view.dispatch, editor_id),

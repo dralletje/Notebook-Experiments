@@ -1,5 +1,5 @@
 {
-  "name": "dral-lezer-helpers",
+  "name": "@dral-studio/lezer-helpers",
   "version": "1.0.0",
   "description": "",
   "main": "dral-lezer-helpers.js",

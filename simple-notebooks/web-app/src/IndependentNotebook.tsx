@@ -18,8 +18,6 @@ import { useUrl } from "./packages/use-url/use-url";
 import { NotebookViewWithDragAndDrop } from "./Notebook/NotebookViewWithDragAndDrop";
 import { EditorState } from "@codemirror/state";
 
-let Sheet = () => {};
-
 type NotebookEditorInChief = EditorInChief<{ [k: string]: EditorState }>;
 
 export function IndependentNotebook({
@@ -68,7 +66,7 @@ export function IndependentNotebook({
 
   let [engine, logs, deserialize] = useEngine(
     notebook_with_filename,
-    environment
+    environment,
   );
 
   let [url, set_url] = useUrl();

@@ -114,6 +114,7 @@ const historyField_ = EditorInChiefStateField.define<HistoryState>({
       return !tr.changes.empty ? state.addMapping(tr.changes.desc) : state;
 
     let event = CellHistEvent.fromTransaction(tr);
+    console.log(`event:`, event);
     let time = tr.annotation(Transaction.time)!,
       userEvent = tr.annotation(Transaction.userEvent);
     if (event)
